@@ -300,6 +300,7 @@ Socket.client.connect <server_ip_sexp>, <port_nexp>, 68
 Socket.client.read.file  <fw_nexp>, 69
 Socket.client.read.line <line_svar>, 69
 Socket.client.read.ready <nvar>, 68
+Socket.client.read.byte <nvar>, --------------------------------------------------------------------------------------------------------------------------------------------------Add line number here!
 Socket.client.write.bytes <sexp>, 69
 Socket.client.write.file  <fr_nexp>, 69
 Socket.client.write.line <line_sexp>, 69

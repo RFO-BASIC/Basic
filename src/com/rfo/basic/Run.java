@@ -1155,7 +1155,7 @@ public class Run extends ListActivity {
 		"server.client.ip", "client.server.ip",
 		"server.write.file", "client.read.file",
 		"server.write.bytes", "client.write.bytes",
-		"client.write.file"
+		"client.write.file", "client.read.byte"
 	};
 	
 	public static final int client_connect = 0;
@@ -1178,6 +1178,7 @@ public class Run extends ListActivity {
 	public static final int server_putbytes = 17;
 	public static final int client_putbytes = 18;
 	public static final int client_putfile= 19;
+	public static final int client_getbyte = 20;
 	
 	public static Socket theClientSocket ;
 	public static BufferedReader ClientBufferedReader ;
@@ -2298,6 +2299,7 @@ public void cleanUp(){
 				mChatService = null;
 			}
 		
+
 			if (btLooper != null){
 				btLooper.quit();
 				btLooper = null;
@@ -3821,6 +3823,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.sin(d1));
 				break;
+
 
 			case MFcos:
 				if (!evalNumericExpression()) return false;
@@ -6013,6 +6016,7 @@ private boolean doUserFunction(){
 	fsb.putInt("AT", ArrayTable.size());
 	fsb.putInt("ELI", ExecutingLineIndex);
 	fsb.putInt("SCOV", scOpValue);
+
 	fsb.putString("PKW", PossibleKeyWord);
 
 	ArrayList<String> fVarName = new ArrayList<String>();				// The list of Parm Var Names
@@ -13104,6 +13108,7 @@ private boolean doUserFunction(){
 	
 	private boolean execute_LIST_NEW(){
 		char c = ExecutingLineBuffer.charAt(LineIndex);    // Get the type, s or n
+
 		++LineIndex;
 		int type = 0;
 		
@@ -14629,6 +14634,9 @@ private boolean doUserFunction(){
 		case client_putfile:
 			if (!executeCLIENT_PUTFILE()) return false;
 			break;
+		case client_getbytes:
+			if (!executeCLIENT_GETBYTES()) return false;
+			break;
 			
 		default:
 		}
@@ -15299,6 +15307,33 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
+		return true;
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////// Der_Wurfel: Socket.Client.Get.Bytes                                                              ///////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	private boolean executeCLIENT_GETBYTES(){
+		double result = -1;
+		if (theClientSocket == null){
+			RunTimeError("Client Socket Not Opened");
+			return false;
+		}
+		
+		if (!theClientSocket.isConnected()){
+			RunTimeError("Client Connection Disrupted");
+			return false;
+		}
+		if (clientBufferedReader.ready()){
+			try{
+				result = clientBufferedReader.read();
+			}
+			catch (IOException e){
+				RunTimeError("Error: " + e );
+				return false;
+			}
+		}
+		NumericVarValues.set(theValueIndex, result);
 		return true;
 	}
 	
@@ -17434,6 +17469,7 @@ private boolean doUserFunction(){
 	   private boolean executeHOME(){
 		   moveTaskToBack(true);
 		   return true;
+
 	   }
 
 	   private boolean executeBACKGROUND_RESUME() {

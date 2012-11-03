@@ -384,7 +384,7 @@ public class Basic extends ListActivity  {
     	        	            	 Byte = dis.readByte();
     	        	            	 dos1.writeByte(Byte);
     	        	            	 ++count;
-    	        	            	 if (count >= 4096){			// Show progress every 4k bytes
+    	        	            	 if (count >= 4096){			// Show progress every 4 kilobytes
     	        	            		 publishProgress(".");
     	        	            		 count = 0;
     	        	            	 }
