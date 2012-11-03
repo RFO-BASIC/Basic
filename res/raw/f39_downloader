@@ -1,0 +1,94 @@
+!* Download Helper Plus! ver. 2.2 *
+! f39_downloader.bas
+!
+! Downloads shared BASIC! programs
+! from the BASIC! shared program ftp site.
+! Run the program and select the BASIC!
+! program that you want to down load.
+!
+! Thank you, Droid_Mike, for this program
+
+URL$ = "http://laughton.com"
+LET source_path$ =  URL$ + "/basic/programs/"
+
+CLS
+PRINT "Welcome to the RFO Basic! Download Helper Plus! ver 2.1"
+PRINT "Please wait while the file list is being downloaded."
+PRINT ""
+
+relist:
+
+GRABURL result$, source_path$
+SPLIT pre_list$[], result$, "<a href=" + CHR$(34)
+
+LIST.CREATE S, program_list
+
+ARRAY.LENGTH ln, pre_list$[]
+FOR i= 1 TO ln
+ LIST.ADD program_list, LEFT$(pre_list$[i], IS_IN(CHR$(34), pre_list$[i])-1)
+NEXT i
+
+! Have a choice to quit at end
+LIST.ADD program_list, "QUIT!"
+
+! OK, now list all the filenames
+LIST.SIZE program_list, slist
+
+! First 7 lines are junk, so we will skip them
+line_pad = 7
+
+LIST.TOARRAY program_list, pre_show_array$[]
+ARRAY.COPY pre_show_array$[line_pad], show_array$[]
+
+ARRAY.LENGTH length, show_array$[]
+FOR i = 1 TO length
+ ! Make sure spaces are displayed accurately and dir's are skipped
+ temp_name$ = REPLACE$(show_array$[i],"%20"," ")
+ show_array$[i]=temp_name$
+NEXT i
+
+DO
+ SELECT dfnum, show_array$[], "Choose File to Download"
+ LIST.GET program_list, line_pad-1+dfnum, dfname$
+
+ ! see if user quits
+ IF dfname$ = "QUIT!" THEN END
+
+ ! see if it is a directory
+ IF IS_IN("/",dfname$) > 0
+  ! See if user clicked on previous directory
+  IF IS_IN("/basic/programs/",dfname$) THEN
+   LET source_path$ = URL$ + dfname$
+  ELSEIF IS_IN("/basic/",dfname$) then
+   LET source_path$ = URL$ + "/basic/programs/"
+  ELSE
+   LET source_path$ = source_path$ + dfname$
+  ENDIF
+  UNDIM pre_show_array$[]
+  UNDIM show_array$[]
+  UNDIM pre_list$[]
+  LIST.CLEAR program_list
+  PRINT "Now loading directory "; source_path$
+  GOTO relist
+ ENDIF
+
+ ! guess the destination directory based on the filename
+ default_dest$ = "../data/"
+ IF IS_IN(".bas", dfname$) > 0 THEN default_dest$ = "../source/"
+ IF IS_IN(".db", dfname$) > 0 THEN default_dest$ = "../databases/"
+
+ INPUT "Enter Destination Directory", ddir$, default_dest$
+
+ PRINT ""
+ PRINT "Downloading "; source_path$; " to "; ddir$ + dfname$
+
+ BYTE.OPEN R, FN, source_path$+dfname$
+ BYTE.COPY FN, ddir$+dfname$
+
+ PRINT "FILE DOWNLOAD COMPLETE!"
+
+ PAUSE 2000
+
+UNTIL 0
+
+END

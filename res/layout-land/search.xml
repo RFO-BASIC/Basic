@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--  *********************************************************************************
+
+BASIC! is an implementation of the Basic programming lanuage for
+Android devices.
+ 
+ Copyright (C) 2010, 2011, 2012 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author, Paul Laughton, at basic@laughton.com
+	
+	**********************************************************************************
+	-->
+	
+<RelativeLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="fill_parent" android:layout_height="fill_parent"
+	android:gravity="center_horizontal" android:padding="10px"
+	>
+		
+	<Button android:id="@+id/next_button"  
+        android:layout_width="wrap_content" 
+        android:layout_height="40dip"
+        android:textSize="15dip"
+        android:layout_marginLeft="10dip" 
+        android:layout_marginBottom="8dip"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentBottom ="true"
+        android:text="Next" />
+        
+    <Button android:id="@+id/done_button"  
+        android:layout_width="wrap_content" 
+        android:layout_height="40dip"
+        android:textSize="15dip"
+        android:layout_marginLeft="10dip" 
+        android:layout_marginBottom="8dip"
+         android:layout_toRightOf="@id/next_button"
+        android:layout_alignTop="@id/next_button"
+        android:text="Done" />
+        
+     <Button android:id="@+id/replace_all_button"  
+        android:layout_width="wrap_content" 
+        android:layout_height="40dip"
+        android:textSize="15dip"
+        android:layout_marginLeft="10dip" 
+        android:layout_marginBottom="8dip"
+        android:layout_alignParentRight="true"
+         android:layout_alignTop="@id/next_button"
+        android:text="Replace All" />
+        
+        
+
+    <Button android:id="@+id/replace_button"  
+        android:layout_width="wrap_content" 
+        android:layout_height="40dip"
+        android:textSize="15dip"
+        android:layout_marginLeft="10dip" 
+        android:layout_marginBottom="8dip"
+        android:layout_toLeftOf="@id/replace_all_button"
+        android:layout_alignTop="@id/next_button"
+        android:text="Replace" />
+		
+
+
+        
+       	<EditText android:id="@+id/replace_text"
+		android:layout_width="220dip"
+		android:layout_alignParentRight="true"
+		android:layout_height="40dip"
+		android:layout_marginLeft="10dip"
+		android:layout_marginBottom="5dip"
+		android:layout_above="@id/next_button"
+		style="@style/edit_text_l" />	
+       
+     <TextView android:id="@+id/replace_with"
+		android:layout_width="220dip"
+		android:layout_height="wrap_content"
+		android:layout_above="@id/replace_text"
+		android:layout_marginLeft="10dip"
+		android:layout_marginBottom="5dip"
+		android:layout_alignParentRight="true"
+		
+		style="@style/label_l"
+		android:text="Replace With:" />
+ 
+	<EditText android:id="@+id/search_text"
+		android:layout_width="220dip"
+		android:layout_height="40dip"
+		android:layout_marginLeft="10dip"
+		android:layout_marginBottom="5dip"
+		android:layout_alignParentLeft="true"
+		android:layout_above="@+id/next_button"
+		style="@style/edit_text_l" />	
+
+	<TextView android:id="@+id/search_for"
+		android:layout_width="220dip"
+		android:layout_height="wrap_content"
+		android:layout_marginLeft="10dip"
+		android:layout_marginBottom="5dip"
+		android:layout_above="@id/search_text"
+		style="@style/label_l"
+		android:text="Search For:" />
+
+        <EditText android:id="@+id/the_text"
+		android:layout_width="fill_parent"
+		android:layout_height="fill_parent"
+		android:layout_above="@id/search_for"
+		android:layout_marginLeft="10dip"
+		android:layout_marginBottom="5dip"
+		style="@style/edit_text_l"
+		 />
+
+		
+		
+
+</RelativeLayout>

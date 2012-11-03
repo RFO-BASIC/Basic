@@ -1,0 +1,56 @@
+! TIME Command
+!
+! TIME Year$, Month$, Day$, Hour$, Minute$, Second$
+!
+! All the paramters are returned by the TIME command.
+!
+! Year$: The four digit year
+! Month$: The two digit month (1 to 12)
+! Day$: The two digit day of the month (1 to 31)
+! Hour$: The two digit hour (0 to 23)
+! Minute$: The two digit minute (0 to 59)
+! Second$: The two digit second (0 to 59)
+!
+
+DIM m$[12]
+m$[1] = "January"
+m$[2] = "February"
+m$[3] = "March"
+m$[4] = "April"
+m$[5] = "May"
+m$[6] = "June"
+m$[7] = "July"
+m$[8] = "August"
+m$[9] = "September"
+m$[10] = "October"
+m$[11] = "November"
+m$[12] = "December"
+
+TIME Year$, Month$, Day$, Hour$, Minute$, Second$
+
+PRINT "Today's Date Is:"
+PRINT m$[VAL(Month$)]; " "; Day$; ", "; Year$
+PRINT ""
+
+AMPM $= " AM"
+Hour = VAL(Hour$)
+
+IF Hour = 0 THEN
+ theHour = 12
+ELSE
+ IF Hour = 12
+  AMPM$ = " PM"
+  theHour = 12
+ ELSE
+  IF Hour < 13 THEN
+   theHour = Hour
+  ELSE
+   AMPM$ = " PM"
+   theHour = MOD(Hour, 12)
+  ENDIF
+ ENDIF
+ENDIF
+
+PRINT "The Time Is:"
+PRINT FORMAT$("##",theHour); ":"; Minute$; AMPM$
+

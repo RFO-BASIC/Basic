@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--  *********************************************************************************
+BASIC! is an implementation of the Basic programming language for
+Android devices.
+
+Copyright (C) 2010, 2011, 2012 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author, Paul Laughton, at basic@laughton.com
+	
+	**********************************************************************************
+	-->
+	
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      	  package="com.rfo.basic"
+      	  android:versionCode= "1690"
+      	  android:versionName="1.69"
+      	  >
+    	  
+      	  
+     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+ 	 <uses-permission android:name="android.permission.INTERNET" android:required="false"></uses-permission>
+ 	 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:required="false"></uses-permission>
+	 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:required="false"></uses-permission>
+	 <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" android:required="false"></uses-permission>
+	 <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" android:required="false"></uses-permission> 
+	 <uses-permission android:name="android.permission.VIBRATE" android:required="false"></uses-permission>
+	 <uses-permission android:name="android.permission.WAKE_LOCK" android:required="false"></uses-permission>
+	 <uses-permission android:name="android.permission.CAMERA" android:required="false"></uses-permission>	
+	 <uses-permission android:name="android.permission.BLUETOOTH" android:required="false"></uses-permission>
+	 <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:required="false"></uses-permission>
+     <uses-permission android:name="android.permission.RECORD_AUDIO" android:required="false"></uses-permission>
+     <uses-permission android:name="android.permission.READ_PHONE_STATE" android:required="false"></uses-permission>
+     <uses-permission android:name="android.permission.SEND_SMS" android:required="false"></uses-permission>
+     <uses-permission android:name="android.permission.CALL_PHONE" android:required="false"></uses-permission>
+     <uses-permission android:name="android.permission.READ_SMS" android:required="false"></uses-permission>
+ 	 <uses-permission android:name="android.permission.RECEIVE_SMS" android:required="false"></uses-permission>
+ 	 
+<!-- <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED">android:required="false"></uses-permission> -->
+ 	 	      
+     <uses-feature android:name="android.hardware.telephony" android:required="false" />
+     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+     <uses-feature android:name="android.hardware.location" android:required="false" />
+     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
+     <uses-feature android:name="android.hardware.camera" android:required="false" />
+     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+     <uses-feature android:name="android.hardware.location.network" android:required="false" />
+     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+     
+     	 
+     	     	 <application android:icon="@drawable/icon" 
+    			 android:label="@string/app_name"
+    			 android:debuggable="false" 
+    			 
+    			 android:name="Debugger">
+    			 
+  			 
+
+    	<activity android:name="org.acra.CrashReportDialog"
+        	android:theme="@android:style/Theme.Dialog"
+        	android:launchMode="singleInstance"
+        	android:excludeFromRecents="true"
+        	android:finishOnTaskLaunch="true" />
+    	
+    	<receiver android:enabled="false" android:name=".BootUpReceiver">
+			<intent-filter>
+    		<action android:name="android.intent.action.BOOT_COMPLETED" />
+   	 		<category android:name="android.intent.category.DEFAULT" />
+			</intent-filter>
+ 		</receiver>
+    	
+        	
+
+    			 
+        <activity android:name="Basic"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:id = "@+id/basic_screen"
+            android:label="@string/app_name"
+            
+            >
+            
+                  
+                  
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+               </intent-filter>
+            
+        </activity>
+        
+        <activity android:name="LauncherShortcuts"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="Launcher Shortcuts">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+  
+            </intent-filter>
+
+        </activity>
+
+       <activity-alias android:name="CreateShortcuts"
+            android:targetActivity="LauncherShortcuts"
+            android:label="Launcher Shortcuts">
+
+            <!--  This intent-filter allows your shortcuts to be created in the launcher. -->
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+        </activity-alias>
+        
+        
+        <activity android:name=".Editor"
+            android:id = "@+id/editor_screen"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+        		   android:label="@string/editor_name" >
+         </activity>
+                 <activity android:name="Settings"
+		         android:id = "@+id/settings_screen"
+                  android:label="@string/settings_name" >
+        </activity>
+         
+        		   
+        		   
+         <activity android:name="LoadFile"
+             android:id = "@+id/load_screen"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/load_name" >
+        </activity>
+        
+          <activity android:name="Delete"
+              android:id = "@+id/delete_screen"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/delete_name" >
+        </activity>
+        
+         <activity android:name="Run"
+             	  android:id = "@+id/run_screen"
+         		  android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/run_name" >
+        </activity>
+
+         <activity android:name="Search"
+             android:id = "@+id/search_screen"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/search_name" >
+        </activity>
+        
+        <activity android:name="Format"
+             	  android:id = "@+id/format_screen"
+         		  android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/format_name" >
+        </activity>
+         
+
+         <activity android:name="Help"
+             android:id = "@+id/help_screen"
+             android:windowSoftInputMode="stateAlwaysVisible"
+                  android:label="@string/help_name" >
+        </activity>
+
+         <activity android:name="GR"
+             	android:id = "@+id/gr_screen"
+        		  android:configChanges="keyboardHidden|orientation|screenSize"
+         		  android:theme="@android:style/Theme.NoTitleBar.Fullscreen" 
+                  android:label="@string/gr_name" >
+         </activity>
+                
+        <activity android:name="AutoRun"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/auto_run_name" >
+        </activity>
+ 
+         <activity android:name="Select"
+             android:id = "@+id/select_screen"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/select_name" >
+         </activity>
+        
+          <activity android:name="TextInput"
+              android:id = "@+id/text_input_screen"
+         		  android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/textinput_name" >
+          </activity>
+          
+          <activity android:name="TGet"
+              android:id = "@+id/text_get_screen"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:label="@string/textinput_name" >
+          </activity>
+          
+          <activity android:name="Web"
+              android:id = "@+id/web_view_screen"
+              android:label="@string/web_view_name" 
+              android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+              android:configChanges="keyboardHidden|orientation|screenSize">
+              
+          </activity>
+          
+ 
+        <activity android:name="SensorActivity"
+            android:id = "@+id/sensor_screen"
+         		  android:configChanges="keyboardHidden|orientation|screenSize"
+        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
+                  android:label="@string/sensors_name" >
+        </activity>
+        
+        <activity android:name="TextToSpeechActivity"
+            android:id = "@+id/tts_screen"
+         		  android:configChanges="keyboardHidden|orientation|screenSize"
+        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
+                  android:label="Speech" >
+        </activity>
+        
+        <activity android:name="CameraView"
+            android:id = "@+id/camera_screen"
+         		  android:configChanges="keyboardHidden|orientation|screenSize"
+        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
+                  android:label="Camera" >
+        </activity>
+        
+               <activity android:name="HandleNotify"
+            	  android:id = "@+id/notify_screen"
+         		  android:configChanges="keyboardHidden|orientation|screenSize"
+        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
+                  android:label="Notify" >
+        </activity>
+        
+            
+            
+        
+                <activity android:name="GPS"
+                    android:id = "@+id/gps_screen"
+         		  android:configChanges="keyboardHidden|orientation|screenSize"
+        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
+                  android:label="@string/gps_name" >
+        </activity>
+        
+        <activity android:name="DeviceListActivity"
+            android:id = "@+id/device_list_screen"
+                  android:label="@string/select_device"
+                  android:theme="@android:style/Theme.Dialog"
+                  android:configChanges="keyboardHidden|orientation|screenSize">
+        </activity>
+        
+        <activity android:name="Null"
+                  android:label="@string/select_name" >
+        </activity>
+        
+        
+    </application>
+    
+      <uses-sdk android:minSdkVersion="7" android:targetSdkVersion ="16" />
+     	     	 	     	 	     	 
+    
+</manifest> 

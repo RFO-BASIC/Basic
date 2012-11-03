@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--  *********************************************************************************
+BASIC! is an implementation of the Basic programming lanuage for
+Android devices.
+
+Copyright (C) 2010, 2011, 2012 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author, Paul Laughton, at basic@laughton.com
+	
+	**********************************************************************************
+	-->
+	
+
+<PreferenceScreen
+   xmlns:android="http://schemas.android.com/apk/res/android">
+
+      
+
+        <ListPreference
+                android:key="font_pref"
+                android:title="Font Size"
+                android:summary="Select Font Size"
+                android:entries="@array/font_list_preference"
+                android:entryValues="@array/fontvalues_list_preference"
+                android:defaultValue="Medium"
+                android:dialogTitle="Choose one" />
+         
+        <ListPreference
+                android:key="es_pref"
+                android:title="Screen Colors"
+                android:summary="Select Screen Type"
+                android:entries="@array/es_list_preference"
+                android:entryValues="@array/esvalues_list_preference"
+                android:defaultValue="BW"
+                android:dialogTitle="Choose one" />
+                
+         <CheckBoxPreference
+      			android:key="lined_editor"
+     			android:title="Editor Lines"
+      			android:summary="Use Lined Editor"
+      			android:defaultValue="true" />
+
+         <CheckBoxPreference
+      			android:key="lined_console"
+     			android:title="Console Lines"
+      			android:summary="Use Lined Console"
+      			android:defaultValue="true" />
+
+         <CheckBoxPreference
+      			android:key="autoindent"
+     			android:title="Editor AutoIndent"
+      			android:summary="Enable Editor AutoIndent"
+      			android:defaultValue="false" />
+         
+         <ListPreference
+                android:key="csf_pref"
+                android:title="Console Typeface"
+                android:summary="Select Typeface"
+                android:entries="@array/csf_list_preference"
+                android:entryValues="@array/csfvalues_list_preference"
+                android:defaultValue="MS"
+                android:dialogTitle="Choose one" />
+         
+         <ListPreference
+                android:key="so_pref"
+                android:title="Screen Orientation"
+                android:summary="Select Orientation"
+                android:entries="@array/orientation_list_preference"
+                android:entryValues="@array/orientationvalues_list_preference"
+                android:defaultValue="0"
+                android:dialogTitle="Choose one" />
+         
+      
+</PreferenceScreen>

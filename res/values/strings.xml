@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--  *********************************************************************************
+BASIC! is an implementation of the Basic programming lanuage for
+Android devices.
+
+Copyright (C) 2010, 2011, 2012 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author, Paul Laughton, at basic@laughton.com
+	
+	**********************************************************************************
+	-->
+	
+
+<resources>
+    <string name="version">01.69</string>
+
+    <string name="hello">Hello World, BASIC!</string>
+    <string name="app_name">BASIC!</string>
+    <string name="editor_name">BASIC! Program Editor</string>
+    <string name="load_name">BASIC! Load File</string>
+    <string name="delete_name">BASIC! Delete File</string>
+    <string name="help_name">BASIC! Commands</string>
+    <string name="run_name">BASIC! Program Output</string>
+    <string name="settings_name">BASIC! Preferences</string>
+    <string name="search_name">BASIC! Search</string>
+    <string name="format_name">BASIC! Format</string>
+    <string name="gr_name">Graphics</string>
+    <string name="cs_name">ClientSocket</string>
+    <string name="auto_run_name">Auto Run</string>
+    <string name="sensors_name">Sensors</string>
+    <string name="gps_name">GPS</string>
+    <string name="select_name">BASIC! Select</string>
+    <string name="spawn_name">Create Application</string>
+    <string name="textinput_name">BASIC! Text Input</string>
+    <string name="play_sound_name"> </string>
+    <string name="select_device"> Select Device</string>
+    <string name="title_paired_devices">Paired Devices</string>
+    <string name="title_other_devices">Other Devices</string>
+    <string name="button_scan">Scan</string>
+    <string name="none_found">None Found</string>
+    <string name="scanning">Scanning</string>
+    <string name ="none_paired">No Paired Devices</string> 
+    <string name ="web_view_name">Web View</string>   
+    
+    <string name="intro_getline">BASIC! Shortcut Builder</string>
+    <string name="enter_text_label">Program File Name</string>
+    <string name="edit_button_label">Edit</string>
+    <string name="delete_button_label">Delete</string>
+    <string name="enter_text2_label">Icon File Name</string>
+    <string name="enter_text3_label">Shortcut Name</string>
+    
+    <string name="cancel_button_label">Cancel</string>
+    <string name="ok_button_label">OK</string>
+    
+    
+<string name="run">Run</string>
+<string name="load">Load</string>
+<string name="save">Save</string>
+<string name="delete">Delete</string>
+<string name="search">Search</string>
+<string name="format">Format</string>
+<string name="clear">Clear</string>
+<string name="settings">Preferences</string>
+<string name="spawn">Create Application</string>
+<string name="help">Commands</string>
+<string name="about">About</string>
+<string name="exit">Exit</string>
+
+<string name="stop">Stop</string>
+<string name="editor">Editor</string>
+<string name="pause">Pause</string>
+
+<string name="use_sdcard">Use SD Card</string>
+<string name="use_sdcard_summary">Use SD Card for files</string>
+<string name="echo">Echo Source</string>
+<string name="echo_summary">Print executing source code</string>
+<string name="restricted">Restricted SD Card I/O</string>
+<string name="restricted_summary">Restrict SD Card I/O to BASIC! directory</string>
+
+<string name= "crash_toast_text">BASIC! Crashed. Open status bar to report the problem.</string>
+<string name="crash_notif_ticker_text">BASIC! Crashed. Open status bar to report.</string>
+<string name="crash_notif_title">BASIC! has crashed.</string>
+<string name="crash_notif_text">Please click here to help fix the issue.</string>
+        
+<string name="crash_dialog_title">BASIC! has crashed</string>
+<string name="crash_dialog_text">An unexpected error occurred forcing the
+        application to stop. Please help us fix this by sending us error data,
+        all you have to do is click \'OK\'.</string>
+<string name="crash_dialog_comment_prompt">You might add your comments about the problem below:</string>
+<string name="crash_dialog_ok_toast">Thank you !</string>
+
+
+   <string name="help_title">BASIC! Commands</string>
+
+
+</resources>
