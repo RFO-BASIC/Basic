@@ -7857,6 +7857,7 @@ private boolean doUserFunction(){
 	private boolean executeFILE_SIZE(){
 		Basic.InitDirs();										// Make sure we have base directories.
 		  if (!getNVar()) return false;						// get the var to put the size value into
+
 		  int SaveValueIndex = theValueIndex;
 	
 		  
@@ -8599,6 +8600,7 @@ private boolean doUserFunction(){
 			  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
 			  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
 			  SkipArrayValues = false;
+
 			  doingDim = false;
 			  
 			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
@@ -10927,6 +10929,7 @@ private boolean doUserFunction(){
 		  
 		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
 		  ++LineIndex;
+
 		  
 		  if (!evalStringExpression()) return false;							// get the parameter string
 		  if (SEisLE) return false;
@@ -11168,6 +11171,7 @@ private boolean doUserFunction(){
 	  		++LineIndex;
 
 	  		if (!getNVar())return false;									// Green Blue
+
 	  		NumericVarValues.set(theValueIndex, (double) blue);
 			if (!checkEOL(false)) return false;
 		  
@@ -15314,8 +15318,8 @@ private boolean doUserFunction(){
 ////////////////////////////// Der_Wurfel: Socket.Client.Get.Bytes                                                              ///////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	private boolean executeCLIENT_GETBYTES(){
-		double result = -1;
-		if (theClientSocket == null){
+		double result = -1;						// Make a variable to store the result, default to End-Of-Buffer code.
+		if (theClientSocket == null){					// Check the client socket.
 			RunTimeError("Client Socket Not Opened");
 			return false;
 		}
@@ -15324,16 +15328,18 @@ private boolean doUserFunction(){
 			RunTimeError("Client Connection Disrupted");
 			return false;
 		}
-		if (clientBufferedReader.ready()){
-			try{
-				result = clientBufferedReader.read();
-			}
-			catch (IOException e){
-				RunTimeError("Error: " + e );
-				return false;
+
+		try{
+			if (clientBufferedReader.ready()){			// If there are bytes to read,
+				result = clientBufferedReader.read();		// Read one into the result variable
+	
 			}
 		}
-		NumericVarValues.set(theValueIndex, result);
+		catch (IOException e){
+			RunTimeError("Error: " + e );				// If there was an error, notify the interpreter
+			return false;
+		}
+		NumericVarValues.set(theValueIndex, result);			// Set the numeric variable in the program
 		return true;
 	}
 	
