@@ -16502,7 +16502,7 @@ private boolean doUserFunction(){
 		  
 		   boolean loadRaw = false;												// Assume not loading raw resource
 
-		   if (!packageName.equals("com.rf0.basic")){							// if not standard BASIC!
+		   if (!packageName.equals("com.rfo.basic")){							// if not standard BASIC!
 			   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
 		       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
 		   }
