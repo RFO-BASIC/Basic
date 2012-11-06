@@ -82,7 +82,7 @@ public class AddProgramLine {
 
    		for (int i=0; i < line.length(); ++i) {		// do not mess with characters
 			char c = line.charAt(i);				// between quote marks
-			if (c == '�') c = '"';                    // Change funny quote to real quote
+			if (c == '“') c = '"';                    // Change funny quote to real quote
 			if (c == '"') {
 				do {
 					try {
