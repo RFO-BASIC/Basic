@@ -85,7 +85,7 @@ public class AddProgramLine {
 			if (c == '“') c = '"';                    // Change funny quote to real quote
 			if (c == '"') {
 				do {
-					try {
+					if(i+1<line.length()){
 						if (line.charAt(i + 1) == '=') {
 							if (c == '+') {
 								Temp += "{+&=}";
@@ -101,8 +101,6 @@ public class AddProgramLine {
 								++i;c = 0;
 							}
 						}
-					} catch (StringIndexOutOfBoundsException e) {
-//						Log.e(Editor.LOGTAG, e.getMessage(), e);
 					}
 
 					if (c == '\\') {					// look for \"
