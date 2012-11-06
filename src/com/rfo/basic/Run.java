@@ -282,7 +282,8 @@ public class Run extends ListActivity {
     	"onmenukey","ontimer", "onkeypress",			// For Format
     	"ontouch", "onbtreadready",						// For Format
     	"home", "background.resume","onbackground",
-    	"phone.rcv.init", "phone.rcv.next"
+    	"phone.rcv.init", "phone.rcv.next",
+    	"read.data", "read.next", "read.from"
     	
     };
     
@@ -433,6 +434,9 @@ public class Run extends ListActivity {
     public static final int BKWonbackground = BKWonerror;		//137
     public static final int BKWphone_rcv_init = 138;
     public static final int BKWphone_rcv_next = 139;
+    public static final int BKWread_data = 140;
+    public static final int BKWread_next = 141;
+    public static final int BKWread_from = 142;
     
     public static final int BKWnone= 198;
     public static final int SKIP = 199;
@@ -1424,7 +1428,12 @@ public class Run extends ListActivity {
 	public static String phoneNumber = "";
 	public static boolean phoneRcvInited = false;
 	public static TelephonyManager mTM;
-    
+	
+	// ********************* READ variables *****************************
+	
+	public static int readNext =0;
+	public static ArrayList <Bundle> readData;
+	    
     // ****************** Headset Broadcast Receiver ***********************
     
     
@@ -2223,6 +2232,10 @@ private void InitVars(){
 	 phoneNumber = "";
 	 phoneRcvInited = false;
 	 mTM = null;
+	 
+	 readNext =0;
+	 readData = new ArrayList <Bundle>();
+
 
 }
 
@@ -2575,15 +2588,33 @@ private void trimArray(ArrayList Array, int start){
 
 private  boolean FindLabels(){						// Find all the labels in the program
 	int LineNumber = 0;
+	LabelNames.add(" ");
 	
 	do{
 		if (LineNumber >= Basic.lines.size()) break;
 		ExecutingLineBuffer = Basic.lines.get(LineNumber);        // One line at a time
-		int n = ExecutingLineBuffer.indexOf(":");
-		if ( n >=0) {
-			String name = ExecutingLineBuffer.substring(0, n);
-			LabelNames.add(name);
-			LabelValues.add(LineNumber);
+		
+		int n = ExecutingLineBuffer.indexOf(":");				  // Check for label
+		if ( n >=0) {											  // if label
+			String name = ExecutingLineBuffer.substring(0, n);	  // get label name
+/*	
+ * This code checks for duplicate label names, however, if there is a colon
+ * inside a string it will see it as a duplicate label.
+ * Also the command SQL.UPDATE has a colon in its syntax.
+ * Until these problems are taken care of there will be no checking for
+ * duplicate labels.
+ * 	
+			for (int i=0; i < LabelNames.size(); ++i) {			  // scan for duplicate name
+				if (LabelNames.get(i).equals(name)) {
+					RunTimeError("Duplicate label name");
+					return false;
+				}
+			}
+*/
+			
+			LabelNames.add(name);									// Not Duplicate, so save it
+			LabelValues.add(LineNumber);							// and its line number
+																	// Check for Interrupt Labels
 			if (name.equals("onerror")) OnErrorLine = LineNumber;
 			if (name.equals("onbackkey")) OnBackKeyLine = LineNumber;
 			if (name.equals("onmenukey")) OnMenuKeyLine = LineNumber;
@@ -2592,8 +2623,35 @@ private  boolean FindLabels(){						// Find all the labels in the program
 			if (name.equals("ontouch")) OnTouchLine = LineNumber;
 			if (name.equals("onbtreadready")) OnBTReadLine = LineNumber;
 			if (name.equals("onbackground")) OnBGLine = LineNumber;
+			
+		}else if (ExecutingLineBuffer.startsWith("read.data")) {	// Was not a label. Check for READ.DATA
+																	// Is read data
+			LineIndex = 9;											// Set LineIndex just past READ.DATA
+			char c = ' ';
+			
+			do {													// Sweep up the data values
+				Bundle b = new Bundle();
+				if (getNumber()) {									// If it is a number
+					b.putBoolean("isNumber", true);					// Create a bundle for it
+					b.putDouble("number", GetNumberValue);
+				} else if(GetStringConstant()) {					// Else if it is a string
+					b.putBoolean("isNumber", false);				// Create a bundle for it
+					b.putString("string", StringConstant);
+				} else {											// Else is a run time error
+					RunTimeError("Invalid Data Value");
+					return false;
+				}
+				readData.add(b);									// Add the bundle to the list
+			
+				c = ExecutingLineBuffer.charAt(LineIndex);			// Get the next character
+				++LineIndex;										// Increment over it
+				
+			} while (c == ',');										// and do again if more data
+						
 		}
-		++LineNumber;
+			
+		++LineNumber;												// Go to next line
+
 	}while (LineNumber < Basic.lines.size());
 	return true;
 }
@@ -3095,6 +3153,14 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		break;
 	        	case BKWphone_rcv_next:
 	        		if (!executePHONE_RCV_NEXT())   {SyntaxError(); return false;}
+	        		break;
+	        	case BKWread_data:
+	        		return true;
+	        	case BKWread_next:
+	        		if (!executeREAD_NEXT())   {SyntaxError(); return false;}
+	        		break;
+	        	case BKWread_from:
+	        		if (!executeREAD_FROM())   {SyntaxError(); return false;}
 	        		break;
 	        	default:
 	        		break;
@@ -5435,6 +5501,65 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		OnMenuKeyResume = -1 ;
 		return true;
 	}
+	
+// ************************************************** Read Commands **********************************
+	
+	private boolean executeREAD_NEXT(){
+		
+		char c = ' ';
+		
+		do {
+		
+			if (readNext >= readData.size()) {					// Insure there is more data to read
+				RunTimeError("No more data to read");
+				return false;
+			}
+		
+			Bundle b = readData.get(readNext);					// Get the data bundle
+			++readNext;											// And increment to next bundle
+			
+			if (!getVar()) return false;						// Get the variable
+		
+			if (VarIsNumeric) {									// If var is numeric
+				if (!b.getBoolean("isNumber")) {				// Insure data is a number
+					RunTimeError("Data type (String) does match variable type (Number)");
+					return false;
+				}
+				double d = b.getDouble("number");				// Get the number
+				NumericVarValues.set(theValueIndex, d );		// and put it into the variable
+				
+			}else {												// else var is string
+				if (b.getBoolean("isNumber")) {					// Insure data is a string
+					RunTimeError("Data type (Number) does match variable type (String)");
+					return false;
+				}
+				String s = b.getString("string");				// Get the string
+				StringVarValues.set(theValueIndex, s );			// and put it into the variable
+			}
+		
+			c = ExecutingLineBuffer.charAt(LineIndex);			// Get the next char 
+			++LineIndex;
+		
+		}while (c == ',');										// loop while there are variables
+		
+		return true;
+	}
+	
+	
+	private boolean executeREAD_FROM(){
+		if (!evalNumericExpression()) return false;
+		int newIndex = (int) (double) EvalNumericExpressionValue;
+		--newIndex;
+		if (newIndex < 0 || newIndex >= readData.size()) {
+			RunTimeError("Index out of range");
+			return false;
+		}
+		
+		readNext = newIndex;
+		
+		return true;
+	}
+	
 	
 // **************************************************  Debug Commands *********************************
 	
