@@ -21,7 +21,7 @@ This file is part of BASIC! for Android
     You should have received a copy of the GNU General Public License
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
-    You may contact the author, Paul Laughton, at basic@laughton.com
+    You can contact the author, Paul Laughton, at basic@laughton.com
     
 	*************************************************************************************************/
 
