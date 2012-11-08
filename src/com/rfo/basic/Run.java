@@ -723,11 +723,8 @@ public class Run extends ListActivity {
 	public static ArrayList <String> Watch_VarNames;
 	public static int WatchedArray;
 	public static int WatchedList;
-	public static int WatchedListValueIndex;
 	public static int WatchedStack;
-	public static int WatchedStackValueIndex;
 	public static int WatchedBundle;
-	public static int WatchedBundleValueIndex;
 	// end debugger ui vars
     
     public static boolean GrStop = false;						// Signal from GR that it has died
@@ -2069,11 +2066,9 @@ private void InitVars(){
 	 dbConsoleELBI = 0;
 	 WatchedArray =0;
  	WatchedList =0;
-	WatchedListValueIndex=0;
 	WatchedStack =0;
-	WatchedStackValueIndex=0;
 	WatchedBundle =0;
-	WatchedBundleValueIndex=0;
+
 	
     GrStop = false;						// Signal from GR that it has died
     Stop = false;	   						// Stops program from running
