@@ -33,7 +33,7 @@ You may contact the author, Paul Laughton, at basic@laughton.com
 				android:scrollbars="horizontal"
 				android:fillViewport="true">
 <HorizontalScrollView android:id="@+id/SCROLLER_ID" 
-		android:layout_width="wrap_content" 
+		android:layout_width="fill_parent" 
 		android:layout_height="fill_parent" 
 		android:scrollbars="vertical"
 		android:fillViewport="true">

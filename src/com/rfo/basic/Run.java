@@ -6123,7 +6123,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  }else{	msg += "   "+Integer.toString(1+i)+": "+Basic.lines.get(i);}
 			}
 			}
-		//if(DebugDialog) DebugDialog.dismiss();
+			
 		DebugDialog = new AlertDialog.Builder(this);
 		DebugDialog.setCancelable(true);
 		TextView debugView = (TextView)dialoglayout.findViewById(R.id.dialog_layout); 
