@@ -11227,6 +11227,7 @@ private boolean doUserFunction(){
 	  		
 			
             GR.drawView.setDrawingCacheEnabled(true);
+            GR.Rendering = true;                                        // buildDrawingCache() renders
 			GR.drawView.buildDrawingCache();							// Build the cache
 			Bitmap b = GR.drawView.getDrawingCache();					// get the bitmap
 			if (b == null){
@@ -11320,7 +11321,8 @@ private boolean doUserFunction(){
 			else if (!tFN.endsWith(".PNG")) fn = fn + ".png";			// Test png
 			
             GR.drawView.setDrawingCacheEnabled(true);
-		  	
+
+            GR.Rendering = true;                                        // buildDrawingCache() renders
 		  	GR.drawView.buildDrawingCache();							// Build the cache
 		  	
 			Bitmap b = GR.drawView.getDrawingCache();
@@ -11360,6 +11362,7 @@ private boolean doUserFunction(){
 		  if (!getNVar()) return false;
           GR.drawView.setDrawingCacheEnabled(true);
 		  	
+          GR.Rendering = true;                                       // buildDrawingCache() renders
 		  GR.drawView.buildDrawingCache();							// Build the cache
 
 		  NumericVarValues.set(theValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
