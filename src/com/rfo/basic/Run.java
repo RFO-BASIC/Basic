@@ -1213,8 +1213,8 @@ public class Run extends ListActivity {
 		"dump.array", "dump.list",
 		"dump.stack", "dump.bundle",
 		"watch.clear","watch", "show.scalars",
-		"show.array","show.list","show.bundle",
-		"show.stack","show.watch","show.program",
+		"show.array","show.list","show.stack",
+		"show.bundle","show.watch","show.program",
 		"show","console"
 	};
 	
@@ -1870,21 +1870,21 @@ public class Background extends AsyncTask<String, String, String>{
         			doHTMLCommand(str[i].substring(3));
         		}else if (str[i].startsWith("@@D")){
         			startVoiceRecognitionActivity();
-                }else if (str[i].startsWith("@@E")){      					// Input dialog signal
-        			doDebugDialog();
+            }else if (str[i].startsWith("@@E")){      					// Input dialog signal
+        			if(theDebugDialog!=null) theDebugDialog.dismiss();
+							doDebugDialog();
         			if (DebugDialog != null)
         			theDebugDialog = DebugDialog.show();				// show the Input dialog box
-        			}
-        		
-        		else if (str[i].startsWith("@@F")){						// Debug step completed
+        		}else if (str[i].startsWith("@@F")){						// Debug step completed
         			  DebuggerStep = false;
-          			  doDebugDialog();
-          			  theDebugDialog = DebugDialog.show();				// show the Debug dialog box
+          			if(theDebugDialog!=null) theDebugDialog.dismiss();
+								doDebugDialog();
+          			theDebugDialog = DebugDialog.show();				// show the Debug dialog box
         			  
         		}else if (str[i].startsWith("@@G")){					// User canceled dialog with back key or halt
         			  output.add("Execution halted");
         		
-        		}else {output.add(str[i]);};			// Not a signal, just write msg to screen.
+        		}else {output.add(str[i]);}			// Not a signal, just write msg to screen.
 
         		ProgressUpdateCount.dec();				// decrement count of pending progress updates
     	    	setListAdapter(AA);						// show the output
@@ -6089,8 +6089,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				  	break;
 					default:
 					  dbDialogProgram = true;
+						break;
 				}
 			}
+			
 		  private boolean executeDEBUG_SHOW(){   // trigger do debug dialog
 			  if (!Debug){return true;}
 			  WaitForResume = true;
@@ -6107,9 +6109,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if(dbDialogScalars) msg = doScalars();
 		if(dbDialogArray) msg = doArray();
 		if(dbDialogList) msg = doList();
-    if(dbDialogWatch) msg = doWatch();
 		if(dbDialogStack) msg = doStack();
 		if(dbDialogBundle) msg = doBundle();
+		if(dbDialogWatch) msg = doWatch();
     //if(dbDialogShowFunction) msg+=Func();
 	
 		
@@ -6121,7 +6123,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  }else{	msg += "   "+Integer.toString(1+i)+": "+Basic.lines.get(i);}
 			}
 			}
-		
+		//if(DebugDialog) DebugDialog.dismiss();
 		DebugDialog = new AlertDialog.Builder(this);
 		DebugDialog.setCancelable(true);
 		TextView debugView = (TextView)dialoglayout.findViewById(R.id.dialog_layout); 
