@@ -1159,7 +1159,7 @@ public class Run extends ListActivity {
 		"server.client.ip", "client.server.ip",
 		"server.write.file", "client.read.file",
 		"server.write.bytes", "client.write.bytes",
-		"client.write.file"
+		"client.write.file", "client.read.byte"
 	};
 	
 	public static final int client_connect = 0;
@@ -1182,6 +1182,7 @@ public class Run extends ListActivity {
 	public static final int server_putbytes = 17;
 	public static final int client_putbytes = 18;
 	public static final int client_putfile= 19;
+	public static final int client_getbyte = 20;
 	
 	public static Socket theClientSocket ;
 	public static BufferedReader ClientBufferedReader ;
@@ -2311,6 +2312,7 @@ public void cleanUp(){
 				mChatService = null;
 			}
 		
+
 			if (btLooper != null){
 				btLooper.quit();
 				btLooper = null;
@@ -3887,6 +3889,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.sin(d1));
 				break;
+
 
 			case MFcos:
 				if (!evalNumericExpression()) return false;
@@ -6138,6 +6141,7 @@ private boolean doUserFunction(){
 	fsb.putInt("AT", ArrayTable.size());
 	fsb.putInt("ELI", ExecutingLineIndex);
 	fsb.putInt("SCOV", scOpValue);
+
 	fsb.putString("PKW", PossibleKeyWord);
 
 	ArrayList<String> fVarName = new ArrayList<String>();				// The list of Parm Var Names
@@ -7978,6 +7982,7 @@ private boolean doUserFunction(){
 	private boolean executeFILE_SIZE(){
 		Basic.InitDirs();										// Make sure we have base directories.
 		  if (!getNVar()) return false;						// get the var to put the size value into
+
 		  int SaveValueIndex = theValueIndex;
 	
 		  
@@ -8720,6 +8725,7 @@ private boolean doUserFunction(){
 			  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
 			  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
 			  SkipArrayValues = false;
+
 			  doingDim = false;
 			  
 			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
@@ -11048,6 +11054,7 @@ private boolean doUserFunction(){
 		  
 		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
 		  ++LineIndex;
+
 		  
 		  if (!evalStringExpression()) return false;							// get the parameter string
 		  if (SEisLE) return false;
@@ -11293,6 +11300,7 @@ private boolean doUserFunction(){
 	  		++LineIndex;
 
 	  		if (!getNVar())return false;									// Green Blue
+
 	  		NumericVarValues.set(theValueIndex, (double) blue);
 			if (!checkEOL(false)) return false;
 		  
@@ -13219,6 +13227,7 @@ private boolean doUserFunction(){
 	
 	private boolean execute_LIST_NEW(){
 		char c = ExecutingLineBuffer.charAt(LineIndex);    // Get the type, s or n
+
 		++LineIndex;
 		int type = 0;
 		
@@ -14744,6 +14753,9 @@ private boolean doUserFunction(){
 		case client_putfile:
 			if (!executeCLIENT_PUTFILE()) return false;
 			break;
+		case client_getbytes:
+			if (!executeCLIENT_GETBYTES()) return false;
+			break;
 			
 		default:
 		}
@@ -15414,6 +15426,35 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
+		return true;
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////// Der_Wurfel: Socket.Client.Get.Bytes                                                              ///////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	private boolean executeCLIENT_GETBYTES(){
+		double result = -1;						// Make a variable to store the result, default to End-Of-Buffer code.
+		if (theClientSocket == null){					// Check the client socket.
+			RunTimeError("Client Socket Not Opened");
+			return false;
+		}
+		
+		if (!theClientSocket.isConnected()){
+			RunTimeError("Client Connection Disrupted");
+			return false;
+		}
+
+		try{
+			if (clientBufferedReader.ready()){			// If there are bytes to read,
+				result = clientBufferedReader.read();		// Read one into the result variable
+	
+			}
+		}
+		catch (IOException e){
+			RunTimeError("Error: " + e );				// If there was an error, notify the interpreter
+			return false;
+		}
+		NumericVarValues.set(theValueIndex, result);			// Set the numeric variable in the program
 		return true;
 	}
 	
@@ -17549,6 +17590,7 @@ private boolean doUserFunction(){
 	   private boolean executeHOME(){
 		   moveTaskToBack(true);
 		   return true;
+
 	   }
 
 	   private boolean executeBACKGROUND_RESUME() {
