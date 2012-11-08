@@ -17225,7 +17225,7 @@ private boolean doUserFunction(){
 	      if (Web.aWebView == null) return true;			// if already closed, return now
 	      													// else check to see if we should close
 	      
-	      if (data.startsWith("FOR:")) return execute_html_close();   // if Form, close the html
+//	      if (data.startsWith("FOR:")) return execute_html_close();   // if Form, close the html
 	      if (data.startsWith("ERR:")) return execute_html_close();   // if error, close the html
 		  return true;
 	  }
