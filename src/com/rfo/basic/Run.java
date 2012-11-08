@@ -11211,8 +11211,7 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_get_bmpixel(){
 		  if (!evalNumericExpression()) return false;
 		  int SourceBitmapIndex = (int) (double) EvalNumericExpressionValue;
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		  if (!isNext(',')) { return false; }
 		  
 		   if (SourceBitmapIndex < 0 || SourceBitmapIndex >= BitmapList.size()){
 			   RunTimeError("Invalid Source Bitmap Pointer");
@@ -11225,17 +11224,24 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_gr_get_pixel(){
 	  		
-			
+            boolean retval = true;
             GR.drawView.setDrawingCacheEnabled(true);
             GR.Rendering = true;                                        // buildDrawingCache() renders
 			GR.drawView.buildDrawingCache();							// Build the cache
 			Bitmap b = GR.drawView.getDrawingCache();					// get the bitmap
 			if (b == null){
 				RunTimeError("Could not capture screen bitmap. Sorry.");
-				return false;
+				retval = false;
+			} else {
+
+				retval = getTheBMpixel(b);								// get the requested pixel
+
+				b.recycle();											// clean up bitmap
+				b = null;
 			}
-			
-			return getTheBMpixel(b);
+			GR.drawView.destroyDrawingCache();							// clean up DrawingCache
+			System.gc();
+			return retval;
 	  }
 		
 		private boolean getTheBMpixel(Bitmap b){
@@ -11264,9 +11270,6 @@ private boolean doUserFunction(){
 			
 			
 			if (b != null) pixel = b.getPixel(x, y);					// get the pixel from the bitmap
-		    GR.drawView.destroyDrawingCache();
-//            GR.drawView.setDrawingCacheEnabled(false);
-            
 
 			
 	  		int alpha = Color.alpha(pixel);								// get the components of the pixel
@@ -11296,6 +11299,31 @@ private boolean doUserFunction(){
 		  return true;
 	  }
 
+	private boolean writeBitmapToFile(Bitmap b, String fn, int quality) {
+		boolean isPNG = true;											// Assume png
+		String tFN = fn.toUpperCase();									// temp convert fn to upper case
+		if (tFN.endsWith(".JPG")) isPNG = false;						// Test jpg
+		else if (!tFN.endsWith(".PNG")) fn = fn + ".png";				// Test png
+
+		File file = new File("/sdcard/"+Basic.AppPath+"/data/"+fn);		// build full path
+
+		try {															// Write the file
+			file.createNewFile();
+			FileOutputStream ostream = new FileOutputStream(file);
+
+			if (isPNG)													// Write png or jpg
+				b.compress(CompressFormat.PNG, quality, ostream);
+			else
+				b.compress(CompressFormat.JPEG, quality, ostream);
+			ostream.close();
+		} 
+		catch (Exception e) {
+			RunTimeError("Error: " + e);
+			return false;
+		}
+		return true;
+	}
+
 	  private boolean execute_gr_save(){
 		  
 		  	if (!evalStringExpression()) return false;					// Get the filename
@@ -11315,68 +11343,48 @@ private boolean doUserFunction(){
 			
 			if (!checkEOL(false)) return false;
 			
-			boolean isPNG = true;										// Assume png
-			String tFN = fn.toUpperCase();								// temp convert fn to upper case
-			if (tFN.endsWith(".JPG")) isPNG = false;					// Test jpg
-			else if (!tFN.endsWith(".PNG")) fn = fn + ".png";			// Test png
-			
+            boolean retval = true;
             GR.drawView.setDrawingCacheEnabled(true);
-
             GR.Rendering = true;                                        // buildDrawingCache() renders
-		  	GR.drawView.buildDrawingCache();							// Build the cache
-		  	
-			Bitmap b = GR.drawView.getDrawingCache();
+			GR.drawView.buildDrawingCache();							// Build the cache
+			Bitmap b = GR.drawView.getDrawingCache();					// get the bitmap
 			if (b==null){
 				RunTimeError("Problem creating bitmap");
-				return false;
+				retval = false;
+			} else {
+
+				retval = writeBitmapToFile(b, fn, quality);
+
+				b.recycle();											// clean up bitmap
+				b = null;
 			}
-
-			File file = new File("/sdcard/"+Basic.AppPath+"/data/"+fn);			// build full path
-			
-		    try 														// Write the file
-		    {
-		        file.createNewFile();
-		        FileOutputStream ostream = new FileOutputStream(file);
-		        
-		        if (isPNG)												// Write png or jpg
-		        	b.compress(CompressFormat.PNG, quality, ostream);
-		        else
-	        		b.compress(CompressFormat.JPEG, quality, ostream);
-		        ostream.close();
-		    } 
-		    catch (Exception e) 
-		    {
-		    	RunTimeError("Error: " + e);
-		    	return false;
-		    }
-		    b.recycle();
-		    b = null;
-		    System.gc();
-		    
-		    GR.drawView.destroyDrawingCache();
-
-		  return true;
+			GR.drawView.destroyDrawingCache();							// clean up DrawingCache
+			System.gc();
+			return retval;
 	  }
 	  
 	  private boolean  execute_screen_to_bitmap(){
 		  if (!getNVar()) return false;
+          boolean retval = true;
           GR.drawView.setDrawingCacheEnabled(true);
-		  	
           GR.Rendering = true;                                       // buildDrawingCache() renders
 		  GR.drawView.buildDrawingCache();							// Build the cache
+		  Bitmap BM = GR.drawView.getDrawingCache();				// get the bitmap
+		  if (BM == null) {
+			  RunTimeError("Could not capture screen bitmap. Sorry.");
+			  retval = false;
+		  } else {
 
-		  NumericVarValues.set(theValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
+			  NumericVarValues.set(theValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
+			  BitmapList.add(BM.copy(Bitmap.Config.ARGB_8888 , true));			
+			  retval = true;
 
-		  Bitmap BM = null;
-		  try{
-			  BM = GR.drawView.getDrawingCache().copy(Bitmap.Config.ARGB_8888 , true);
-			  GR.drawView.destroyDrawingCache();
-		  } catch (Exception e) {
-			  RunTimeError("Error: " + e);
+			  BM.recycle();												// clean up bitmap
+			  BM = null;
 		  }
-		  BitmapList.add(BM);
-
-		  return true;
+		  GR.drawView.destroyDrawingCache();							// clean up DrawingCache
+		  System.gc();
+		  return retval;
 	  }
 
 	  private boolean execute_gr_get_texbounds(){
@@ -11456,32 +11464,11 @@ private boolean doUserFunction(){
 			
 			if (!checkEOL(false)) return false;
 			
-			boolean isPNG = true;										// Assume png
-			String tFN = fn.toUpperCase();								// temp convert fn to upper case
-			if (tFN.endsWith(".JPG")) isPNG = false;					// Test jpg
-			else if (!tFN.endsWith(".PNG")) fn = fn + ".png";			// Test png
-			File file = new File("/sdcard/"+Basic.AppPath+"/data/"+fn);			// build full path
+			boolean retval = writeBitmapToFile(SrcBitMap, fn, quality);
 
-		    try 														// Write the file
-		    {
-		        file.createNewFile();
-		        FileOutputStream ostream = new FileOutputStream(file);
-		        
-		        if (isPNG)												// Write png or jpg
-		        	SrcBitMap.compress(CompressFormat.PNG, quality, ostream);
-		        else
-		        	SrcBitMap.compress(CompressFormat.JPEG, quality, ostream);
-		        ostream.close();
-		    } 
-		    catch (Exception e) 
-		    {
-		    	RunTimeError("Error: " + e);
-				return false;
-		    }
 		    SrcBitMap = null;
 		    System.gc();
-
-			return true;
+			return retval;
 	  }
 	  
 	  
