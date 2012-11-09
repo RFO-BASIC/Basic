@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-// Test comment 1
 package com.rfo.basic;
 
-// Test comment 2
 
 import android.app.Activity;
 import android.os.Bundle;
