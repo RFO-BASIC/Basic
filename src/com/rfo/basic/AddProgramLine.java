@@ -121,7 +121,7 @@ public class AddProgramLine {
 
 					++i;
 					if (i >= line.length()) { c = '"';} else {c = line.charAt(i);}				// just add it in
-					if (c == '“') c = '"';					// Change funny quote to real quote
+					if (c == '\u201c') c = '"';				// Change funny quote to real quote
 				}while (i < line.length() && c != '"');
 				Temp = Temp + c;
 			} else if (c == '%') {					// if the % character appears,

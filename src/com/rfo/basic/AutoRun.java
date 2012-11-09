@@ -151,7 +151,7 @@ public class AutoRun extends Activity {
 
   		for (int i=0; i < line.length(); ++i) {		// do not mess with characters
 			char c = line.charAt(i);				// between quote marks
-			if (c == '“') c = '"';					// Change funny quote to real quote
+			if (c == '\u201c') c = '"';                    // Change funny quote to real quote
 			if (c == '"') {
 				do {
 					try {
@@ -190,7 +190,7 @@ public class AutoRun extends Activity {
 
 					++i;
 					if (i >= line.length()) { c = '"';} else {c = line.charAt(i);}				// just add it in
-					if (c == '�') c = '"';					// Change funny quote to real quote
+					if (c == '\u201c') c = '"';				// Change funny quote to real quote
 				}while (i < line.length() && c != '"');
 				Temp = Temp + c;
 			} else if (c == '%') {					// if the % character appears,
