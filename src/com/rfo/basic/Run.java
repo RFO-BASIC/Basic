@@ -2588,7 +2588,6 @@ private void trimArray(ArrayList Array, int start){
 
 private  boolean FindLabels(){						// Find all the labels in the program
 	int LineNumber = 0;
-	LabelNames.add(" ");
 	
 	do{
 		if (LineNumber >= Basic.lines.size()) break;
@@ -2627,7 +2626,6 @@ private  boolean FindLabels(){						// Find all the labels in the program
 		}else if (ExecutingLineBuffer.startsWith("read.data")) {	// Was not a label. Check for READ.DATA
 																	// Is read data
 			LineIndex = 9;											// Set LineIndex just past READ.DATA
-			char c = ' ';
 			
 			do {													// Sweep up the data values
 				Bundle b = new Bundle();
@@ -2643,11 +2641,9 @@ private  boolean FindLabels(){						// Find all the labels in the program
 				}
 				readData.add(b);									// Add the bundle to the list
 			
-				c = ExecutingLineBuffer.charAt(LineIndex);			// Get the next character
-				++LineIndex;										// Increment over it
-				
-			} while (c == ',');										// and do again if more data
-						
+			} while (isNext(','));									// and do again if more data
+
+			if (!checkEOL(false)) { return false; }					// Nothing after the number or string
 		}
 			
 		++LineNumber;												// Go to next line
