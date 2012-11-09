@@ -6152,12 +6152,14 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				WaitForResume = true;
 			}
 		});
+		/*    // leave out until the switcher is done.
 		DebugDialog.setNegativeButton("Full Debugger",new 
 		DialogInterface.OnClickListener(){
 			public void onClick(DialogInterface dialog,int which) {
 			  // put code to start the full debugger.
 		}
 	  });
+		*/
 	}
 	private String doWatch(){
 		String msg;
