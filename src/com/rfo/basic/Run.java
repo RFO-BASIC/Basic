@@ -6112,7 +6112,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if(dbDialogStack) msg = doStack();
 		if(dbDialogBundle) msg = doBundle();
 		if(dbDialogWatch) msg = doWatch();
-    //if(dbDialogShowFunction) msg+=Func();
+ 
+		//msg+=doFunc();
 	
 		
 			
@@ -6128,7 +6129,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		DebugDialog.setCancelable(true);
 		TextView debugView = (TextView)dialoglayout.findViewById(R.id.dialog_layout); 
 		debugView.setText(msg);
-    DebugDialog.setMessage("Executable Line #:    "+(ExecutingLineIndex+1)+"\n\n"+"Executing:\n"+ExecutingLineBuffer);
+    DebugDialog.setMessage(doFunc()+"Executable Line #:    "+(ExecutingLineIndex+1)+"\n\n"+"Executing:\n"+ExecutingLineBuffer);
 		DebugDialog.setView(dialoglayout);
 	  DebugDialog.setTitle("Basic! Debugger");
 		DebugDialog.setOnCancelListener(new 
@@ -6186,14 +6187,20 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}else{msg += "\n"+"Undefined.\n";}
 		return msg;
 	}
+	
 	private String doFunc(){
 		String msg = "";
-		 msg += "\nIn Function: ";
+	
+		 msg += "";
 			if(!FunctionStack.isEmpty()){
-					msg += FunctionStack.peek().getString("fname")+"\n";
-			}else{msg+="MainProgram\n";}
-		return msg;
+					Stack<Bundle> tempStack = (Stack<Bundle>) FunctionStack.clone();
+					do {
+						msg = tempStack.pop().getString("fname")+ msg;
+					} while (!tempStack.isEmpty());
+			}else{msg+="MainProgram";}
+		return '\n'+"In Function: "+msg+'\n';
 	}
+	
 	private String doScalars(){
 			
 			  int count = VarNames.size();
@@ -6534,6 +6541,7 @@ private boolean doUserFunction(){
 	fsb.putInt("ELI", ExecutingLineIndex);
 	fsb.putInt("SCOV", scOpValue);
 	fsb.putString("PKW", PossibleKeyWord);
+	fsb.putString("fname",ufBundle.getString("fname"));
 
 	ArrayList<String> fVarName = new ArrayList<String>();				// The list of Parm Var Names
 	ArrayList<Integer> fVarType = new ArrayList<Integer>();				// and the parm types
