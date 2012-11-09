@@ -702,15 +702,29 @@ public class Run extends ListActivity {
     public String InputDefault = "";
     public int inputVarNumber;
 	
-	
 	// debugger dialog and ui thread vars
 	public boolean WaitForResume = false ; 
 	public boolean DebuggerStep = false;
 	public boolean DebuggerHalt = false;
 	public AlertDialog.Builder DebugDialog;
 	public AlertDialog theDebugDialog;
+	public boolean dbDialogScalars;
+	public boolean dbDialogArray;
+	public boolean dbDialogList;
+	public boolean dbDialogStack;
+	public boolean dbDialogBundle;
+	public boolean dbDialogWatch;
+	public boolean dbDialogProgram;
+	public boolean dbDialogConsole;
+	public String dbConsoleHistory;
+	public String dbConsoleExecute;
+	public int dbConsoleELBI;
 	public static ArrayList <Integer> WatchVarIndex;
 	public static ArrayList <String> Watch_VarNames;
+	public static int WatchedArray;
+	public static int WatchedList;
+	public static int WatchedStack;
+	public static int WatchedBundle;
 	// end debugger ui vars
     
     public static boolean GrStop = false;						// Signal from GR that it has died
@@ -1193,13 +1207,15 @@ public class Run extends ListActivity {
 	public static PrintWriter ServerPrintWriter ;
 	
 	// *************************************************** Debug Commands ****************************
-	
 	public static final String Debug_KW[] = {
 		"on","off","print","echo.on",
 		"echo.off", "dump.scalars",
 		"dump.array", "dump.list",
 		"dump.stack", "dump.bundle",
-		"watch", "show"
+		"watch.clear","watch", "show.scalars",
+		"show.array","show.list","show.stack",
+		"show.bundle","show.watch","show.program",
+		"show","console"
 	};
 	
 	public static final int debug_on = 0;
@@ -1212,8 +1228,17 @@ public class Run extends ListActivity {
 	public static final int debug_dump_list = 7;
 	public static final int debug_dump_stack = 8;
 	public static final int debug_dump_bundle = 9;
-	public static final int debug_watch = 10;
-	public static final int debug_stop = 11;
+	public static final int debug_watch_clear = 10;
+	public static final int debug_watch = 11;
+	public static final int debug_show_scalars = 12;
+	public static final int debug_show_array = 13;
+	public static final int debug_show_list = 14;
+	public static final int debug_show_stack = 15;
+	public static final int debug_show_bundle = 16;
+	public static final int debug_show_watch = 17;
+	public static final int debug_show_program = 18;
+	public static final int debug_show = 19;
+	public static final int debug_console = 20;
 	public static final int debug_none = 99;
 	
 	public static boolean Debug = false;
@@ -1845,21 +1870,21 @@ public class Background extends AsyncTask<String, String, String>{
         			doHTMLCommand(str[i].substring(3));
         		}else if (str[i].startsWith("@@D")){
         			startVoiceRecognitionActivity();
-                }else if (str[i].startsWith("@@E")){      					// Input dialog signal
-        			doDebugDialog();
+            }else if (str[i].startsWith("@@E")){      					// Input dialog signal
+        			if(theDebugDialog!=null) theDebugDialog.dismiss();
+							doDebugDialog();
         			if (DebugDialog != null)
         			theDebugDialog = DebugDialog.show();				// show the Input dialog box
-        			}
-        		
-        		else if (str[i].startsWith("@@F")){						// Debug step completed
+        		}else if (str[i].startsWith("@@F")){						// Debug step completed
         			  DebuggerStep = false;
-          			  doDebugDialog();
-          			  theDebugDialog = DebugDialog.show();				// show the Debug dialog box
+          			if(theDebugDialog!=null) theDebugDialog.dismiss();
+								doDebugDialog();
+          			theDebugDialog = DebugDialog.show();				// show the Debug dialog box
         			  
         		}else if (str[i].startsWith("@@G")){					// User canceled dialog with back key or halt
         			  output.add("Execution halted");
         		
-        		}else {output.add(str[i]);};			// Not a signal, just write msg to screen.
+        		}else {output.add(str[i]);}			// Not a signal, just write msg to screen.
 
         		ProgressUpdateCount.dec();				// decrement count of pending progress updates
     	    	setListAdapter(AA);						// show the output
@@ -2026,9 +2051,25 @@ private void InitVars(){
    randomizer = null;
    background = false;
    
-   // debugger watch list
+    // debugger ui vars
    Watch_VarNames = new ArrayList<String>(); // watch list of string names
-    
+   WatchVarIndex = new ArrayList<Integer>();// watch list of variable indexes
+	 dbDialogScalars = false;
+	 dbDialogArray = false;
+	 dbDialogList = false;
+	 dbDialogStack = false;
+	 dbDialogBundle = false;
+	 dbDialogWatch = false;
+	 dbDialogProgram = true;
+	 dbConsoleHistory = "";
+	 dbConsoleExecute = "";
+	 dbConsoleELBI = 0;
+	 WatchedArray =0;
+ 	WatchedList =0;
+	WatchedStack =0;
+	WatchedBundle =0;
+
+	
     GrStop = false;						// Signal from GR that it has died
     Stop = false;	   						// Stops program from running
     GraphicsPaused = false;               // Signal from GR that it has been paused
@@ -5599,12 +5640,39 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			case debug_dump_bundle:
 				if (!executeDUMP_BUNDLE()){SyntaxError(); return false;}
 				break;
-			case debug_watch:
-				if (!executeDEBUG_WATCH()){SyntaxError(); return false;}
+			case debug_watch_clear:
+			  if (!executeDEBUG_WATCH_CLEAR()){SyntaxError(); return false;}
 				break;
-			case debug_stop:
-				if (!executeDEBUG_STOP()){SyntaxError(); return false;}
-				break;	
+			case debug_watch:
+			  if(!executeDEBUG_WATCH()){SyntaxError(); return false;}
+				break;
+			case debug_show_scalars:
+			  if (!executeDEBUG_SHOW_SCALARS()){SyntaxError(); return false;}
+				break;
+			case debug_show_array:
+			  if (!executeDEBUG_SHOW_ARRAY()){SyntaxError(); return false;}
+				break;
+			case debug_show_list:
+			  if (!executeDEBUG_SHOW_LIST()){SyntaxError(); return false;}
+				break;
+			case debug_show_stack:
+			  if (!executeDEBUG_SHOW_STACK()){SyntaxError(); return false;}
+				break;
+			case debug_show_bundle:
+			  if (!executeDEBUG_SHOW_BUNDLE()){SyntaxError(); return false;}
+				break;
+			case debug_show_watch:
+			  if (!executeDEBUG_SHOW_WATCH()){SyntaxError(); return false;}
+				break;
+			case debug_show_program:
+			  if (!executeDEBUG_SHOW_PROGRAM()){SyntaxError();return false;}
+				break;
+			case debug_show:
+				if (!executeDEBUG_SHOW()){SyntaxError(); return false;}
+				break;
+			case debug_console:
+			  if (!executeDEBUG_CONSOLE()){SyntaxError();return false;}
+				break;
 			default:
 		}
 
@@ -5866,30 +5934,166 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			    PrintShow("....");
 			    
 			  return true;
+		  }			
+//=====================DEBUGGER DIALOG STUFF========================
+		  private boolean executeDEBUG_WATCH_CLEAR(){
+			  if(!Debug) return true;
+				WatchVarIndex.clear();
+			  Watch_VarNames.clear();
+			  if (!WatchVarIndex.isEmpty()||!Watch_VarNames.isEmpty()) return false;
+			  return true;
 		  }
 		   private boolean executeDEBUG_WATCH(){ // separate the names and store them
 			  if (!Debug){return true;}
-			  Watch_VarNames.clear();
+			 
 			  int ti=LineIndex;
 			  int i=LineIndex;
+			  boolean add = true;
 			  for( i = LineIndex;i<ExecutingLineBuffer.length();++i){
-				  LineIndex =i;
-				  getVar();
 				  char c = ExecutingLineBuffer.charAt(i);
-				  if (c==','){
-					  //(ExecutingLineBuffer.substring(ti,i));
+				  if (c==','||i==ExecutingLineBuffer.length()-1){
+					  LineIndex =ti;
+					  getVar();
+					  add = true;
+					  //PrintShow('"'+ExecutingLineBuffer.substring(ti,i)+'"');
+					  for (int j = 0;j<WatchVarIndex.size();++j){
+						  if (WatchVarIndex.get(j)==VarNumber)add = false;
+						  //PrintShow(Integer.toString(WatchVarIndex.get(j))+"   "+Integer.toString(VarNumber));
+					  }
+					  if (add){
 					  Watch_VarNames.add(ExecutingLineBuffer.substring(ti,i));
+					  WatchVarIndex.add(VarNumber);
+					  }
 					  ti = i+1;
 				  }
 				  
-			  }
-			  String name = ExecutingLineBuffer.substring(ti,i-1);
-			  Watch_VarNames.add(name);
-			 
-			  return true;
+			 }
+			 return true;
 		  }
-		  
-		  private boolean executeDEBUG_STOP(){   // trigger do debug dialog
+		  private boolean executeDEBUG_SHOW_SCALARS(){
+				DialogSelector(1);
+				executeDEBUG_SHOW();
+				return true;
+			}
+			private boolean executeDEBUG_SHOW_ARRAY(){
+			  if (!Debug) return true;
+				doingDim = false;									// Get the array variable
+			  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
+			  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
+			  SkipArrayValues = false;
+			  doingDim = false;
+			  
+			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
+			  if (!VarIsNumeric){								// and that it is a numeric array
+				  RunTimeError("Array not numeric");
+			  }
+			  if (VarIsNew){									// and that it has been DIMed
+				  RunTimeError("Array not DIMed");
+				  return false;
+			  }
+				WatchedArray = VarNumber;
+				DialogSelector(2);
+				executeDEBUG_SHOW();
+				return true;
+			}
+			private boolean executeDEBUG_SHOW_LIST(){
+				if (!Debug) return true;
+			  
+				if (!evalNumericExpression()) return false;					// Get the list pointer
+				int listIndex = (int) (double)EvalNumericExpressionValue;
+				if (listIndex < 1 || listIndex >= theLists.size()){
+					RunTimeError("Invalid List Pointer");
+					return false;
+				}
+				WatchedList = listIndex;
+				DialogSelector(3);
+				executeDEBUG_SHOW();
+				return true;
+			}
+			private boolean executeDEBUG_SHOW_STACK(){
+				if (!Debug) return true;
+			  
+				if (!evalNumericExpression()) return false;							// Get the Stack pointer
+				int stackIndex = (int) (double)EvalNumericExpressionValue;
+				if (stackIndex < 1 || stackIndex >= theStacks.size()){
+					RunTimeError("Invalid Stack Pointer");
+					return false;
+				}
+				WatchedStack = stackIndex;
+				DialogSelector(4);
+				executeDEBUG_SHOW();
+				return true;
+			}
+			private boolean executeDEBUG_SHOW_BUNDLE(){
+				if (!Debug) return true;
+			  
+				if (!evalNumericExpression()) return false;							// Get the Bundle pointer
+				int bundleIndex = (int) (double)EvalNumericExpressionValue;
+				if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
+					RunTimeError("Invalid Bundle Pointer");
+					return false;
+				}
+				WatchedBundle = bundleIndex;
+				DialogSelector(5);
+				executeDEBUG_SHOW();
+				return true;
+			}
+			private boolean executeDEBUG_SHOW_WATCH(){
+				if (!Debug) return true;
+				DialogSelector(6);
+				executeDEBUG_SHOW();
+				return true;
+			}
+			private boolean executeDEBUG_CONSOLE(){
+				if(!Debug) return true;
+				DialogSelector(7);
+				executeDEBUG_SHOW();
+				return true;
+			}
+			private boolean executeDEBUG_SHOW_PROGRAM(){
+				DialogSelector(8);
+				executeDEBUG_SHOW();
+				return true;
+			}
+
+			private void DialogSelector(int selection){
+				dbDialogScalars = false;
+				dbDialogArray = false;
+				dbDialogList = false;
+				dbDialogStack = false;
+				dbDialogBundle = false;
+				dbDialogWatch = false;
+				dbDialogConsole = false;
+				dbDialogProgram = false;
+				switch (selection){
+				  case 1:
+					  dbDialogScalars = true;
+					  break;
+					case 2:
+				  	dbDialogArray = true;
+					  break;
+					case 3:
+					  dbDialogList = true;
+				  	break;
+					case 4:
+				  	dbDialogStack = true;
+				  	break;
+					case 5:
+				  	dbDialogBundle = true;
+					  break;
+					case 6:
+					  dbDialogWatch = true;
+					  break;
+					case 7:
+				  	dbDialogConsole = true;
+				  	break;
+					default:
+					  dbDialogProgram = true;
+						break;
+				}
+			}
+			
+		  private boolean executeDEBUG_SHOW(){   // trigger do debug dialog
 			  if (!Debug){return true;}
 			  WaitForResume = true;
 			  PrintShow("@@E");
@@ -5897,73 +6101,271 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		  }
 		  
 		private void doDebugDialog(){
-        String msg;
-		String tmsg="";
-		DebugDialog = new AlertDialog.Builder(this);
-	    DebugDialog.setTitle("Basic! Debugger");
+		LayoutInflater inflater = getLayoutInflater(); 
+		View dialoglayout = inflater.inflate(R.layout.dialog_layout, null);
 		
-		 msg ="Watching:\n";
-	   
-	   // i would like to find a better way of doing this other then search by name only
-	   // 
-		int count = VarNames.size();
-			if(!Watch_VarNames.isEmpty()){
-			  int watchcount = Watch_VarNames.size();
-			  for(int j = 0;j< watchcount;++j){
-				  tmsg ="";
-				 for (int i = 0 ; i < count; ++ i){
-					  boolean isString = false;
-					  boolean doIt = true;
-					  if (Watch_VarNames.get(j).compareToIgnoreCase(VarNames.get(i))==0){
-				  			if (VarNames.get(i).endsWith("(")) doIt = false;
-				  			if (VarNames.get(i).endsWith("[")) doIt = false;
-				  			if (doIt) {
-						  		if (VarNames.get(i).endsWith("$")) isString = true;
-					  			String Line = VarNames.get(i) + " = ";
-					  			if (isString) Line = Line + StringVarValues.get(VarIndex.get(i));
-				 	  			else {
-				 		  			Line = Line + Double.toString(NumericVarValues.get(VarIndex.get(i)));
-				 	  			}
-				  				tmsg+=Line+"\n";
-							}
-					  }
-				  }
-				  if(tmsg=="") msg +=Watch_VarNames.get(j)+" = Not initiated\n";
-			          else msg += tmsg;
+		String msg="";
+		
+		if(dbDialogScalars) msg = doScalars();
+		if(dbDialogArray) msg = doArray();
+		if(dbDialogList) msg = doList();
+		if(dbDialogStack) msg = doStack();
+		if(dbDialogBundle) msg = doBundle();
+		if(dbDialogWatch) msg = doWatch();
+ 
+		//msg+=doFunc();
+	
+		
+			
+			if(dbDialogProgram){
+			for (int i = 0; i < Basic.lines.size();++i){
+				if (i==ExecutingLineIndex){
+					msg+= " >>"+Integer.toString(1+i)+": "+Basic.lines.get(i);
+			  }else{	msg += "   "+Integer.toString(1+i)+": "+Basic.lines.get(i);}
+			}
+			}
+			
+		DebugDialog = new AlertDialog.Builder(this);
+		DebugDialog.setCancelable(true);
+		TextView debugView = (TextView)dialoglayout.findViewById(R.id.dialog_layout); 
+		debugView.setText(msg);
+    DebugDialog.setMessage(doFunc()+"Executable Line #:    "+(ExecutingLineIndex+1)+"\n\n"+"Executing:\n"+ExecutingLineBuffer);
+		DebugDialog.setView(dialoglayout);
+	  DebugDialog.setTitle("Basic! Debugger");
+		DebugDialog.setOnCancelListener(new 
+		DialogInterface.OnCancelListener(){
+		    public void onCancel(DialogInterface arg0) {
+			  	DebuggerHalt = true;
+			  	WaitForResume = false;
 			  }
-			}else{msg += "\n"+"Undefined.\n";}
-			 
-			msg +="\n\nExecutable Line #:    "+(ExecutingLineIndex+1)+"\n\n"+"Executing:\n"+"  "+ExecutingLineBuffer;
-			  
-			DebugDialog.setMessage(msg);
-			  
-	    DebugDialog.setPositiveButton("Resume", new 
+	  });	
+	  DebugDialog.setPositiveButton("Resume", new 
 		DialogInterface.OnClickListener() {
-//			@Override
 	    	public void onClick(DialogInterface dialog,int which) {
-        			WaitForResume = false;
+        	WaitForResume = false;
 	    	}
 		});
 		DebugDialog.setNeutralButton("Step",new
 		DialogInterface.OnClickListener(){
-//			@Override
 			public void onClick(DialogInterface dialog,int which){
 				DebuggerStep = true;
 				WaitForResume = true;
 			}
 		});
-		DebugDialog.setNegativeButton("Halt",new 
+		DebugDialog.setNegativeButton("Full Debugger",new 
 		DialogInterface.OnClickListener(){
-//			@Override
 			public void onClick(DialogInterface dialog,int which) {
-				DebuggerHalt = true;
-				WaitForResume = false;
-			}
-	    });
+			  // put code to start the full debugger.
+		}
+	  });
+	}
+	private String doWatch(){
+		String msg;
+		msg ="Watching:\n";
+	   
+		int count = VarNames.size();
+		if(!WatchVarIndex.isEmpty()){
+			int watchcount = WatchVarIndex.size();
+			for(int j = 0;j< watchcount;++j){
+				 int wvi = WatchVarIndex.get(j);
+				 if (wvi < count){
+					boolean isString = false;
+					boolean doIt = true;
+				  	if (VarNames.get(wvi).endsWith("(")) doIt = false;
+				  	if (VarNames.get(wvi).endsWith("[")) doIt = false;
+				  	if (doIt) {
+						  if (VarNames.get(wvi).endsWith("$")) isString = true;
+					  	String Line = VarNames.get(wvi) + " = ";
+					  	if (isString) Line = Line + StringVarValues.get(VarIndex.get(wvi));
+				 	  		else {
+				 		  		Line = Line + Double.toString(NumericVarValues.get(VarIndex.get(wvi)));
+				 	  	}
+				  		msg+=Line+"\n";
+					 }
+				}else{msg+=Watch_VarNames.get(j)+" = Undefined\n";}
+		  }
+		}else{msg += "\n"+"Undefined.\n";}
+		return msg;
 	}
 	
-		  
-		
+	private String doFunc(){
+		String msg = "";
+	
+		 msg += "";
+			if(!FunctionStack.isEmpty()){
+					Stack<Bundle> tempStack = (Stack<Bundle>) FunctionStack.clone();
+					do {
+						msg = tempStack.pop().getString("fname")+ msg;
+					} while (!tempStack.isEmpty());
+			}else{msg+="MainProgram";}
+		return '\n'+"In Function: "+msg+'\n';
+	}
+	
+	private String doScalars(){
+			
+			  int count = VarNames.size();
+			  String msg="Scalar Dump\n";
+			  for (int i = 0 ; i < count; ++ i){
+				  boolean isString = false;
+				  boolean doIt = true;
+				  if (VarNames.get(i).endsWith("(")) doIt = false;
+				  if (VarNames.get(i).endsWith("[")) doIt = false;
+				  if (doIt) {
+					  if (VarNames.get(i).endsWith("$")) isString = true;
+					  String Line = VarNames.get(i) + " = ";
+					  if (isString) Line = Line + StringVarValues.get(VarIndex.get(i));
+				 	  else {
+				 		  Line = Line + Double.toString(NumericVarValues.get(VarIndex.get(i)));
+				 	  }
+				  	msg+="  "+Line+"\n";
+				  }
+			  }
+			  msg+="....\n";
+			  return msg;
+	}
+	private String doArray(){
+			  String msg="";
+			  msg+=("Dumping Array " + VarNames.get(WatchedArray) + "]")+'\n';
+			  
+				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
+				ArrayEntry = ArrayTable.get(VarIndex.get(WatchedArray));
+				int length = ArrayEntry.getInt("length");				// get the array length
+				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
+				
+				boolean ArrayIsNumeric = true;
+				if(VarNames.get(WatchedArray).endsWith("$["))ArrayIsNumeric = false;
+				for (int i = 0; i <length; ++i){ 
+					if (ArrayIsNumeric){
+						msg+=(Double.toString(NumericVarValues.get(base+i)))+'\n';
+					}
+					else{
+						msg+=(StringVarValues.get(base + i))+'\n';
+					}
+				}
+				
+				msg+=("....")+'\n';
+			  return msg;
+		  }
+			
+			private String doList(){
+				String msg;
+				
+				msg=("Dumping List " + Double.toString(EvalNumericExpressionValue))+'\n';
+				
+				switch (theListsType.get(WatchedList))						// Get this lists type
+				{
+				case list_is_string:										// String
+					ArrayList<String> thisStringList = theLists.get(WatchedList);  // Get the string list
+					int length = thisStringList.size();
+					if (length == 0 ){
+						msg += ("Empty List")+'\n';
+						break;
+					}
+					for (int i=0; i < length; ++i){
+						msg+=(thisStringList.get(i));			//Get the requested string
+					}
+					break;
+					
+				case list_is_numeric:												// Number
+					ArrayList<Double> thisNumericList = theLists.get(WatchedList);	//Get the numeric list
+					length = thisNumericList.size();
+					if (length == 0 ){
+						msg+=("Empty List")+'\n';
+						break;
+					}
+					for (int i=0; i < length; ++i){
+						msg+=(Double.toString(thisNumericList.get(i)))+'\n';			//Get the requested string
+					}
+					break;
+					
+				default:
+					//RunTimeError("Internal problem. Notify developer");
+					//return false;
+			
+				}
+				msg+=("....");
+
+			  return msg;
+		  }
+			
+			private String doStack(){
+			  String msg="";
+
+				Stack thisStack = theStacks.get(WatchedStack);		               // Get the Stack
+				if (thisStack.isEmpty())
+					return("Stack has not been created.");
+				
+				
+				Stack tempStack = new Stack();
+				tempStack = (Stack) thisStack.clone();
+				
+				msg+=("Dumping stack " + Double.toString(WatchedStack))+'\n';
+				
+				switch (theStacksType.get(WatchedStack)){
+				case stack_is_string:												// String type list
+					if (tempStack.isEmpty()){
+						msg+=("Empty Stack")+'\n';
+						break;
+					}
+					do {
+						String thisString = (String) tempStack.pop();
+						msg+=(thisString)+'\n';
+					} while (!tempStack.isEmpty());
+					
+					break;
+					
+				case stack_is_numeric:
+					if (tempStack.isEmpty()){
+						msg+=("Empty Stack")+'\n';
+						break;
+					}
+					do {
+						Double thisNumber = (Double) tempStack.pop();
+						msg+=(Double.toString(thisNumber))+'\n';
+					} while (!tempStack.isEmpty());
+					break;
+					
+				default:
+					return("Internal problem. Notify developer");
+
+			
+				}
+				msg +=("....");
+			  return msg;
+			}
+			
+			private String doBundle(){
+					String msg="";
+			    Bundle b = theBundles.get(WatchedBundle);
+			    
+			    msg+=("Dumping Bundle " + Double.toString(WatchedBundle))+'\n';
+			    
+			    Set<String> set= b.keySet();
+			    
+			    if (set.size() == 0){
+			    	return ("Empty Bundle");
+			    }
+			    
+			    Iterator it = set.iterator();
+			    
+			    for (int i=0; i<set.size(); ++i){
+			    	String s = (String) it.next();
+			    	if (!s.startsWith("@@@N.")) {
+			    		boolean isNumeric = b.getBoolean("@@@N."+ s);
+			    		if (isNumeric) {
+			    			msg+=(s + ": " + Double.toString(b.getDouble(s)))+'\n';
+			    		}else{
+			    			msg+=(s + ": " +  b.getString(s))+'\n';
+			    		}
+			    	}
+			    	
+			    }
+			    
+			    msg+=("....");
+			    
+			  return msg;
+			}
+			
 
 // ******************************* User Defined Functions ******************************
 
@@ -6139,6 +6541,7 @@ private boolean doUserFunction(){
 	fsb.putInt("ELI", ExecutingLineIndex);
 	fsb.putInt("SCOV", scOpValue);
 	fsb.putString("PKW", PossibleKeyWord);
+	fsb.putString("fname",ufBundle.getString("fname"));
 
 	ArrayList<String> fVarName = new ArrayList<String>();				// The list of Parm Var Names
 	ArrayList<Integer> fVarType = new ArrayList<Integer>();				// and the parm types

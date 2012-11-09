@@ -253,6 +253,8 @@ public class Format extends ListActivity {
 					actualLine = ExpandedKeyWord(Run.Array_KW, lcLine, actualLine, start);
 				else if (kw.equals("list."))
 					actualLine = ExpandedKeyWord(Run.List_KW, lcLine, actualLine, start);
+				//else if (kw.equals("stack."))
+				// actualLine = ExpandedKeyWord(Run.Stack_KW, lcLine, actualLine, start);
 				else if (kw.equals("bundle."))
 					actualLine = ExpandedKeyWord(Run.Bundle_KW, lcLine, actualLine, start);
 				else if (kw.equals("socket."))
