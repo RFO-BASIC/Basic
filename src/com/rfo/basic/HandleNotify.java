@@ -16,6 +16,8 @@
 
 package com.rfo.basic;
 
+// Test comment 2
+
 import android.app.Activity;
 import android.os.Bundle;
 
