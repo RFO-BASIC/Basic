@@ -1567,7 +1567,7 @@ public class Background extends AsyncTask<String, String, String>{
     		ProgressUpdateCount.reset();	// No progress updates pending yet!
     		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-        	if (FindLabels()){ 				// The execution starts by scanning the source for labels 
+        	if (FindLabels()){ 				// The execution starts by scanning the source for labels and read.data
         		
         	flag = RunLoop();
         	       	
@@ -2587,7 +2587,7 @@ private void trimArray(ArrayList Array, int start){
 	}
 }
 
-private  boolean FindLabels(){						// Find all the labels in the program
+private  boolean FindLabels(){						// Find all the labels and read.data in the program
 	int LineNumber = 0;
 	
 	do{
@@ -2630,15 +2630,20 @@ private  boolean FindLabels(){						// Find all the labels in the program
 			
 			do {													// Sweep up the data values
 				Bundle b = new Bundle();
-				if (getNumber()) {									// If it is a number
-					b.putBoolean("isNumber", true);					// Create a bundle for it
-					b.putDouble("number", GetNumberValue);
-				} else if(GetStringConstant()) {					// Else if it is a string
+				if (GetStringConstant()) {							// If it is a string
 					b.putBoolean("isNumber", false);				// Create a bundle for it
 					b.putString("string", StringConstant);
-				} else {											// Else is a run time error
-					RunTimeError("Invalid Data Value");
-					return false;
+				} else {											// If it is a number
+					double signum = 1.0;							// Assume positive
+					if (isNext('-')) { signum = -1.0; }				// Catch minus sign
+					else if (isNext('+')) { ; }						// If not negative, eat optional '+'
+					if (getNumber()) {								// Get the the rest of the number
+						b.putBoolean("isNumber", true);				// Create a bundle for it
+						b.putDouble("number", signum * GetNumberValue);
+					} else {										// Else is a run time error
+						RunTimeError("Invalid Data Value");
+						return false;
+					}
 				}
 				readData.add(b);									// Add the bundle to the list
 			
