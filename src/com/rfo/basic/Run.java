@@ -6054,6 +6054,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				return true;
 			}
 			private boolean executeDEBUG_SHOW_PROGRAM(){
+				if(!Debug) return true;
 				DialogSelector(8);
 				executeDEBUG_SHOW();
 				return true;
@@ -6103,7 +6104,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  return true;
 		  }
 		  
-		private void doDebugDialog(){
+  private void doDebugDialog(){
+		//remove the instance of dialog cleanly
+		if(theDebugDialog != null) theDebugDialog.dismiss();
+		
+		//set dialog layout
 		LayoutInflater inflater = getLayoutInflater(); 
 		View dialoglayout = inflater.inflate(R.layout.debug_dialog_layout, null);
 		
