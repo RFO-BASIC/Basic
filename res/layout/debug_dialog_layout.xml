@@ -27,8 +27,8 @@ You may contact the author, Paul Laughton, at basic@laughton.com
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" 
 		android:orientation="vertical" 
-		android:layout_width="300dp" 
-		android:layout_height="600dp">
+		android:layout_width="fill_parent" 
+		android:layout_height="fill_parent">
 
 		<ScrollView android:id="@+id/SCROLLER_ID" 
 				android:layout_width="fill_parent" 
