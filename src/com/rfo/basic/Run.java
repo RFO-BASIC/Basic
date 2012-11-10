@@ -1283,8 +1283,9 @@ public class Run extends ListActivity {
         UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     
-    private int bt_enabled = 0;
-    private int bt_state;
+    public static int bt_enabled = 0;
+    public static int bt_state;
+    public static boolean bt_Secure;
 
     // Name of the connected device
     private String mConnectedDeviceName = null;
@@ -1823,7 +1824,7 @@ public class Background extends AsyncTask<String, String, String>{
     	            
     	            	BT_Read_Buffer = new ArrayList<String>();
     	            
-    	            	mChatService.start();
+    	            	mChatService.start(bt_Secure);
     	            	btCSrunning = true;
     	            }
 
@@ -15906,6 +15907,8 @@ private boolean doUserFunction(){
 		
 		public boolean executeBT(){
 			if (!GetBTKeyWord()){ return false;}
+			// mBluetoothAdapter is initialized during Run initialization
+			// if there is no blue tooth then it will be null
 			if (mBluetoothAdapter == null && KeyWordValue != bt_open){
 				RunTimeError("Bluetooth not opened");
 				return false;
@@ -15974,47 +15977,37 @@ private boolean doUserFunction(){
 		  		}
 		  
 		  private boolean execute_BT_open(){
-		        // Get local Bluetooth adapter
-//			  Looper.prepare();
-			  
-//			  btLooper = Looper.myLooper();
-//		        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-		        // If the adapter is null, then Bluetooth is not supported
-		        if (mBluetoothAdapter == null) {
+			  
+			  if (mBluetoothAdapter == null) {
 		            RunTimeError("Bluetooth is not available");
 		            return false;
 		        }
+			  
+		    	bt_Secure = true;												// this flag will be used when starting 
+		    	if (evalNumericExpression()) {									// the accept thread in BlueTootChatService
+		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
+		    	}
+
 		        
-		        bt_enabled = 0;
+		        bt_enabled = 0;													// Enable BT Chat Service
 		        bt_state = BluetoothChatService.STATE_NOT_ENABLED;
 	            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
 	            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-	            while (bt_enabled == 0)
+	            while (bt_enabled == 0)											// Wait until enabled
 	            	Thread.yield();
 	            
-	            if (bt_enabled == -1){
+	            if (bt_enabled == -1){											// Enable failed
 	            	RunTimeError("Bluetooth Not Enabled");
 	            	return false;
 	            }
-	            BT_Read_Buffer = new ArrayList<String>();
 	            
+	            BT_Read_Buffer = new ArrayList<String>();						// 	Initialize some stuff
 	            bt_state = BluetoothChatService.STATE_NONE;
 	            btConnectDevice = null;
 	            
-	            // Initialize the BluetoothChatService to perform bluetooth connections
-/*	            if (mChatService == null){
-	            	mChatService = new BluetoothChatService(this, mHandler);
-
-	            	// Initialize the buffer for outgoing messages
-	            	mOutStringBuffer = new StringBuffer("");
-	            
-	            	BT_Read_Buffer = new ArrayList<String>();
-	            
-	            	mChatService.start();
-	            }*/
 	            btCSrunning = false;
-	            Show("@@7");
+	            Show("@@7");													// Starts the accept thread
 		        return true;
 
 		  }
@@ -16098,10 +16091,10 @@ private boolean doUserFunction(){
 		    };
 		    
 		    private void connectDevice(Intent data, boolean secure) {
-		        // Get the device MAC address
+		    	
+		    	
 		        String address = data.getExtras()
 		            .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
-		        // Get the BLuetoothDevice object
 		        btConnectDevice = null;
 	            while (!btCSrunning) Thread.yield();
 		        try {
@@ -16124,13 +16117,21 @@ private boolean doUserFunction(){
 		    }
 		    
 		    private boolean execute_BT_connect(){
+		    	bt_Secure = true;
+		    	if (evalNumericExpression()) {
+		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
+		    	}
 		    	Intent serverIntent = null;
 	            serverIntent = new Intent(this, DeviceListActivity.class);
 	            if (serverIntent == null){
 	            	RunTimeError("Error selecting device");
 	            	return false;
 	            }
-	            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
+	            if (bt_Secure) {
+	            	startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
+	            }else {
+	            	startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
+	            }
 
 //		    	Show("@@8");
 		    	return true;
@@ -16141,7 +16142,7 @@ private boolean doUserFunction(){
 		    		RunTimeError("No previously connected");
 		    		return false;
 		    	}
-		        mChatService.connect(btConnectDevice, true);
+		    	mChatService.connect(btConnectDevice, bt_Secure);
 		    	return true;
 		    }
 		    

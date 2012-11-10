@@ -105,7 +105,7 @@ public class BluetoothChatService {
     /**
      * Start the chat service. Specifically start AcceptThread to begin a
      * session in listening (server) mode. Called by the Activity onResume() */
-    public synchronized void start() {
+    public synchronized void start(boolean secure) {
         if (D) Log.d(TAG, "start");
 
         // Cancel any thread attempting to make a connection
@@ -120,12 +120,8 @@ public class BluetoothChatService {
 
         // Start the thread to listen on a BluetoothServerSocket
         if (mSecureAcceptThread == null) {
-            mSecureAcceptThread = new AcceptThread(true);
+            mSecureAcceptThread = new AcceptThread(secure);
             mSecureAcceptThread.start();
-        }
-        if (mInsecureAcceptThread == null) {
-            mInsecureAcceptThread = new AcceptThread(false);
-            mInsecureAcceptThread.start();
         }
     }
 
@@ -248,7 +244,7 @@ public class BluetoothChatService {
 
 
         // Start the service over to restart listening mode
-        BluetoothChatService.this.start();
+        BluetoothChatService.this.start(Run.bt_Secure);
     }
 
     /**
@@ -263,7 +259,7 @@ public class BluetoothChatService {
         mHandler.sendMessage(msg);*/
         
         // Start the service over to restart listening mode
-        BluetoothChatService.this.start();
+        BluetoothChatService.this.start(Run.bt_Secure);
 //    	setState(STATE_NONE);
     }
 
