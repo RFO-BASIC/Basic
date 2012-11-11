@@ -7551,10 +7551,10 @@ private boolean doUserFunction(){
 					   }
 
 				  
-				  FileEntry.putInt("stream", BISlist.size()); 	 //The stream parm indexes
-				  BISlist.add(bis);								 //into the FISlist
-				  FileTable.add(FileEntry);
-				}
+					}
+				FileEntry.putInt("stream", BISlist.size()); 	 //The stream parm indexes
+				BISlist.add(bis);								 //into the FISlist
+				FileTable.add(FileEntry);
 				  
 			}
 			
