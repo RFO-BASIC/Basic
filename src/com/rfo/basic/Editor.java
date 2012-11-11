@@ -536,13 +536,13 @@ public class Editor extends Activity {
 				DisplayText = mText.getText().toString();
 				selectionStart = mText.getSelectionStart();
 				selectionEnd = mText.getSelectionEnd();
-				startActivity(new Intent(this, Search.class));			// Start the help activity
+				startActivity(new Intent(this, Search.class));			// Start the search activity
 				return true;
 
 			case R.id.format:
 				if (mText == null) android.os.Process.killProcess(android.os.Process.myPid()) ;
 				DisplayText = mText.getText().toString();
-				startActivity(new Intent(this, Format.class));			// Start the help activity
+				startActivity(new Intent(this, Format.class));			// Start the format activity
 				Basic.Saved = false;
 				return true;
 
