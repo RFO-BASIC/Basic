@@ -8847,6 +8847,7 @@ private boolean doUserFunction(){
 				}
 				if (theListsType.get(listIndex) != list_is_string){
 					RunTimeError("Not a string list");
+					return false;
 				}
 				SelectList = theLists.get(listIndex);
 				
