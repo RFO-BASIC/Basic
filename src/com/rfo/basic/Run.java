@@ -17738,11 +17738,11 @@ private boolean doUserFunction(){
 	  
 	  private boolean executeRUN(){
 		  
-/*		  RunTimeError("Run not permitted in a complied apk");
-		  return false;
-	  }
-	  /*
-*/
+		  if (Basic.isAPK) {
+			  RunTimeError("Run not permitted in a complied apk");
+			  return false;
+		  }
+
 		  if (!evalStringExpression()) return false;              // Get filename
 		  
 		  Intent intent = new  Intent(this, AutoRun.class);
