@@ -2673,7 +2673,7 @@ private boolean storeLabel(String name, int LineNumber) {
 	if (name.equals("onbtreadready")) OnBTReadLine = LineNumber;
 	if (name.equals("onbackground")) OnBGLine = LineNumber;
 
-	return checkEOL(false);
+	return checkEOL();
 }
 
 // Scan the entire program. Find all the labels and read.data statements.
@@ -2847,7 +2847,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		};
 	        		break;
 	        	case BKWreturn:
-	        		if (!checkEOL(false)) return false;
+	        		if (!checkEOL()) return false;
 	        		if (GosubStack.empty()){
 	        			RunTimeError("RETURN without GOSUB");
 	        			return false;
@@ -3244,7 +3244,14 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	   errorMsg = msg + "\nLine: " + ExecutingLineBuffer;
    }
 
-	
+   private boolean checkEOL(){
+	   if (LineIndex >= ExecutingLineBuffer.length()) return true;
+	   if (ExecutingLineBuffer.charAt(LineIndex) == '\n') return true;
+	   String ec = ExecutingLineBuffer.substring(LineIndex);
+	   RunTimeError("Extraneous characters in line: " + ec);
+	   return false;
+   }
+
    private boolean checkEOL(boolean increment){
 	   if (increment) ++LineIndex;
 	   if (LineIndex >= ExecutingLineBuffer.length()) return true;
@@ -3512,7 +3519,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		
 		if (isNext(':')) {									// If this is a label,
-			return checkEOL(false);							// then done
+			return checkEOL();								// then done
 		}
 		
 //		if (theValueIndex == null) return false;            // Why? Because it is sometimes null
@@ -3528,7 +3535,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				return false;
 			}
 			NumericVarValues.set(AssignToVarNumber, EvalNumericExpressionValue);  //and assign results to the var
-			if (!checkEOL(false))return false;
+			if (!checkEOL())return false;
 
 			return true;									// Done with Numeric assignment
 		}
@@ -3537,9 +3544,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if (SEisLE) return false;
 		StringVarValues.set(AssignToVarNumber, StringConstant); // Assign result to the string var
 		
-		if (!checkEOL(false))return false;
+		if (!checkEOL())return false;
 		
-//		return checkEOL(false);
+//		return checkEOL();
 
 		return true;										// Done with string assignment
 		
@@ -5149,7 +5156,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			return false;
 		}
 		
-		if (!checkEOL(false) ) return false;
+		if (!checkEOL() ) return false;
 
 		q = IfElseStack.pop();
 		
@@ -5179,7 +5186,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	    else IfElseStack.push(IEexec);
 	    
 	    if (ExecutingLineBuffer.startsWith("then", LineIndex)) LineIndex = LineIndex + 4;
-	    if (!checkEOL(false) ) return false;
+	    if (!checkEOL() ) return false;
 	    
 		
 		return true;
@@ -5191,7 +5198,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				RunTimeError("Misplaced ENDIF");
 				return false;
 			}
-			if (!checkEOL(false) ) return false;
+			if (!checkEOL() ) return false;
 			IfElseStack.pop();					// but we do not care what it is
 			return true;
 
@@ -5255,7 +5262,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				RunTimeError("No For Loop Active");			// then we have a misplaced NEXT
 				return false;
 			}
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 			if (!SkipToNext()) return false;
 			
@@ -5330,7 +5337,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 
 		if (EvalNumericExpressionValue != 0){		   // if true
 			WhileStack.push(ExecutingLineIndex-1);	   // push line number onto while stack.
-			return checkEOL(false);
+			return checkEOL();
 		}
 		if (!SkipToRepeat()){return false;}		  // False, find the REPEAT for the nested FOR
 		return true;
@@ -5341,7 +5348,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			RunTimeError("No While Statement Active");			// then we have a misplaced NEXT
 			return false;
 		}
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		if (!SkipToRepeat()) return false;
 		WhileStack.pop();
 		return true;
@@ -5377,12 +5384,12 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		ExecutingLineIndex = WhileStack.pop();	// Pop the line number of the WHILE
 
-		return checkEOL(false);
+		return checkEOL();
 	}
 	
 	private boolean executeDO(){
 		DoStack.push(ExecutingLineIndex-1);	   // push line number onto DO stack.
-		return checkEOL(false);
+		return checkEOL();
 
 	}
 	
@@ -5391,7 +5398,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			RunTimeError("No DO loop active");
 	    	return false; // End of program. No UNTIL found;
 		}
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		if (!SkipToUntil());
 		DoStack.pop();
 		return true;
@@ -5431,7 +5438,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			return true;
 		}
 		DoStack.pop();								// if true, pop the stack and
-		return checkEOL(false);
+		return checkEOL();
 	}
 	
 	private  boolean executeINPUT(){
@@ -5463,7 +5470,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			}
 			InputDefault = StringConstant;
 		}
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 	    WaitForInput = true;
 	    BadInput = false;
 	    InputCancelled = false;
@@ -5562,7 +5569,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			readData.add(b);									// Add the bundle to the list
 		} while (isNext(','));									// and do again if more data
 
-		return checkEOL(false);									// Nothing allowed after scan stops
+		return checkEOL();										// Nothing allowed after scan stops
 	}
 
 	private boolean executeREAD_NEXT(){
@@ -5598,7 +5605,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		} while (isNext(','));									// loop while there are variables
 		
-		return checkEOL(false);
+		return checkEOL();
 	}
 	
 	
@@ -5613,7 +5620,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		readNext = newIndex;
 		
-		return checkEOL(false);
+		return checkEOL();
 	}
 	
 	
@@ -5711,13 +5718,13 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 }
 
 	private boolean executeDEBUG_ON() {
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		Debug = true;
 		return true;
 	}
 
 	private boolean executeDEBUG_OFF() {
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		Debug = false;
 		Echo = false;
 		return true;
@@ -5729,7 +5736,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	     private boolean executeECHO_ON(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			if (Debug){
 			  Echo = true;
 			}
@@ -5738,7 +5745,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		  }
 		  
 		  private boolean executeECHO_OFF(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			  Echo = false;
 			  return true;
 		  }
@@ -6440,7 +6447,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				++LineIndex;
 			} while (c == ',');
 //			if (c != ')') return false;
-//			if (! checkEOL(false)) return false;
+//			if (! checkEOL()) return false;
 
 			
 		
@@ -6729,21 +6736,21 @@ private boolean doUserFunction(){
 			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
 			if (ExecutingLineBuffer.startsWith("sw.end")) {
 				LineIndex = LineIndex + 6;
-				if (!checkEOL(false)) return false;
+				if (!checkEOL()) return false;
 				return true;
 			}else if (ExecutingLineBuffer.startsWith("sw.default")){
 				LineIndex = LineIndex + 10;
-				if (!checkEOL(false)) return false;
+				if (!checkEOL()) return false;
 				return true;
 			}else if (ExecutingLineBuffer.startsWith("sw.case")){
 				LineIndex = 7;
 				if (isNumeric){
 					if (!evalNumericExpression()) return false;
-					if (!checkEOL(false)) return false;
+					if (!checkEOL()) return false;
 					if (nexp == EvalNumericExpressionValue) return true;
 				}else{
 					if (!evalStringExpression()) return false;
-					if (!checkEOL(false)) return false;
+					if (!checkEOL()) return false;
 					if (sexp.equals(StringConstant)) return true;
 				}
 			}
@@ -6816,7 +6823,7 @@ private boolean doUserFunction(){
 		if (!evalStringExpression()){return false;} // Final paramter is the filename
 		if (SEisLE) return false;
 		String fileName = StringConstant;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 		Bundle FileEntry = new Bundle();			// Prepare the filetable bundle
 		FileEntry.putInt("mode", FileMode);
@@ -6959,7 +6966,7 @@ private boolean doUserFunction(){
 			RunTimeError("Invalid File Number at");
 			return false;
 		}
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 		int FileMode;							//     Variables for the bundle
 		BufferedReader buf = null;
@@ -7113,7 +7120,7 @@ private boolean doUserFunction(){
 
 		if (!evalStringExpression()){SyntaxError(); return false;}
 		if (SEisLE) return false;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 	
 		
 		int FileMode;							//     Variables for the bundle
@@ -7288,7 +7295,7 @@ private boolean doUserFunction(){
 				if (!evalStringExpression()) return false;
 			    TextInputString = StringConstant;
 			}
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			
 			HaveTextInput = false;
 		    startActivityForResult(new Intent(this, TextInput.class), BASIC_GENERAL_INTENT);
@@ -7445,7 +7452,7 @@ private boolean doUserFunction(){
 			if (!evalStringExpression()) return false;
 			TextInputString = StringConstant;
 			String Prompt = StringConstant;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			
 			HaveTextInput = false;
 		    startActivityForResult(new Intent(this, TGet.class), BASIC_GENERAL_INTENT);
@@ -7488,7 +7495,7 @@ private boolean doUserFunction(){
 			if (!evalStringExpression()){return false;} // Final paramter is the filename
 			if (SEisLE) return false;
 			String theFileName = StringConstant;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 			Bundle FileEntry = new Bundle();			// Prepare the filetable bundle
 			FileEntry.putInt("mode", FileMode);
@@ -7656,7 +7663,7 @@ private boolean doUserFunction(){
 				RunTimeError("Invalid File Number at");
 				return false;
 			}
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 
 			int FileMode;							//     Variables for the bundle
@@ -7724,7 +7731,7 @@ private boolean doUserFunction(){
 		++LineIndex;
 
 		if (!evalStringExpression()) return false;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		
 		int FileMode;							//     Variables for the bundle
 		boolean eof;
@@ -8036,7 +8043,7 @@ private boolean doUserFunction(){
 			if (!evalStringExpression()) return false;
 			OutputIsByte = false;
 		}
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 	
 		
 		int FileMode;							//     Variables for the bundle
@@ -8100,7 +8107,7 @@ private boolean doUserFunction(){
 
 		if (!evalStringExpression()) return false;
 
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 	
 		
 		int FileMode;							//     Variables for the bundle
@@ -8276,7 +8283,7 @@ private boolean doUserFunction(){
 		Basic.InitDirs();										// Make sure we have base directories.
 		if (!evalStringExpression())return false;					//get the path
 		if (SEisLE) return false;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 		File sdDir = null;
 		File lbDir = null;
@@ -8307,7 +8314,7 @@ private boolean doUserFunction(){
 		if (!evalStringExpression())return false;					//get the old file name
 		if (SEisLE) return false;
 		String New = StringConstant;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 		
 		File sdDir = null;
@@ -8348,7 +8355,7 @@ private boolean doUserFunction(){
 		
 		if (!evalStringExpression())return false;					//get the old file name
 		if (SEisLE) return false;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 		File sdDir = null;
 		File lbDir = null;
@@ -8384,7 +8391,7 @@ private boolean doUserFunction(){
 
 		if (!evalStringExpression()) return false;
 		if (SEisLE) return false;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 
  		String state = Environment.getExternalStorageState();
@@ -8415,7 +8422,7 @@ private boolean doUserFunction(){
 		
 		if (!evalStringExpression())return false;					//get the old file name
 		if (SEisLE) return false;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 		File sdDir = null;
 		File lbDir = null;
@@ -8459,7 +8466,7 @@ private boolean doUserFunction(){
 	  	if (!getVar()) return false;
 	  	if (VarIsNumeric) return false;
 	  	StringVarValues.set(theValueIndex, s);
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 
 		return true;
@@ -8570,7 +8577,7 @@ private boolean doUserFunction(){
 		if (!evalStringExpression()){return false;}                    // Second parm is the filename               
 	    if (SEisLE) return false;
 	    String theFileName = StringConstant;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 	    
 	    String result = null;
@@ -8634,7 +8641,7 @@ private boolean doUserFunction(){
 
 			if (!evalStringExpression()){return false;}                    // Second parm is the url               
 		    if (SEisLE) return false;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 
 		    
@@ -8722,7 +8729,7 @@ private boolean doUserFunction(){
 		   if (VarIsNumeric)return false;						
 		   StringVarValues.set(theValueIndex, second);
 		   
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		
 		return true;
 	}
@@ -8734,7 +8741,7 @@ private boolean doUserFunction(){
 		    	 RunTimeError("Pause must be greater than zero");
 		    	 return false;
 		     }
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 		  
 		  try {Thread.sleep((int) d);}catch(InterruptedException e){};
@@ -8746,7 +8753,7 @@ private boolean doUserFunction(){
 		  
 		  if (!evalStringExpression()){return false;}
 		  if (SEisLE) return false;
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 
 		  String url = StringConstant;
 		  Intent i = new Intent(Intent.ACTION_VIEW);						  // Go to the html page
@@ -8768,7 +8775,7 @@ private boolean doUserFunction(){
 		  
 		  if (!getVar()) return false;						// get the var to put the key value into
 		  if (VarIsNumeric) return false;					
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 		  if (InChar.size() > 0){
 			  StringVarValues.set(theValueIndex, InChar.get(0));
 			  InChar.remove(0);
@@ -8809,7 +8816,7 @@ private boolean doUserFunction(){
 		  if (!evalNumericExpression())return false;							// Get duration
 		   d = EvalNumericExpressionValue;
 
-		   if (!checkEOL(false)) return false;
+		   if (!checkEOL()) return false;
 
 		   ToastDuration = 0;
 		   if (d!=0) ToastDuration = 1;
@@ -8821,7 +8828,7 @@ private boolean doUserFunction(){
 	  }
 	  
 	  public boolean executeCLS(){							// Clear Screen
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		  PrintShow("@@5");										// Signal UI task
 		  return true;
 	  }
@@ -8847,6 +8854,7 @@ private boolean doUserFunction(){
 				}
 				if (theListsType.get(listIndex) != list_is_string){
 					RunTimeError("Not a string list");
+					return false;
 				}
 				SelectList = theLists.get(listIndex);
 				
@@ -8890,7 +8898,7 @@ private boolean doUserFunction(){
 
 			if (!evalStringExpression()) return false;
 			if (SEisLE) return false;
-//			if (!checkEOL(false)) return false;
+//			if (!checkEOL()) return false;
 
 			
 			SelectMessage = StringConstant ;
@@ -8907,7 +8915,7 @@ private boolean doUserFunction(){
 		    
 		    NumericVarValues.set(SaveValueIndex, (double) SelectedItem); // Put the item selected into the var
 		    
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return checkEOL(false);} // If no comma then not long press var
+			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return checkEOL();} // If no comma then not long press var
 			++LineIndex;
 			
 			if (!getNVar()) return false;									// Get the long press var
@@ -8916,7 +8924,7 @@ private boolean doUserFunction(){
 			NumericVarValues.set(theValueIndex, (double) isLongPress);		// Set the return value	
 
 		  
-			return checkEOL(false);
+			return checkEOL();
 	  }
 	  
 	  private boolean executeSPLIT(){
@@ -8947,7 +8955,7 @@ private boolean doUserFunction(){
 			if (!evalStringExpression()) return false;    // Get the regular expression string
 			if (SEisLE) return false;
 			String REString = StringConstant ;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			
 			String r[] = new String[1];
 			try {
@@ -8980,7 +8988,7 @@ private boolean doUserFunction(){
 	  
 	  
 	  private boolean executeKBSHOW(){
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 			Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " KBSHOW  " + kbShown );
 
 		  if (kbShown) return true;
@@ -9004,7 +9012,7 @@ private boolean doUserFunction(){
 	  
 	  
 	  private boolean executeKBHIDE(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " KBHIDE  " + kbShown);
 
 		  if (GRFront) {
@@ -9180,7 +9188,7 @@ private boolean doUserFunction(){
 				
 				if(!evalNumericExpression()) return false;
 				double d = EvalNumericExpressionValue;
-				if (!checkEOL(false)) return false;
+				if (!checkEOL()) return false;
 				
 				if (d>0) myVib.cancel(); else myVib.vibrate( Pattern, (int) d) ; // Do the vibrate
 				
@@ -9253,7 +9261,7 @@ private boolean doUserFunction(){
 		   if (!getSVar()) return false;		   
 		   StringVarValues.set(theValueIndex, Result);
 		   
-		   if (!checkEOL(false)) return false;
+		   if (!checkEOL()) return false;
 
 		  
 		  return true;
@@ -9338,7 +9346,7 @@ private boolean doUserFunction(){
     		   if (SEisLE) return false;
     		   String DBname = StringConstant;
     		   
-    			if (!checkEOL(false)) return false;
+    			if (!checkEOL()) return false;
     			
     	     	String state = Environment.getExternalStorageState();   // Make sure the SD is mounted
     	    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
@@ -9380,7 +9388,7 @@ private boolean doUserFunction(){
    		   if (!getVar())return false;							// DB Pointer Variable
 		   if (!VarIsNumeric)return false;						// for the DB table pointer
 		   double d = NumericVarValues.get(theValueIndex);
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 		   if (d == 0.0) {										// If pointer is zero
 			   RunTimeError("Database not opened at:");					// DB has been prviously closed
@@ -10115,7 +10123,7 @@ private boolean doUserFunction(){
 	  
 	  public boolean execute_gr_bitmap_drawinto_start(){
 		   if (!evalNumericExpression()) return false;					// 
-		   if (!checkEOL(false)) return false;
+		   if (!checkEOL()) return false;
 		   int q = (int) (double) EvalNumericExpressionValue;;
 		   if (q<1 | q >= BitmapList.size()){
 			   RunTimeError("Invalid Bitmap Pointer");
@@ -10275,7 +10283,7 @@ private boolean doUserFunction(){
 				   }
 
 			   
-				if (!checkEOL(false)) return false;
+				if (!checkEOL()) return false;
 
 		  drawintoCanvas = null;
 		  DisplayListClear();
@@ -10316,7 +10324,7 @@ private boolean doUserFunction(){
 	  }
 	  
 	  private boolean execute_gr_close(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  
 		  DisplayListClear();                 // Clear the existing display list
 		  
@@ -10332,7 +10340,7 @@ private boolean doUserFunction(){
 	  }
 	  
 	  private boolean execute_gr_render(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  if (GR.drawView == null){				// Make sure drawView has not gone null
 			  Stop = true;
 			  return false;
@@ -10384,7 +10392,7 @@ private boolean doUserFunction(){
 			  if (!evalNumericExpression())return false;							// Get fill
   			  d = EvalNumericExpressionValue;
   			  
-  			if (!checkEOL(false)) return false;
+  			if (!checkEOL()) return false;
 
 
 		   Paint tPaint = newPaint(aPaint);					// Create a newPaint object
@@ -10456,7 +10464,7 @@ private boolean doUserFunction(){
 		   d = EvalNumericExpressionValue;
 		  aBundle.putInt("y2", (int) d);
 		  
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 
 		  int p = PaintList.size();								// Set the most current paint as the paint
@@ -10499,7 +10507,7 @@ private boolean doUserFunction(){
 		  if (!evalNumericExpression())return false;							// Get bottom
 		   d = EvalNumericExpressionValue;
 		  aBundle.putInt("bottom", (int) d);
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 
 		  int p = PaintList.size();						// Set current paint as this circle's paint
 		  aBundle.putInt("paint", p-1);
@@ -10560,7 +10568,7 @@ private boolean doUserFunction(){
 		   d = EvalNumericExpressionValue;
 		   aBundle.putInt("fill_mode", (int) d);
 		
-		   if (!checkEOL(false)) return false;
+		   if (!checkEOL()) return false;
 
 		  int p = PaintList.size();						// Set the current paint as this objct's paint
 		  aBundle.putInt("paint", p-1);
@@ -10598,7 +10606,7 @@ private boolean doUserFunction(){
 		   d = EvalNumericExpressionValue;
 		  aBundle.putInt("radius", (int) d);
 
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 
 		  int p = PaintList.size();					// Set the current paint as this object's paint
 		  aBundle.putInt("paint", p-1);
@@ -10640,7 +10648,7 @@ private boolean doUserFunction(){
 		   d = EvalNumericExpressionValue;
 		  aBundle.putInt("bottom", (int) d);
 
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 
 		  int p = PaintList.size();						// Set the current paint as this object's paint
 		  aBundle.putInt("paint", p-1);
@@ -10727,7 +10735,7 @@ private boolean doUserFunction(){
 	  }
 
 	  private boolean execute_gr_cls(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  
 		  DisplayListClear();
 		  return true;
@@ -10736,7 +10744,7 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_hide(){
 		 if (!evalNumericExpression())return false;							// Get Object Number
 	     double d = EvalNumericExpressionValue;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 	     if (d<0 || d>= DisplayList.size()){
 	    	 Show("Hide parameter out of range");
 	    	 Show(ExecutingLineBuffer);
@@ -10756,7 +10764,7 @@ private boolean doUserFunction(){
 		    	 RunTimeError("Show parameter out of range");
 		    	 return false;
 		     }
-				if (!checkEOL(false)) return false;
+				if (!checkEOL()) return false;
 		     Bundle b = DisplayList.get((int) d);     // Get the specified display object
 		     b.putInt("hide", 0);					  // Set hide to false
 		     DisplayList.set((int) d, b);			  // put the modified object back
@@ -10789,7 +10797,7 @@ private boolean doUserFunction(){
 		     if (!getNVar()) return false;
 		  	 NumericVarValues.set(theValueIndex, (double) y);
 
-			 if (!checkEOL(false)) return false;
+			 if (!checkEOL()) return false;
 
 		  return true;
 	  }
@@ -10820,7 +10828,7 @@ private boolean doUserFunction(){
 			  ++LineIndex;
 			  
 			  if (getNVar()){
-//				  if (!checkEOL(false)) return false;
+//				  if (!checkEOL()) return false;
 				  int value = b.getInt(parm);
 				  NumericVarValues.set(theValueIndex, (double) value);
 				  return true;
@@ -10831,7 +10839,7 @@ private boolean doUserFunction(){
 			  }
 			  
 			  if (!getSVar()) return false;
-			  if (!checkEOL(false)) return false;
+			  if (!checkEOL()) return false;
 
 			  String theText = b.getString(parm);
 			  StringVarValues.set(theValueIndex, theText);
@@ -10855,7 +10863,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Graphic Y variable
 		   if (!VarIsNumeric)return false;						// 
 		   int SaveYIndex = theValueIndex;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 		   double flag = 0.0;
 		   if (NewTouch[p]) {					// If touched
@@ -10895,7 +10903,7 @@ private boolean doUserFunction(){
 			  if (!evalNumericExpression())return false;							// Get bottom
 			  double bottom = EvalNumericExpressionValue;
 
-			  if (!checkEOL(false)) return false;
+			  if (!checkEOL()) return false;
 
 			   boolean flag = false;
 			   if (NewTouch[p]) {					// If touched
@@ -10943,7 +10951,7 @@ private boolean doUserFunction(){
 		  if (SEisLE) return false;
 		  aBundle.putString("text", StringConstant);
 		  
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 
 		  int p = PaintList.size();												// Set the current paint	
 		  aBundle.putInt("paint", p-1);											// as the text paint
@@ -10966,7 +10974,7 @@ private boolean doUserFunction(){
 				  RunTimeError( "Align value not 1, 2 or 3 at ");
 				  return false;
 			  }
-				if (!checkEOL(false)) return false;
+				if (!checkEOL()) return false;
 			  aPaint = newPaint(tPaint);				// Set the new current paint
 		      PaintListAdd(aPaint);						// and add it to the paint list
 			  return true;
@@ -10976,7 +10984,7 @@ private boolean doUserFunction(){
 			Paint tPaint = newPaint(aPaint);            // Clone the current paint
 			if (!evalNumericExpression())return false;   // Get desired size
 			double d = EvalNumericExpressionValue;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			if (d < 1){
 				RunTimeError( "must be > 0");
 				return false;
@@ -10990,7 +10998,7 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_text_underline(){
 			Paint tPaint = newPaint(aPaint);
 			if (!evalNumericExpression())return false;							// Get boolean
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			double d = EvalNumericExpressionValue;
 			if (d==0) tPaint.setUnderlineText(false);
 			else tPaint.setUnderlineText(true);
@@ -11004,7 +11012,7 @@ private boolean doUserFunction(){
 			Paint tPaint = newPaint(aPaint);
 			if (!evalNumericExpression())return false;							// Get Skew
 			double d = EvalNumericExpressionValue;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			tPaint.setTextSkewX((float)d);
 			 aPaint = newPaint(tPaint);
 			 PaintListAdd(aPaint);
@@ -11015,7 +11023,7 @@ private boolean doUserFunction(){
 			Paint tPaint = newPaint(aPaint);
 			if (!evalNumericExpression())return false;							// Get boolean 
 			double d = EvalNumericExpressionValue;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			int flag = tPaint.getFlags();
 			if ( d==0) flag = flag & 0xdf;
 			else flag = flag | 0x20;
@@ -11030,7 +11038,7 @@ private boolean doUserFunction(){
 			Paint tPaint = newPaint(aPaint);
 			if (!evalNumericExpression())return false;							// Get boolean 
 			double d = EvalNumericExpressionValue;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			int flag = tPaint.getFlags();
 			if ( d==0) flag = flag & 0xef;
 			else flag = flag | 0x10;
@@ -11049,7 +11057,7 @@ private boolean doUserFunction(){
 		   ++LineIndex;
 		   
 		   if (!evalStringExpression()) return false;			// Get the string
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		   
 		   float w = aPaint.measureText(StringConstant);        // Get the strings width
 		   NumericVarValues.set(SaveValueIndex, (double) w);    // Save the width into the var
@@ -11090,7 +11098,7 @@ private boolean doUserFunction(){
 
 		   if (!evalStringExpression()) return false;							// Get the file path
 		   if (SEisLE) return false;
-		   if (!checkEOL(false)) return false;
+		   if (!checkEOL()) return false;
 		   String fileName = StringConstant;									// The filename as given by the user
 
 		   String fn0 = "/sdcard/"+ AppPath + "/data/" + fileName;				// Add the path to the filename
@@ -11157,7 +11165,7 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_gr_bitmap_delete(){
 		   if (!evalNumericExpression()) return false;					// 
-		   if (!checkEOL(false)) return false;
+		   if (!checkEOL()) return false;
 		   int q = (int) (double) EvalNumericExpressionValue;;
 		   if (q<1 | q >= BitmapList.size()){
 			   RunTimeError("Invalid Bitmap Pointer");
@@ -11212,7 +11220,7 @@ private boolean doUserFunction(){
 				if (!evalNumericExpression())return false;
 				if (EvalNumericExpressionValue == 0.0) parm = false;
 			}
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 			if (Width == 0 || Height == 0){
 				RunTimeError("Width and Height must not be zero");
@@ -11265,7 +11273,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Get the width variable
 		   if (!VarIsNumeric)return false;						
 		   NumericVarValues.set(theValueIndex, (double) h);     // Set the width value
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		   
 		  return true;
 	  }
@@ -11305,7 +11313,7 @@ private boolean doUserFunction(){
 
 		  if (!evalNumericExpression())return false;							// Get height
 		  int height = (int) (double) EvalNumericExpressionValue;
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 		  
 		  
 		  try {
@@ -11362,7 +11370,7 @@ private boolean doUserFunction(){
 		   d = EvalNumericExpressionValue;
 		  aBundle.putInt("y", (int) d);
 		  
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  int p = PaintList.size();						// Set current paint as this circle's paint
 		  aBundle.putInt("paint", p-1);
 		  
@@ -11396,7 +11404,7 @@ private boolean doUserFunction(){
 			   return false;
 		   }
 		   
-		   if (!checkEOL(false)) return false;
+		   if (!checkEOL()) return false;
 		   
 		   try{
 			   aBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
@@ -11441,7 +11449,7 @@ private boolean doUserFunction(){
 				  if (!VarIsNumeric) return false;
 				  NumericVarValues.set(theValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
 			  }
-				if (!checkEOL(false)) return false;
+				if (!checkEOL()) return false;
 
 			  DisplayListAdd(aBundle);          // Put the new object into the display list
 
@@ -11457,7 +11465,7 @@ private boolean doUserFunction(){
 			  if (!VarIsNumeric) return false;
 			  NumericVarValues.set(theValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
 		  }
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  
 		  DisplayListAdd(aBundle);					// add the object to the display list
 		  return true;
@@ -11515,7 +11523,7 @@ private boolean doUserFunction(){
 
 			  b.putInt(parm, value);
 		  }
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 		  DisplayList.set(index, b);
 
@@ -11526,7 +11534,7 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_orientation(){
 
 		  if (!evalNumericExpression())return false; // get the mode (landscape or portrait)							
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  double d = EvalNumericExpressionValue;
 		  GR.drawView.SetOrientation((int) (double) d);
 		  return true;
@@ -11542,7 +11550,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Heigth Variable
 		   if (!VarIsNumeric)return false;						// 
 		   NumericVarValues.set(theValueIndex, (double) GR.Heigth); 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 		  return true;
 	  }
@@ -11558,7 +11566,7 @@ private boolean doUserFunction(){
 			  startActivity(GRclass);
 			  GRFront = true;
 		  }
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  try {Thread.sleep(100);}catch(InterruptedException e){};
 		  return true;
 	  }
@@ -11722,7 +11730,7 @@ private boolean doUserFunction(){
 
 	  		if (!getNVar())return false;									// Green Blue
 	  		NumericVarValues.set(theValueIndex, (double) blue);
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  
 		  return true;
 	  }
@@ -11769,7 +11777,7 @@ private boolean doUserFunction(){
 					}
 			}
 			
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			
             boolean retval = true;
             GR.drawView.setDrawingCacheEnabled(true);
@@ -11890,7 +11898,7 @@ private boolean doUserFunction(){
 					}
 			}
 			
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			
 			boolean retval = writeBitmapToFile(SrcBitMap, fn, quality);
 
@@ -11910,7 +11918,7 @@ private boolean doUserFunction(){
 			  
 			if (!evalNumericExpression())return false;							// Get y
 			double y = EvalNumericExpressionValue;
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 			
 			GR.scaleX = (float) x;
 			GR.scaleY = (float) y;
@@ -11963,7 +11971,7 @@ private boolean doUserFunction(){
 			  }
 			  aBundle.putInt("RO", (int) d);
 		  }
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 
 
 		  int p = PaintList.size();						// Set current paint as this circle's paint
@@ -12321,7 +12329,7 @@ private boolean doUserFunction(){
 		  if (!evalStringExpression()) return false;							// Get the file path
 		  if (SEisLE) return false;
 			
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 		  
 		   String fileName = StringConstant;									// The filename as given by the user
 
@@ -12398,7 +12406,7 @@ private boolean doUserFunction(){
 			  return false;
 		  }
 		  
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 
 		  MediaPlayer aMP = theMPList.get(index);
 		  if (aMP == null) return true;
@@ -12424,7 +12432,7 @@ private boolean doUserFunction(){
 			  return false;
 		  }
 			
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 		  
 		  MediaPlayer aMP = theMPList.get(index);
 		  if (aMP == null){
@@ -12487,7 +12495,7 @@ private boolean doUserFunction(){
 			  PlayIsDone = true;		  }
 		  
 		  if (!getNVar())return false;	
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 		  double d = 0;
 		  if (PlayIsDone) d =1;
 		  NumericVarValues.set(theValueIndex, d);
@@ -12495,7 +12503,7 @@ private boolean doUserFunction(){
 	  }
 	  
 	  private boolean execute_audio_loop(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  if (theMP == null){
 			   Show("Audio not playing at:");
 			   Show (ExecutingLineBuffer);
@@ -12510,7 +12518,7 @@ private boolean doUserFunction(){
 
 	  
 	  private boolean execute_audio_stop(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 			if (theMP == null) return true;                               // if theMP is null, Media player has stopped
 //		  MediaPlayer.setOnSeekCompleteListener (mSeekListener);
@@ -12526,7 +12534,7 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_audio_pause(){
 			
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 		  if (theMP == null) return true;                               // if theMP is null, Media player has stopped
 	  	  try {Run.theMP.pause();} catch (Exception e) {
 				RunTimeError("Error: " + e );
@@ -12553,7 +12561,7 @@ private boolean doUserFunction(){
 		  float right = (float) d;
 		  setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		  theMP.setVolume(left, right);
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 
 		  return true;
 	  }
@@ -12567,7 +12575,7 @@ private boolean doUserFunction(){
 		  if (!getNVar())return false;											
 		  NumericVarValues.set(theValueIndex, (double)theMP.getCurrentPosition());
 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 	  
@@ -12581,7 +12589,7 @@ private boolean doUserFunction(){
 		  double d = EvalNumericExpressionValue;
 		  int dd = (int) d;
 		  theMP.seekTo(dd); 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 	  
@@ -12600,7 +12608,7 @@ private boolean doUserFunction(){
 			  RunTimeError("Invalid Player List Value");
 			  return false;
 		  }
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 		  
 		  MediaPlayer aMP = theMPList.get(index);
@@ -12803,7 +12811,7 @@ private boolean doUserFunction(){
 		  } while (ExecutingLineBuffer.charAt(LineIndex)==',');
 
 
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 		  GetSensorList = false;				// Signals with SensorsActivity class
 		  SensorsStop = false;					// Will be set when SensorsActivity should stop
 		  SensorsRunning = false;				// will be set true when SensorsActivity thread is running
@@ -12874,7 +12882,7 @@ private boolean doUserFunction(){
 			   if (!VarIsNumeric)return false;						// 
 			   NumericVarValues.set(theValueIndex, SensorValues[type][3]); 
 				
-			   if (!checkEOL(false)) return false;
+			   if (!checkEOL()) return false;
 		  
 			   return true;
 	  }
@@ -12930,13 +12938,13 @@ private boolean doUserFunction(){
 		   if (!VarIsNumeric)return false;						// 
 		   NumericVarValues.set(theValueIndex, (double) mOrientation[2]); 
 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 
 		  return true;
 	  }
 	  
  	  private boolean execute_sensors_close(){
- 			if (!checkEOL(false)) return false;
+ 			if (!checkEOL()) return false;
 		  SensorsStop = true;     // Signals SensorsActivity to stop
 		  SensorsClass = null;    // Tell everyone that Sensors are closed
 		  return true;
@@ -13007,7 +13015,7 @@ private boolean doUserFunction(){
 	  		}
 	  
 	  public boolean execute_gps_open(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  if (theGPS != null) return true;    // If already opened.....
 		  
 		  GPSoff = false;                                   // If true, signals GPS thread to stop and go away
@@ -13031,7 +13039,7 @@ private boolean doUserFunction(){
 	  }
 	  
 	  public boolean execute_gps_close(){
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  GPSoff = true;						// Tell GPS thread to commit sepuku
 		  theGPS = null;						// Says that GPS is not opened.
 		  return true;
@@ -13041,7 +13049,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Sensor Variable
 		   if (!VarIsNumeric)return false;
 		   NumericVarValues.set(theValueIndex, GPS.Altitude);   // Set value into variable
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 	  
@@ -13049,7 +13057,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Sensor Variable
 		   if (!VarIsNumeric)return false;
 		   NumericVarValues.set(theValueIndex, GPS.Latitude); 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 
@@ -13057,7 +13065,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Sensor Variable
 		   if (!VarIsNumeric)return false;
 		   NumericVarValues.set(theValueIndex, GPS.Longitude); 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 
@@ -13065,7 +13073,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Sensor Variable
 		   if (!VarIsNumeric)return false;
 		   NumericVarValues.set(theValueIndex, (double) GPS.Bearing); 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 
@@ -13073,7 +13081,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Sensor Variable
 		   if (!VarIsNumeric)return false;
 		   NumericVarValues.set(theValueIndex, (double) GPS.Accuracy); 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 
@@ -13081,7 +13089,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Sensor Variable
 		   if (!VarIsNumeric)return false;
 		   NumericVarValues.set(theValueIndex,(double) GPS.Speed); 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 
@@ -13089,7 +13097,7 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Sensor Variable
 		   if (!VarIsNumeric)return false;
 		   NumericVarValues.set(theValueIndex,(double) GPS.Time); 
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 
@@ -13098,7 +13106,7 @@ private boolean doUserFunction(){
 		  if (!getVar()){SyntaxError(); return false;}
 		  if (VarIsNumeric){SyntaxError(); return false;}
 		  StringVarValues.set(theValueIndex, GPS.Provider);
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		  return true;
 	  }
 	  
@@ -14929,7 +14937,7 @@ private boolean doUserFunction(){
 			  if (data == null) data = "";
 		  }else data ="";									// If no clip, set data to null
 		  StringVarValues.set(theValueIndex, data);         // Return the result to user
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		return true;
 	}
 	
@@ -14941,7 +14949,7 @@ private boolean doUserFunction(){
 		CharSequence cs = StringConstant;
 		ClipData clip = ClipData.newPlainText("simple text",cs);
 		clipboard.setPrimaryClip(clip);
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		return true;
 	}
 	*/
@@ -14955,7 +14963,7 @@ private boolean doUserFunction(){
 			  data = data1.toString();       
 		  }else data ="";									// If no clip, set data to null
 		  StringVarValues.set(theValueIndex, data);         // Return the result to user
-			if (!checkEOL(false)) return false;
+			if (!checkEOL()) return false;
 		return true;
 	}
 	
@@ -14963,7 +14971,7 @@ private boolean doUserFunction(){
 		if (!evalStringExpression()) return false;          // Get the string to put into the clipboard
 		if (SEisLE) return false;
 		clipboard.setText(StringConstant);                  // Put the user expression into the clipboard
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		return true;
 	}
 	
@@ -14989,7 +14997,7 @@ private boolean doUserFunction(){
 		
 		if (!getVar())return false;							// Get the destination Var string
 		if (VarIsNumeric)return false;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		
 	    // 8-byte Salt
 	    byte[] salt = {
@@ -15051,7 +15059,7 @@ private boolean doUserFunction(){
 		
 		if (!getVar())return false;							// Get the destination Var string
 		if (VarIsNumeric)return false;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		
 	    // 8-byte Salt
 	    byte[] salt = {
@@ -15699,7 +15707,7 @@ private boolean doUserFunction(){
 			return false;
 		}
 
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		
 		int FileMode;							//     Variables for the bundle
 		boolean eof;
@@ -16790,7 +16798,7 @@ private boolean doUserFunction(){
 		    
 		    private boolean execute_SU_write(){
 		    	if (!evalStringExpression()) return false;
-		    	if (!checkEOL(false)) return false;
+		    	if (!checkEOL()) return false;
 		    	String command = StringConstant;
 		    	try {
 		    		SUoutputStream.writeBytes(command + "\n");  // Write the command followed by new line character
@@ -16851,7 +16859,7 @@ private boolean doUserFunction(){
 		if (!evalStringExpression()){return false;} // Final paramter is the filename
 		if (SEisLE) return false;
 		String theFileName = StringConstant;
-		if (!checkEOL(false)) return false;
+		if (!checkEOL()) return false;
 		
 		int FileMode = FMW;
 		
@@ -17034,7 +17042,7 @@ private boolean doUserFunction(){
 		  if (!evalStringExpression() ) return false;
 		  if (SEisLE) return false;
 			
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 		  
 		   String fileName = StringConstant;									// The filename as given by the user
 
@@ -17612,7 +17620,7 @@ private boolean doUserFunction(){
 		  if (evalNumericExpression()){
 			  ShowStatusBar = (int) (double) EvalNumericExpressionValue;
 		  }
-		  if (!checkEOL(false)) return false;
+		  if (!checkEOL()) return false;
 
           htmlIntent= new Intent(this, Web.class);         // Intent variable used to tell if opened
           Web.aWebView = null;							   // Will be set int Web.java
@@ -17702,7 +17710,7 @@ private boolean doUserFunction(){
 			   return false;
 		   }
 		   
-		   if (!checkEOL(false)) return false;
+		   if (!checkEOL()) return false;
 
 		   if (theListsType.get(theListIndex) == list_is_numeric){
 			   RunTimeError("List must be of string type.");
