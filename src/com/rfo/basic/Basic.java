@@ -27,6 +27,8 @@ Copyright (C) 2010, 2011, 2012 Paul Laughton
 
 package com.rfo.basic;
 
+import static com.rfo.basic.Basic.BasicContext;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -53,19 +55,38 @@ import android.os.Environment;
 import java.util.*;
 
 
+
 public class Basic extends ListActivity  {
-    public static int LoadPrefs = 1 ;
+	
+    public static String AppPath = "rfo-basic";             // Set to the path name for application directories
+    public static boolean isAPK = false;					// If building APK, set true
+    public static boolean apkCreateDataDir = false;			// If APK needs a data directory, set true
+    public static boolean apkCreateDataBaseDir = false;     // If APK needs a database director, set true
+    
+    // If there are any files that need to be copied from raw resources into the data directory, list them here
+    // If there are not files to be copied, make one entry of an empty string ("")
+    // Most APKs can leave their files in raw resources and not copy them.
+    // The various run commands will detect the situation and read the files from the raw resources.
+    
+    public static final String loadFileNames [] = {			
+    	"",
+    	"boing.mp3", "cartman.png",
+    	"fly.gif", "galaxy.png", "whee.mp3",
+    	"htmldemo1.html", "htmldemo2.html",
+    	""
+    };
+    
+    
+	public static Boolean DoAutoRun = false;
 	
     private static final String LOGTAG = "Basic";
     private static final String CLASSTAG = Basic.class.getSimpleName();
     public static ArrayList<String> lines;       //Program lines for execution
-
     
     public static Boolean Saved ;				// False when program has changed and not saved
     public static int InitialProgramSize = 0;	// Used to determine if program has changed
     public static String ProgramFileName = "";  // Set when program loaded or saved
     
-    public static Boolean Echo = false;			// Set by preferences
     public static Context BasicContext;			// saved so we do not have to pass it around
     public static Context theRunContext = null;
     
@@ -73,53 +94,36 @@ public class Basic extends ListActivity  {
     public static String SD_ProgramPath = "";		// Used by Load/Save
     public static String IM_ProgramPath = "help";	// Used by Load/Save
     
-    public static Boolean DoAutoRun = false;
     public static Intent theProgramRunner = null;
     
-    public static String AppPath = "";
     
     public static Background theBackground;					// Background task ID
     public static ArrayAdapter AA;
     public static ListView lv ;							    // The output screen list view
     public static ArrayList<String> output;					// The output screen text lines
 
-    
-    @Override
-     protected void onPause() {
-        super.onPause();
-//        Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " onPause");
-    }    
-   
-    @Override
-    protected void onStart() {
-        super.onStart();
-//        Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " onStart");
-    }    
-
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-//        Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " onRestart");
-    }    
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-//        Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " onDestroy");
-    }    
-    
+        
 //  Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " String Var Value =  " + d);
     
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
     	
-
         super.onCreate(savedInstanceState);					// Set up of fresh start
  //       setContentView(R.layout.main);
+        
+        if (isAPK) {
+        	createForAPK();
+        } else {
+        	createForSB();
+        }
+        
+       
+    }
+    
+    private void createForSB() {							// Create code for Standard Basic
 
         BasicContext = getApplicationContext();
-        
-
         
         
 /* If we have entered Basic and there is a program running, then we should not
@@ -131,8 +135,6 @@ public class Basic extends ListActivity  {
         	finish();
         	return;
         }
-        
-        AppPath = "rfo-basic";
         
         InitDirs();											// Initialize Basic directories every time
         													// The user may have put in a new SD Card
@@ -182,6 +184,35 @@ public class Basic extends ListActivity  {
         }
     }
     
+    private void createForAPK() {											// Create code for APK
+    	
+        BasicContext = getApplicationContext();
+
+        // Set AppPath for the name of the directory in the sdcard root where you will be storing data and database files
+// The name can be anything you want it to be as long as it does not interfere with some other applications directory
+        
+        AppPath = "rfo-myapp";                              // Set the I/O path for this application
+        
+// Establish an output screen so that file load progress can be shown.        
+        
+  	  	output = new ArrayList<String>();
+    	AA=new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);  // Establish the output screen
+  	  	lv = getListView();
+  	  	lv.setTextFilterEnabled(false);
+  	  	lv.setTextFilterEnabled(false);
+  	  	lv.setSelection(0);
+  	  	
+// In order to show progress in the user interface we have to start a background thread to 
+// do the actual loading. That background thread will make calls to the UI thread to show
+// show the progress.
+//
+// Once the files are loaded, the background task will start the loaded program running.
+  	  	
+    	theBackground = new Background();						// Start the background task to load
+    	theBackground.execute("");								// sample and graphics
+
+    }
+    
     public static void InitDirs(){
     	
 // Initializes (creates) the directories used by Basic
@@ -211,18 +242,37 @@ public class Basic extends ListActivity  {
 // The SD Card is available and can be writen to. 
     	
     	if (CanWrite){
-        	String PathA = "/sdcard/"+ AppPath + "/source/";  // Source directory
-        	File sdDir = new File(PathA);
-        	sdDir.mkdirs();
-        	PathA = "/sdcard/"+ AppPath + "/source/Sample_Programs";     // help directory
-        	sdDir = new File(PathA);
-        	sdDir.mkdirs();
-         	PathA = "/sdcard/"+ AppPath + "/data";            // data directory
-        	sdDir = new File(PathA);
-        	sdDir.mkdirs();
-        	PathA = "/sdcard/"+ AppPath + "/databases";		// databases directory
-        	sdDir = new File(PathA);
-        	sdDir.mkdirs();
+    		String PathA = "";
+    		File sdDir;
+    		if (!isAPK) {
+    			PathA = "/sdcard/"+ AppPath + "/source/";  					 // Source directory
+        		sdDir = new File(PathA);
+        		sdDir.mkdirs();
+        		
+        		PathA = "/sdcard/"+ AppPath + "/source/Sample_Programs";     // help directory
+        		sdDir = new File(PathA);
+        		sdDir.mkdirs();
+        		
+    			PathA = "/sdcard/"+ AppPath + "/data";            // data directory
+    			sdDir = new File(PathA);
+    			sdDir.mkdirs();
+    			
+    			PathA = "/sdcard/"+ AppPath + "/databases";		// databases directory
+    			sdDir = new File(PathA);
+    			sdDir.mkdirs();
+    		}
+    		
+    		if (isAPK && apkCreateDataDir) {
+    			PathA = "/sdcard/"+ AppPath + "/data";            // data directory
+    			sdDir = new File(PathA);
+    			sdDir.mkdirs();
+    		}
+    		
+    		if (isAPK && apkCreateDataBaseDir) {
+    			PathA = "/sdcard/"+ AppPath + "/databases";		// databases directory
+    			sdDir = new File(PathA);
+    			sdDir.mkdirs();
+    		}
     	}
 
    	
@@ -277,13 +327,38 @@ public class Basic extends ListActivity  {
   
     	        @Override
     	        protected  String doInBackground(String...str ) {
+    	        	
+    	        	if (isAPK) {
+    	        		doBGforAPK();
+    	        	} else {
+    	        		doBGforSB();
+    	        	}
+    	        	return "";
+    	        }
+    	        
+    	        private void doBGforSB() {									// Background code for Standard Basic
     	         	LoadSamples();
-    	        	LoadGraphics();									// and the graphics files too
-    	        	doFirstLoad();									// First load shows a first load basic program
+    	        	LoadGraphics();											// and the graphics files too
+    	        	doFirstLoad();											// First load shows a first load basic program
    	            	DoAutoRun = false;
-    	            startActivity(new Intent(Basic.this, Editor.class));					// 	Goto the Editor
+    	            startActivity(new Intent(Basic.this, Editor.class));	// 	Goto the Editor
     	            finish();
-    	            return "";
+    	        }
+    	        
+    	        private void doBGforAPK() {								// Background code of APK
+    	            InitDirs();											// Initialize Basic directories every time
+    	            LoadGraphics();										// Load the graphics files
+
+    	            Basic.lines = new ArrayList <String>();              // Program will be loaded into this array list
+
+    	            LoadTheFile();                                       // Load the basic program file into memory
+
+    	            theProgramRunner = new Intent(BasicContext, Run.class);		//now go run the program
+    	            theRunContext = null;
+    	            DoAutoRun = true;
+    	            startActivity(Basic.theProgramRunner);               // The program is now running
+    	            finish();
+
     	        }
     	        
     	        @Override
@@ -324,12 +399,48 @@ public class Basic extends ListActivity  {
     		    	lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
     	        }
     	        
+    	  	  private String getRawFileName(String input) {
+    			  
+    			  // Converts a file name with upper and lower case characters
+    			  // to a lower case filename.
+    			  // The dot extension is appended to the end of the filename
+    			  // preceeded by "_"
+    			  
+    			  // MyFile.png = myfile_png
+    			  // bigSound.mp3 = bigsound_mp3
+    			  // Earth.jpg = earth_jpg
+    			  
+    			  // if there is no dot extension, returns empty string ""
+    			  
+    			  // If the isAudio flag is true then
+    			  // the _mp3 (or whatever) will not be appended
+    			  
+    			  String output = "";                   // Set to empty string
+    			  input = input.toLowerCase();			// Convert to lower case
+    			  int index = input.indexOf(".");		// Find the dot
+    			  if (index == -1) return input;		// if no dot, return the input as is
+    			  output = input.substring(0, index);   // isolate suff in front of dot
+    			  return output;						// return the output filename
+    		  }
+
+    	        
     	        private void LoadGraphics(){
     	        	
     	        	// Loads the icons and audio used for the example programs
     	        	// The files are copied form res.raw to the SD Card
+    	        	int resID;
+    	        	String packageName = Basic.BasicContext.getPackageName();
+    	        	
+    	        	for (int index = 0; index <=loadFileNames.length; ++index) {
+    	        		if (loadFileNames[index].equals("") )return;
+    	        		String fn = getRawFileName(loadFileNames[index]);
+    	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", packageName);
+		    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+	        	 		String PathA = "/sdcard/"+ AppPath + "/data/" + loadFileNames[index];
+	        	 		Load1Graphic(inputStream, PathA);
+    	        	}
     	        	    	    	
-    	        	        InputStream inputStream = BasicContext.getResources().openRawResource(R.raw.galaxy);
+/*    	        	        InputStream inputStream = BasicContext.getResources().openRawResource(R.raw.galaxy);
     	        	 		String PathA = "/sdcard/"+ AppPath + "/data/Galaxy.png";
     	        	 		Load1Graphic(inputStream, PathA);
     	        	 		
@@ -356,7 +467,7 @@ public class Basic extends ListActivity  {
     	        	  		inputStream = BasicContext.getResources().openRawResource(R.raw.htmldemo2);
     	        	        PathA = "/sdcard/"+ AppPath + "/data/htmlDemo2.html";
     	        	  		Load1Graphic(inputStream, PathA);
-    	        	 
+*/    	        	 
     	        	                  
     	        	    }
     	        	    
@@ -498,7 +609,39 @@ public class Basic extends ListActivity  {
     	        		   ;  // Initialize the Display Program Lines
     	        	       Basic.InitialProgramSize = Editor.DisplayText.length();
     	        	      Saved = true;
-    	        	    };
-   }
+    	        	    }
+    	        
+    	        private void LoadTheFile(){
+    	        	
+    	        	// Reads the program file from res.raw/my_program and 
+    	            // puts it into memory
+    	        	AddProgramLine APL = new AddProgramLine();
+    	        	APL.AddProgramLine();
+    	        	String ResName = "com.rfo.basic:raw/my_program";
+    	        	int ResId = BasicContext.getResources().getIdentifier(ResName, null, null);
+    	            InputStream inputStream = BasicContext.getResources().openRawResource(ResId);
+    	            InputStreamReader inputreader = new InputStreamReader(inputStream);
+    	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
+    	            
+    	            String line = "";
+    	            int count = 0;
+    	            
+    	             try {
+    	               while (( line = buffreader.readLine()) != null) {			 // Read and write one line at a time
+    	            	   APL.AddLine(line, false);                         		 // add the line to memory
+    	            	   ++count;
+    	            	   if (count >= 200){										 // Show progress every 250 lines.
+    	            		   publishProgress(" ");
+    	            		   count = 0;
+    	            	   }
+    	                 }
+    	             } catch (IOException e) {
+    	             }
+    	     		    
+    	         }
+
+    		}
+    
+    
     
 }
