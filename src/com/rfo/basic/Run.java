@@ -1594,8 +1594,9 @@ public class Background extends AsyncTask<String, String, String>{
     		ProgressUpdateCount.reset();	// No progress updates pending yet!
     		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-        	if (FindLabels()){ 				// The execution starts by scanning the source for labels and read.data
+        	if (PreScan()) { 				// The execution starts by scanning the source for labels and read.data
         		
+        	ExecutingLineIndex = 0;			// Just in case PreScan ever changes it
         	flag = RunLoop();
         	       	
         	Stop = true;		// If Stop is not already set, set it so that menu code can display the right thing
@@ -1630,7 +1631,7 @@ public class Background extends AsyncTask<String, String, String>{
   		    cancel(true);		// Done with program. Cancel the background task
         	}
         	
-        	else{              // We get here if there was one or more duplicate labels found during the label scan
+        	else{              // We get here if PreScan found error or duplicate label
         		for (int i=0; i<TempOutputIndex; ++i){				// if new output lines, the send them
         			publishProgress(TempOutput[i]);					// to UI task
         			}
@@ -2630,74 +2631,73 @@ private void trimArray(ArrayList Array, int start){
 	}
 }
 
-private  boolean FindLabels(){						// Find all the labels and read.data in the program
-	int LineNumber = 0;
-	
-	do{
-		if (LineNumber >= Basic.lines.size()) break;
-		ExecutingLineBuffer = Basic.lines.get(LineNumber);        // One line at a time
-		
-		int n = ExecutingLineBuffer.indexOf(":");				  // Check for label
-		if ( n >=0) {											  // if label
-			String name = ExecutingLineBuffer.substring(0, n);	  // get label name
-/*	
- * This code checks for duplicate label names, however, if there is a colon
- * inside a string it will see it as a duplicate label.
- * Also the command SQL.UPDATE has a colon in its syntax.
- * Until these problems are taken care of there will be no checking for
- * duplicate labels.
- * 	
-			for (int i=0; i < LabelNames.size(); ++i) {			  // scan for duplicate name
-				if (LabelNames.get(i).equals(name)) {
-					RunTimeError("Duplicate label name");
-					return false;
-				}
-			}
-*/
-			
-			LabelNames.add(name);									// Not Duplicate, so save it
-			LabelValues.add(LineNumber);							// and its line number
-																	// Check for Interrupt Labels
-			if (name.equals("onerror")) OnErrorLine = LineNumber;
-			if (name.equals("onbackkey")) OnBackKeyLine = LineNumber;
-			if (name.equals("onmenukey")) OnMenuKeyLine = LineNumber;
-			if (name.equals("ontimer")) OnTimerLine = LineNumber;
-			if (name.equals("onkeypress")) OnKeyLine = LineNumber;
-			if (name.equals("ontouch")) OnTouchLine = LineNumber;
-			if (name.equals("onbtreadready")) OnBTReadLine = LineNumber;
-			if (name.equals("onbackground")) OnBGLine = LineNumber;
-			
-		}else if (ExecutingLineBuffer.startsWith("read.data")) {	// Was not a label. Check for READ.DATA
-																	// Is read data
-			LineIndex = 9;											// Set LineIndex just past READ.DATA
-			
-			do {													// Sweep up the data values
-				Bundle b = new Bundle();
-				if (GetStringConstant()) {							// If it is a string
-					b.putBoolean("isNumber", false);				// Create a bundle for it
-					b.putString("string", StringConstant);
-				} else {											// If it is a number
-					double signum = 1.0;							// Assume positive
-					if (isNext('-')) { signum = -1.0; }				// Catch minus sign
-					else if (isNext('+')) { ; }						// If not negative, eat optional '+'
-					if (getNumber()) {								// Get the the rest of the number
-						b.putBoolean("isNumber", true);				// Create a bundle for it
-						b.putDouble("number", signum * GetNumberValue);
-					} else {										// Else is a run time error
-						RunTimeError("Invalid Data Value");
-						return false;
-					}
-				}
-				readData.add(b);									// Add the bundle to the list
-			
-			} while (isNext(','));									// and do again if more data
+// Look for a BASIC! word: [_@#\l]?[_@#\l\d]*
+private  String getWord(String line, int start, boolean stopOnPossibleKeyword) {
+	int max = line.length();
+	if (start >= max || start < 0) { return ""; }
+	int li = start;
+	char c = line.charAt(li);
+	if (c == '_' || c == '@' || c == '#' || (c >= 'a' && c <= 'z')) { // if first character matches
+		do {														// there's a word
+			if (++li >= max) break; 								// done if no more characters
+ 
+			if (stopOnPossibleKeyword &&							// caller wants to stop at keyword
+				line.startsWith(PossibleKeyWord, li)) { break; }	// THEN, TO, or STEP
 
-			if (!checkEOL(false)) { return false; }					// Nothing after the number or string
+			c = line.charAt(li);									// get next character
 		}
-			
-		++LineNumber;												// Go to next line
+		while (c == '_' || c == '@' || c == '#' ||					// and check it, stop if not valid
+				(c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'));
+	}
+	return line.substring(start, li);
+}
 
-	}while (LineNumber < Basic.lines.size());
+// Store a label and its line number; called from PreScan()
+private boolean storeLabel(String name, int LineNumber) {
+	for (int i = 0; i < LabelNames.size(); ++i) {			  		// scan for duplicate name
+		if (LabelNames.get(i).equals(name)) {
+			RunTimeError("Duplicate label name");
+			return false;
+		}
+	}
+
+	LabelNames.add(name);											// Not Duplicate, so save it
+	LabelValues.add(LineNumber);									// and its line number
+																	// Check for Interrupt Labels
+	if (name.equals("onerror")) OnErrorLine = LineNumber;
+	if (name.equals("onbackkey")) OnBackKeyLine = LineNumber;
+	if (name.equals("onmenukey")) OnMenuKeyLine = LineNumber;
+	if (name.equals("ontimer")) OnTimerLine = LineNumber;
+	if (name.equals("onkeypress")) OnKeyLine = LineNumber;
+	if (name.equals("ontouch")) OnTouchLine = LineNumber;
+	if (name.equals("onbtreadready")) OnBTReadLine = LineNumber;
+	if (name.equals("onbackground")) OnBGLine = LineNumber;
+
+	return checkEOL(false);
+}
+
+// Scan the entire program. Find all the labels and read.data statements.
+// Note: at present it seems nobody downstream needs to have ExecutingLineIndex set.
+private boolean PreScan() {
+	for (int LineNumber = 0; LineNumber < Basic.lines.size(); ++LineNumber) {
+		String line = Basic.lines.get(LineNumber);					// One line at a time
+		
+		int li = line.indexOf(":");									// fast check
+		if ((li <= 0) && (line.charAt(0) != 'r')) { continue; }		// not label or READ.DATA, next line
+
+		ExecutingLineBuffer = line;									// set global for called functions
+		// ExecutingLineIndex = LineNumber;
+		String word = getWord(line, 0, false);
+		LineIndex = word.length();
+
+		if (isNext(':')) {											// if word really is a label
+			if (!storeLabel(word, LineNumber)) { return false; }	// if error or duplicate, report it
+		}
+		else if (line.startsWith("read.data")) {					// Is not a label. If it is READ.DATA
+			LineIndex = 9;											// set LineIndex just past READ.DATA
+			if (!executeREAD_DATA())           { return false; }	// parse and store the data list
+		}
+	}
 	return true;
 }
 
@@ -3200,7 +3200,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		if (!executePHONE_RCV_NEXT())   {SyntaxError(); return false;}
 	        		break;
 	        	case BKWread_data:
-	        		return true;
+	        		return true;		// Do NOT call executeREAD_DATA, that was done in PreScan
 	        	case BKWread_next:
 	        		if (!executeREAD_NEXT())   {SyntaxError(); return false;}
 	        		break;
@@ -3309,25 +3309,12 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
     	VarIsNumeric = true;						// Assume the var is going to be numeric
     	int max = ExecutingLineBuffer.length();
 		
-    	if (LineIndex >= max || LineIndex < 0) return false;
-		
-		if (ExecutingLineBuffer.charAt(LineIndex)=='"'){return false;}   // eliminate string constant
-		
-		int StartVarIndex = LineIndex;				// save start of var index
-			
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c=='_' || c=='@' || c=='#' || (c>='a' && c<='z') ){} 
-		else return false;
-		while (c=='_' || c=='@' || c=='#' || (c>='a' && c<='z') || (c>='0' && c <='9') ){
-			if (!PossibleKeyWord.equals("")) {				// In the special cases where THEN, TO or STEP
-				if (ExecutingLineBuffer.startsWith(PossibleKeyWord, LineIndex))break;
-			}
-			++LineIndex;
-			if (LineIndex >= ExecutingLineBuffer.length() || LineIndex < 0) return false;
-			c = ExecutingLineBuffer.charAt(LineIndex);
-			};
-
-		String var = ExecutingLineBuffer.substring(StartVarIndex,LineIndex);   // Isolate the var characters
+		// For the special cases where a var could be followed by keyword THEN, TO or STEP
+		boolean stopOnPossibleKeyWord = !PossibleKeyWord.equals("");
+																// Isolate the var characters
+		String var = getWord(ExecutingLineBuffer, LineIndex, stopOnPossibleKeyWord);
+		if (var.length() == 0) { return false; }				// length is 0, no var
+		LineIndex += var.length();
 		
 		VarIsNumeric = !isNext('$');							// Is this a string var?
 		if (!VarIsNumeric) var += '$';
@@ -5549,9 +5536,36 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 // ************************************************** Read Commands **********************************
 	
+	// Parse and bundle the data list of a READ.DATA statement
+	// Called from PreScan() and NOT from 
+	private boolean executeREAD_DATA() {
+		do {													// Sweep up the data values
+			Bundle b = new Bundle();
+			if (GetStringConstant()) {							// If it is a string
+				b.putBoolean("isNumber", false);				// Create a bundle for it
+				b.putString("string", StringConstant);
+			}
+			else {												// Should be a number
+				double signum = 1.0;							// Assume positive
+				if (isNext('-')) { signum = -1.0; }				// Catch minus sign
+				else if (isNext('+')) { ; }						// If not negative, eat optional '+'
+
+				if (getNumber()) {								// If it is a number
+					b.putBoolean("isNumber", true);				// Create a bundle for it
+					b.putDouble("number", signum * GetNumberValue);
+				}
+				else {											// Else is a run time error
+					RunTimeError("Invalid Data Value");
+					return false;
+				}
+			}
+			readData.add(b);									// Add the bundle to the list
+		} while (isNext(','));									// and do again if more data
+
+		return checkEOL(false);									// Nothing allowed after scan stops
+	}
+
 	private boolean executeREAD_NEXT(){
-		
-		char c = ' ';
 		
 		do {
 		
@@ -5582,12 +5596,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				StringVarValues.set(theValueIndex, s );			// and put it into the variable
 			}
 		
-			c = ExecutingLineBuffer.charAt(LineIndex);			// Get the next char 
-			++LineIndex;
+		} while (isNext(','));									// loop while there are variables
 		
-		}while (c == ',');										// loop while there are variables
-		
-		return true;
+		return checkEOL(false);
 	}
 	
 	
@@ -5602,7 +5613,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		readNext = newIndex;
 		
-		return true;
+		return checkEOL(false);
 	}
 	
 	
@@ -7551,10 +7562,10 @@ private boolean doUserFunction(){
 					   }
 
 				  
-				  FileEntry.putInt("stream", BISlist.size()); 	 //The stream parm indexes
-				  BISlist.add(bis);								 //into the FISlist
-				  FileTable.add(FileEntry);
-				}
+					}
+				FileEntry.putInt("stream", BISlist.size()); 	 //The stream parm indexes
+				BISlist.add(bis);								 //into the FISlist
+				FileTable.add(FileEntry);
 				  
 			}
 			
@@ -8836,6 +8847,7 @@ private boolean doUserFunction(){
 				}
 				if (theListsType.get(listIndex) != list_is_string){
 					RunTimeError("Not a string list");
+					return false;
 				}
 				SelectList = theLists.get(listIndex);
 				

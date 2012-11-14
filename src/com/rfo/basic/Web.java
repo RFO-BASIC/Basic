@@ -160,8 +160,8 @@ public class Web extends Activity {
         	int index = url.indexOf("FORM?");
         	if (index != -1){
         		String d = "&"+ URLDecoder.decode(url.substring(index+5));
-            	doAddData.addData("FOR", d );
-        		finish();
+          	doAddData.addData("FOR", d );
+//        		finish();
         	}
         }
         
