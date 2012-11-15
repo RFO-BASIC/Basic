@@ -16428,6 +16428,11 @@ private boolean doUserFunction(){
 		            return false;
 		        }
 			  
+			  if (GRopen) {
+				  RunTimeError("Open Bluetooth BEFORE opening graphics.");
+				  return false;
+			  }
+			  
 		    	bt_Secure = true;												// this flag will be used when starting 
 		    	if (evalNumericExpression()) {									// the accept thread in BlueTootChatService
 		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
