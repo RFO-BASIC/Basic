@@ -70,7 +70,7 @@ public class Basic extends ListActivity  {
     
     public static final String loadFileNames [] = {			
     	
-    	"boing.mp3", "cartman.png",
+    	"boing.mp3", "cartman.png", "meow.wav",
     	"fly.gif", "galaxy.png", "whee.mp3",
     	"htmldemo1.html", "htmldemo2.html",
     	""
@@ -527,7 +527,15 @@ public class Basic extends ListActivity  {
     	    // The first thing done is to load the file, the_list. This file contains a list of the files
     	    // to be loaded.
     	    		
-    	            InputStream inputStream = BasicContext.getResources().openRawResource(R.raw.the_list);
+    	    		// Using this round about method to get the resID for the_list
+    	    		// because the the_list will not be there in APKs
+    	    		
+    	        	int resID;
+    	    		String packageName = Basic.BasicContext.getPackageName();
+	        		String fn = getRawFileName("the_list");
+	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", packageName);
+	    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+
     	            InputStreamReader inputreader = new InputStreamReader(inputStream);
     	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
     	            String line;
