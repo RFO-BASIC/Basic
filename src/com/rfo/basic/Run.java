@@ -644,7 +644,6 @@ public class Run extends ListActivity {
     public static boolean background = false;
     public static String errorMsg;
     public static boolean kbShown = false;
-    public static String sbPackageName = "";
     
     public static int OnErrorLine =0 ;              // Line number for OnError: label
     public static int OnBackKeyLine=0;
@@ -1949,7 +1948,6 @@ public void onCreate(Bundle savedInstanceState) {
 	}
 	theWakeLock = null;
 	isOld = true;
-	sbPackageName = "rfo.com" + ".basic";   // Hiding Standard Basic Package Name from APK global replace 
 
 	ProgressUpdateCount = new SynchronizedCounter();		// Count of pending progress updates
 
@@ -6849,7 +6847,7 @@ private boolean doUserFunction(){
 					  
 					   boolean loadRaw = false;												// Assume not loading raw resource
 
-					   if (!packageName.equals(sbPackageName)){							// if not standard BASIC!
+					   if (!Basic.isAPK){							// if not standard BASIC!
 						   																	// then is user APK
 						   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
 					       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
@@ -7534,7 +7532,7 @@ private boolean doUserFunction(){
 					  
 					   boolean loadRaw = false;												// Assume not loading raw resource
 
-					   if (!packageName.equals(sbPackageName)){							// if not standard BASIC!
+					   if (!Basic.isAPK){							// if not standard BASIC!
 						   																	// then is user APK
 						   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
 					       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
@@ -11113,7 +11111,7 @@ private boolean doUserFunction(){
 		  
 		   boolean loadRaw = false;												// Assume not loading raw resource
 
-		   if (!packageName.equals(sbPackageName)){							// if not standard BASIC!
+		   if (!Basic.isAPK){							// if not standard BASIC!
 			   																	// then is user APK
 			   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
 		       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
@@ -12345,7 +12343,7 @@ private boolean doUserFunction(){
 		  
 		   boolean loadRaw = false;												// Assume not loading raw resource
 
-		   if (!packageName.equals(sbPackageName)){							// if not standard BASIC!
+		   if (!Basic.isAPK){							// if not standard BASIC!
 			   																	// then is user APK
 			   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
 		       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
@@ -17063,7 +17061,7 @@ private boolean doUserFunction(){
 		  
 		   boolean loadRaw = false;												// Assume not loading raw resource
 
-		   if (!packageName.equals(sbPackageName)){							// if not standard BASIC!
+		   if (!Basic.isAPK){							// if not standard BASIC!
 			   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
 		       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
 		   }
