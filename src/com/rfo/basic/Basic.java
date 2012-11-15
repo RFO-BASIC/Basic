@@ -60,8 +60,8 @@ public class Basic extends ListActivity  {
 	
     public static String AppPath = "rfo-basic";             // Set to the path name for application directories
     public static boolean isAPK = false;					// If building APK, set true
-    public static boolean apkCreateDataDir = false;			// If APK needs a data directory, set true
-    public static boolean apkCreateDataBaseDir = false;     // If APK needs a database director, set true
+    public static boolean apkCreateDataDir = true;			// If APK needs a data directory, set true
+    public static boolean apkCreateDataBaseDir = true;     // If APK needs a database director, set true
     
     // If there are any files that need to be copied from raw resources into the data directory, list them here
     // If there are not files to be copied, make one entry of an empty string ("")
@@ -69,7 +69,7 @@ public class Basic extends ListActivity  {
     // The various run commands will detect the situation and read the files from the raw resources.
     
     public static final String loadFileNames [] = {			
-    	"",
+    	
     	"boing.mp3", "cartman.png",
     	"fly.gif", "galaxy.png", "whee.mp3",
     	"htmldemo1.html", "htmldemo2.html",
