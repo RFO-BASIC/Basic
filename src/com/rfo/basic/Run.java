@@ -1300,9 +1300,9 @@ public class Run extends ListActivity {
     public static final String TOAST = "toast";
 
     // Intent request codes
-    private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
-    private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
-    private static final int REQUEST_ENABLE_BT = 3;
+    public static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
+    public static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
+    public static final int REQUEST_ENABLE_BT = 3;
     
     public static  UUID MY_UUID_SECURE =
         UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
@@ -1315,17 +1315,17 @@ public class Run extends ListActivity {
     public static boolean bt_Secure;
 
     // Name of the connected device
-    private String mConnectedDeviceName = null;
+    public static String mConnectedDeviceName = null;
     // Array adapter for the conversation thread
-    private StringBuffer mOutStringBuffer;
+    public static StringBuffer mOutStringBuffer;
     // Local Bluetooth adapter
-    private BluetoothAdapter mBluetoothAdapter = null;
+    public static BluetoothAdapter mBluetoothAdapter = null;
     // Member object for the chat services
-    private BluetoothChatService mChatService = null;
+    public static BluetoothChatService mChatService = null;
     //
     public static ArrayList <String> BT_Read_Buffer;
-    BluetoothDevice btConnectDevice = null;
-    public boolean btCSrunning = false;
+    public static BluetoothDevice btConnectDevice = null;
+    public static boolean btCSrunning = false;
     public static boolean btReadReady = false;
     public static int OnBTReadResume = -1;
     public static int OnBTReadLine = 0;
@@ -1846,12 +1846,6 @@ public class Background extends AsyncTask<String, String, String>{
         		}else if (str[i].startsWith("@@7")){
     	            if (mChatService == null){
     	            	mChatService = new BluetoothChatService(context, mHandler);
-
-    	            	// Initialize the buffer for outgoing messages
-    	            	mOutStringBuffer = new StringBuffer("");
-    	            
-    	            	BT_Read_Buffer = new ArrayList<String>();
-    	            
     	            	mChatService.start(bt_Secure);
     	            	btCSrunning = true;
     	            }
@@ -6793,7 +6787,6 @@ private boolean doUserFunction(){
 	    
 	private  boolean executeTEXT_OPEN(){
 													// Open a file
-		Basic.InitDirs();										// Make sure we have base directories.
 		
 		boolean append = false;												// Assume not append
 		char c = ExecutingLineBuffer.charAt(LineIndex);
@@ -6840,7 +6833,7 @@ private boolean doUserFunction(){
 		if (FileMode == FMR){												// Read was seleced
 
 			    	
-					   String fn0 = "/sdcard/"+ AppPath + "/data/" + fileName;				// Add the path to the filename
+					   String fn0 = Basic.filePath + "/data/" + fileName;				// Add the path to the filename
 					   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
 					   
 					   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
@@ -6893,31 +6886,7 @@ private boolean doUserFunction(){
 		}
 		
 		if (FileMode == FMW){										// Write Selected
-    		File sdDir = new File("/sdcard/");
-        	if (!sdDir.exists()|| !sdDir.canWrite()){					// Make sure we can access the card
-        		RunTimeError("SDCRD not available or not writeable.");			// and write to it
-				return false;
-        	}
-        	File lbDir = null;
-		  		 lbDir = new File(sdDir.getAbsoluteFile() + "/"+ AppPath);		// Set the base path
-		  		 lbDir = new File(lbDir.getAbsoluteFile() + "/data");
-		  		 
-        	lbDir.mkdir();
-
-        	File lbDir2 = null;
-        	if (Basic.DataPath.length() != 0){ 
-        		 lbDir2 = new File(lbDir.getAbsoluteFile()+ "/" + Basic.DataPath);		// add the current data pat
-        	}else{
-        		 lbDir2 = new File(lbDir.getAbsoluteFile() + "");
-        	}
-
-        	lbDir2.mkdir();
-        	if (!lbDir2.exists() || !lbDir2.canWrite()){
-        		RunTimeError("Problem opening " + fileName);
-    			return false;
-        	}
-        	File file = new File(lbDir2.getAbsoluteFile()					// Add the filename
-        				+ "/" + fileName);
+        	File file = new File(Basic.filePath + "/data/"+ fileName);
         	if (append){
         		if (!file.exists()){
         		try {
@@ -7468,7 +7437,6 @@ private boolean doUserFunction(){
 
 		private  boolean executeBYTE_OPEN(){
 			// Open a file
-			Basic.InitDirs();										// Make sure we have base directories.
 			
 			boolean append = false;												// Assume not append
 			char c = ExecutingLineBuffer.charAt(LineIndex);
@@ -7525,7 +7493,7 @@ private boolean doUserFunction(){
 					
 				}else {
 					
-					   String fn0 = "/sdcard/"+ AppPath + "/data/" + theFileName;				// Add the path to the filename
+					   String fn0 = Basic.filePath + "/data/" + theFileName;				// Add the path to the filename
 					   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
 					   
 					   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
@@ -7584,31 +7552,7 @@ private boolean doUserFunction(){
 		    		
 
 		    																	//Write to SD Card
-		    		File sdDir = new File("/sdcard/");
-		        	if (!sdDir.exists()|| !sdDir.canWrite()){					// Make sure we can access the card
-		        		RunTimeError("SDCRD not available or not writeable.");			// and write to it
-	    				return false;
-		        	}
-		        	File lbDir = null;
-				  		 lbDir = new File(sdDir.getAbsoluteFile() + "/"+ AppPath);		// Set the base path
-				  		 lbDir = new File(lbDir.getAbsoluteFile() + "/data");
-				  		 
-		        	lbDir.mkdir();
-
-		        	File lbDir2 = null;
-		        	if (Basic.DataPath.length() != 0){ 
-		        		 lbDir2 = new File(lbDir.getAbsoluteFile()+ "/" + Basic.DataPath);		// add the current data pat
-		        	}else{
-		        		 lbDir2 = new File(lbDir.getAbsoluteFile() + "");
-		        	}
-
-		        	lbDir2.mkdir();
-		        	if (!lbDir2.exists() || !lbDir2.canWrite()){
-		        		RunTimeError("Problem opening " + theFileName);
-		    			return false;
-		        	}
-		        	File file = new File(lbDir2.getAbsoluteFile()					// Add the filename
-		        				+ "/" + theFileName);
+		        	File file = new File(Basic.filePath + "/data/" + theFileName);
 		        	if (append){
 		        		if (!file.exists()){
 		            		try {
@@ -7783,31 +7727,7 @@ private boolean doUserFunction(){
 		String theFileName = StringConstant;
 		String FullFileName = "";
 		
-		File sdDir = new File("/sdcard/");
-    	if (!sdDir.exists()|| !sdDir.canWrite()){					// Make sure we can access the card
-    		RunTimeError("SDCRD not available or not writeable.");			// and write to it
-			return false;
-    	}
-    	File lbDir = null;
-	  		 lbDir = new File(sdDir.getAbsoluteFile() + "/"+ AppPath);		// Set the base path
-	  		 lbDir = new File(lbDir.getAbsoluteFile() + "/data");
-	  		 
-    	lbDir.mkdir();
-
-    	File lbDir2 = null;
-    	if (Basic.DataPath.length() != 0){ 
-    		 lbDir2 = new File(lbDir.getAbsoluteFile()+ "/" + Basic.DataPath);		// add the current data pat
-    	}else{
-    		 lbDir2 = new File(lbDir.getAbsoluteFile() + "");
-    	}
-
-    	lbDir2.mkdir();
-    	if (!lbDir2.exists() || !lbDir2.canWrite()){
-    		RunTimeError("Problem opening " + theFileName);
-			return false;
-    	}
-    	File file = new File(lbDir2.getAbsoluteFile()					// Add the filename
-    				+ "/" + theFileName);
+    	File file = new File(Basic.filePath + "/data/" + theFileName);
 
     	try {
     		file.createNewFile();
@@ -8283,21 +8203,11 @@ private boolean doUserFunction(){
 		}
 		
 	private boolean executeMKDIR(){
-		Basic.InitDirs();										// Make sure we have base directories.
 		if (!evalStringExpression())return false;					//get the path
 		if (SEisLE) return false;
 		if (!checkEOL()) return false;
 
-		File sdDir = null;
-		File lbDir = null;
-
-	     		String state = Environment.getExternalStorageState();
-		    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-		    		RunTimeError("SDCRD not available.");
-	        		return false;
-	        	}
-			  	 sdDir = new File("/sdcard/");
-			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/"+ AppPath + "/data/" +StringConstant);
+		  File lbDir = new File(Basic.filePath + "/data/" +StringConstant);
 		  lbDir.mkdirs();
 		  if (!lbDir.exists()){									// did we get a dir?
 			  RunTimeError(StringConstant + " makdr failed");
@@ -8308,7 +8218,6 @@ private boolean doUserFunction(){
 	}
 	
 	private boolean executeRENAME(){
-		Basic.InitDirs();										// Make sure we have base directories.
 		if (!evalStringExpression())return false;					//get the old file name
 		if (SEisLE) return false;
 		String Old = StringConstant;
@@ -8328,7 +8237,7 @@ private boolean doUserFunction(){
 		    		RunTimeError("SDCRD not available.");
 	        		return false;
 	        	}
-				  	 sdDir = new File("/sdcard/" + AppPath + "/data/"  );
+				  	 sdDir = new File(Basic.filePath + "/data/"  );
 			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/" +  Old);
 		  if (!lbDir.exists()){									// did we get a dir?
 			  RunTimeError(Old + " directory/file not in this path");
@@ -8347,7 +8256,6 @@ private boolean doUserFunction(){
 	}
 	
 	private boolean executeDELETE(){
-		Basic.InitDirs();										// Make sure we have base directories.
 
 		  if (!getNVar()) return false;						// get the var to put the size value into
 		  int SaveValueIndex = theValueIndex;
@@ -8368,7 +8276,7 @@ private boolean doUserFunction(){
 		    		RunTimeError("SDCRD not available.");
 	        		return false;
 	        	}
-				  	 sdDir = new File("/sdcard/"+ AppPath + "/data/"  );
+				  	 sdDir = new File(Basic.filePath + "/data/"  );
 			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/" +  StringConstant);
 	/*		  	 
 		  if (!lbDir.exists()){									// did we get a dir?
@@ -8402,10 +8310,7 @@ private boolean doUserFunction(){
     		RunTimeError("SDCARD not available.");
     		return false;
     	}
-    	File sdDir = null;
-    	File lbDir = null;
-		sdDir = new File("/sdcard/" + AppPath);
-	  	lbDir = new File(sdDir.getAbsoluteFile() + "/" +   "/data/" + StringConstant);
+	  	File lbDir = new File(Basic.filePath +   "/data/" + StringConstant);
 
 	  	double  exists = 0;								// Assume file does not exists
 	  	if (lbDir.exists()) exists = 1;
@@ -8414,7 +8319,6 @@ private boolean doUserFunction(){
 	}
 	
 	private boolean executeFILE_SIZE(){
-		Basic.InitDirs();										// Make sure we have base directories.
 		  if (!getNVar()) return false;						// get the var to put the size value into
 		  int SaveValueIndex = theValueIndex;
 	
@@ -8435,7 +8339,7 @@ private boolean doUserFunction(){
 		    		RunTimeError("SDCRD not available.");
 	        		return false;
 	        	}
-				  	 sdDir = new File("/sdcard/"+ AppPath + "/");
+				  	 sdDir = new File(Basic.filePath + "/");
 			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/" + "/data/" +  StringConstant);
 			  	 
 		  if (!lbDir.exists()){									// did we get a dir?
@@ -8450,7 +8354,6 @@ private boolean doUserFunction(){
 	}
 	
 	private boolean executeFILE_ROOTS(){
-		Basic.InitDirs();										// Make sure we have base directories.
 		
 		File lbDir = null;
 
@@ -8461,7 +8364,7 @@ private boolean doUserFunction(){
     		return false;
     	}
 	  	
-	  	lbDir = new File("/sdcard/"+Basic.AppPath+"/data/");
+	  	lbDir = new File(Basic.filePath +"/data/");
 	    String s = "";
 	    
 	  	try {s = lbDir.getCanonicalPath();} catch(IOException e) {};
@@ -8480,23 +8383,12 @@ private boolean doUserFunction(){
 	  	ArrayList <String> FL1 = new ArrayList<String>();
 	  	ArrayList <String> DL1 = new ArrayList<String>();
 
-		Basic.InitDirs();										// Make sure we have base directories.
-
 		if (!evalStringExpression())return false;					//get the path
 		if (SEisLE) return false;
 
 	  	String FL[] = null;
 	 
-		File sdDir = null;
-		File lbDir = null;
-
-	     		String state = Environment.getExternalStorageState();
-		    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-		    		RunTimeError("SDCRD not available.");
-	        		return false;
-	        	}
-			  	 sdDir = new File("/sdcard/");
-			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/"+ AppPath + "/data/"  + StringConstant);
+		  File lbDir = new File(Basic.filePath + "/data/"  + StringConstant);
 			  		
 		  if (!lbDir.exists() || lbDir == null){									// did we get a dir?
 			  RunTimeError(StringConstant + " is invalid path");
@@ -8593,7 +8485,7 @@ private boolean doUserFunction(){
 		  
 		File file = null;
         String  FullFileName = null;
-		FullFileName = "/sdcard/"+ AppPath + "/data";
+		FullFileName = Basic.filePath + "/data";
 
         if (Basic.DataPath.length() != 0){ 
 			FullFileName = FullFileName + Basic.DataPath + "/" + theFileName;  // Add the filename to the base path
@@ -9357,10 +9249,9 @@ private boolean doUserFunction(){
     	    		return false;
     	    	}
 
-    		   Basic.InitDirs();
     		   String fn;
     		   if (DBname.startsWith(":"))  fn = DBname;
-    		   else fn = "/sdcard/"+ AppPath + "/databases/" +DBname; 
+    		   else fn = Basic.filePath + "/databases/" +DBname; 
     		    
     		   File theFile = new File(fn);
 
@@ -11104,7 +10995,7 @@ private boolean doUserFunction(){
 		   if (!checkEOL()) return false;
 		   String fileName = StringConstant;									// The filename as given by the user
 
-		   String fn0 = "/sdcard/"+ AppPath + "/data/" + fileName;				// Add the path to the filename
+		   String fn0 = Basic.filePath + "/data/" + fileName;				// Add the path to the filename
 		   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
 		   
 		   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
@@ -11744,7 +11635,7 @@ private boolean doUserFunction(){
 		if (tFN.endsWith(".JPG")) isPNG = false;						// Test jpg
 		else if (!tFN.endsWith(".PNG")) fn = fn + ".png";				// Test png
 
-		File file = new File("/sdcard/"+Basic.AppPath+"/data/"+fn);		// build full path
+		File file = new File(Basic.filePath +"/data/"+fn);		// build full path
 
 		try {															// Write the file
 			file.createNewFile();
@@ -12336,7 +12227,7 @@ private boolean doUserFunction(){
 		  
 		   String fileName = StringConstant;									// The filename as given by the user
 
-		   String fn0 = "/sdcard/"+ AppPath + "/data/" + fileName;				// Add the path to the filename
+		   String fn0 = Basic.filePath + "/data/" + fileName;				// Add the path to the filename
 		   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
 		   
 		   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
@@ -12629,7 +12520,7 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_audio_record_start(){
 		  if (!evalStringExpression()) return false;
-		  String recordFileName = "/sdcard/"+Basic.AppPath+"/data/" + StringConstant;
+		  String recordFileName = Basic.filePath +"/data/" + StringConstant;
 		  
 		  int source = 0;								// Get optional source
 		  if (ExecutingLineBuffer.charAt(LineIndex) == ','){
@@ -16145,7 +16036,7 @@ private boolean doUserFunction(){
 	  		if (!evalStringExpression()) return false;					// Destination file name
 	  		String destFile = StringConstant;
 	  		
-	  		destFile = "/sdcard/"+Basic.AppPath+"/data/" + destFile;
+	  		destFile = Basic.filePath +"/data/" + destFile;
 	  		
 	  		return ftpDownload(srcFile, destFile);
 		}
@@ -16184,7 +16075,7 @@ private boolean doUserFunction(){
 	  		if (!evalStringExpression()) return false;					// Destination file name
 	  		String destFile = StringConstant;
 	  		
-	  		srcFile = "/sdcard/"+Basic.AppPath+"/data/" + srcFile;
+	  		srcFile = Basic.filePath +"/data/" + srcFile;
 	  		
 	  		return ftpUpload(srcFile, destFile);
 		}
@@ -16426,10 +16317,6 @@ private boolean doUserFunction(){
 		            return false;
 		        }
 			  
-			  if (GRopen) {
-				  RunTimeError("Open Bluetooth BEFORE opening graphics.");
-				  return false;
-			  }
 			  
 		    	bt_Secure = true;												// this flag will be used when starting 
 		    	if (evalNumericExpression()) {									// the accept thread in BlueTootChatService
@@ -16439,8 +16326,13 @@ private boolean doUserFunction(){
 		        
 		        bt_enabled = 0;													// Enable BT Chat Service
 		        bt_state = BluetoothChatService.STATE_NOT_ENABLED;
-	            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-	            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+		        if (GRopen) {
+		        	GR.doEnableBT = true;
+          		  	GR.drawView.postInvalidate();									// Start GR drawing.
+		        }else {
+		        	Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+		        	startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+		        }
 	            while (bt_enabled == 0)											// Wait until enabled
 	            	Thread.yield();
 	            
@@ -16449,12 +16341,13 @@ private boolean doUserFunction(){
 	            	return false;
 	            }
 	            
-	            BT_Read_Buffer = new ArrayList<String>();						// 	Initialize some stuff
 	            bt_state = BluetoothChatService.STATE_NONE;
 	            btConnectDevice = null;
-	            
+            	mOutStringBuffer = new StringBuffer("");
+            	BT_Read_Buffer = new ArrayList<String>();
 	            btCSrunning = false;
-	            Show("@@7");													// Starts the accept thread
+	            
+           		Show("@@7");													// Starts the accept thread
 		        return true;
 
 		  }
@@ -16469,7 +16362,7 @@ private boolean doUserFunction(){
 		        case REQUEST_CONNECT_DEVICE_SECURE:
 		            // When DeviceListActivity returns with a device to connect
 		            if (resultCode == Activity.RESULT_OK) {
-		                connectDevice(data, true);
+		                connectDevice(data, bt_Secure);
 		            }
 		            break;
 		        case REQUEST_CONNECT_DEVICE_INSECURE:
@@ -16497,7 +16390,7 @@ private boolean doUserFunction(){
 		        }
 		    }
 		    
-		    private final Handler mHandler = new Handler() {
+		    public final Handler mHandler = new Handler() {
 		        @Override
 		        public void handleMessage(Message msg) {
 		            switch (msg.what) {
@@ -16537,8 +16430,7 @@ private boolean doUserFunction(){
 		        }
 		    };
 		    
-		    private void connectDevice(Intent data, boolean secure) {
-		    	
+		    public void connectDevice(Intent data, boolean secure) {
 		    	
 		        String address = data.getExtras()
 		            .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
@@ -16551,11 +16443,10 @@ private boolean doUserFunction(){
 		        catch (Exception e){ 
 		        	RunTimeError("Connect error: " + e);
 		        }
-		        // Attempt to connect to the device
 		    }
 
 		    
-		    private boolean execute_BT_status(){
+		    public boolean execute_BT_status(){
 		    	if (!getNVar()) return false;
 		    	NumericVarValues.set(theValueIndex, (double) mChatService.mState);
 		    	int state = mChatService.getState();
@@ -16872,31 +16763,8 @@ private boolean doUserFunction(){
 		int FileMode = FMW;
 		
 		if (FileMode == FMW){										// Write Selected
-    		File sdDir = new File("/sdcard/");
-        	if (!sdDir.exists()|| !sdDir.canWrite()){					// Make sure we can access the card
-        		RunTimeError("SDCRD not available or not writeable.");			// and write to it
-				return false;
-        	}
-        	File lbDir = null;
-		  		 lbDir = new File(sdDir.getAbsoluteFile() + "/"+ AppPath);		// Set the base path
-		  		 lbDir = new File(lbDir.getAbsoluteFile() + "/data");
-		  		 
-        	lbDir.mkdir();
 
-        	File lbDir2 = null;
-        	if (Basic.DataPath.length() != 0){ 
-        		 lbDir2 = new File(lbDir.getAbsoluteFile()+ "/" + Basic.DataPath);		// add the current data pat
-        	}else{
-        		 lbDir2 = new File(lbDir.getAbsoluteFile() + "");
-        	}
-
-        	lbDir2.mkdir();
-        	if (!lbDir2.exists() || !lbDir2.canWrite()){
-        		RunTimeError("Problem opening " + theFileName);
-    			return false;
-        	}
-        	File file = new File(lbDir2.getAbsoluteFile()					// Add the filename
-        				+ "/" + theFileName);
+			File file = new File(Basic.filePath + "/data/" + theFileName);
         	try {
         		file.createNewFile();
         		}catch (Exception e) {
@@ -17054,7 +16922,7 @@ private boolean doUserFunction(){
 		  
 		   String fileName = StringConstant;									// The filename as given by the user
 
-		   String fn0 = "/sdcard/"+ AppPath + "/data/" + fileName;				// Add the path to the filename
+		   String fn0 = Basic.filePath + "/data/" + fileName;				// Add the path to the filename
 		   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
 		   
 		   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
@@ -17762,7 +17630,7 @@ private boolean doUserFunction(){
 		  
 		  Intent intent = new  Intent(this, AutoRun.class);
 		  Bundle bb = new Bundle();
-		  String fn = "/sdcard/"+AppPath + "/source/" + StringConstant;
+		  String fn = Basic.filePath + "/source/" + StringConstant;
 		  
 		  String data = "";
 		  
