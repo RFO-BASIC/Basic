@@ -34,6 +34,7 @@ import java.util.List;
 import android.graphics.Region.Op;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Process;
@@ -81,7 +82,9 @@ public class GR extends Activity {
     public static boolean NullBitMap = false;
     public static InputMethodManager GraphicsImm ;
     public static float Brightness = -1;
+    
     public static boolean doSTT = false;
+    public static boolean doEnableBT = false;
     
     public static final int dNull = 0;
     public static final int dCircle = 1;
@@ -290,6 +293,28 @@ public class GR extends Activity {
 	
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
+        case Run.REQUEST_CONNECT_DEVICE_SECURE:
+            // When DeviceListActivity returns with a device to connect
+            if (resultCode == Activity.RESULT_OK) {
+                connectDevice(data, true);
+            }
+            break;
+        case Run.REQUEST_CONNECT_DEVICE_INSECURE:
+            // When DeviceListActivity returns with a device to connect
+            if (resultCode == Activity.RESULT_OK) {
+                connectDevice(data, Run.bt_Secure);
+            }
+            break;
+        case Run.REQUEST_ENABLE_BT:
+            // When the request to enable Bluetooth returns
+            if (resultCode == Activity.RESULT_OK) {
+                // Bluetooth is now enabled, so set up a chat session
+            	Run.bt_enabled = 1;
+            } else {
+                Run.bt_enabled = -1;
+            }
+            break;
+
         case Run.VOICE_RECOGNITION_REQUEST_CODE:
         	if (resultCode == RESULT_OK){
     	        Run.sttResults = new ArrayList<String>();
@@ -300,6 +325,24 @@ public class GR extends Activity {
         }
     }
     
+    public void connectDevice(Intent data, boolean secure) {
+    	
+    	
+        String address = data.getExtras()
+            .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+        Run.btConnectDevice = null;
+        while (!Run.btCSrunning) Thread.yield();
+        try {
+        	Run.btConnectDevice = Run.mBluetoothAdapter.getRemoteDevice(address);
+	        if ( Run.btConnectDevice != null) Run.mChatService.connect(Run.btConnectDevice, secure);
+        }
+        catch (Exception e){ 
+//        	RunTimeError("Connect error: " + e);
+        }
+        // Attempt to connect to the device
+    }
+
+    
     public void startVoiceRecognitionActivity() {
         Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " VR Start" + Process.myTid());
 
@@ -309,8 +352,11 @@ public class GR extends Activity {
         intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "BASIC! Speech To Text");
         startActivityForResult(intent, Run.VOICE_RECOGNITION_REQUEST_CODE);
     }
-
-
+    
+    public void enableBT() {
+        Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        startActivityForResult(enableIntent, Run.REQUEST_ENABLE_BT);
+    }
     
     public class DrawView extends View  {
         private static final String TAG = "DrawView";
@@ -400,6 +446,17 @@ public class GR extends Activity {
             	Heigth = drawView.getMeasuredHeight();
             }
             
+            if (doEnableBT) {							// If this activity is running
+            	enableBT();								// Bluetooth must be enabled here
+            	doEnableBT = false;
+            }
+       		
+       		if (doSTT) {
+   					startVoiceRecognitionActivity();
+   					doSTT = false;
+       		}
+
+            
         	if (!Rendering) return;		// If Run.java did not ask to render then don't render
         	
             float scale = getResources().getDisplayMetrics().density;
@@ -428,12 +485,6 @@ public class GR extends Activity {
         			}
         		}
         	}
-        	
-       		if (doSTT) {
-   					startVoiceRecognitionActivity();
-   					doSTT = false;
-       		}
-
 
        		Rendering = false;
             

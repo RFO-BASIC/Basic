@@ -60,17 +60,18 @@ public class Basic extends ListActivity  {
 	
     public static String AppPath = "rfo-basic";             // Set to the path name for application directories
     public static boolean isAPK = false;					// If building APK, set true
-    public static boolean apkCreateDataDir = false;			// If APK needs a data directory, set true
-    public static boolean apkCreateDataBaseDir = false;     // If APK needs a database director, set true
+    public static boolean apkCreateDataDir = true;			// If APK needs a /data/ directory, set true
+    public static boolean apkCreateDataBaseDir = true;      // If APK needs a /database/ director, set true
     
     // If there are any files that need to be copied from raw resources into the data directory, list them here
     // If there are not files to be copied, make one entry of an empty string ("")
     // Most APKs can leave their files in raw resources and not copy them.
     // The various run commands will detect the situation and read the files from the raw resources.
+    // Note: If the filename has the ".db" extension, it will be loaded into the /databases/ directory.
     
     public static final String loadFileNames [] = {			
-    	"",
-    	"boing.mp3", "cartman.png",
+    	
+    	"boing.mp3", "cartman.png", "meow.wav",
     	"fly.gif", "galaxy.png", "whee.mp3",
     	"htmldemo1.html", "htmldemo2.html",
     	""
@@ -78,7 +79,7 @@ public class Basic extends ListActivity  {
     
     
 	public static Boolean DoAutoRun = false;
-	
+	public static String filePath = "";
     private static final String LOGTAG = "Basic";
     private static final String CLASSTAG = Basic.class.getSimpleName();
     public static ArrayList<String> lines;       //Program lines for execution
@@ -111,7 +112,7 @@ public class Basic extends ListActivity  {
     	
         super.onCreate(savedInstanceState);					// Set up of fresh start
  //       setContentView(R.layout.main);
-        
+        filePath =  Environment.getExternalStorageDirectory().getPath() + "/" + AppPath;
         if (isAPK) {
         	createForAPK();
         } else {
@@ -245,31 +246,31 @@ public class Basic extends ListActivity  {
     		String PathA = "";
     		File sdDir;
     		if (!isAPK) {
-    			PathA = "/sdcard/"+ AppPath + "/source/";  					 // Source directory
+    			PathA = filePath + "/source/";  					 // Source directory
         		sdDir = new File(PathA);
         		sdDir.mkdirs();
         		
-        		PathA = "/sdcard/"+ AppPath + "/source/Sample_Programs";     // help directory
+        		PathA = filePath + "/source/Sample_Programs";     // help directory
         		sdDir = new File(PathA);
         		sdDir.mkdirs();
         		
-    			PathA = "/sdcard/"+ AppPath + "/data";            // data directory
+    			PathA = filePath + "/data";            // data directory
     			sdDir = new File(PathA);
     			sdDir.mkdirs();
     			
-    			PathA = "/sdcard/"+ AppPath + "/databases";		// databases directory
+    			PathA = filePath + "/databases";		// databases directory
     			sdDir = new File(PathA);
     			sdDir.mkdirs();
     		}
     		
     		if (isAPK && apkCreateDataDir) {
-    			PathA = "/sdcard/"+ AppPath + "/data";            // data directory
+    			PathA = filePath + "/data";            // data directory
     			sdDir = new File(PathA);
     			sdDir.mkdirs();
     		}
     		
     		if (isAPK && apkCreateDataBaseDir) {
-    			PathA = "/sdcard/"+ AppPath + "/databases";		// databases directory
+    			PathA = filePath + "/databases";		// databases directory
     			sdDir = new File(PathA);
     			sdDir.mkdirs();
     		}
@@ -292,7 +293,7 @@ public class Basic extends ListActivity  {
     
     
     private boolean AreSamplesLoaded(){
-    	String PathA = "/sdcard/"+ AppPath + "/source/Sample_Programs";
+    	String PathA = filePath + "/source/Sample_Programs";
 		File sdDir = new File(PathA);
     	sdDir.mkdirs();
     	String FL[] = null;							// Help files have not been loaded  
@@ -313,7 +314,7 @@ public class Basic extends ListActivity  {
     			if (f1.equals(f2)) return true;			               // Compare version numbers
     		}
     		for (int k = 0 ; k< FL.length; ++k){	// If different, empty the directory
-    			File file = new File("/sdcard/"+ AppPath + "/source/Sample_Programs/" + FL[k]);
+    			File file = new File(filePath + "/source/Sample_Programs/" + FL[k]);
     			file.delete();
     		}
     		return false;
@@ -430,44 +431,20 @@ public class Basic extends ListActivity  {
     	        	// The files are copied form res.raw to the SD Card
     	        	int resID;
     	        	String packageName = Basic.BasicContext.getPackageName();
+    	        	String PathA;
     	        	
     	        	for (int index = 0; index <=loadFileNames.length; ++index) {
     	        		if (loadFileNames[index].equals("") )return;
     	        		String fn = getRawFileName(loadFileNames[index]);
     	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", packageName);
 		    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
-	        	 		String PathA = "/sdcard/"+ AppPath + "/data/" + loadFileNames[index];
+		    	        if (loadFileNames[index].endsWith(".db"))
+		    	        	PathA = filePath + "/databases/" + loadFileNames[index];
+		    	        else 
+		    	        	PathA = filePath + "/data/" + loadFileNames[index];
 	        	 		Load1Graphic(inputStream, PathA);
     	        	}
     	        	    	    	
-/*    	        	        InputStream inputStream = BasicContext.getResources().openRawResource(R.raw.galaxy);
-    	        	 		String PathA = "/sdcard/"+ AppPath + "/data/Galaxy.png";
-    	        	 		Load1Graphic(inputStream, PathA);
-    	        	 		
-    	        	        inputStream = BasicContext.getResources().openRawResource(R.raw.cartman);
-    	        	  		PathA = "/sdcard/"+ AppPath + "/data/Cartman.png";
-    	        	  		Load1Graphic(inputStream, PathA);
-
-    	        	        inputStream = BasicContext.getResources().openRawResource(R.raw.boing);
-    	        	        PathA = "/sdcard/"+ AppPath + "/data/boing.mp3";
-    	        	  		Load1Graphic(inputStream, PathA);
-
-    	        	  		inputStream = BasicContext.getResources().openRawResource(R.raw.whee);
-    	        	        PathA = "/sdcard/"+ AppPath + "/data/whee.mp3";
-    	        	  		Load1Graphic(inputStream, PathA);
-    	        	  		
-    	        	  		inputStream = BasicContext.getResources().openRawResource(R.raw.fly);
-    	        	        PathA = "/sdcard/"+ AppPath + "/data/fly.gif";
-    	        	  		Load1Graphic(inputStream, PathA);
-    	        	  		
-    	        	  		inputStream = BasicContext.getResources().openRawResource(R.raw.htmldemo1);
-    	        	        PathA = "/sdcard/"+ AppPath + "/data/htmlDemo1.html";
-    	        	  		Load1Graphic(inputStream, PathA);
-    	        	 
-    	        	  		inputStream = BasicContext.getResources().openRawResource(R.raw.htmldemo2);
-    	        	        PathA = "/sdcard/"+ AppPath + "/data/htmlDemo2.html";
-    	        	  		Load1Graphic(inputStream, PathA);
-*/    	        	 
     	        	                  
     	        	    }
     	        	    
@@ -527,7 +504,15 @@ public class Basic extends ListActivity  {
     	    // The first thing done is to load the file, the_list. This file contains a list of the files
     	    // to be loaded.
     	    		
-    	            InputStream inputStream = BasicContext.getResources().openRawResource(R.raw.the_list);
+    	    		// Using this round about method to get the resID for the_list
+    	    		// because the the_list will not be there in APKs
+    	    		
+    	        	int resID;
+    	    		String packageName = Basic.BasicContext.getPackageName();
+	        		String fn = getRawFileName("the_list");
+	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", packageName);
+	    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+
     	            InputStreamReader inputreader = new InputStreamReader(inputStream);
     	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
     	            String line;
@@ -564,7 +549,7 @@ public class Basic extends ListActivity  {
     	            String line;
 
     	            FileWriter writer = null;
-    	    		String PathA = "/sdcard/"+ AppPath + "/source/Sample_Programs";
+    	    		String PathA = filePath + "/source/Sample_Programs";
     	    		SD_ProgramPath = "Sample_Programs";
     	    		
     	             
