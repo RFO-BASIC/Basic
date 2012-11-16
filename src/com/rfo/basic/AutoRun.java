@@ -72,7 +72,6 @@ public class AutoRun extends Activity {
 		Bundle b = intent.getExtras();
 
 		APL = new AddProgramLine();
-		APL.AddProgramLine();
 		
 		if (b != null) {											// If bundle is not empty
 			String fn = b.getString("fn");							// then go load the file

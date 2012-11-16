@@ -47,7 +47,7 @@ public class AddProgramLine {
     public static int charCount = 0;
 
 	
-	public void AddProgramLine() {		
+	public AddProgramLine() {		
 		charCount = 0;									// Character count = 0
 		lineCharCounts = new ArrayList<Integer>();		// create a new list of line char counts
 		lineCharCounts.add(0);							// First line starts with a zero char count
@@ -58,12 +58,6 @@ public class AddProgramLine {
 		/* Adds one line to Basic.lines		 *  Each line will have all white space characters removed and all characters
 		 *  converted to lower case (unless they are within quotes).    	
 		 */
-
-		// Look for block comments. All lines between block comments
-		// are tossed out
-
-
-    	String Temp = "";
 
     	// Look for block comments. All lines between block comments
     	// are tossed out
@@ -79,34 +73,16 @@ public class AddProgramLine {
 			return;
 		}
 
+    	String Temp = "";
 
-   		for (int i=0; i < line.length(); ++i) {		// do not mess with characters
+		int linelen = line.length();
+   		for (int i=0; i < linelen; ++i) {			// do not mess with characters
 			char c = line.charAt(i);				// between quote marks
 			if (c == '\u201c') c = '"';                    // Change funny quote to real quote
 			if (c == '"') {
 				do {
-					try {
-						if (line.charAt(i + 1) == '=') {
-							if (c == '+') {
-								Temp += "{+&=}";
-								++i;c = 0;
-							} else if (c == '-') {
-								Temp += "{-&=}";
-								++i;c = 0;
-							} else if (c == '*') {
-								Temp += "{*&=}";
-								++i;c = 0;
-							} else if (c == '/') {
-								Temp += "{/&=}";
-								++i;c = 0;
-							}
-						}
-					} catch (StringIndexOutOfBoundsException e) {
-//						Log.e(Editor.LOGTAG, e.getMessage(), e);
-					}
-
 					if (c == '\\') {					// look for \"
-						if (i + 1 >= line.length()) {
+						if (i + 1 >= linelen) {
 							line = line + ' ';
 						}
 						if (line.charAt(i + 1) == '"') {    // and retain it 
@@ -117,23 +93,35 @@ public class AddProgramLine {
 							++i;
 							Temp = Temp + '\r';
 						}
+					} else if ( ((i + 1) < linelen) &&		// Pre-processor:
+							  (line.charAt(i + 1) == '=') && // if +=, -=, *=, /= in string 
+							  ("+-*/".indexOf(c) >= 0) ) {	// hide them temporarily by
+						Temp += "{" + c + "&=}";			// converting to "{+&=}", etc.
+						++i;
 					} else Temp = Temp + c;
 
 					++i;
-					if (i >= line.length()) { c = '"';} else {c = line.charAt(i);}				// just add it in
-					if (c == '\u201c') c = '"';				// Change funny quote to real quote
-				}while (i < line.length() && c != '"');
+					if (i >= linelen) { c = '"'; }			// no closing '"', just add it in
+					else {
+						c = line.charAt(i);					// next character
+						if (c == '\u201c') { c = '"'; }		// Change funny quote to real quote
+					}
+				} while (i < linelen && c != '"');
 				Temp = Temp + c;
 			} else if (c == '%') {					// if the % character appears,
 				break;								// drop it and the rest of the line
-			} else if (c == ' ') {
-				if ((i + 1) < line.length())
-					if (line.charAt(i + 1) == '_') {
-						Temp = Temp + "{+nl}";
+			} else if (c == ' ' || c == '\t') {		// toss out spaces and tabs
+				// Pre-processor: space/tab + '+' at end-of-line is line continuation character
+				if (((i + 1) < linelen) && (line.charAt(i + 1) == '_')) {
+					int j = i + 2;					// scan line after '_', skipping spaces and tabs
+					for (; (j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0); ++j) { ; }
+					if ((j >= linelen) || (line.charAt(j) == '%')) { // eol or comment
+						Temp = Temp + "{+nl}";		// add line continuation marker
 						break;
-					}
-			} else if (c != ' ' && c != '\t') {		// toss out spaces and tabs
-				c = Character.toLowerCase(c);		// convert to lower case
+					}								// else catch '_' on next loop
+				}									// else toss the space or tab
+			} else {
+				c = Character.toLowerCase(c);		// normal character: convert to lower case
 				Temp = Temp + c;						// and add it to the line
 			}
 		}
@@ -151,25 +139,30 @@ public class AddProgramLine {
    		if (Temp.startsWith("!"))Temp = "";			// and pseudo rem lines
    		if (Temp.startsWith("%"))Temp = "";			// and pseudo rem lines
    		if (!Temp.equals("")) {						// and empty lines
-			if (Temp.endsWith("{+nl}")) {    //test for include next line sequence
+   			if (stemp.length() == 0) {					// whole line, or first line of a collection
+   														// connected with continuation markers
+   	   			lineCharCounts.add(charCount);			// add char count to array of char counts
+   			}
+			if (Temp.endsWith("{+nl}")) {    		// Pre-processor: test for include next line sequence
 				stemp = stemp + Temp.substring(0, Temp.length() - 5);  // remove the include next line sequence and collect it
 				return;
 			} else {
 				Temp = stemp + Temp; // add stemp collection to line
 				stemp = "";     // clear the collection
 			}
-		    Temp = shorthand(Temp);
-			Temp = Temp.replace("{+&=}", "+=");
-			Temp = Temp.replace("{-&=}", "-=");
-			Temp = Temp.replace("{*&=}", "*=");
-			Temp = Temp.replace("{/&=}", "/=");
+			Temp = shorthand(Temp);					// Pre-processor: expand C/Java-like operators
+			if (Temp.contains("{")) {				// Pre-processor: out any hidden substrings
+				Temp = Temp.replace("{+&=}", "+=");
+				Temp = Temp.replace("{-&=}", "-=");
+				Temp = Temp.replace("{*&=}", "*=");
+				Temp = Temp.replace("{/&=}", "/=");
+			}
    			Temp = Temp + "\n";						// end the line with New Line
-   			lineCharCounts.add(charCount);			// add char count to array of char counts
    			Basic.lines.add(Temp);					// add to Basic.lines
    		}
 	}
 	
-	public String shorthand(String line) {
+	public String shorthand(String line) {			// Pre-processor: expand C/Java-like operators
 		int ll = line.length();
 		int then = line.indexOf("then");
 		if (then == -1) {
@@ -179,15 +172,19 @@ public class AddProgramLine {
 			if (line.endsWith("++") || line.endsWith("--")) {
 				line = line.substring(0, ll - 2) + "=" + line.substring(0, ll - 1) + "1";
 			}
-			int pe = line.indexOf("+=");
-			int me = line.indexOf("-=");
-			int te = line.indexOf("*=");
-			int de = line.indexOf("/=");
-			int tt=0;
-			if (pe >= 0) {tt = pe;line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + line.substring(tt + 2, ll);}
-			if (me >= 0) {tt = me;line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + line.substring(tt + 2, ll);}
-			if (te >= 0) {tt = te;line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + line.substring(tt + 2, ll);}
-			if (de >= 0) {tt = de;line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + line.substring(tt + 2, ll);}
+			int tt = line.indexOf("+=");
+			if (tt < 0) {
+				tt = line.indexOf("-=");
+				if (tt < 0) {
+					tt = line.indexOf("*=");
+					if (tt < 0) {
+						tt = line.indexOf("/=");
+					}
+				}
+			}
+			if (tt > 0) {
+				line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + line.substring(tt + 2, ll);
+			}
 			return line;
 		}
 		then += 4;
