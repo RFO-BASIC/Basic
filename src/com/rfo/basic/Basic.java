@@ -601,7 +601,6 @@ public class Basic extends ListActivity  {
     	        	// Reads the program file from res.raw/my_program and 
     	            // puts it into memory
     	        	AddProgramLine APL = new AddProgramLine();
-    	        	APL.AddProgramLine();
     	        	String ResName = "com.rfo.basic:raw/my_program";
     	        	int ResId = BasicContext.getResources().getIdentifier(ResName, null, null);
     	            InputStream inputStream = BasicContext.getResources().openRawResource(ResId);

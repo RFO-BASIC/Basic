@@ -688,7 +688,6 @@ public class Editor extends Activity {
 		 */
     	
     	AddProgramLine APL = new AddProgramLine();
-    	APL.AddProgramLine();
     	
 		DisplayText = mText.getText().toString();
 		String Temp = "";
