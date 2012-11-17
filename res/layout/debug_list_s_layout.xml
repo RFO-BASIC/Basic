@@ -28,11 +28,11 @@ You may contact the author, Paul Laughton, at basic@laughton.com
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" 
 	android:orientation="vertical" 
 	android:layout_width="fill_parent" 
-	android:layout_height="fill_parent"
-	android:fillViewport="true">
+	android:layout_height="fill_parent">
 			
 			<ListView 
-				android:id="@+id/debug_list"
+				android:id="@+id/debug_list_s"
+android:choiceMode="singleChoice"
 				android:layout_width="fill_parent"
 				android:layout_height="fill_parent" >
 			</ListView>
