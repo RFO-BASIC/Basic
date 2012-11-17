@@ -1774,6 +1774,7 @@ public class Background extends AsyncTask<String, String, String>{
 									publishProgress("@@H");
 									WaitForSwap =true;
 									do{
+										try{Thread.sleep(0);} catch(InterruptedException e){} // dont sleep
 										/*
 										if(dbSelect){
 											publishProgress("@@I");
@@ -1781,7 +1782,7 @@ public class Background extends AsyncTask<String, String, String>{
 											dbSelect = false;
 							
 											do{
-								
+												try{Thread.sleep(0);} catch(InterruptedException e){} // dont sleep
 											}while(WaitForSelect);
 										}
 										*/
