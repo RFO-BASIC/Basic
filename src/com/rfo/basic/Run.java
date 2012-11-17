@@ -213,6 +213,7 @@ import android.text.format.Time;
 import android.util.Log;
 
 import org.apache.commons.net.ftp.*;
+import android.widget.*;
 
 /* Executes the Basic program. Run splits into two parts.
  * The UI thread part and the background thread part.
@@ -707,8 +708,16 @@ public class Run extends ListActivity {
 	  public boolean WaitForResume = false ; 
 	  public boolean DebuggerStep = false;
   	public boolean DebuggerHalt = false;
+		public boolean WaitForSwap = false;
+		public boolean WaitForSelect = false;
+		public boolean dbSwap = false;
+		public boolean dbSelect = false;
 	  public AlertDialog.Builder DebugDialog;
 	  public AlertDialog theDebugDialog;
+		public AlertDialog.Builder DebugSwapDialog;
+		public AlertDialog theDebugSwapDialog;
+		public AlertDialog.Builder DebugSelectDialog;
+	  public AlertDialog theDebugSelectDialog;
   	public boolean dbDialogScalars;
 	  public boolean dbDialogArray;
 	  public boolean dbDialogList;
@@ -1760,6 +1769,28 @@ public class Background extends AsyncTask<String, String, String>{
 						if (DebuggerStep){
 							publishProgress("@@F");
 						}
+						
+						if (dbSwap){
+									publishProgress("@@H");
+									WaitForSwap =true;
+									do{
+										/*
+										if(dbSelect){
+											publishProgress("@@I");
+											WaitForSelect = true;
+											dbSelect = false;
+							
+											do{
+								
+											}while(WaitForSelect);
+										}
+										*/
+									}while(WaitForSwap);
+					  			publishProgress("@@E");
+									dbSwap = false;
+								}
+								
+						
 					}while(WaitForResume && !DebuggerStep);
 				}
 				
@@ -1868,20 +1899,19 @@ public class Background extends AsyncTask<String, String, String>{
         			doHTMLCommand(str[i].substring(3));
         		}else if (str[i].startsWith("@@D")){
         			startVoiceRecognitionActivity();
-                }else if (str[i].startsWith("@@E")){      					// Input dialog signal
+            }else if (str[i].startsWith("@@E")){      					// Input dialog signal
         			doDebugDialog();
-        			if (DebugDialog != null)
-        			theDebugDialog = DebugDialog.show();				// show the Input dialog box
-        			}
-        		
-        		else if (str[i].startsWith("@@F")){						// Debug step completed
-        			  DebuggerStep = false;
-          			  doDebugDialog();
-          			  theDebugDialog = DebugDialog.show();				// show the Debug dialog box
-        			  
+        		}else if (str[i].startsWith("@@F")){						// Debug step completed
+        			DebuggerStep = false;
+          	  doDebugDialog();
         		}else if (str[i].startsWith("@@G")){					// User canceled dialog with back key or halt
-        			  output.add("Execution halted");
-        		
+        			output.add("Execution halted");
+        		}else if (str[i].startsWith("@@H")){					// Swap dialog called
+							doDebugSwapDialog();
+						}else if (str[i].startsWith("@@I")){					// Select dialog called
+							doDebugSelectDialog();
+						}else if (str[i].startsWith("@@J")){					// Alert dialog var not set called
+						
         		}else {output.add(str[i]);};			// Not a signal, just write msg to screen.
 
         		ProgressUpdateCount.dec();				// decrement count of pending progress updates
@@ -2067,6 +2097,14 @@ private void InitVars(){
  	WatchedList =-1;
 	WatchedStack =-1;
 	WatchedBundle =-1;
+	DebugDialog = null;
+	theDebugDialog = null;
+	DebugSwapDialog = null;
+	theDebugSwapDialog = null;
+	DebugSelectDialog = null;
+	theDebugSelectDialog = null;
+	dbSwap = false;
+	
     
     GrStop = false;						// Signal from GR that it has died
     Stop = false;	   						// Stops program from running
@@ -6118,46 +6156,49 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  PrintShow("@@E");
 			  return true;
 		  }
-		  
-  private void doDebugDialog(){
-		//remove the instance of dialog cleanly
-		if(theDebugDialog != null) theDebugDialog.dismiss();
-		
-		//set dialog layout
-		LayoutInflater inflater = getLayoutInflater(); 
-		View dialoglayout = inflater.inflate(R.layout.debug_dialog_layout, null);
-		
-		String msg="";
-		
-		if(dbDialogScalars) msg = doScalars();
-		if(dbDialogArray) msg = doArray();
-		if(dbDialogList) msg = doList();
-		if(dbDialogStack) msg = doStack();
-		if(dbDialogBundle) msg = doBundle();
-		if(dbDialogWatch) msg = doWatch();
- 
-		//msg+=doFunc();
-	
-		
 			
-			if(dbDialogProgram){
+			
+	private void doDebugDialog(){
+		
+		//remove the instance of dialog cleanly
+		//if(theDebugDialog != null) {theDebugDialog.dismiss();theDebugDialog = null;}
+		//if(theDebugSwapDialog != null) {theDebugSwapDialog.dismiss();theDebugSwapDialog = null;}
+		
+		ArrayList<String> msg = new ArrayList<String>();
+		
+	  if(!dbDialogProgram){
+			msg = doFunc();
+      msg.add ("Executable Line #:    "+Integer.toString(ExecutingLineIndex+1));
+			msg.add("Executing:\n"+ExecutingLineBuffer);
+		}
+		
+		if(dbDialogScalars) msg.addAll(doScalars());
+		if(dbDialogArray) msg.addAll( doArray());
+		if(dbDialogList) msg.addAll(doList());
+		if(dbDialogStack) msg.addAll(doStack());
+		if(dbDialogBundle) msg.addAll( doBundle());
+		if(dbDialogWatch) msg.addAll(doWatch());
+ 
+		if(dbDialogProgram){
 			for (int i = 0; i < Basic.lines.size();++i){
 				if (i==ExecutingLineIndex){
-					msg+= " >>"+Integer.toString(1+i)+": "+Basic.lines.get(i);
-			  }else{	msg += "   "+Integer.toString(1+i)+": "+Basic.lines.get(i);}
+					msg.add(" >>"+Integer.toString(1+i)+": "+Basic.lines.get(i).substring(0,Basic.lines.get(i).length()-1));
+			  }else{	msg.add( "   "+Integer.toString(1+i)+": "+Basic.lines.get(i).substring(0,Basic.lines.get(i).length()-1));}
 			}
-			}
+		}
 			
 		DebugDialog = new AlertDialog.Builder(this);
-		
+	
 		DebugDialog.setCancelable(true);
-		TextView debugView = (TextView)dialoglayout.findViewById(R.id.dialog_layout); 
-		debugView.setText(msg);
-		if(!dbDialogProgram)
-      DebugDialog.setMessage(doFunc()+"Executable Line #:    "+(ExecutingLineIndex+1)+"\n\n"+"Executing:\n"+ExecutingLineBuffer);
+		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		View dialoglayout = inflater.inflate(R.layout.debug_dialog_layout, (ViewGroup) findViewById(R.id.debug_list));
+		ListView debugView = (ListView)dialoglayout.findViewById(R.id.debug_list); 
+		ArrayAdapter<String>dbListAdapter = new ArrayAdapter<String>(this,R.layout.debug_list_layout,msg);
+		debugView.setVerticalScrollBarEnabled(true);
+		debugView.setAdapter(dbListAdapter);
 		
-		DebugDialog.setView(dialoglayout);
 	  DebugDialog.setTitle("Basic! Debugger");
+		
 		DebugDialog.setOnCancelListener(new 
 		DialogInterface.OnCancelListener(){
 		    public void onCancel(DialogInterface arg0) {
@@ -6178,18 +6219,148 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				WaitForResume = true;
 			}
 		});
-		/*    // leave out until the switcher is done.
-		DebugDialog.setNegativeButton("Full Debugger",new 
+
+		  // leave out until the switcher is done.
+		DebugDialog.setNegativeButton("View Swap",new 
 		DialogInterface.OnClickListener(){
 			public void onClick(DialogInterface dialog,int which) {
-			  // put code to start the full debugger.
+				dbSwap = true;
 		}
 	  });
-		*/
+	
+		theDebugDialog = DebugDialog.setView(dialoglayout).show();
+		
+		WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+		lp.copyFrom(theDebugDialog.getWindow().getAttributes());
+		lp.width = WindowManager.LayoutParams.FILL_PARENT;
+		lp.height = WindowManager.LayoutParams.FILL_PARENT;
+		theDebugDialog.getWindow().setAttributes(lp);
+		
+		if(dbDialogProgram){debugView.setSelection (ExecutingLineIndex);}
 	}
-	private String doWatch(){
-		String msg;
-		msg ="Watching:\n";
+	
+	private void doDebugSwapDialog(){
+		//if(theDebugSwapDialog != null) {theDebugSwapDialog.dismiss();theDebugSwapDialog=null;}
+		//if(theDebugDialog != null) {theDebugDialog.dismiss();theDebugDialog=null; }
+		
+		ArrayList<String> msg = new ArrayList<String>();
+		String[] options = new String[]{"Program","Scalars","Array","List","Stack","Bundle","Watch"};
+		msg.addAll(Arrays.asList(options));
+		
+		DebugSwapDialog = new AlertDialog.Builder(this);
+	
+		DebugSwapDialog.setCancelable(true);
+		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		View dialoglayout = inflater.inflate(R.layout.debug_list_s_layout, (ViewGroup) findViewById(R.id.debug_list_s));
+		ListView debugView = (ListView)dialoglayout.findViewById(R.id.debug_list_s); 
+		ArrayAdapter<String>dbListAdapter = new ArrayAdapter<String>(this,R.layout.simple_list_layout_1,msg);
+		debugView.setVerticalScrollBarEnabled(true);
+		debugView.setAdapter(dbListAdapter);
+		debugView.setClickable(true);
+	  DebugSwapDialog.setTitle("Select View:");
+		
+		debugView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id){
+				DialogSelector(position);
+				boolean dosel = false;
+				if(dbDialogArray == true & WatchedArray == -1) dosel = true;
+				if(dbDialogList == true & WatchedList == -1) dosel = true;
+				if(dbDialogStack == true & WatchedStack == -1) dosel = true;
+				if(dbDialogBundle == true & WatchedBundle==-1) dosel = true;
+				if (dosel) {
+					// if the element has not been defined ask if user wishes to do so.
+					// or at least this is where it will go.
+					// for now, default to view program.
+					DialogSelector(0);
+					position =0;
+				}
+				String Name="";
+				switch (position){
+					case 0:
+					Name = "View Program";
+					break;
+					case 1:
+					Name = "View Scalars";
+					break;
+					case 2:
+					Name = "View Array";
+					break;
+					case 3:
+					Name = "View List";
+					break;
+					case 4:
+					Name = "View Stack";
+					break;
+					case 5:
+					Name = "View Bundle";
+					break;
+					case 6:
+					Name = "View Watch";
+					break;
+					case 7:
+					Name = "View Console";
+					break;
+				}
+				
+				Toaster(Name);
+				
+			}
+		});
+		DebugSwapDialog.setOnCancelListener(new 
+		DialogInterface.OnCancelListener(){
+		    public void onCancel(DialogInterface arg0) {
+			  	WaitForSwap = false;
+			  }
+	  });	
+	  DebugSwapDialog.setPositiveButton("Confirm", new 
+		DialogInterface.OnClickListener() {
+	    	public void onClick(DialogInterface dialog,int which) {
+        	WaitForSwap = false;
+					dbSwap = false;
+	    	}
+		});
+		
+		/*  // leave out until the element selector is done.
+		DebugSwapDialog.setNeutralButton("Choose Element",new
+		DialogInterface.OnClickListener(){
+			public void onClick(DialogInterface dialog,int which){
+				WaitForSelect = true;
+				
+			}
+		});
+		*/
+		
+		theDebugSwapDialog = DebugSwapDialog.setView(dialoglayout).show();
+		
+		WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+		lp.copyFrom(theDebugSwapDialog.getWindow().getAttributes());
+		lp.width = WindowManager.LayoutParams.FILL_PARENT;
+		lp.height = WindowManager.LayoutParams.FILL_PARENT;
+		theDebugSwapDialog.getWindow().setAttributes(lp);
+		
+	}
+	private void Toaster(CharSequence msg) {
+		Context context = getApplicationContext();
+		CharSequence text = msg;
+		int duration = Toast.LENGTH_SHORT;
+
+		Toast toast = Toast.makeText(context, text, duration);
+		toast.setGravity(Gravity.TOP | Gravity.CENTER, 0 , 50);
+
+		toast.show();
+
+
+    }
+	private void doDebugSelectDialog(){
+		if(theDebugSelectDialog != null) theDebugSelectDialog.dismiss();
+		
+		ArrayList<String> msg = new ArrayList<String>();
+		
+	}
+	
+	private ArrayList<String> doWatch(){
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add ("Watching:");
 	   
 		int count = VarNames.size();
 		if(!WatchVarIndex.isEmpty()){
@@ -6208,31 +6379,32 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				 	  		else {
 				 		  		Line = Line + Double.toString(NumericVarValues.get(VarIndex.get(wvi)));
 				 	  	}
-				  		msg+=Line+"\n";
+				  		msg.add(Line);
 					 }
-				}else{msg+=Watch_VarNames.get(j)+" = Undefined\n";}
+				}else{msg.add(Watch_VarNames.get(j)+" = Undefined");}
 		  }
-		}else{msg += "\n"+"Undefined.\n";}
+		}else{msg.add( "\n"+"Undefined.");}
 		return msg;
 	}
 	
-	private String doFunc(){
-		String msg = "";
-	
-		 msg += "";
+	private ArrayList<String> doFunc(){
+		ArrayList<String> msg = new ArrayList<String>();
+	  String msgs = "";
 			if(!FunctionStack.isEmpty()){
 					Stack<Bundle> tempStack = (Stack<Bundle>) FunctionStack.clone();
 					do {
-						msg = tempStack.pop().getString("fname")+ msg;
+						msgs =(tempStack.pop().getString("fname"))+ msgs;
 					} while (!tempStack.isEmpty());
-			}else{msg+="MainProgram";}
-		return '\n'+"In Function: "+msg+'\n';
+			}else{msgs+="MainProgram";}
+		msg.add("In Function: "+msgs);
+		return msg;
 	}
 	
-	private String doScalars(){
+	private ArrayList<String> doScalars(){
 			
 			  int count = VarNames.size();
-			  String msg="Scalar Dump\n";
+			  ArrayList<String> msg= new ArrayList<String>();
+				msg.add("Scalar Dump");
 			  for (int i = 0 ; i < count; ++ i){
 				  boolean isString = false;
 				  boolean doIt = true;
@@ -6245,15 +6417,14 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				 	  else {
 				 		  Line = Line + Double.toString(NumericVarValues.get(VarIndex.get(i)));
 				 	  }
-				  	msg+="  "+Line+"\n";
+				  	msg.add("  "+Line);
 				  }
 			  }
-			  msg+="....\n";
 			  return msg;
 	}
-	private String doArray(){
-			  String msg="";
-			  msg+=("Dumping Array " + VarNames.get(WatchedArray) + "]")+'\n';
+	private ArrayList<String> doArray(){
+			  ArrayList<String> msg=new ArrayList<String>();
+			  msg.add("Dumping Array " + VarNames.get(WatchedArray) + "]");
 			  
 				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
 				ArrayEntry = ArrayTable.get(VarIndex.get(WatchedArray));
@@ -6264,21 +6435,19 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if(VarNames.get(WatchedArray).endsWith("$["))ArrayIsNumeric = false;
 				for (int i = 0; i <length; ++i){ 
 					if (ArrayIsNumeric){
-						msg+=(Double.toString(NumericVarValues.get(base+i)))+'\n';
+						msg.add(Double.toString(NumericVarValues.get(base+i)));
 					}
 					else{
-						msg+=(StringVarValues.get(base + i))+'\n';
+						msg.add(StringVarValues.get(base + i));
 					}
 				}
-				
-				msg+=("....")+'\n';
 			  return msg;
 		  }
 			
-			private String doList(){
-				String msg;
+			private ArrayList<String> doList(){
+				ArrayList<String> msg=new ArrayList<String>();
 				
-				msg=("Dumping List " + Double.toString(EvalNumericExpressionValue))+'\n';
+				msg.add("Dumping List " + Double.toString(WatchedList));
 				
 				switch (theListsType.get(WatchedList))						// Get this lists type
 				{
@@ -6286,11 +6455,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 					ArrayList<String> thisStringList = theLists.get(WatchedList);  // Get the string list
 					int length = thisStringList.size();
 					if (length == 0 ){
-						msg += ("Empty List")+'\n';
+						msg.add ("Empty List");
 						break;
 					}
 					for (int i=0; i < length; ++i){
-						msg+=(thisStringList.get(i));			//Get the requested string
+						msg.add(thisStringList.get(i));			//Get the requested string
 					}
 					break;
 					
@@ -6298,11 +6467,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 					ArrayList<Double> thisNumericList = theLists.get(WatchedList);	//Get the numeric list
 					length = thisNumericList.size();
 					if (length == 0 ){
-						msg+=("Empty List")+'\n';
+						msg.add("Empty List");
 						break;
 					}
 					for (int i=0; i < length; ++i){
-						msg+=(Double.toString(thisNumericList.get(i)))+'\n';			//Get the requested string
+						msg.add(Double.toString(thisNumericList.get(i)));			//Get the requested string
 					}
 					break;
 					
@@ -6311,67 +6480,65 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 					//return false;
 			
 				}
-				msg+=("....");
-
 			  return msg;
 		  }
 			
-			private String doStack(){
-			  String msg="";
+			private ArrayList<String> doStack(){
+			  ArrayList<String> msg=new ArrayList<String>();
 
 				Stack thisStack = theStacks.get(WatchedStack);		               // Get the Stack
-				if (thisStack.isEmpty())
-					return("Stack has not been created.");
-				
+				if (thisStack.isEmpty()){
+					msg.add("Stack has not been created.");
+				  return msg;
+				}
 				
 				Stack tempStack = new Stack();
 				tempStack = (Stack) thisStack.clone();
 				
-				msg+=("Dumping stack " + Double.toString(WatchedStack))+'\n';
+				msg.add("Dumping stack " + Double.toString(WatchedStack));
 				
 				switch (theStacksType.get(WatchedStack)){
 				case stack_is_string:												// String type list
 					if (tempStack.isEmpty()){
-						msg+=("Empty Stack")+'\n';
+						msg.add("Empty Stack");
 						break;
 					}
 					do {
 						String thisString = (String) tempStack.pop();
-						msg+=(thisString)+'\n';
+						msg.add(thisString);
 					} while (!tempStack.isEmpty());
 					
 					break;
 					
 				case stack_is_numeric:
 					if (tempStack.isEmpty()){
-						msg+=("Empty Stack")+'\n';
+						msg.add("Empty Stack");
 						break;
 					}
 					do {
 						Double thisNumber = (Double) tempStack.pop();
-						msg+=(Double.toString(thisNumber))+'\n';
+						msg.add(Double.toString(thisNumber));
 					} while (!tempStack.isEmpty());
 					break;
 					
 				default:
-					return("Internal problem. Notify developer");
-
-			
+					msg.add("Internal problem. Notify developer");
+					return msg;
 				}
-				msg +=("....");
 			  return msg;
 			}
 			
-			private String doBundle(){
-					String msg="";
+			private ArrayList<String> doBundle(){
+					ArrayList<String> msg=new ArrayList<String>();
 			    Bundle b = theBundles.get(WatchedBundle);
 			    
-			    msg+=("Dumping Bundle " + Double.toString(WatchedBundle))+'\n';
+			    msg.add("Dumping Bundle " + Double.toString(WatchedBundle));
 			    
 			    Set<String> set= b.keySet();
 			    
 			    if (set.size() == 0){
-			    	return ("Empty Bundle");
+			    	msg.add("Empty Bundle");
+						return msg;
 			    }
 			    
 			    Iterator it = set.iterator();
@@ -6381,20 +6548,16 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			    	if (!s.startsWith("@@@N.")) {
 			    		boolean isNumeric = b.getBoolean("@@@N."+ s);
 			    		if (isNumeric) {
-			    			msg+=(s + ": " + Double.toString(b.getDouble(s)))+'\n';
+			    			msg.add(s + ": " + Double.toString(b.getDouble(s)));
 			    		}else{
-			    			msg+=(s + ": " +  b.getString(s))+'\n';
+			    			msg.add(s + ": " +  b.getString(s));
 			    		}
 			    	}
 			    	
 			    }
-			    
-			    msg+=("....");
-			    
 			  return msg;
 			}
 		  
-		
 
 // ******************************* User Defined Functions ******************************
 
