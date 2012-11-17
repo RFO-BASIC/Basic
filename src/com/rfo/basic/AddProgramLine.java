@@ -111,15 +111,33 @@ public class AddProgramLine {
 			} else if (c == '%') {					// if the % character appears,
 				break;								// drop it and the rest of the line
 			} else if (c == ' ' || c == '\t') {		// toss out spaces and tabs
-				// Pre-processor: space/tab + '+' at end-of-line is line continuation character
-				if (((i + 1) < linelen) && (line.charAt(i + 1) == '_')) {
-					int j = i + 2;					// scan line after '_', skipping spaces and tabs
-					for (; (j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0); ++j) { ; }
+				// Pre-processor: space/tab + '_' at end-of-line is line continuation character
+				int j = i + 1;
+				if ((j < linelen) && (line.charAt(j) == '_')) {		// scan after '_', skipping spaces and tabs
+					for (++j; (j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0); ++j) { ; }
 					if ((j >= linelen) || (line.charAt(j) == '%')) { // eol or comment
-						Temp = Temp + "{+nl}";		// add line continuation marker
+						Temp = Temp + "{+nl}";						// add line continuation marker
 						break;
-					}								// else catch '_' on next loop
-				}									// else toss the space or tab
+					}												// else catch '_' on next loop
+				}													// else toss the space or tab
+			} else if (c == '\\') {							// Pre-processor: check for line continuation
+				int j = i + 1;										// scan after backslash, skipping spaces and tabs
+				for (; (j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0); ++j) { ; }
+				if ((j >= linelen) || (line.charAt(j) == '%')) { 	// eol or comment
+					Temp = Temp + "{+nl}";							// add line continuation marker
+					break;
+				}
+				Temp = Temp + c;									// else add backslash to the line
+			} else if ("@#^&<>*_=?.\\".indexOf(c) >= 0) {	// Pre-processor: check for line continuation
+				int j = i + 1;										// scan after character pair, skipping spaces and tabs
+				if ((j < linelen) && (line.charAt(j) == c)) {
+					for (++j; (j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0); ++j) { ; }
+					if ((j >= linelen) || (line.charAt(j) == '%')) { // eol or comment
+						Temp = Temp + "{+nl}";						// add line continuation marker
+						break;
+					}
+				}
+				Temp = Temp + c;									// else add character to the line
 			} else {
 				c = Character.toLowerCase(c);		// normal character: convert to lower case
 				Temp = Temp + c;						// and add it to the line
