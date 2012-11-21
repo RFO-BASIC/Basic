@@ -68,7 +68,8 @@ public class SUReader {
 				}
 				catch (Exception e){
 				}
-				Run.SU_ReadBuffer.add(input);					// Put the input line into the buffer.
+				if (Run.SU_ReadBuffer != null)
+					Run.SU_ReadBuffer.add(input);					// Put the input line into the buffer.
 			}
 
 		}
