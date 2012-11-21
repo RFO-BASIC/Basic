@@ -94,7 +94,7 @@ public class Format extends ListActivity {
         private Boolean blockQuote = false;
         private Boolean xblockQuote = false;
         private Boolean wasCase = false;
-        private Stack<Integer> swStack = new Stack();
+        private Stack<Integer> swStack = new Stack<Integer>();
         private Boolean skipIndent = false;
 
         @Override
@@ -259,6 +259,8 @@ public class Format extends ListActivity {
 					actualLine = ExpandedKeyWord(Run.Socket_KW, lcLine, actualLine, start);
 				else if (kw.equals("debug."))
 					actualLine = ExpandedKeyWord(Run.Debug_KW, lcLine, actualLine, start);
+				else if (kw.equals("stack."))
+						actualLine = ExpandedKeyWord(Run.Stack_KW, lcLine, actualLine, start);
 				else if (kw.equals("ftp."))
 					actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
 				else if (kw.equals("bt."))
