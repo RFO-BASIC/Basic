@@ -258,7 +258,19 @@ public class BluetoothChatService {
         msg.setData(bundle);
         mHandler.sendMessage(msg);*/
         
+        if (mConnectThread != null) {
+            mConnectThread.cancel();
+            mConnectThread = null;
+        }
+
+        if (mConnectedThread != null) {
+            mConnectedThread.cancel();
+            mConnectedThread = null;
+        }
+        
         // Start the service over to restart listening mode
+
+
         BluetoothChatService.this.start(Run.bt_Secure);
 //    	setState(STATE_NONE);
     }
