@@ -1380,7 +1380,7 @@ public class Run extends ListActivity {
     DataOutputStream SUoutputStream;
     DataInputStream SUinputStream;
     Process SUprocess;
-    public static ArrayList <String> SU_ReadBuffer;
+    public ArrayList <String> SU_ReadBuffer;
     SUReader theSUReader = null;
     
 /***************************************  SOUND POOL  ************************************/
@@ -1887,9 +1887,9 @@ public class Background extends AsyncTask<String, String, String>{
     	            serverIntent = new Intent(context, DeviceListActivity.class);
     	            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
     	            
-        		}else if (str[i].startsWith("@@9")){
-        			theSUReader = new SUReader(context, SUinputStream);
-        			theSUReader.start();
+//        		}else if (str[i].startsWith("@@9")){
+//        			theSUReader = new SUReader(context, SUinputStream);
+//        			theSUReader.start();
         		}else if (str[i].startsWith("@@A")){
         			output.add("");        			
         		}else if (str[i].startsWith("@@B")){
@@ -2289,6 +2289,7 @@ private void InitVars(){
     SUinputStream = null;
     SUprocess = null;
     SU_ReadBuffer = null;
+    theSUReader = null;
     
     theSoundPool = null ;
     
@@ -2396,9 +2397,11 @@ public void cleanUp(){
 			
 			if ( theSUReader != null ){
 				theSUReader.stop();
-	    	theSUReader = null;
-	    	SUprocess = null;
-
+				theSUReader = null;
+			}
+			if (SUprocess != null) {
+				SUprocess.destroy();
+				SUprocess = null;
 			}
 			
 //			InitVars();   // Why not?
@@ -16854,7 +16857,9 @@ private boolean doUserFunction(){
 		            RunTimeError("SU Exception: " + e);
 		            return false;
 		        }
-		        Show("@@9");     // Will be intercepted in the UI thread and start the SUReader.
+		        theSUReader = new SUReader(SUinputStream, SU_ReadBuffer);
+		        theSUReader.start();
+
 		    	return true;
 		    	
 		    }
@@ -16877,13 +16882,15 @@ private boolean doUserFunction(){
 		    
 		    private boolean execute_SU_read_ready(){
 		    	if (!getNVar()) return false;
-		    	NumericVarValues.set(theValueIndex, (double) SU_ReadBuffer.size() ); // Return buffer size
+		    	synchronized (SU_ReadBuffer) {
+		    		NumericVarValues.set(theValueIndex, (double) SU_ReadBuffer.size() ); // Return buffer size
+		    	}
 		    	return true;
 		    }
 
 		    private boolean execute_SU_read_line(){
 		        String msg = "";
-		        synchronized (this){
+		        synchronized (SU_ReadBuffer){
 		        	int index = SU_ReadBuffer.size();
 		        	if (index > 0 ){
 		        		msg = SU_ReadBuffer.get(0);    // Read the first item in the buffer
@@ -16909,6 +16916,9 @@ private boolean doUserFunction(){
 		            RunTimeError("SU Exception: " + e);
 		            return false;	    		
 		    	}
+		    	SUoutputStream = null;
+		    	SUinputStream = null;
+		    	SU_ReadBuffer = null;
 		    	theSUReader = null;
 		    	SUprocess = null;
 
