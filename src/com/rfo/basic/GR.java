@@ -399,8 +399,8 @@ public class GR extends Activity {
         		if ( i > 1 ) break;
             	int pid = event.getPointerId(i);
             	if (pid > 1) break;
-//        		Log.v(GR.LOGTAG, " " + i + ","+pid+"," + action);
-        		Run.TouchX[pid] = (double)event.getX(i);
+        		Log.v(GR.LOGTAG, " " + i + ","+pid+"," + action);
+//        		Run.TouchX[pid] = (double)event.getX(i);
         		Run.TouchY[pid] = (double)event.getY(i);
         		if (action == MotionEvent.ACTION_DOWN ||
         			action == MotionEvent.ACTION_POINTER_DOWN) {

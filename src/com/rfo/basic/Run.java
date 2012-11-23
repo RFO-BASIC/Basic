@@ -284,7 +284,7 @@ public class Run extends ListActivity {
     	"timer.set", "timer.clear", "timer.resume",
     	"time", "key.resume", "menukey.resume",
     	"onmenukey","ontimer", "onkeypress",			// For Format
-    	"ontouch", "onbtreadready",						// For Format
+    	"ongrtouch", "onbtreadready",						// For Format
     	"home", "background.resume","onbackground",
     	"phone.rcv.init", "phone.rcv.next",
     	"read.data", "read.next", "read.from",
@@ -1699,9 +1699,9 @@ public class Background extends AsyncTask<String, String, String>{
          			}
         		} else
 
-        		if (NewTouch[2] ) {
-        			if (OnTouchLine != 0) {
-        				NewTouch[2] = doInterrupt(OnTouchLine);
+        		if (NewTouch[2] ) {									// NewTouch[2] is only used to signal any touch
+        			if (OnTouchLine != 0) {							// and is not tracked like NewTouch[0] and NewTouch[1]
+        				NewTouch[2] = doInterrupt(OnTouchLine);		// used with onGRtouch.
         			}
         		} else
         			
@@ -2695,7 +2695,7 @@ private boolean storeLabel(String name, int LineNumber) {
 	if (name.equals("onmenukey")) OnMenuKeyLine = LineNumber;
 	if (name.equals("ontimer")) OnTimerLine = LineNumber;
 	if (name.equals("onkeypress")) OnKeyLine = LineNumber;
-	if (name.equals("ontouch")) OnTouchLine = LineNumber;
+	if (name.equals("ongrtouch")) OnTouchLine = LineNumber;
 	if (name.equals("onbtreadready")) OnBTReadLine = LineNumber;
 	if (name.equals("onbackground")) OnBGLine = LineNumber;
 	if (name.equals("onconsoletouch")) onCTLine = LineNumber;
