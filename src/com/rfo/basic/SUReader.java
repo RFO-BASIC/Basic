@@ -30,6 +30,7 @@ package com.rfo.basic;
 // A read thread for Superuser read line. Required because read line is blocking.
 
 import java.io.DataInputStream;
+import java.util.ArrayList;
 
 import android.content.Context;
 import android.util.Log;
@@ -38,17 +39,18 @@ public class SUReader {
 	
 	public DataInputStream theReader;
 	public ReadThread theReadThread;
+	ArrayList<String> theReadBuffer;
 	public boolean stop;
 	
-	public SUReader (Context context, DataInputStream stream){ //Constructor
+	public SUReader (DataInputStream stream, ArrayList<String> buffer){ //Constructor
 		theReader = stream;
+		theReadBuffer = buffer;
 	}
 	
 	public synchronized void start(){							// Start
 		theReadThread = new ReadThread();
 		theReadThread.start();
 		stop = false;
-//		theReadThread.Read();	
 	}
 	
 	public void stop(){											// Stop
@@ -68,10 +70,13 @@ public class SUReader {
 				}
 				catch (Exception e){
 				}
-				if (Run.SU_ReadBuffer != null)
-					Run.SU_ReadBuffer.add(input);					// Put the input line into the buffer.
+				if (theReadBuffer != null) {
+					synchronized (theReadBuffer) {
+						if (input == null) { input = ""; }
+						theReadBuffer.add(input);					// Put the input line into the buffer.
+					}
+				}
 			}
-
 		}
 	}
 	
