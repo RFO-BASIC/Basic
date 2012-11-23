@@ -190,7 +190,7 @@ public class BluetoothChatService {
      * Stop all threads
      */
     public synchronized void stop() {
-        if (D) Log.d(TAG, "stop");
+       Log.d(TAG, "stop");
 
         if (mConnectThread != null) {
             mConnectThread.cancel();
@@ -212,6 +212,13 @@ public class BluetoothChatService {
             mInsecureAcceptThread = null;
         }
         setState(STATE_NONE);    	
+    }
+    
+    public synchronized void disconnect() {
+        if (mConnectedThread != null) {
+            mConnectedThread.cancel();
+            mConnectedThread = null;
+        }
     }
 
     /**
@@ -251,14 +258,8 @@ public class BluetoothChatService {
      * Indicate that the connection was lost and notify the UI Activity.
      */
     private void connectionLost() {
-        // Send a failure message back to the Activity
-/*        Message msg = mHandler.obtainMessage(Run.MESSAGE_TOAST);
-        Bundle bundle = new Bundle();
-        bundle.putString(Run.TOAST, "Device connection was lost");
-        msg.setData(bundle);
-        mHandler.sendMessage(msg);*/
-        
-        if (mConnectThread != null) {
+    	
+/*        if (mConnectThread != null) {
             mConnectThread.cancel();
             mConnectThread = null;
         }
@@ -266,7 +267,7 @@ public class BluetoothChatService {
         if (mConnectedThread != null) {
             mConnectedThread.cancel();
             mConnectedThread = null;
-        }
+        }*/
         
         // Start the service over to restart listening mode
 
