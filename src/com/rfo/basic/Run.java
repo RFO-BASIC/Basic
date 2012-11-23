@@ -1697,7 +1697,7 @@ public class Background extends AsyncTask<String, String, String>{
         			if (OnKeyLine != 0) {
         				KeyPressed = doInterrupt(OnKeyLine);
          			}
-        		}
+        		} else
 
         		if (NewTouch[2] ) {
         			if (OnTouchLine != 0) {
@@ -1801,11 +1801,11 @@ public class Background extends AsyncTask<String, String, String>{
         }
         
         private boolean doInterrupt(int gotoLine) {
-        	if (interruptResume != -1 ) return true;   	// If we are handling and interrupt do not cancel this one
+        	if (interruptResume != -1 ) return true;   	// If we are handling an interrupt then do not cancel this one
         	interruptResume = ExecutingLineIndex;	   	// Set the resume Line Number
         	ExecutingLineIndex = gotoLine;			   	// Set the goto line number
         	IfElseStack.push(IEinterrupt);
-        	return false;								//Turn of the interrupt
+        	return false;								//Turn off the interrupt
         }
         
         // AsyncTask.publishProgess is final, no override allowed. Instead, we overload it here
