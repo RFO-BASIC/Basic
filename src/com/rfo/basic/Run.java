@@ -2814,19 +2814,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		if (!executeNext()){SyntaxError();return false;}
 	        		break;
 	        	case BKWgoto:
-	        		if (getVar()) {
-	        			int gln = isLabel(VarNumber);
-	        			if (gln <0){
-	        				RunTimeError("Undefined Label at:");
-	        				return false;
-	        			}
-	        			if (!checkEOL(true)) return false;
-//	        			if (!IfElseStack.empty()) IfElseStack.pop();
-	        			ExecutingLineIndex = gln;
-	        		}else{
-	        			SyntaxError();
-	        			return false;
-	        		};
+	        		if (!executeGOTO()){SyntaxError();return false;}
 	        		break;
 	        	case BKWgosub:
 	        		if (getVar()) {
@@ -3519,6 +3507,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		
 		if (isNext(':')) {									// If this is a label,
+			
+			if (!IfElseStack.empty()) {						// No labels inside IF/ELSE Blocks
+				RunTimeError("Labels not permitted inside IF/ELSE blocks");
+				return false;
+			}
+			
+			if (!ForNextStack.empty()) {					// No labels inside FOR Blocks
+				RunTimeError("Labels not permitted inside FOR blocks");
+				return false;
+			}
+			
 			return checkEOL();								// then done
 		}
 		
@@ -5082,6 +5081,33 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		
 	};
+	
+	private boolean executeGOTO() {
+		
+		if (!IfElseStack.empty() ) {			// If inside IF ELSE block(s) clear stacks
+			IfElseStack.clear();			
+		}
+		
+		if (!ForNextStack.empty()) {			// if inside FOR block(s) clear stacks
+			ForNextStack.clear();
+		}
+		
+		if (getVar()) {
+			int gln = isLabel(VarNumber);
+			if (gln <0){
+				RunTimeError("Undefined Label at:");
+				return false;
+			}
+			if (!checkEOL(true)) return false;
+//			if (!IfElseStack.empty()) IfElseStack.pop();
+			ExecutingLineIndex = gln;
+		}else{
+			SyntaxError();
+			return false;
+		};
+
+		return true;
+	}
 	
 	private  boolean executeIF(){
 		int q =0;
