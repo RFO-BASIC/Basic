@@ -709,7 +709,7 @@ public class Run extends ListActivity {
     public boolean InputIsNumeric = true;
     public String InputDefault = "";
     public int inputVarNumber;
-	
+    private boolean ProgressPending = false;
 	
 	// debugger dialog and ui thread vars
 	  public boolean WaitForResume = false ; 
@@ -1544,31 +1544,6 @@ public class Run extends ListActivity {
         
     }
 
-/****************************** Semaphore to count pending progress updates ********************
- * Note: This code and the code used to make console.save work properly was supplied by the
- * BASIC! forum user, jMarc.
- **********************************************/
-
-    private static class SynchronizedCounter {
-        private int counter = 0;
-        public synchronized void reset() { counter = 0; notify(); }
-        public synchronized int inc() { return ++counter; }
-        public synchronized int dec() { if (counter > 0) { if (--counter == 0) notify(); } return counter; }
-        public synchronized int await(long timeout) {
-            while (counter != 0) {
-                // Log.d(LOGTAG, "SynchronizedCounter " + counter + ", waiting...");
-                try { wait(timeout); }
-                catch (InterruptedException e) { reset(); Log.e(LOGTAG, "SynchronizedCounter exception!", e); }
-            }
-            return counter;
-        }
-    }
-    // Counter used to keep the background task from reading the console
-    // before the UI (foreground) task finishes writing it.
-    // Incremented in Background by publishProgress.
-    // Decremented in UI by onProgressUpdate.
-    private SynchronizedCounter ProgressUpdateCount;
-	
 /*  ***********************************  Start of Basic's run program code **********************
  * 
  * The code is organized (?) as follows:
@@ -1605,7 +1580,6 @@ public class Background extends AsyncTask<String, String, String>{
         	Echo = false;
         	VarSearchStart = 0;
     		fnRTN = false;
-    		ProgressUpdateCount.reset();	// No progress updates pending yet!
     		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         	if (PreScan()) { 				// The execution starts by scanning the source for labels and read.data
@@ -1799,20 +1773,18 @@ public class Background extends AsyncTask<String, String, String>{
     		} while (ExecutingLineIndex < Basic.lines.size() && flag && !Stop) ;  //keep executing statements until end
         	return flag;
         }
-        
+
+        private void checkpointProgress() {		// give Run methods a way to checkpoint publishProgress
+            ProgressPending = true;
+            publishProgress("@@9");				// signal foreground task to clear ProgressPending
+        }
+
         private boolean doInterrupt(int gotoLine) {
         	if (interruptResume != -1 ) return true;   	// If we are handling an interrupt then do not cancel this one
         	interruptResume = ExecutingLineIndex;	   	// Set the resume Line Number
         	ExecutingLineIndex = gotoLine;			   	// Set the goto line number
         	IfElseStack.push(IEinterrupt);
         	return false;								//Turn off the interrupt
-        }
-        
-        // AsyncTask.publishProgess is final, no override allowed. Instead, we overload it here
-        // so it can increment the pending update counter that is decremented by onProgressUpdate.
-        private void publishProgress(String message) {
-            ProgressUpdateCount.inc();									// increment count of pending progress updates
-            super.publishProgress(message);
         }
 
 // The following method is in the UI (foreground) Task part of Run. It gets control when the background
@@ -1868,9 +1840,8 @@ public class Background extends AsyncTask<String, String, String>{
     	            serverIntent = new Intent(context, DeviceListActivity.class);
     	            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
     	            
-//        		}else if (str[i].startsWith("@@9")){
-//        			theSUReader = new SUReader(context, SUinputStream);
-//        			theSUReader.start();
+        		}else if (str[i].startsWith("@@9")){			// from checkpointProgress
+        			ProgressPending = false;					// progress is published, done waiting
         		}else if (str[i].startsWith("@@A")){
         			output.add("");        			
         		}else if (str[i].startsWith("@@B")){
@@ -1896,7 +1867,6 @@ public class Background extends AsyncTask<String, String, String>{
 						
         		}else {output.add(str[i]);};			// Not a signal, just write msg to screen.
 
-        		ProgressUpdateCount.dec();				// decrement count of pending progress updates
     	    	setListAdapter(AA);						// show the output
     	    	lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
 //    	    	Log.d(LOGTAG, "onProgressUpdate: print <" + str[i] + ">");
@@ -1954,8 +1924,6 @@ public void onCreate(Bundle savedInstanceState) {
 	}
 	theWakeLock = null;
 	isOld = true;
-
-	ProgressUpdateCount = new SynchronizedCounter();		// Count of pending progress updates
 
 	InitVars();	
 //	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Create 2 " + ExecutingLineIndex );
@@ -2067,6 +2035,7 @@ private void InitVars(){
    InputIsNumeric = true;
    InputDefault = "";
    inputVarNumber = 0;
+   ProgressPending = false;
    randomizer = null;
    background = false;
    
@@ -2360,6 +2329,7 @@ public void cleanUp(){
 	Basic.theRunContext = null;
 	GraphicsPaused = false;
 	RunPaused = false;
+	ProgressPending = false;
 	GPSoff = true;
 	if (!DoAutoRun && SyntaxError){
 		Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
@@ -16912,19 +16882,9 @@ private boolean doUserFunction(){
 		    }
 		    
 		    private boolean execute_SU_close(){
-		    	String command = "exit\n";
 		    	theSUReader.stop();
-		    	
-		    	try {
-		    		SUoutputStream.writeBytes(command + "\n");
-		    		SUoutputStream.flush();
-//		            SUprocess.waitFor();
+		    	SUprocess.destroy();
 
-		    	}
-		    	catch (Exception e){
-		            RunTimeError("SU Exception: " + e);
-		            return false;	    		
-		    	}
 		    	SUoutputStream = null;
 		    	SUinputStream = null;
 		    	SU_ReadBuffer = null;
@@ -16938,14 +16898,11 @@ private boolean doUserFunction(){
 
 	private boolean executeCONSOLE_DUMP(){
 		
-		if (!evalStringExpression()){return false;} // Final paramter is the filename
-		if (SEisLE) return false;
+		if (!getStringArg() || !checkEOL()) { return false; }	// Only paramter is the filename
 		String theFileName = StringConstant;
-		if (!checkEOL()) return false;
-		
-		int FileMode = FMW;
-		
-		if (FileMode == FMW){										// Write Selected
+
+		theBackground.checkpointProgress();						// allow any pending Console activity to complete
+		while (ProgressPending) { Thread.yield(); }				// wait for checkpointProgress semaphore to clear
 
 			File file = new File(Basic.filePath + "/data/" + theFileName);
         	try {
@@ -16958,9 +16915,6 @@ private boolean doUserFunction(){
         		RunTimeError("Problem opening " + theFileName);
 	    		return false;
         	}
-
-        	// Check the pending update count. If it's not zero, wait until it is, or for two seconds.
-        	ProgressUpdateCount.await(2000);
 
             FileWriter writer = null;
         	try{
@@ -16977,8 +16931,6 @@ private boolean doUserFunction(){
         				return false;
         		}
 //        	Log.d(LOGTAG, "executeCONSOLE_DUMP: file " + theFileName + " written");
-		}
-
 		
 		return true;
 	}
