@@ -16603,20 +16603,26 @@ private boolean doUserFunction(){
 		    	if (evalNumericExpression()) {
 		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
 		    	}
-		    	Intent serverIntent = null;
-	            serverIntent = new Intent(this, DeviceListActivity.class);
-	            if (serverIntent == null){
-	            	RunTimeError("Error selecting device");
-	            	return false;
-	            }
-	            if (bt_Secure) {
-	            	startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
-	            }else {
-	            	startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
-	            }
+		    	
+		        if (GRopen) {
+		        	GR.startConnectBT = true;
+          		  	GR.drawView.postInvalidate();									// Start GR drawing.
+		        }else {
+		        	Intent serverIntent = null;
+		        	serverIntent = new Intent(this, DeviceListActivity.class);
+		        	if (serverIntent == null){
+		        		RunTimeError("Error selecting device");
+		        		return false;
+		        	}
+		        	if (bt_Secure) {
+		        		startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
+		        	}else {
+		        		startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
+		        	}
 
-//		    	Show("@@8");
-		    	return true;
+//		    		Show("@@8");
+		        }
+		    		return true;
 		    }
 		    
 		    private boolean execute_BT_disconnect(){
