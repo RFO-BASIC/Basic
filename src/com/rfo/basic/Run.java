@@ -1998,7 +1998,6 @@ public void onCreate(Bundle savedInstanceState) {
 	  
 	    lv.setOnItemClickListener(new OnItemClickListener() {
 	        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-	    		Log.v(Run.LOGTAG, " " + Run.CLASSTAG + "OnItemClickListener" + position);
 				if (onCTLine != 0) {
 					ConsoleTouched = true;
 				}
@@ -16625,8 +16624,7 @@ private boolean doUserFunction(){
 		    public boolean execute_BT_status(){
 		    	if (!getNVar()) return false;
 		    	NumericVarValues.set(theValueIndex, (double) mChatService.mState);
-		    	int state = mChatService.getState();
-		    	
+//		    	int state = mChatService.getState();
 		    	return true;
 		    }
 		    
@@ -16684,14 +16682,14 @@ private boolean doUserFunction(){
 		    private boolean execute_BT_write(){
 		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
 		            RunTimeError("Bluetooth not connected");;
-		            return false;
+		            return true;                                // Deliberatly not making error fatal
 		        }
 		        
 				if (!BT_PRINT(true)) return false;				// build up the text line
-				if (!btPrintLineReady) return true;			// If not ready to print, wait
+				if (!btPrintLineReady) return true;				// If not ready to print, wait
 				
 				btPrintLineReady = false;						// Reset the signal
-				StringConstant = btPrintLine + "\n";					// Copy the line to StringConstant for writing
+				StringConstant = btPrintLine + "\n";			// Copy the line to StringConstant for writing
 				btPrintLine = "";								// clear the text print line
 		        
 
@@ -16754,15 +16752,13 @@ private boolean doUserFunction(){
 			};
 		    
 		    private boolean execute_BT_read_ready(){
-		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
-		            RunTimeError("Bluetooth not connected");;
-		            return false;
-		        }
 		    	if (!getNVar()) return false;
 		    	double d = 0;
-		    	synchronized (this){
+		    	if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+		    		synchronized (this){
 		    		d = (double)BT_Read_Buffer.size();
-		    	};
+		    		};
+		    	}
 		    	NumericVarValues.set(theValueIndex, d );
 		    	return true;
 		    	
@@ -16784,13 +16780,16 @@ private boolean doUserFunction(){
 		        }
 		        
 		        String msg = "";
-		        synchronized (this){
-		            int index = BT_Read_Buffer.size();
-		        	if (index > 0 ){
-		        		msg = BT_Read_Buffer.get(0);
-		        		BT_Read_Buffer.remove(0);
+		        if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+		        	synchronized (this){
+		        		int index = BT_Read_Buffer.size();
+		        		if (index > 0 ){
+		        			msg = BT_Read_Buffer.get(0);
+		        			BT_Read_Buffer.remove(0);
+		        		}
 		        	}
 		        }
+		        
 		        if (!getSVar()) return false;
 		        StringVarValues.set(theValueIndex, msg);
 		        
