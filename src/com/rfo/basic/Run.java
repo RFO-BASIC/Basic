@@ -169,6 +169,7 @@ import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.text.format.Time;
 import android.util.Log;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -180,6 +181,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -214,6 +216,7 @@ import android.util.Log;
 
 import org.apache.commons.net.ftp.*;
 import android.widget.*;
+import android.widget.AdapterView.OnItemClickListener;
 
 /* Executes the Basic program. Run splits into two parts.
  * The UI thread part and the background thread part.
@@ -246,7 +249,7 @@ public class Run extends ListActivity {
     	"dir", "mkdir", "rename",				// same as file.dir, file.mkdir, file.rename
     	"file.delete",							//delete command deleted now undeleted
     	"sql.", " ", "gr.", "pause",
-    	"browse", "inkey$", "audio.",
+    	"browse", "inkey$", "audio.", 
     	"popup", "sensors.", "gps.",
     	"cls", "array.", "select",
     	"exit", "clipboard.get",
@@ -281,10 +284,11 @@ public class Run extends ListActivity {
     	"timer.set", "timer.clear", "timer.resume",
     	"time", "key.resume", "menukey.resume",
     	"onmenukey","ontimer", "onkeypress",			// For Format
-    	"ontouch", "onbtreadready",						// For Format
+    	"ongrtouch", "onbtreadready",						// For Format
     	"home", "background.resume","onbackground",
     	"phone.rcv.init", "phone.rcv.next",
-    	"read.data", "read.next", "read.from"
+    	"read.data", "read.next", "read.from",
+    	"onconsoletouch", "consoletouch.resume"
     	
     };
     
@@ -438,6 +442,8 @@ public class Run extends ListActivity {
     public static final int BKWread_data = 140;
     public static final int BKWread_next = 141;
     public static final int BKWread_from = 142;
+    public static final int BKWonconsoletouch = BKWonerror;     //143
+    public static final int BKWconsole_resume = 144;
     
     public static final int BKWnone= 198;
     public static final int SKIP = 199;
@@ -649,13 +655,13 @@ public class Run extends ListActivity {
     public static int OnErrorLine =0 ;              // Line number for OnError: label
     public static int OnBackKeyLine=0;
     public static boolean BackKeyHit = false;
-    public static int BackKeyResume = -1 ;
     public static int OnMenuKeyLine = 0;
     public static boolean MenuKeyHit = false;
-    public static int OnMenuKeyResume = -1;
     public static boolean bgStateChange = false;
-    public static int OnBGResume = -1;
     public static int OnBGLine = 0;
+    public static int onCTLine = 0;
+    public static boolean ConsoleTouched = false;
+    public static int interruptResume = -1 ;
  
 	
     public static int LineIndex = 0;				// Current displacement into ExecutingLineBuffer
@@ -673,6 +679,7 @@ public class Run extends ListActivity {
     public static final int IEskip1 = 1;			     // Skip statements until ELSE, ELSEIF or ENDIF
     public static final int IEskip2 = 2;				// Skip to until ENDIF
     public static final int IEexec = 3;			        // Execute to ELSE, ELSEIF or ENDIF
+    public static final int IEinterrupt = 4;
    
     public static Double GetNumberValue = (double)0;				// Return value from GetNumber()
     public static Double EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
@@ -702,7 +709,7 @@ public class Run extends ListActivity {
     public boolean InputIsNumeric = true;
     public String InputDefault = "";
     public int inputVarNumber;
-	
+    private boolean ProgressPending = false;
 	
 	// debugger dialog and ui thread vars
 	  public boolean WaitForResume = false ; 
@@ -866,7 +873,6 @@ public class Run extends ListActivity {
     public static String Buffer = "0123456789";
     public static ArrayList<String> InChar ;
     public static int OnKeyLine;
-    public static int OnKeyResume;
     
     // ********************************* Variables for text.input command ********************
     
@@ -893,7 +899,6 @@ public class Run extends ListActivity {
     public static double TouchY[] = {0,0,0};
     public static boolean NewTouch[] = {false, false, false};
     public static int OnTouchLine;
-    public static int OnTouchResume;
     public static Canvas drawintoCanvas = null;
 
     
@@ -1336,7 +1341,6 @@ public class Run extends ListActivity {
     public static BluetoothDevice btConnectDevice = null;
     public static boolean btCSrunning = false;
     public static boolean btReadReady = false;
-    public static int OnBTReadResume = -1;
     public static int OnBTReadLine = 0;
     
     public static Looper btLooper;
@@ -1346,7 +1350,7 @@ public class Run extends ListActivity {
     	"connect", "device.name",
     	"write", "read.ready", "read.bytes",
     	"set.uuid", "listen", "reconnect",
-    	"onreadready.resume"
+    	"onreadready.resume", "disconnect"
     };
     
     public static final int bt_open = 0;
@@ -1361,6 +1365,7 @@ public class Run extends ListActivity {
     public static final int bt_listen = 9;
     public static final int bt_reconnect = 10;
     public static final int bt_readready_resume = 11;
+    public static final int bt_disconnect = 12;
     
 /**************************************  Superuser **********************************************/
 
@@ -1380,7 +1385,7 @@ public class Run extends ListActivity {
     DataOutputStream SUoutputStream;
     DataInputStream SUinputStream;
     Process SUprocess;
-    public static ArrayList <String> SU_ReadBuffer;
+    public ArrayList <String> SU_ReadBuffer;
     SUReader theSUReader = null;
     
 /***************************************  SOUND POOL  ************************************/
@@ -1455,7 +1460,6 @@ public class Run extends ListActivity {
     // ******************** Timer Variables *******************************
     
     public static int OnTimerLine;
-    public static int timerResumeLine;
     public static Timer theTimer;
     public static boolean timerExpired;
     
@@ -1537,33 +1541,9 @@ public class Run extends ListActivity {
 
                 return row;
         }
+        
     }
 
-/****************************** Semaphore to count pending progress updates ********************
- * Note: This code and the code used to make console.save work properly was supplied by the
- * BASIC! forum user, jMarc.
- **********************************************/
-
-    private static class SynchronizedCounter {
-        private int counter = 0;
-        public synchronized void reset() { counter = 0; notify(); }
-        public synchronized int inc() { return ++counter; }
-        public synchronized int dec() { if (counter > 0) { if (--counter == 0) notify(); } return counter; }
-        public synchronized int await(long timeout) {
-            while (counter != 0) {
-                // Log.d(LOGTAG, "SynchronizedCounter " + counter + ", waiting...");
-                try { wait(timeout); }
-                catch (InterruptedException e) { reset(); Log.e(LOGTAG, "SynchronizedCounter exception!", e); }
-            }
-            return counter;
-        }
-    }
-    // Counter used to keep the background task from reading the console
-    // before the UI (foreground) task finishes writing it.
-    // Incremented in Background by publishProgress.
-    // Decremented in UI by onProgressUpdate.
-    private SynchronizedCounter ProgressUpdateCount;
-	
 /*  ***********************************  Start of Basic's run program code **********************
  * 
  * The code is organized (?) as follows:
@@ -1600,7 +1580,6 @@ public class Background extends AsyncTask<String, String, String>{
         	Echo = false;
         	VarSearchStart = 0;
     		fnRTN = false;
-    		ProgressUpdateCount.reset();	// No progress updates pending yet!
     		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         	if (PreScan()) { 				// The execution starts by scanning the source for labels and read.data
@@ -1668,87 +1647,55 @@ public class Background extends AsyncTask<String, String, String>{
         			ExecutingLineIndex = OnErrorLine;               // Go to the OnError line
         			SyntaxError = false;
         			flag = true;									// and indicate no error
-        		}
+        		} else
         		
         		if (BackKeyHit ) {
-        			BackKeyHit = false;
-        			if (OnBackKeyLine != 0) {
-            			if (BackKeyResume == -1) {
-            				BackKeyResume = ExecutingLineIndex;
-            				ExecutingLineIndex = OnBackKeyLine;
-            			}
+         			if (OnBackKeyLine != 0) {
+        				BackKeyHit = doInterrupt(OnBackKeyLine);
         			}
-        		}
+        		} else
 
-        		
         		if (MenuKeyHit ) {
-        			MenuKeyHit = false;
         			if (OnMenuKeyLine != 0) {
-            			if (OnMenuKeyResume == -1) {
-            				OnMenuKeyResume = ExecutingLineIndex;
-            				ExecutingLineIndex = OnMenuKeyLine;
-            			}
+        				MenuKeyHit = doInterrupt(OnMenuKeyLine);
         			}
-        		}
-
+        		} else
 
         		if (timerExpired ) {
-        			timerExpired = false;
         			if (OnTimerLine != 0) {
-            			if (timerResumeLine == -1) {
-            				timerResumeLine = ExecutingLineIndex;
-            				ExecutingLineIndex = OnTimerLine;
-            			}
+        				timerExpired = doInterrupt(OnTimerLine);
         			}
-        		}
+        		} else
         		
         		if (KeyPressed ) {
-        			KeyPressed = false;
         			if (OnKeyLine != 0) {
-            			if (OnKeyResume == -1) {
-            				OnKeyResume = ExecutingLineIndex;
-            				ExecutingLineIndex = OnKeyLine;
-            			}
-        			}
-        		}
+        				KeyPressed = doInterrupt(OnKeyLine);
+         			}
+        		} else
 
-        		if (NewTouch[2] ) {
-        			NewTouch[2] = false;
-        			if (OnTouchLine != 0) {
-            			if (OnTouchResume == -1) {
-            				OnTouchResume = ExecutingLineIndex;
-            				ExecutingLineIndex = OnTouchLine;
-            			}
+        		if (NewTouch[2] ) {									// NewTouch[2] is only used to signal any touch
+        			if (OnTouchLine != 0) {							// and is not tracked like NewTouch[0] and NewTouch[1]
+        				NewTouch[2] = doInterrupt(OnTouchLine);		// used with onGRtouch.
         			}
-        		}
-        		
+        		} else
+        			
         		if (btReadReady) {
         			btReadReady = false;
         			if (OnBTReadLine != 0) {
-            			if (OnBTReadResume == -1) {
-            				OnBTReadResume = ExecutingLineIndex;
-            				ExecutingLineIndex = OnBTReadLine;
-            			}
+        				btReadReady = doInterrupt(OnBTReadLine);
         			}
-        		}
+        		} else
         		
+        		if (ConsoleTouched) {
+        			ConsoleTouched = false;
+        			if (onCTLine != 0) {
+        				ConsoleTouched = doInterrupt(onCTLine);
+        			}
+        		} else
 
         		if (bgStateChange) {
-        			bgStateChange = false;
-//        			Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " Looper  " + "KBS=" + kbShown + " BG=" + background);
-        			if (!background) {
-        				if (kbShown) 
-            				if (GRFront) {
-            					GR.GraphicsImm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-            				}else {
-            					IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-            				}
-        			}
         			if (OnBGLine != 0) {
-            			if (OnBGResume == -1) {
-            				OnBGResume = ExecutingLineIndex;
-            				ExecutingLineIndex = OnBGLine;
-            			}
+        				bgStateChange = doInterrupt(OnBGLine);
         			}
         		}
        		
@@ -1827,11 +1774,17 @@ public class Background extends AsyncTask<String, String, String>{
         	return flag;
         }
 
-        // AsyncTask.publishProgess is final, no override allowed. Instead, we overload it here
-        // so it can increment the pending update counter that is decremented by onProgressUpdate.
-        private void publishProgress(String message) {
-            ProgressUpdateCount.inc();									// increment count of pending progress updates
-            super.publishProgress(message);
+        private void checkpointProgress() {		// give Run methods a way to checkpoint publishProgress
+            ProgressPending = true;
+            publishProgress("@@9");				// signal foreground task to clear ProgressPending
+        }
+
+        private boolean doInterrupt(int gotoLine) {
+        	if (interruptResume != -1 ) return true;   	// If we are handling an interrupt then do not cancel this one
+        	interruptResume = ExecutingLineIndex;	   	// Set the resume Line Number
+        	ExecutingLineIndex = gotoLine;			   	// Set the goto line number
+        	IfElseStack.push(IEinterrupt);
+        	return false;								//Turn off the interrupt
         }
 
 // The following method is in the UI (foreground) Task part of Run. It gets control when the background
@@ -1887,9 +1840,8 @@ public class Background extends AsyncTask<String, String, String>{
     	            serverIntent = new Intent(context, DeviceListActivity.class);
     	            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
     	            
-        		}else if (str[i].startsWith("@@9")){
-        			theSUReader = new SUReader(context, SUinputStream);
-        			theSUReader.start();
+        		}else if (str[i].startsWith("@@9")){			// from checkpointProgress
+        			ProgressPending = false;					// progress is published, done waiting
         		}else if (str[i].startsWith("@@A")){
         			output.add("");        			
         		}else if (str[i].startsWith("@@B")){
@@ -1915,7 +1867,6 @@ public class Background extends AsyncTask<String, String, String>{
 						
         		}else {output.add(str[i]);};			// Not a signal, just write msg to screen.
 
-        		ProgressUpdateCount.dec();				// decrement count of pending progress updates
     	    	setListAdapter(AA);						// show the output
     	    	lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
 //    	    	Log.d(LOGTAG, "onProgressUpdate: print <" + str[i] + ">");
@@ -1974,8 +1925,6 @@ public void onCreate(Bundle savedInstanceState) {
 	theWakeLock = null;
 	isOld = true;
 
-	ProgressUpdateCount = new SynchronizedCounter();		// Count of pending progress updates
-
 	InitVars();	
 //	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Create 2 " + ExecutingLineIndex );
 
@@ -2012,6 +1961,17 @@ public void onCreate(Bundle savedInstanceState) {
       this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
 	  
 	  Basic.theRunContext = this;
+	  
+	  // Listener for Console Touch
+	  
+	    lv.setOnItemClickListener(new OnItemClickListener() {
+	        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				if (onCTLine != 0) {
+					ConsoleTouched = true;
+				}
+	        }
+	      });
+
 	theBackground = new Background();						// Start the background task
 	theBackground.execute("");
 	
@@ -2023,21 +1983,19 @@ private void InitVars(){
     OnErrorLine =0 ;              // Line number for OnError: label
     OnBackKeyLine=0;
     BackKeyHit = false;
-    BackKeyResume = -1 ;
     OnMenuKeyLine = 0;
     MenuKeyHit = false;
-    OnMenuKeyResume = -1;
-    timerResumeLine = -1 ;  
     bgStateChange = false;
-    OnBGResume = -1;
     OnBGLine = 0;
+    onCTLine = 0;
+    ConsoleTouched = false;
+
 
     errorMsg = "No error";
     
     InChar = new ArrayList<String>();
     KeyPressed = false;
     OnKeyLine = 0;
-    OnKeyResume = -1;
 	
     LineIndex = 0;				// Current displacement into ExecutingLineBuffer
     ExecutingLineBuffer ="\n";		// Holds the current line being executed
@@ -2077,6 +2035,7 @@ private void InitVars(){
    InputIsNumeric = true;
    InputDefault = "";
    inputVarNumber = 0;
+   ProgressPending = false;
    randomizer = null;
    background = false;
    
@@ -2193,7 +2152,6 @@ private void InitVars(){
 	PaintList = new ArrayList<Paint>();
     GRrunning = false;
     OnTouchLine = 0;
-    OnTouchResume = -1;
     Touched = false;
 
     
@@ -2282,13 +2240,14 @@ private void InitVars(){
     mChatService = null;
     btLooper = null;
     btReadReady = false;
-    OnBTReadResume = -1;
+    interruptResume = -1;
     OnBTReadLine = 0;
     
     SUoutputStream = null;
     SUinputStream = null;
     SUprocess = null;
     SU_ReadBuffer = null;
+    theSUReader = null;
     
     theSoundPool = null ;
     
@@ -2302,7 +2261,6 @@ private void InitVars(){
      sttListening = false;
      
      OnTimerLine = 0;
-     timerResumeLine = -1;
      theTimer = null;
      timerExpired = false;
      
@@ -2371,6 +2329,7 @@ public void cleanUp(){
 	Basic.theRunContext = null;
 	GraphicsPaused = false;
 	RunPaused = false;
+	ProgressPending = false;
 	GPSoff = true;
 	if (!DoAutoRun && SyntaxError){
 		Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
@@ -2396,9 +2355,11 @@ public void cleanUp(){
 			
 			if ( theSUReader != null ){
 				theSUReader.stop();
-	    	theSUReader = null;
-	    	SUprocess = null;
-
+				theSUReader = null;
+			}
+			if (SUprocess != null) {
+				SUprocess.destroy();
+				SUprocess = null;
 			}
 			
 //			InitVars();   // Why not?
@@ -2411,8 +2372,24 @@ public void cleanUp(){
 // The following methods run in the foreground. The are called by asynchronous user events
 // caused by the user pressing a key.
 
-	public boolean onKeyDown(int keyCode, KeyEvent event)  {						// The user hit the back key
+public boolean onTouchEvent(MotionEvent event){
+	super.onTouchEvent(event);
+	int action = event.getAction();  // Get action type
+	return false;
+}
 
+	public boolean onKeyDown(int keyCode, KeyEvent event)  {						// The user hit the back key
+		Log.v(Run.LOGTAG, " " + Run.CLASSTAG + "onKeyDown" + keyCode);
+		if (keyCode == KeyEvent.KEYCODE_MENU) {
+			if (OnMenuKeyLine != 0) {
+				MenuKeyHit = true;
+				return true;
+			}
+			if (Basic.isAPK)			// If menu key hit in APK and not trapped by OnMenuKey									
+				return true;			// then tell OS to ignore it
+			
+			return false;				// Let Android create the Run Menu.
+		}
 
 		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
     	if (OnBackKeyLine != 0){
@@ -2432,7 +2409,8 @@ public void cleanUp(){
 	
 
 	public boolean onKeyUp( int keyCode, KeyEvent event)  {
-		
+		Log.v(Run.LOGTAG, " " + Run.CLASSTAG + "onKeyUp" + keyCode);
+
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			if (OnMenuKeyLine != 0) {
 				MenuKeyHit = true;
@@ -2501,6 +2479,7 @@ public void cleanUp(){
 
 @Override
 public boolean onPrepareOptionsMenu(Menu menu) {   // Executed when Menu key is pressed (before onCreateOptionsMenu() above.
+	
     super.onPrepareOptionsMenu(menu);
     MenuItem item;
     if (Stop){									   // If program running display with Editor dimmed
@@ -2526,26 +2505,6 @@ public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is select
     	if (!DoAutoRun && SyntaxError){
 			Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
     	}
-
-
-	   
-	   /*    	if (!DoAutoRun && SyntaxError){
-        	if (ExecutingLineIndex>=0 &&
-        			ExecutingLineIndex < Editor.lineCharCounts.size()){	// If run ended in error, select error line
-      
-        		int end = Editor.lineCharCounts.get(ExecutingLineIndex);  // Get selection end
-        		int start = end -1;										// back up over the new line
-        		for (start = end-1; start >0 ; --start){				// Scan for previous nl or start
-        			char c = Editor.DisplayText.charAt(start);
-        			if (c == '\n'){
-        				start = start + 1;
-        				break;
-        			}
-        		}
-         	   Editor.mText.setText(Editor.DisplayText);				// Set the Editor's EditText TextView text
-               Editor.mText.setSelection(start, end);							// Set the selection
-        	}*/
-    	
 
    	Basic.theRunContext = null;
 		if (mChatService != null) {
@@ -2705,9 +2664,10 @@ private boolean storeLabel(String name, int LineNumber) {
 	if (name.equals("onmenukey")) OnMenuKeyLine = LineNumber;
 	if (name.equals("ontimer")) OnTimerLine = LineNumber;
 	if (name.equals("onkeypress")) OnKeyLine = LineNumber;
-	if (name.equals("ontouch")) OnTouchLine = LineNumber;
+	if (name.equals("ongrtouch")) OnTouchLine = LineNumber;
 	if (name.equals("onbtreadready")) OnBTReadLine = LineNumber;
 	if (name.equals("onbackground")) OnBGLine = LineNumber;
+	if (name.equals("onconsoletouch")) onCTLine = LineNumber;
 
 	return checkEOL();
 }
@@ -2798,6 +2758,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 						else {KeyWordValue = SKIP;}
 						break;
 					case IEexec:
+					case IEinterrupt:
 						
 					}
 				}
@@ -2853,19 +2814,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		if (!executeNext()){SyntaxError();return false;}
 	        		break;
 	        	case BKWgoto:
-	        		if (getVar()) {
-	        			int gln = isLabel(VarNumber);
-	        			if (gln <0){
-	        				RunTimeError("Undefined Label at:");
-	        				return false;
-	        			}
-	        			if (!checkEOL(true)) return false;
-//	        			if (!IfElseStack.empty()) IfElseStack.pop();
-	        			ExecutingLineIndex = gln;
-	        		}else{
-	        			SyntaxError();
-	        			return false;
-	        		};
+	        		if (!executeGOTO()){SyntaxError();return false;}
 	        		break;
 	        	case BKWgosub:
 	        		if (getVar()) {
@@ -3243,6 +3192,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	case BKWread_from:
 	        		if (!executeREAD_FROM())   {SyntaxError(); return false;}
 	        		break;
+	        	case BKWconsole_resume:
+	        		if (!executeCONSOLE_RESUME())   {SyntaxError(); return false;}
+	        		break;
 	        	default:
 	        		break;
 	        }
@@ -3555,6 +3507,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		
 		if (isNext(':')) {									// If this is a label,
+			
+			if (!IfElseStack.empty()) {						// No labels inside IF/ELSE Blocks
+				RunTimeError("Labels not permitted inside IF/ELSE blocks");
+				return false;
+			}
+			
+			if (!ForNextStack.empty()) {					// No labels inside FOR Blocks
+				RunTimeError("Labels not permitted inside FOR blocks");
+				return false;
+			}
+			
 			return checkEOL();								// then done
 		}
 		
@@ -5119,6 +5082,27 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 	};
 	
+	private boolean executeGOTO() {
+		
+			IfElseStack.clear();			
+			ForNextStack.clear();
+		
+		if (getVar()) {
+			int gln = isLabel(VarNumber);
+			if (gln <0){
+				RunTimeError("Undefined Label at:");
+				return false;
+			}
+			if (!checkEOL(true)) return false;
+			ExecutingLineIndex = gln;
+		}else{
+			SyntaxError();
+			return false;
+		};
+
+		return true;
+	}
+	
 	private  boolean executeIF(){
 		int q =0;
 		
@@ -5558,22 +5542,40 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private boolean executeBACK_RESUME(){
-		if (BackKeyResume == -1){
+		if (interruptResume == -1){
 			RunTimeError("Back key not hit");
 			return false;
 		}
-		ExecutingLineIndex = BackKeyResume;
-		BackKeyResume = -1 ;
-		return true;
+		return doResume();
 	}
 	
 	private boolean executeONMENUKEY_RESUME(){
-		if (OnMenuKeyResume == -1){
+		if (interruptResume == -1){
 			RunTimeError("Menu key not hit");
 			return false;
 		}
-		ExecutingLineIndex = OnMenuKeyResume;
-		OnMenuKeyResume = -1 ;
+		return doResume();
+	}
+	
+	private boolean executeCONSOLE_RESUME(){
+		if (interruptResume == -1){
+			RunTimeError("Console not touched");
+			return false;
+		}
+		return doResume();
+	}
+	
+	private boolean doResume(){
+		ExecutingLineIndex = interruptResume;
+		interruptResume = -1;
+		// Pull the IEinterrupt from the If Else stack
+		// It is possible that IFs were executed in the interrupt code
+		// so pop entries until we get to the IEinterrupt
+		while (IfElseStack.peek() != IEinterrupt) {
+			IfElseStack.pop();
+		}
+		IfElseStack.pop();  // Top is stack is now IEInterrupt, pop it
+				
 		return true;
 	}
 	
@@ -8844,13 +8846,11 @@ private boolean doUserFunction(){
 	  }
 	  
 	  private boolean executeONKEY_RESUME(){
-		  if (OnKeyResume == -1 ) {
+		  if (interruptResume == -1 ) {
 			  RunTimeError("No Current Key Interrupt");
 			  return false;
 		  }
-		  ExecutingLineIndex = OnKeyResume ;
-		  OnKeyResume = -1;
-		  return true;
+		  return doResume();
 	  }
 	  
 	  private boolean executePOPUP(){
@@ -12286,13 +12286,11 @@ private boolean doUserFunction(){
 	  }
 	  
 	  private boolean execute_gr_touch_resume(){
-		  if (OnTouchResume == -1) {
+		  if (interruptResume == -1) {
 			  RunTimeError("No onTouch Interrupt");
 			  return false;
 		  }
-		  ExecutingLineIndex = OnTouchResume;
-		  OnTouchResume = -1;
-		  return true;
+		  return doResume();
 	  }
 	  	  
 //*************************************************************  Audio  ******************************************
@@ -16451,7 +16449,10 @@ private boolean doUserFunction(){
 				break;
 			case bt_readready_resume:
 				if (!execute_BT_readReady_Resume()) return false;
-					
+				break;
+			case bt_disconnect:
+				if (!execute_BT_disconnect()) return false;
+				break;
 			default:
 			}
 			return true;
@@ -16613,8 +16614,7 @@ private boolean doUserFunction(){
 		    public boolean execute_BT_status(){
 		    	if (!getNVar()) return false;
 		    	NumericVarValues.set(theValueIndex, (double) mChatService.mState);
-		    	int state = mChatService.getState();
-		    	
+//		    	int state = mChatService.getState();
 		    	return true;
 		    }
 		    
@@ -16623,19 +16623,30 @@ private boolean doUserFunction(){
 		    	if (evalNumericExpression()) {
 		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
 		    	}
-		    	Intent serverIntent = null;
-	            serverIntent = new Intent(this, DeviceListActivity.class);
-	            if (serverIntent == null){
-	            	RunTimeError("Error selecting device");
-	            	return false;
-	            }
-	            if (bt_Secure) {
-	            	startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
-	            }else {
-	            	startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
-	            }
+		    	
+		        if (GRopen) {
+		        	GR.startConnectBT = true;
+          		  	GR.drawView.postInvalidate();									// Start GR drawing.
+		        }else {
+		        	Intent serverIntent = null;
+		        	serverIntent = new Intent(this, DeviceListActivity.class);
+		        	if (serverIntent == null){
+		        		RunTimeError("Error selecting device");
+		        		return false;
+		        	}
+		        	if (bt_Secure) {
+		        		startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
+		        	}else {
+		        		startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
+		        	}
 
-//		    	Show("@@8");
+//		    		Show("@@8");
+		        }
+		    		return true;
+		    }
+		    
+		    private boolean execute_BT_disconnect(){
+		    	mChatService.disconnect();
 		    	return true;
 		    }
 		    
@@ -16667,14 +16678,14 @@ private boolean doUserFunction(){
 		    private boolean execute_BT_write(){
 		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
 		            RunTimeError("Bluetooth not connected");;
-		            return false;
+		            return true;                                // Deliberatly not making error fatal
 		        }
 		        
 				if (!BT_PRINT(true)) return false;				// build up the text line
-				if (!btPrintLineReady) return true;			// If not ready to print, wait
+				if (!btPrintLineReady) return true;				// If not ready to print, wait
 				
 				btPrintLineReady = false;						// Reset the signal
-				StringConstant = btPrintLine + "\n";					// Copy the line to StringConstant for writing
+				StringConstant = btPrintLine + "\n";			// Copy the line to StringConstant for writing
 				btPrintLine = "";								// clear the text print line
 		        
 
@@ -16735,32 +16746,26 @@ private boolean doUserFunction(){
 				
 				
 			};
-
-
 		    
 		    private boolean execute_BT_read_ready(){
-		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
-		            RunTimeError("Bluetooth not connected");;
-		            return false;
-		        }
 		    	if (!getNVar()) return false;
 		    	double d = 0;
-		    	synchronized (this){
+		    	if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+		    		synchronized (this){
 		    		d = (double)BT_Read_Buffer.size();
-		    	};
+		    		};
+		    	}
 		    	NumericVarValues.set(theValueIndex, d );
 		    	return true;
 		    	
 		    }
 		    
 		    private boolean execute_BT_readReady_Resume(){
-		    	if (OnBTReadResume == -1) {
+		    	if (interruptResume == -1) {
 		    		RunTimeError("No Bluetooth Read Ready Interrupt");
 		    		return false;	    		
 		    	}
-		    	ExecutingLineIndex = OnBTReadResume;
-		    	OnBTReadResume = -1;
-		    	return true;
+		    	return doResume();
 		    }
 		    
 		    private boolean execute_BT_read_bytes(){
@@ -16771,13 +16776,16 @@ private boolean doUserFunction(){
 		        }
 		        
 		        String msg = "";
-		        synchronized (this){
-		            int index = BT_Read_Buffer.size();
-		        	if (index > 0 ){
-		        		msg = BT_Read_Buffer.get(0);
-		        		BT_Read_Buffer.remove(0);
+		        if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+		        	synchronized (this){
+		        		int index = BT_Read_Buffer.size();
+		        		if (index > 0 ){
+		        			msg = BT_Read_Buffer.get(0);
+		        			BT_Read_Buffer.remove(0);
+		        		}
 		        	}
 		        }
+		        
 		        if (!getSVar()) return false;
 		        StringVarValues.set(theValueIndex, msg);
 		        
@@ -16854,7 +16862,9 @@ private boolean doUserFunction(){
 		            RunTimeError("SU Exception: " + e);
 		            return false;
 		        }
-		        Show("@@9");     // Will be intercepted in the UI thread and start the SUReader.
+		        theSUReader = new SUReader(SUinputStream, SU_ReadBuffer);
+		        theSUReader.start();
+
 		    	return true;
 		    	
 		    }
@@ -16877,13 +16887,15 @@ private boolean doUserFunction(){
 		    
 		    private boolean execute_SU_read_ready(){
 		    	if (!getNVar()) return false;
-		    	NumericVarValues.set(theValueIndex, (double) SU_ReadBuffer.size() ); // Return buffer size
+		    	synchronized (SU_ReadBuffer) {
+		    		NumericVarValues.set(theValueIndex, (double) SU_ReadBuffer.size() ); // Return buffer size
+		    	}
 		    	return true;
 		    }
 
 		    private boolean execute_SU_read_line(){
 		        String msg = "";
-		        synchronized (this){
+		        synchronized (SU_ReadBuffer){
 		        	int index = SU_ReadBuffer.size();
 		        	if (index > 0 ){
 		        		msg = SU_ReadBuffer.get(0);    // Read the first item in the buffer
@@ -16896,19 +16908,12 @@ private boolean doUserFunction(){
 		    }
 		    
 		    private boolean execute_SU_close(){
-		    	String command = "exit\n";
 		    	theSUReader.stop();
-		    	
-		    	try {
-		    		SUoutputStream.writeBytes(command + "\n");
-		    		SUoutputStream.flush();
-//		            SUprocess.waitFor();
+		    	SUprocess.destroy();
 
-		    	}
-		    	catch (Exception e){
-		            RunTimeError("SU Exception: " + e);
-		            return false;	    		
-		    	}
+		    	SUoutputStream = null;
+		    	SUinputStream = null;
+		    	SU_ReadBuffer = null;
 		    	theSUReader = null;
 		    	SUprocess = null;
 
@@ -16919,14 +16924,11 @@ private boolean doUserFunction(){
 
 	private boolean executeCONSOLE_DUMP(){
 		
-		if (!evalStringExpression()){return false;} // Final paramter is the filename
-		if (SEisLE) return false;
+		if (!getStringArg() || !checkEOL()) { return false; }	// Only paramter is the filename
 		String theFileName = StringConstant;
-		if (!checkEOL()) return false;
-		
-		int FileMode = FMW;
-		
-		if (FileMode == FMW){										// Write Selected
+
+		theBackground.checkpointProgress();						// allow any pending Console activity to complete
+		while (ProgressPending) { Thread.yield(); }				// wait for checkpointProgress semaphore to clear
 
 			File file = new File(Basic.filePath + "/data/" + theFileName);
         	try {
@@ -16939,9 +16941,6 @@ private boolean doUserFunction(){
         		RunTimeError("Problem opening " + theFileName);
 	    		return false;
         	}
-
-        	// Check the pending update count. If it's not zero, wait until it is, or for two seconds.
-        	ProgressUpdateCount.await(2000);
 
             FileWriter writer = null;
         	try{
@@ -16958,8 +16957,6 @@ private boolean doUserFunction(){
         				return false;
         		}
 //        	Log.d(LOGTAG, "executeCONSOLE_DUMP: file " + theFileName + " written");
-		}
-
 		
 		return true;
 	}
@@ -17977,7 +17974,6 @@ private boolean doUserFunction(){
 			   RunTimeError("Interval Must Be >= 100");
 			   return false;
 		   }
-		   timerResumeLine = -1;
 		   
 		   TimerTask tt = new TimerTask() {
 			    public void run() {
@@ -18011,13 +18007,11 @@ private boolean doUserFunction(){
 	   }
 	   
 	   private boolean executeTIMER_RESUME(){
-		   if (timerResumeLine == -1) {
+		   if (interruptResume == -1) {
 			   RunTimeError("No timer interrupt to reseume");
 			   return false; 
 		   }
-		   ExecutingLineIndex = timerResumeLine;
-		   timerResumeLine = -1;
-	       return true;
+	       return doResume();
 	    }
 	   
 	   // ***************************** Home Command **************************************
@@ -18028,13 +18022,11 @@ private boolean doUserFunction(){
 	   }
 
 	   private boolean executeBACKGROUND_RESUME() {
-		   if (OnBGResume == -1) {
+		   if (interruptResume == -1) {
 			   RunTimeError("No background state change");
 			   return false;
 		   }
-		   ExecutingLineIndex = OnBGResume;
-		   OnBGResume = -1;
-		   return true;
+		   return doResume();
 	   }
 
 	    

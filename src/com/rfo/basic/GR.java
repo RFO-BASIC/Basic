@@ -85,6 +85,7 @@ public class GR extends Activity {
     
     public static boolean doSTT = false;
     public static boolean doEnableBT = false;
+    public static boolean startConnectBT = false;
     
     public static final int dNull = 0;
     public static final int dCircle = 1;
@@ -341,6 +342,19 @@ public class GR extends Activity {
         }
         // Attempt to connect to the device
     }
+    
+    public void startsBTConnect() {
+    	Intent serverIntent = null;
+        serverIntent = new Intent(this, DeviceListActivity.class);
+        if (serverIntent != null){
+        	if (Run.bt_Secure) {
+        		startActivityForResult(serverIntent, Run.REQUEST_CONNECT_DEVICE_SECURE);
+        	}else {
+        		startActivityForResult(serverIntent, Run.REQUEST_CONNECT_DEVICE_INSECURE);
+        	}
+        }
+
+    }
 
     
     public void startVoiceRecognitionActivity() {
@@ -449,6 +463,11 @@ public class GR extends Activity {
             if (doEnableBT) {							// If this activity is running
             	enableBT();								// Bluetooth must be enabled here
             	doEnableBT = false;
+            }
+            
+            if (startConnectBT) {
+            	startsBTConnect();
+            	startConnectBT = false;
             }
        		
        		if (doSTT) {
