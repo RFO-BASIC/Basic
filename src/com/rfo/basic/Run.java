@@ -5084,13 +5084,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private boolean executeGOTO() {
 		
-		if (!IfElseStack.empty() ) {			// If inside IF ELSE block(s) clear stacks
 			IfElseStack.clear();			
-		}
-		
-		if (!ForNextStack.empty()) {			// if inside FOR block(s) clear stacks
 			ForNextStack.clear();
-		}
 		
 		if (getVar()) {
 			int gln = isLabel(VarNumber);
@@ -5099,7 +5094,6 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				return false;
 			}
 			if (!checkEOL(true)) return false;
-//			if (!IfElseStack.empty()) IfElseStack.pop();
 			ExecutingLineIndex = gln;
 		}else{
 			SyntaxError();
