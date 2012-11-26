@@ -1,4 +1,3 @@
-!* Download Helper Plus! ver. 2.2 *
 ! f39_downloader.bas
 !
 ! Downloads shared BASIC! programs
@@ -6,89 +5,136 @@
 ! Run the program and select the BASIC!
 ! program that you want to down load.
 !
-! Thank you, Droid_Mike, for this program
+PRINT "Connecting to ftp server..."
 
-URL$ = "http://laughton.com"
-LET source_path$ =  URL$ + "/basic/programs/"
+! Set the default path
 
-CLS
-PRINT "Welcome to the RFO Basic! Download Helper Plus! ver 2.1"
-PRINT "Please wait while the file list is being downloaded."
-PRINT ""
+path$="ftp.laughton.com"
 
-relist:
+FTP.OPEN path$, 21, "basic", "basic"
 
-GRABURL result$, source_path$
-SPLIT pre_list$[], result$, "<a href=" + CHR$(34)
+! Clear the default path
 
-LIST.CREATE S, program_list
+path$="/"
 
-ARRAY.LENGTH ln, pre_list$[]
-FOR i= 1 TO ln
- LIST.ADD program_list, LEFT$(pre_list$[i], IS_IN(CHR$(34), pre_list$[i])-1)
+loop: % Main loop
+
+FTP.DIR prelist
+
+! Add the quit option and
+! Create the list (not
+! prelist)
+
+LIST.ADD prelist, "Quit!"
+LIST.CREATE S, list
+LIST.ADD list, ".."
+LIST.SIZE prelist, s
+
+! Copy the prelist to the
+! List without ".ftpquota"
+! and ".haccess" if they
+! Exist
+
+a=2
+IF path$="/" then
+s=s-2
+a=4
+End IF
+s=s-2
+
+FOR i=1 TO s
+ LIST.GET prelist, i+a, toadd$
+ LIST.ADD list, toadd$
 NEXT i
 
-! Have a choice to quit at end
-LIST.ADD program_list, "QUIT!"
+CLS % Clear the screen 
 
-! OK, now list all the filenames
-LIST.SIZE program_list, slist
+SELECT s, list, path$
+! Use the path as message
 
-! First 7 lines are junk, so we will skip them
-line_pad = 7
+! See if user quits
 
-LIST.TOARRAY program_list, pre_show_array$[]
-ARRAY.COPY pre_show_array$[line_pad], show_array$[]
+IF s=0 THEN END
 
-ARRAY.LENGTH length, show_array$[]
-FOR i = 1 TO length
- ! Make sure spaces are displayed accurately and dir's are skipped
- temp_name$ = REPLACE$(show_array$[i],"%20"," ")
- show_array$[i]=temp_name$
-NEXT i
+! Get the file/folder name
 
-DO
- SELECT dfnum, show_array$[], "Choose File to Download"
- LIST.GET program_list, line_pad-1+dfnum, dfname$
+LIST.GET list, s, choose$
 
- ! see if user quits
- IF dfname$ = "QUIT!" THEN END
+! See if user quits
 
- ! see if it is a directory
- IF IS_IN("/",dfname$) > 0
-  ! See if user clicked on previous directory
-  IF IS_IN("/basic/programs/",dfname$) THEN
-   LET source_path$ = URL$ + dfname$
-  ELSEIF IS_IN("/basic/",dfname$) then
-   LET source_path$ = URL$ + "/basic/programs/"
-  ELSE
-   LET source_path$ = source_path$ + dfname$
-  ENDIF
-  UNDIM pre_show_array$[]
-  UNDIM show_array$[]
-  UNDIM pre_list$[]
-  LIST.CLEAR program_list
-  PRINT "Now loading directory "; source_path$
-  GOTO relist
- ENDIF
+IF choose$="Quit!" THEN END
 
- ! guess the destination directory based on the filename
- default_dest$ = "../data/"
- IF IS_IN(".bas", dfname$) > 0 THEN default_dest$ = "../source/"
- IF IS_IN(".db", dfname$) > 0 THEN default_dest$ = "../databases/"
+! Check if user clicks ".."
+! If it does, go back
 
- INPUT "Enter Destination Directory", ddir$, default_dest$
+IF choose$=".." THEN
+ IF path$="/" THEN
+  PRINT "Can't go back any more"
+  GOTO skip
+ END IF
+ SPLIT result$[], path$, "/"
+ ARRAY.LENGTH l, result$[]
+ PRINT "Going back..."
+ l=l-1
+ path$="/"
+ FOR i=1 TO l
+  path$=result$[i]+"/"
+ NEXT i
+ FTP.CD path$
+ GOTO skip
+END IF
 
- PRINT ""
- PRINT "Downloading "; source_path$; " to "; ddir$ + dfname$
+! Check if user clicked
+! a folder
 
- BYTE.OPEN R, FN, source_path$+dfname$
- BYTE.COPY FN, ddir$+dfname$
+IF IS_IN("(d)", choose$, 1)>0 THEN
+ a=LEN(choose$)
+ a=a-3
+ path$=path$+MID$(choose$, 1, a)+"/"
+ FTP.CD path$
+ PRINT "Loading directory ";"laughton.com/basic/programs/";path$;"..."
+ GOTO SKIP
+END IF
 
- PRINT "FILE DOWNLOAD COMPLETE!"
+! If the program reaches here
+! Means than the user clicked
+! A file
 
- PAUSE 2000
+! Guess the destination of
+! The download directory
 
-UNTIL 0
+IF IS_IN(".bas", choose$, 1) THEN
+ default$="rfo-basic/source/"
+ELSEIF IS_IN(".db", choose$, 1)
+ default$="rfo-basic/databases/"
+ELSE
+ default$="rfo-basic/data/"
+END IF
 
-END
+! Ask the user the
+! Destination path
+
+INPUT "Destination path", dest$, default$
+
+dest$="../../"+dest$
+
+! Download the file
+
+PRINT "Downloading file..."
+POPUP "Downloading file...", 0, 0, 1
+FTP.GET path$+choose$, dest$+choose$
+
+! Tell user that the file has
+! Finished downloading and
+! Loop again
+
+PRINT "Download complete!"
+PAUSE 1000 % Pause for a little
+
+skip:
+
+ARRAY.DELETE result$[]
+LIST.CLEAR prelist
+LIST.CLEAR list
+
+GOTO loop % Loop again
