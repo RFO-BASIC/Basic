@@ -9152,6 +9152,7 @@ private boolean doUserFunction(){
 
 		  if (!evalNumericExpression())return false;							// Get duration
 		  duration= EvalNumericExpressionValue/1000;
+	
 		  
 	    	double dnumSamples = duration * sampleRate;
 	    	dnumSamples = Math.ceil(dnumSamples);
@@ -9159,12 +9160,22 @@ private boolean doUserFunction(){
 	    	double sample[] = new double[numSamples];
 	    	byte generatedSnd[] = new byte[2 * numSamples];
 	    	
-	    	int minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
-        			AudioFormat.ENCODING_PCM_16BIT);
-	    	if (numSamples< minBuffer){
-	    		double minDuration = Math.ceil(1000 * (double)minBuffer/(double)sampleRate);
-	    		RunTimeError("Minimum tone duration for this device: " + (int) minDuration + " milliseconds");
-	    		return false;
+	    	boolean flagMinBuff = true;							// Optionally skip checking min buffer size
+	    	if (isNext(',')) {
+	    		if (!evalNumericExpression()) return false;
+	    		if (EvalNumericExpressionValue == 0 )
+	    			flagMinBuff = false;
+	    	}
+	    	
+	    	if (flagMinBuff) {
+	    	
+	    		int minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
+	    				AudioFormat.ENCODING_PCM_16BIT);
+	    		if (numSamples< minBuffer){
+	    			double minDuration = Math.ceil(1000 * (double)minBuffer/(double)sampleRate);
+	    			RunTimeError("Minimum tone duration for this device: " + (int) minDuration + " milliseconds");
+	    			return false;
+	    		}
 	    	}
 
 	        // fill out the array
