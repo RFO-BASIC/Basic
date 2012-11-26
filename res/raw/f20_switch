@@ -30,8 +30,8 @@ SW.BEGIN name$
   TIME Year$, Month$, Day$, Hour$, Minute$, Second$
   year = VAL(Year$)
 
-  IF ( (MOD(year,4) =0) & (MOD(year,100) <>0) |  (MOD(year, 400) = 0) THEN
-   numDays - 29
+  IF ( (MOD(year,4) = 0) & (MOD(year,100) <> 0) ) |  (MOD(year,400) = 0) THEN
+   num_days = 29
   ELSE
    num_days = 28
   ENDIF

@@ -51,7 +51,7 @@ x = lprint(num, "Element 5 added to list")
 ! Remove and element from the list
 
 LIST.REMOVE num, 2
-x = lprint(num, "Element 2 removed from list");
+x = lprint(num, "Element 2 removed from list")
 
 ! Insert a new element 2
 
