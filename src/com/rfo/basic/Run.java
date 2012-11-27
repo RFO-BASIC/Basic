@@ -5076,12 +5076,12 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		int maxStack = 1000 ;						// Will adjust after experimenting.
 		
 		if (IfElseStack.size() > maxStack) {
-			RunTimeError("Memory is low. Avoid GOTOs within IF/ELSE blocks.");
+			RunTimeError("Stack overflow. See manual about use of GOTO.");
 			return false;
 		}
 		
 		if (ForNextStack.size() > maxStack) {
-			RunTimeError("Memory is low. Avoid GOTOs within FOR blocks.");
+			RunTimeError("Stack overflow. See manual about use of GOTO");
 			return false;
 		}
 		
