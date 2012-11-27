@@ -110,10 +110,9 @@ public class AddProgramLine {
 				Temp = Temp + c;
 			} else if (c == '%') {					// if the % character appears,
 				break;								// drop it and the rest of the line
-			} else if ( (c == '/') &&				// Pre-processor: check for line continuation "//"
-						((i + 1) < linelen) && (line.charAt(i + 1) == c)) {
-				int j = i + 1;						// scan after character pair, skipping spaces and tabs
-				for (++j; (j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0); ++j) { ; }
+			} else if (c == '~') {					// Pre-processor: check for line continuation '~'
+				int j = i;							// scan after character, skipping spaces and tabs
+				do { ++j; } while ((j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0));
 				if ((j >= linelen) || (line.charAt(j) == '%')) { 	// EOL or comment
 					Temp = Temp + "{+nl}";			// add line continuation marker
 					break;
@@ -142,10 +141,11 @@ public class AddProgramLine {
    	   			lineCharCounts.add(charCount);			// add char count to array of char counts
    			}
 			if (Temp.endsWith("{+nl}")) {    		// Pre-processor: test for include next line sequence
-				stemp = stemp + Temp.substring(0, Temp.length() - 5);  // remove the include next line sequence and collect it
+				Temp = Temp.substring(0, Temp.length() - 5);	// remove the include next line sequence
+				stemp = (stemp.length() == 0) ? Temp : mergeLines(stemp, Temp);	// and collect the line
 				return;
-			} else {
-				Temp = stemp + Temp; // add stemp collection to line
+			} else if (stemp.length() > 0) {
+				Temp = mergeLines(stemp, Temp); // add stemp collection to line
 				stemp = "";     // clear the collection
 			}
 			Temp = shorthand(Temp);					// Pre-processor: expand C/Java-like operators
@@ -159,8 +159,53 @@ public class AddProgramLine {
    			Basic.lines.add(Temp);					// add to Basic.lines
    		}
 	}
-	
-	public String shorthand(String line) {			// Pre-processor: expand C/Java-like operators
+
+	private String mergeLines(String base, String addition) {
+		if (base.length() == 0) { return addition; }
+		if (addition.length() == 0) { return base; }
+
+		String specialCommands[] = { "array.load", "list.add" };
+		for (int i = 0; i < specialCommands.length; ++i) {
+			if ( base.startsWith(specialCommands[i]) &&					// command allows continuable data
+				 (base.length() > specialCommands[i].length()) &&		// the command is not alone on the line
+				 scanForComma(base) ) {									// the command's first parameter is already present
+				char lastChar = base.charAt(base.length() - 1);
+				char nextChar = addition.charAt(0);
+				if (lastChar != ',' && nextChar != ',') {				// no comma between adjacent parameters
+					base += ',';										// insert comma between parameters
+				}
+				break;
+			}
+		}
+		return base + addition;
+	}
+
+	// return true iff line has a comma that is not in balanced parentheses or quotes
+	private boolean scanForComma(String line) {
+		boolean isQuote = false;
+		int parens = 0;
+		int brackets = 0;
+		int len = line.length();
+		char prevc = '\0';
+		for (int i = 0; i < len; ++i) {
+			char c = line.charAt(i);
+			switch (c) {
+				case '(': ++parens; break;
+				case ')': --parens; break;
+				case '[': ++brackets; break;
+				case ']': --brackets; break;
+				case '\"':
+					if (prevc != '\\') { isQuote = !isQuote; }
+					break;
+				case ',':
+					if (parens == 0 && brackets == 0 && !isQuote) { return true; }
+			}
+			prevc = c;
+		}
+		return false;
+	}
+
+	private String shorthand(String line) {			// Pre-processor: expand C/Java-like operators
 		int ll = line.length();
 		int then = line.indexOf("then");
 		if (then == -1) {
