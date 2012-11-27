@@ -74,12 +74,12 @@ This file is part of BASIC! for Android
     			 
   			 
 
-    	<activity android:name="org.acra.CrashReportDialog"
+  	<activity android:name="org.acra.CrashReportDialog"
         	android:theme="@android:style/Theme.Dialog"
         	android:launchMode="singleInstance"
         	android:excludeFromRecents="true"
         	android:finishOnTaskLaunch="true" />
-    	
+     	     	     	
     	<receiver android:enabled="false" android:name=".BootUpReceiver">
 			<intent-filter>
     		<action android:name="android.intent.action.BOOT_COMPLETED" />

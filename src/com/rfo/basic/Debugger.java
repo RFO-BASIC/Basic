@@ -12,7 +12,7 @@ import android.app.Application;
  * report to a Google Docs spread sheet. This report can then
  * be examined for debug purposes. 
  * 
- * See http://code.google.com/p/acra/ for more details
+ * See http://acra.ch/ for more details
  * 
  */
 //@ReportsCrashes(formKey = "dDQ4cXhUQjdJbTZrUzlUN3NsWDctdWc6MQ" ,

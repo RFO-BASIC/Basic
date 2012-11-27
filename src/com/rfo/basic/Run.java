@@ -922,7 +922,7 @@ public class Run extends ListActivity {
     	 "bitmap.create", "bitmap.drawinto.start",
     	 "bitmap.drawinto.end", "bitmap.draw",
     	 "get.bmpixel", "get.value", "set.antialias",
-    	 "get.textbounds", "text.typeface", "ontouch.resume",
+    	 "get.textbounds", "text.typeface", "ongrtouch.resume",
     	 "camera.select"
     
     };
@@ -3506,18 +3506,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			return false;									// to assign a value to
 		}
 		
-		if (isNext(':')) {									// If this is a label,
-			
-			if (!IfElseStack.empty()) {						// No labels inside IF/ELSE Blocks
-				RunTimeError("Labels not permitted inside IF/ELSE blocks");
-				return false;
-			}
-			
-			if (!ForNextStack.empty()) {					// No labels inside FOR Blocks
-				RunTimeError("Labels not permitted inside FOR blocks");
-				return false;
-			}
-			
+		if (isNext(':')) {									// If this is a label,			
 			return checkEOL();								// then done
 		}
 		
@@ -5084,8 +5073,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private boolean executeGOTO() {
 		
-			IfElseStack.clear();			
-			ForNextStack.clear();
+		int maxStack = 1000 ;						// Will adjust after experimenting.
+		
+		if (IfElseStack.size() > maxStack) {
+			RunTimeError("Memory is low. Avoid GOTOs within IF/ELSE blocks.");
+			return false;
+		}
+		
+		if (ForNextStack.size() > maxStack) {
+			RunTimeError("Memory is low. Avoid GOTOs within FOR blocks.");
+			return false;
+		}
 		
 		if (getVar()) {
 			int gln = isLabel(VarNumber);
@@ -9242,6 +9240,12 @@ private boolean doUserFunction(){
 	        }while (x<numSamples);
 	        
 	        if (audioTrack != null) audioTrack.release();			// Track play done. Release track.
+	        
+	        audioTrack = null;										// Release storage
+	        generatedSnd = null;
+	        sample = null;
+	        System.gc();
+	        
 
 	        return true;
 	  }

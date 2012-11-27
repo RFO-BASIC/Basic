@@ -136,7 +136,6 @@ public class Basic extends ListActivity  {
         	finish();
         	return;
         }
-        
         InitDirs();											// Initialize Basic directories every time
         													// The user may have put in a new SD Card
         
