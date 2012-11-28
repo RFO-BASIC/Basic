@@ -668,6 +668,8 @@ public class Run extends ListActivity {
     public static String ExecutingLineBuffer ="";		// Holds the current line being executed
     public static int ExecutingLineIndex = 0;		// Points to the current line in Basic.lines
     public static boolean SEisLE = false;				// If a String expression result is a logical expression
+	
+	public static Stack<Bundle> tokenStack;
 
     public static Stack<Integer> GosubStack;			// Stack used for Gosub/Return
     public static Stack<Bundle> ForNextStack;			// Stack used for For/Next
@@ -1783,7 +1785,10 @@ public class Background extends AsyncTask<String, String, String>{
         	if (interruptResume != -1 ) return true;   	// If we are handling an interrupt then do not cancel this one
         	interruptResume = ExecutingLineIndex;	   	// Set the resume Line Number
         	ExecutingLineIndex = gotoLine;			   	// Set the goto line number
-        	IfElseStack.push(IEinterrupt);
+        	Bundle ieb = new Bundle();
+			ieb.putInt("type",2);
+			ieb.putInt("q",IEinterrupt);
+			//IfElseStack.push(IEinterrupt);
         	return false;								//Turn off the interrupt
         }
 
@@ -2001,6 +2006,8 @@ private void InitVars(){
     ExecutingLineBuffer ="\n";		// Holds the current line being executed
     ExecutingLineIndex = 0;		// Points to the current line in Basic.lines
     SEisLE = false;				// If a String expression result is a logical expression
+	
+	tokenStack = new Stack<Bundle>();
 
     GosubStack = new Stack<Integer>();			// Stack used for Gosub/Return
     ForNextStack = new	Stack<Bundle>();		// Stack used for For/Next
@@ -2742,8 +2749,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 
 			if (KeyWordValue == BKWnone) KeyWordValue = BKWlet;    // If no key word, then assume pseudo LET
 			int q;
-			if (!IfElseStack.empty()){					// if inside IF-ELSE-ENDIF
-				q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
+			if(!tokenStack.empty()){
+			if(tokenStack.peek().getInt("type")==2){
+			//if (!IfElseStack.empty()){					// if inside IF-ELSE-ENDIF
+				q=tokenStack.peek().getInt("q");
+				//q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
 				switch (q){
 					case IEskip1:
 						if (KeyWordValue == BKWelse || 
@@ -2762,7 +2772,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 						
 					}
 				}
-			
+			}
 			if (KeyWordValue != SKIP)
         		if (Echo)
         			{PrintShow(ExecutingLineBuffer.substring(0, ExecutingLineBuffer.length()-1));}
@@ -2824,7 +2834,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        				return false;
 	        			}
 	        			if (!checkEOL(true)) return false;
-	        			GosubStack.push(ExecutingLineIndex);
+	        			Bundle GosubBundle = new Bundle();
+						GosubBundle.putInt("type",1);
+						//GosubStack.push(ExecutingLineIndex);
+						GosubBundle.putInt("ExecutingLineIndex",ExecutingLineIndex);
+						tokenStack.push(GosubBundle);
 	        			ExecutingLineIndex = gln;
 	        		}else{
 	        			SyntaxError();
@@ -2833,11 +2847,13 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		break;
 	        	case BKWreturn:
 	        		if (!checkEOL()) return false;
-	        		if (GosubStack.empty()){
+	        		if (tokenStack.peek().getInt("type")!=1){
+					//if (GosubStack.empty()){
 	        			RunTimeError("RETURN without GOSUB");
 	        			return false;
 	        		}
-	        		ExecutingLineIndex = GosubStack.pop();
+	        		//ExecutingLineIndex = GosubStack.pop();
+					ExecutingLineIndex = tokenStack.pop().getInt("ExecutingLineIndex");
 	        		break;
 	        	case BKWtext_open:
 	        		if (!executeTEXT_OPEN()){SyntaxError(); return false;}
@@ -3507,7 +3523,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		
 		if (isNext(':')) {									// If this is a label,
-			
+			/*
 			if (!IfElseStack.empty()) {						// No labels inside IF/ELSE Blocks
 				RunTimeError("Labels not permitted inside IF/ELSE blocks");
 				return false;
@@ -3517,7 +3533,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				RunTimeError("Labels not permitted inside FOR blocks");
 				return false;
 			}
-			
+			*/
+			if(!tokenStack.empty()){
+				RunTimeError("Labels not permitted inside code blocks.");
+				return false;
+			}
 			return checkEOL();								// then done
 		}
 		
@@ -5084,8 +5104,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private boolean executeGOTO() {
 		
-			IfElseStack.clear();			
-			ForNextStack.clear();
+			//IfElseStack.clear();
+			tokenStack.clear();
+			//ForNextStack.clear();
 		
 		if (getVar()) {
 			int gln = isLabel(VarNumber);
@@ -5105,21 +5126,30 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private  boolean executeIF(){
 		int q =0;
-		
-		if (!IfElseStack.empty()){			 								// if inside of an IF block		
-			q = IfElseStack.peek();
+		Bundle ieb = new Bundle();
+		ieb.putInt("type",2);
+		if(!tokenStack.empty()){
+		//if (!IfElseStack.empty()){			 								// if inside of an IF block		
+		if(tokenStack.peek().getInt("type") == 2){
+			q = tokenStack.peek().getInt("q");
+			//q = IfElseStack.peek();
 			if (q != IEexec){												// and not executing
 				int index = ExecutingLineBuffer.indexOf("then");
 				if (index > 0){												// if there is a THEN
 					LineIndex = index + 4;									// skip over the THEN
 					if	(ExecutingLineBuffer.charAt(LineIndex)=='\n'){      // if not single line if
-						IfElseStack.push(IEskip2);							// need to skip to this if's end
+						tokenStack.push(ieb);
+						ieb.putInt("q",IEskip2);
+						//IfElseStack.push(IEskip2);							// need to skip to this if's end
 						return true;
 						}
 					else return true;										// is single line no skip needed
 					}
-				IfElseStack.push(IEskip2);                                  // No THEN, need skip
+				tokenStack.push(ieb);
+				ieb.putInt("q",IEskip2);
+				//IfElseStack.push(IEskip2)                                // No THEN, need skip
 				return true;
+				}
 			}			
 		}
 		
@@ -5141,8 +5171,15 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 	    // SingleLine = false at this point
 		
-		if (condition) IfElseStack.push(IEexec);
-		else IfElseStack.push(IEskip1);
+		if (condition){
+			tokenStack.push(ieb);
+			ieb.putInt("q",IEexec);
+			//IfElseStack.push(IEexec);
+		}else{
+			tokenStack.push(ieb);
+			ieb.putInt("q",IEskip1);
+			//IfElseStack.push(IEskip1);
+		}
 
 		return true;
 	}
@@ -5171,39 +5208,77 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	private  boolean executeELSE(){
 		int q =0;
 		
-		if (IfElseStack.empty()){			// If there is nothing on the stack
+		if(tokenStack.empty()){
+		//if (IfElseStack.empty()){			// If there is nothing on the stack
+			RunTimeError("Misplaced ELSE");			// we should find an ELSE
+			return false;
+		}
+		if(tokenStack.peek().getInt("type")!= 2){
+		//if (IfElseStack.empty()){			// If there is nothing on the stack
 			RunTimeError("Misplaced ELSE");			// we should find an ELSE
 			return false;
 		}
 		
 		if (!checkEOL() ) return false;
 
-		q = IfElseStack.pop();
-		
-		if (q == IEexec) IfElseStack.push(IEskip2);
-		else IfElseStack.push(IEexec);
+		q = tokenStack.pop().getInt("q");
+		//q = IfElseStack.pop();
+		Bundle ieb = new Bundle();
+		ieb.putInt("type",2);
+		if (q == IEexec) {
+			ieb.putInt("q",IEskip2);
+			tokenStack.push(ieb);
+			//IfElseStack.push(IEskip2);
+		}else{
+			ieb.putInt("q",IEexec);
+			tokenStack.push(ieb);
+			//)IfElseStack.push(IEexec);
+		}
 		return true;
 	}
 	
 	private boolean executeELSEIF(){
 		int q =0;
 		
-		if (IfElseStack.empty()){			// If there is nothing on the stack
+		if(tokenStack.empty()){
+		//if (IfElseStack.empty()){			// If there is nothing on the stack
 			RunTimeError("Misplaced ELSEIF");			// we should find an ELSE
 			return false;
 		}
+		if(tokenStack.peek().getInt("type")!= 2){
+		//if (IfElseStack.empty()){			// If there is nothing on the stack
+			RunTimeError("Misplaced ELSEIF");			// we should find an ELSE
+			return false;
+		}
+		/*
+		if (IfElseStack.empty()){			// If there is nothing on the stack
+			RunTimeError("Misplaced ELSEIF");			// we should find an ELSE
+			return false;
+		}*/
 		
-		q = IfElseStack.pop();
+		q = tokenStack.pop().getInt("q");
+		//q = IfElseStack.pop();
 
+		Bundle ieb = new Bundle();
+		ieb.putInt("type",2);
 		if (q == IEexec) {
-			IfElseStack.push(IEskip2);
+			ieb.putInt("q",IEskip2);
+			tokenStack.push(ieb);
+			//IfElseStack.push(IEskip2);
 			return true;
 		}
 		PossibleKeyWord = "then";					// Tell get var to expect a THEN
 	    if (!evalNumericExpression()){return false;}
 		PossibleKeyWord = "";					   // Tell get var to expect a THEN
-	    if (EvalNumericExpressionValue == 0) IfElseStack.push(IEskip1);
-	    else IfElseStack.push(IEexec);
+	    if (EvalNumericExpressionValue == 0){
+			ieb.putInt("q",IEskip1);
+			tokenStack.push(ieb);
+			//IfElseStack.push(IEskip1);
+	    }else{
+			ieb.putInt("q",IEexec);
+			tokenStack.push(ieb);
+			//IfElseStack.push(IEexec);
+		}
 	    
 	    if (ExecutingLineBuffer.startsWith("then", LineIndex)) LineIndex = LineIndex + 4;
 	    if (!checkEOL() ) return false;
@@ -5212,14 +5287,25 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return true;
 	}
 	
-		private boolean executeENDIF(){
-			
+	private boolean executeENDIF(){
+		if(tokenStack.empty()){
+		//if (IfElseStack.empty()){			// If there is nothing on the stack
+			RunTimeError("Misplaced ELSEIF");			// we should find an ELSE
+			return false;
+		}
+		if(tokenStack.peek().getInt("type")!= 2){
+		//if (IfElseStack.empty()){			// If there is nothing on the stack
+			RunTimeError("Misplaced ELSEIF");			// we should find an ELSE
+			return false;
+		}
+		/*
 			if (IfElseStack.empty()){			// Something must be on the stack
 				RunTimeError("Misplaced ENDIF");
 				return false;
-			}
+			}*/
 			if (!checkEOL() ) return false;
-			IfElseStack.pop();					// but we do not care what it is
+			//IfElseStack.pop();					// but we do not care what it is
+			tokenStack.pop();
 			return true;
 
 		}
@@ -5271,14 +5357,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}else 
 			if (fstart < flimit) {return SkipToNext();}
 
-		ForNextStack.push(b);
+		b.putInt("type",3);
+		tokenStack.push(b);
+		//ForNextStack.push(b);
 		
 		return true;
 //		return true;
 	}
 	
 		private boolean executeF_N_BREAK(){
-			if (ForNextStack.empty()){				// If the stack is empty
+			if(tokenStack.empty()){
+			//if (ForNextStack.empty()){				// If the stack is empty
 				RunTimeError("No For Loop Active");			// then we have a misplaced NEXT
 				return false;
 			}
@@ -5288,7 +5377,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 			
 			
-			ForNextStack.pop();
+			while(tokenStack.pop().getInt("type")!=3);
+			//ForNextStack.pop();
 			
 			return true;
 
@@ -5319,12 +5409,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 		private  boolean executeNext(){
 		
-		
-		if (ForNextStack.empty()){				// If the stack is empty
+		if (tokenStack.empty()){
+		//if (ForNextStack.empty()){				// If the stack is empty
 			RunTimeError("NEXT with out FOR");			// then we have a misplaced NEXT
 			return false;
 		}
-		Bundle b = ForNextStack.peek();			// Peek at the TOS Bundle
+		if (tokenStack.peek().getInt("type")!=3){
+		//if (ForNextStack.empty()){				// If the stack is empty
+			RunTimeError("NEXT with out FOR");			// then we have a misplaced NEXT
+			return false;
+		}
+		Bundle b =tokenStack.peek(); //ForNextStack.peek();			// Peek at the TOS Bundle
 		int line = b.getInt("line");
 		int varindex = b.getInt("var");					// We did not store the index value, we stored a pointer to it
 		double var = NumericVarValues.get(varindex);
@@ -5339,7 +5434,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				ExecutingLineIndex = line;
 				return true;
 			}
-			b = ForNextStack.pop();				// If done, pop the stack 
+			b = tokenStack.pop();//ForNextStack.pop();				// If done, pop the stack 
 			return true;
 		}
 		if (var <= limit){						// If not done, go back the statement
@@ -5347,7 +5442,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			return true;
 			}
 		
-		b = ForNextStack.pop();
+		b = tokenStack.pop();//ForNextStack.pop();
 		
 		return true;
 	}
@@ -5356,7 +5451,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if (!evalNumericExpression()) return false;
 
 		if (EvalNumericExpressionValue != 0){		   // if true
-			WhileStack.push(ExecutingLineIndex-1);	   // push line number onto while stack.
+			Bundle wb = new Bundle();
+			wb.putInt("type",4);
+			wb.putInt("eli",ExecutingLineIndex-1);
+			//WhileStack.push(ExecutingLineIndex-1);	   // push line number onto while stack.
 			return checkEOL();
 		}
 		if (!SkipToRepeat()){return false;}		  // False, find the REPEAT for the nested FOR
@@ -5364,13 +5462,23 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private boolean executeW_R_BREAK(){
-		if (WhileStack.empty()){				// If the stack is empty
+		if (tokenStack.empty()){
+		//if (WhileStack.empty()){				// If the stack is empty
 			RunTimeError("No While Statement Active");			// then we have a misplaced NEXT
 			return false;
 		}
+		
 		if (!checkEOL()) return false;
 		if (!SkipToRepeat()) return false;
-		WhileStack.pop();
+		
+		while(tokenStack.pop().getInt("type")!=4){
+		//WhileStack.pop();
+		if (tokenStack.empty()){
+		//if (WhileStack.empty()){				// If the stack is empty
+			RunTimeError("No While Statement Active");			// then we have a misplaced NEXT
+			return false;
+		}
+		}
 		return true;
 	}
 
@@ -5397,30 +5505,50 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
     	return false; // End of program. No Next found;
 	}
 	
-		private boolean executeREPEAT(){
-		if (WhileStack.empty()){				// Empty stack = error
+	private boolean executeREPEAT(){
+		if(tokenStack.empty()){
+		//if (WhileStack.empty()){				// Empty stack = error
 			RunTimeError("REPEAT without WHILE");
 	    	return false; // End of program. No Next found;
 		}
-		ExecutingLineIndex = WhileStack.pop();	// Pop the line number of the WHILE
+		if(tokenStack.peek().getInt("type") !=5){
+		//if (WhileStack.empty()){				// Empty stack = error
+			RunTimeError("REPEAT without WHILE");
+	    	return false; // End of program. No Next found;
+		}
+		
+		ExecutingLineIndex = tokenStack.pop().getInt("eli");//WhileStack.pop();	// Pop the line number of the WHILE
 
 		return checkEOL();
 	}
 	
 	private boolean executeDO(){
-		DoStack.push(ExecutingLineIndex-1);	   // push line number onto DO stack.
+		Bundle b = new Bundle();
+		b.putInt("type",5);
+		b.putInt("eli",ExecutingLineIndex-1);
+		tokenStack.push(b);
+		//DoStack.push(ExecutingLineIndex-1);	   // push line number onto DO stack.
 		return checkEOL();
 
 	}
 	
 	private boolean executeD_U_BREAK(){
-		if (DoStack.empty()){				// Empty stack = error
+		if (tokenStack.empty()){
+		//if (DoStack.empty()){				// Empty stack = error
 			RunTimeError("No DO loop active");
 	    	return false; // End of program. No UNTIL found;
 		}
 		if (!checkEOL()) return false;
 		if (!SkipToUntil());
-		DoStack.pop();
+		
+		while(tokenStack.pop().getInt("type")!=5){
+		if (tokenStack.empty()){
+		//if (DoStack.empty()){				// Empty stack = error
+			RunTimeError("No DO loop active");
+	    	return false; // End of program. No UNTIL found;
+		}
+		}
+		//DoStack.pop();
 		return true;
 	}
 	
@@ -5447,17 +5575,24 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 
 	
-		private boolean executeUNTIL(){
-		if (DoStack.empty()){				// Empty stack = error
+	private boolean executeUNTIL(){
+		if(tokenStack.empty()){
+		//if (DoStack.empty()){				// Empty stack = error
+			RunTimeError("UNTIL without DO");
+	    	return false; // End of program. No UNTIL found;
+		}
+		if(tokenStack.peek().getInt("type")!=5){
+		//if (DoStack.empty()){				// Empty stack = error
 			RunTimeError("UNTIL without DO");
 	    	return false; // End of program. No UNTIL found;
 		}
 		if (!evalNumericExpression()) return false;
 		if (EvalNumericExpressionValue == 0){     // If false
-			ExecutingLineIndex = DoStack.pop();   // pop the DO line number and go to it.
+			ExecutingLineIndex = tokenStack.pop().getInt("eli");//DoStack.pop();   // pop the DO line number and go to it.
 			return true;
 		}
-		DoStack.pop();								// if true, pop the stack and
+		tokenStack.pop();
+		//DoStack.pop();								// if true, pop the stack and
 		return checkEOL();
 	}
 	
@@ -6170,7 +6305,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		ArrayList<String> msg = new ArrayList<String>();
 		
 	  if(!dbDialogProgram){
-			msg = doFunc();
+			//msg = doFunc();
       msg.add ("Executable Line #:    "+Integer.toString(ExecutingLineIndex+1));
 			msg.add("Executing:\n"+ExecutingLineBuffer);
 		}
@@ -6656,13 +6791,14 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	
 	private boolean  executeFN_RTN(){
-		if (FunctionStack.empty()){							// Insure RTN actually called from executing function
+		if (tokenStack.empty()){
+		//if (FunctionStack.empty()){							// Insure RTN actually called from executing function
 			RunTimeError("misplaced fn.rtn");
 			return false;
 		}
 		
 		Bundle fsb = new Bundle();							
-		fsb = FunctionStack.peek();							// Look at the Function Bundle on the stack
+		fsb = tokenStack.peek();//FunctionStack.peek();							// Look at the Function Bundle on the stack
 		
 		if (fsb.getBoolean("isNum")){						// to determine if function is string or numeric
 			if (!evalNumericExpression()) return false;
@@ -6675,13 +6811,18 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private boolean executeFN_END(){
-		if (FunctionStack.empty()){							// Insure RTN actually called from executing function
-			RunTimeError("misplaced fn.rtn");
+		if(tokenStack.empty()){
+		//if (FunctionStack.empty()){							// Insure RTN actually called from executing function
+			RunTimeError("misplaced fn.end");
 			return false;
 		}
-		
+		if(tokenStack.peek().getInt("type")!=7){
+		//if (FunctionStack.empty()){							// Insure RTN actually called from executing function
+			RunTimeError("misplaced fn.end");
+			return false;
+		}
 		Bundle fsb = new Bundle();							
-		fsb = FunctionStack.peek();							// Look at the Function Bundle on the stack
+		fsb = tokenStack.peek();// FunctionStack.peek();							// Look at the Function Bundle on the stack
 		
 		if (fsb.getBoolean("isNum")){						// to determine if function is string or numeric
 			EvalNumericExpressionValue = 0.0;				// Set default value
@@ -6847,7 +6988,9 @@ private boolean doUserFunction(){
 
 	fsb.putInt("LI", LineIndex);                        // Save out index into the line buffer
 
-	FunctionStack.push(fsb);							// Push the function bundle
+	fsb.putInt("type",7);
+	tokenStack.push(fsb);
+	//FunctionStack.push(fsb);							// Push the function bundle
 	VarSearchStart = sVarNames;							// Set the new start location for var name searches
 	
 	ExecutingLineIndex = ufBundle.getInt("line")+1;     // Set to execute first line after fn.def statement
@@ -6857,12 +7000,13 @@ private boolean doUserFunction(){
 	
 	boolean flag = theBackground.RunLoop();				// Now go execute the function
 	
-	if (FunctionStack.isEmpty()){
+	if(tokenStack.isEmpty()){
+	//if (FunctionStack.isEmpty()){
 		RunTimeError("System problem. Wait 10 seconds before rerunning.");
 		return false;
 	}
 	
-	fsb = FunctionStack.pop();							// Function execution done. Restore stuff
+	fsb = tokenStack.pop();// FunctionStack.pop();							// Function execution done. Restore stuff
 	
 	trimArray(VarNames, fsb.getInt("SVN"));
 	trimArray(VarIndex, fsb.getInt("VI"));
@@ -6883,6 +7027,9 @@ private boolean doUserFunction(){
 // **************************** SWITCH Statements *************************************
 	
 	private boolean executeSW_BEGIN(){
+		Bundle b = new Bundle();
+		b.putInt("type",6);
+		tokenStack.push(b);
 		boolean isNumeric;
 		double nexp = 0;
 		String sexp = "";
@@ -6900,6 +7047,7 @@ private boolean doUserFunction(){
 			if (ExecutingLineBuffer.startsWith("sw.end")) {
 				LineIndex = LineIndex + 6;
 				if (!checkEOL()) return false;
+				tokenStack.pop();
 				return true;
 			}else if (ExecutingLineBuffer.startsWith("sw.default")){
 				LineIndex = LineIndex + 10;
@@ -6932,7 +7080,15 @@ private boolean doUserFunction(){
    		++ExecutingLineIndex;  // Next program line
 		while (ExecutingLineIndex < Basic.lines.size()){
 			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
-			if (ExecutingLineBuffer.startsWith("sw.end")) return true;
+			if (ExecutingLineBuffer.startsWith("sw.end")){
+				while(tokenStack.pop().getInt("type")!=6){
+					if(tokenStack.empty()){
+						RunTimeError("sw.xxxx without sw.end");
+						return false;
+					}
+				}
+				return true;
+			}
 			++ExecutingLineIndex;  // Next program line	
 		}
 		RunTimeError("sw.xxxx without sw.end");
@@ -6944,6 +7100,11 @@ private boolean doUserFunction(){
 	}
 	
 	private boolean executeSW_END(){
+		if(tokenStack.empty()){
+			RunTimeError("Missplaced sw.end");
+			return false;
+		}
+		tokenStack.pop();
 		return true;
 	}
 	
