@@ -5073,7 +5073,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private boolean executeGOTO() {
 		
-		int maxStack = 1000 ;						// Will adjust after experimenting.
+		int maxStack = 50000 ;						// 50,000 should be enough
 		
 		if (IfElseStack.size() > maxStack) {
 			RunTimeError("Stack overflow. See manual about use of GOTO.");
