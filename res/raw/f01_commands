@@ -3,6 +3,7 @@
  Press an alpha key to scroll to commands that start with that letter. (Does not work on all devices.)
  Tap a command's line. The command will be loaded into the clip board. It can then be pasted into the Editor.
 *
+ 
 ! - Single Line Comment, 38
 !! - Block Comment, 38
 #, 19
@@ -51,6 +52,7 @@ Browse <url_sexp>, 78
 Bt.close, 77
 Bt.connect {0|1}, 77
 Bt.device.name <svar>, 78
+Bt.disconnect, 77
 Bt.onReadReady.Resume, 78
 Bt.open {0|1}, 77
 Bt.read.bytes <svar>, 78
@@ -188,7 +190,7 @@ gr.hide Object_number, 98
 gr.line Object_number, x1, y1, x2, y2, 96
 gr.modify Object_number, parameter_name$, {value|value$}, 107
 gr.NewDL Array[], 109
-gr.onTouch.Resume, 99
+gr.onGRTouch.Resume, 99
 gr.open alpha, red, green, blue {, ShowStatusBar {, Orientation}}, 93
 gr.orientation 0|1, 94
 gr.oval Object_number, left, top, right, bottom, 96
@@ -275,11 +277,12 @@ OCT(<sexp>), 43
 OnBackGround:, 88
 OnBackKey:, 55
 OnBTReadReady:, 78
+OnConsoleTouch:, 54
 OnError:, 54
 OnKeyPress:, 55
 OnMenuKey:, 55
-onTimer:, 82
-onTouch:, 99
+OnTimer:, 82
+OnGRTouch:, 99
 Pause <ticks_nexp>, 82
 Phone.call <sexpr>, 86
 Phone.rcv.init, 86
