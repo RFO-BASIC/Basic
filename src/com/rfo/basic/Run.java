@@ -5074,7 +5074,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		if (!IfElseStack.empty()){			 								// if inside of an IF block		
 			q = IfElseStack.peek();
-			if (q != IEexec){												// and not executing
+			if ((q != IEexec) && (q != IEinterrupt)) {						// and not executing
 				int index = ExecutingLineBuffer.indexOf("then");
 				if (index > 0){												// if there is a THEN
 					LineIndex = index + 4;									// skip over the THEN
