@@ -677,14 +677,15 @@ public class Run extends ListActivity {
 	public static final int WhileRepeat_ID = 5;
 	public static final int Switch_ID = 6;
 	public static final int Function_ID = 7;
+	public static boolean inSwitch;
 
-    public static Stack<Integer> GosubStack;			// Stack used for Gosub/Return
-    public static Stack<Bundle> ForNextStack;			// Stack used for For/Next
-    public static Stack<Integer> WhileStack;			// Stack used for While/Repeat
-    public static Stack<Integer> DoStack;				// Stack used for Do/Until
+    //public static Stack<Integer> GosubStack;			// Stack used for Gosub/Return
+    //public static Stack<Bundle> ForNextStack;			// Stack used for For/Next
+    //public static Stack<Integer> WhileStack;			// Stack used for While/Repeat
+    //public static Stack<Integer> DoStack;				// Stack used for Do/Until
     public static Bundle s= new Bundle();				// A generic bundle
     
-    public static Stack <Integer> IfElseStack;			// Stack for IF-ELSE-ENDIF operations
+    //public static Stack <Integer> IfElseStack;			// Stack for IF-ELSE-ENDIF operations
     public static final int IEskip1 = 1;			     // Skip statements until ELSE, ELSEIF or ENDIF
     public static final int IEskip2 = 2;				// Skip to until ENDIF
     public static final int IEexec = 3;			        // Execute to ELSE, ELSEIF or ENDIF
@@ -792,7 +793,7 @@ public class Run extends ListActivity {
 	public static boolean DoingDef = false;
 	public static ArrayList<Bundle> FunctionTable;      // A bundle is created for each defined function
 	public static Bundle ufBundle;						// Bundle set by isUserFunction and used by doUserFunction
-    public static Stack<Bundle> FunctionStack;			// Stack contains the currently executing functions
+    //public static Stack<Bundle> FunctionStack;			// Stack contains the currently executing functions
     public static int VarSearchStart;					// Used to limit search for var names to executing function vars
     public static boolean fnRTN = false;				// Set true by fn.rtn. Cause RunLoop() to return
     public static int scOpValue;						// An instance variable that needs to be saved when executing function
@@ -1607,7 +1608,7 @@ public class Background extends AsyncTask<String, String, String>{
         	
     		  if (OnErrorLine == 0 && !SyntaxError ){
       			  
-    	  		  
+    	  		  /*
     	  		    if (!ForNextStack.empty()){
     	  		    	publishProgress("Program ended with FOR without NEXT");
     	  		    }
@@ -1619,7 +1620,7 @@ public class Background extends AsyncTask<String, String, String>{
     	  		    if (!DoStack.empty()){
     	  		    	publishProgress("Program ended with DO without UNTIL");
     	  		    }
-    	  		    
+    	  		    */
     	  		  }
 
          	Basic.theRunContext = null;  // Signals that the background task has stopped
@@ -2013,16 +2014,17 @@ private void InitVars(){
     ExecutingLineBuffer ="\n";		// Holds the current line being executed
     ExecutingLineIndex = 0;		// Points to the current line in Basic.lines
     SEisLE = false;				// If a String expression result is a logical expression
+	inSwitch = false;
 	
 	CodeBlockStack = new Stack<Bundle>();
 
-    GosubStack = new Stack<Integer>();			// Stack used for Gosub/Return
-    ForNextStack = new	Stack<Bundle>();		// Stack used for For/Next
-    WhileStack = new Stack<Integer>() ;			// Stack used for While/Repeat
-    DoStack = new Stack<Integer>();				// Stack used for Do/Until
+   // GosubStack = new Stack<Integer>();			// Stack used for Gosub/Return
+   // ForNextStack = new	Stack<Bundle>();		// Stack used for For/Next
+   // WhileStack = new Stack<Integer>() ;			// Stack used for While/Repeat
+   // DoStack = new Stack<Integer>();				// Stack used for Do/Until
     s= new Bundle();							// A generic bundle
     
-    IfElseStack = new Stack <Integer>() ;			// Stack for IF-ELSE-ENDIF operations
+   // IfElseStack = new Stack <Integer>() ;			// Stack for IF-ELSE-ENDIF operations
     GetNumberValue = (double)0;				// Return value from GetNumber()
     EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
 
@@ -2112,7 +2114,7 @@ private void InitVars(){
 	DoingDef = false;
 	FunctionTable = new ArrayList<Bundle>() ;      // A bundle is created for each defined function
 	ufBundle = null ;						// Bundle set by isUserFunction and used by doUserFunction
-    FunctionStack = new Stack<Bundle>() ;			// Stack contains the currently executing functions
+    //FunctionStack = new Stack<Bundle>() ;			// Stack contains the currently executing functions
     VarSearchStart = 0;					// Used to limit search for var names to executing function vars
    fnRTN = false;				// Set true by fn.rtn. Cause RunLoop() to return
    scOpValue = 0;						// An instance variable that needs to be saved when executing function
@@ -5673,10 +5675,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		// Pull the IEinterrupt from the If Else stack
 		// It is possible that IFs were executed in the interrupt code
 		// so pop entries until we get to the IEinterrupt
-		while (IfElseStack.peek() != IEinterrupt) {
-			IfElseStack.pop();
+		while (CodeBlockStack.peek().getInt("q") != IEinterrupt) {
+			CodeBlockStack.pop();
 		}
-		IfElseStack.pop();  // Top is stack is now IEInterrupt, pop it
+		CodeBlockStack.pop();  // Top is stack is now IEInterrupt, pop it
 				
 		return true;
 	}
@@ -6492,6 +6494,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return msg;
 	}
 	
+	/*
 	private ArrayList<String> doFunc(){
 		ArrayList<String> msg = new ArrayList<String>();
 	  String msgs = "";
@@ -6504,7 +6507,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		msg.add("In Function: "+msgs);
 		return msg;
 	}
-	
+	*/
 	private ArrayList<String> doScalars(){
 			
 			  int count = VarNames.size();
@@ -7052,9 +7055,13 @@ private boolean doUserFunction(){
 						RunTimeError("sw.xxxx without sw.end");
 						return false;
 					}
-					
+					if(CodeBlockStack.peek().getInt("type")== Function_ID){
+						RunTimeError("in function without switch");
+						return false;
+					}
 					CodeBlockStack.pop();
 				}
+				CodeBlockStack.pop();
 				return true;
 			}
 			++ExecutingLineIndex;  // Next program line	
@@ -7069,6 +7076,10 @@ private boolean doUserFunction(){
 	
 	private boolean executeSW_END(){
 		if(CodeBlockStack.empty()){
+			RunTimeError("Misplaced sw.end");
+			return false;
+		}
+		if(CodeBlockStack.peek().getInt("type")!=Switch_ID){
 			RunTimeError("Misplaced sw.end");
 			return false;
 		}
