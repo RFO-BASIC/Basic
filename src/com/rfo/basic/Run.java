@@ -676,10 +676,10 @@ public class Run extends ListActivity {
     public static Bundle s= new Bundle();				// A generic bundle
     
     public static Stack <Integer> IfElseStack;			// Stack for IF-ELSE-ENDIF operations
-    public static final int IEskip1 = 1;			     // Skip statements until ELSE, ELSEIF or ENDIF
-    public static final int IEskip2 = 2;				// Skip to until ENDIF
-    public static final int IEexec = 3;			        // Execute to ELSE, ELSEIF or ENDIF
-    public static final int IEinterrupt = 4;
+    public static final Integer IEskip1 = 1;			// Skip statements until ELSE, ELSEIF or ENDIF
+    public static final Integer IEskip2 = 2;			// Skip to until ENDIF
+    public static final Integer IEexec = 3;				// Execute to ELSE, ELSEIF or ENDIF
+    public static final Integer IEinterrupt = 4;
    
     public static Double GetNumberValue = (double)0;				// Return value from GetNumber()
     public static Double EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
@@ -2741,27 +2741,21 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 
 			if (KeyWordValue == BKWnone) KeyWordValue = BKWlet;    // If no key word, then assume pseudo LET
-			int q;
+
 			if (!IfElseStack.empty()){					// if inside IF-ELSE-ENDIF
-				q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
-				switch (q){
-					case IEskip1:
+				Integer q = IfElseStack.peek();			// decide if we should skip to ELSE or ENDIF
+				if (q == IEskip1) {
 						if (KeyWordValue == BKWelse || 
 								KeyWordValue == BKWelseif ||
 								KeyWordValue == BKWif ||
 								KeyWordValue == BKWendif){}
 						else{KeyWordValue = SKIP;}
-						break;
-					case IEskip2:
+				} else if (q == IEskip2) {
 						if (KeyWordValue == BKWendif ||
 							KeyWordValue == BKWif ){}
 						else {KeyWordValue = SKIP;}
-						break;
-					case IEexec:
-					case IEinterrupt:
-						
-					}
 				}
+			}
 			
 			if (KeyWordValue != SKIP)
         		if (Echo)
@@ -5070,64 +5064,55 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private  boolean executeIF(){
-		int q =0;
 		
 		if (!IfElseStack.empty()){			 								// if inside of an IF block		
-			q = IfElseStack.peek();
+			Integer q = IfElseStack.peek();
 			if ((q != IEexec) && (q != IEinterrupt)) {						// and not executing
 				int index = ExecutingLineBuffer.indexOf("then");
-				if (index > 0){												// if there is a THEN
+				if (index < 0) {											// if there is no THEN
+					IfElseStack.push(IEskip2);								// need to skip to this if's end
+				} else {
 					LineIndex = index + 4;									// skip over the THEN
-					if	(ExecutingLineBuffer.charAt(LineIndex)=='\n'){      // if not single line if
+					if (isNext('\n')) {      								// if not single line if
 						IfElseStack.push(IEskip2);							// need to skip to this if's end
-						return true;
-						}
-					else return true;										// is single line no skip needed
-					}
-				IfElseStack.push(IEskip2);                                  // No THEN, need skip
+					}														// else is single line, no skip needed
+				}
 				return true;
-			}			
+			}
 		}
+		// Execute this IF
 		
+		PossibleKeyWord = "then";					// Tell getVar to expect a THEN
+		if (!evalNumericExpression()) { return false; }
+		PossibleKeyWord = "";						// getVar should no longer expect THEN
+		boolean condition = (EvalNumericExpressionValue != 0);
 		
-		PossibleKeyWord = "then";					// Tell get var to expect a THEN
-	    if (!evalNumericExpression()){SyntaxError();return false;}
-		PossibleKeyWord = "";						// Get var should not longer expect THEN
-		boolean condition = true;
-		if (EvalNumericExpressionValue == 0) condition = false;
-		
-		boolean SingleLine = false;
-		if	(ExecutingLineBuffer.charAt(LineIndex)!='\n'){
-			if (!ExecutingLineBuffer.startsWith("then", LineIndex)) return false;
-			LineIndex = LineIndex + 4;
-			if (ExecutingLineBuffer.charAt(LineIndex)!='\n') SingleLine = true;
+		char c = ExecutingLineBuffer.charAt(LineIndex);						// Use c to optimize IF with no THEN
+		if ((c == 't') && (ExecutingLineBuffer.startsWith("then", LineIndex))) {
+			LineIndex = LineIndex + 4;										// skip over the THEN
+
+			if (!isNext('\n')) { return SingleLineIf(condition); }			// assume single-line IF
+
+			// at this point: "IF condition THEN\n" and LineIndex is after '\n'
 		}
-		
-		if (SingleLine) return SingleLineIf(condition);
-		
-	    // SingleLine = false at this point
-		
-		if (condition) IfElseStack.push(IEexec);
-		else IfElseStack.push(IEskip1);
+		else if ((c != '\n') && (!checkEOL())) { return false; }			// no THEN, nothing else allowed on line
+
+		IfElseStack.push((condition) ? IEexec : IEskip1);
 
 		return true;
 	}
 	
 	private boolean SingleLineIf(boolean condition){
 		int index = ExecutingLineBuffer.lastIndexOf("else");
-		String SaveELB = "";
-		if (index > 0 ){
-			SaveELB = ExecutingLineBuffer;
-			ExecutingLineBuffer = ExecutingLineBuffer.substring(0, index);
-			ExecutingLineBuffer = ExecutingLineBuffer + "\n";
-		}
 		
-		if (condition){
+		if (condition) {
+			if (index > 0 ) {
+				ExecutingLineBuffer = ExecutingLineBuffer.substring(0, index) + "\n";
+			}
 			return StatementExecuter();
 		}
 
 		if (index > 0) {
-			ExecutingLineBuffer = SaveELB;
 			LineIndex = index + 4;
 			return StatementExecuter();
 		}
@@ -5135,45 +5120,42 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private  boolean executeELSE(){
-		int q =0;
 		
-		if (IfElseStack.empty()){			// If there is nothing on the stack
-			RunTimeError("Misplaced ELSE");			// we should find an ELSE
+		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
+			RunTimeError("Misplaced ELSE");
 			return false;
 		}
-		
 		if (!checkEOL() ) return false;
 
-		q = IfElseStack.pop();
-		
-		if (q == IEexec) IfElseStack.push(IEskip2);
-		else IfElseStack.push(IEexec);
+		Integer q = IfElseStack.pop();
+		IfElseStack.push((q == IEexec) ? IEskip2 : IEexec);
+
 		return true;
 	}
 	
 	private boolean executeELSEIF(){
-		int q =0;
 		
-		if (IfElseStack.empty()){			// If there is nothing on the stack
-			RunTimeError("Misplaced ELSEIF");			// we should find an ELSE
+		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
+			RunTimeError("Misplaced ELSEIF");
 			return false;
 		}
 		
-		q = IfElseStack.pop();
+		Integer q = IfElseStack.pop();
 
 		if (q == IEexec) {
 			IfElseStack.push(IEskip2);
-			return true;
+		} else {
+			PossibleKeyWord = "then";					// Tell getVar to expect a THEN
+			if (!evalNumericExpression()) { return false; }
+			PossibleKeyWord = "";						// getVar should no longer expect THEN
+			boolean condition = (EvalNumericExpressionValue != 0);
+
+			if (ExecutingLineBuffer.startsWith("then", LineIndex)) LineIndex = LineIndex + 4;
+			if (!checkEOL()) { return false; }
+
+			IfElseStack.push((condition) ? IEexec : IEskip1);
 		}
-		PossibleKeyWord = "then";					// Tell get var to expect a THEN
-	    if (!evalNumericExpression()){return false;}
-		PossibleKeyWord = "";					   // Tell get var to expect a THEN
-	    if (EvalNumericExpressionValue == 0) IfElseStack.push(IEskip1);
-	    else IfElseStack.push(IEexec);
-	    
-	    if (ExecutingLineBuffer.startsWith("then", LineIndex)) LineIndex = LineIndex + 4;
-		
-		return checkEOL();
+		return true;
 	}
 	
 		private boolean executeENDIF(){
