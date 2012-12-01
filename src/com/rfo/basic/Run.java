@@ -5087,16 +5087,15 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		PossibleKeyWord = "";						// getVar should no longer expect THEN
 		boolean condition = (EvalNumericExpressionValue != 0);
 		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// Use c to optimize IF with no THEN
-		if ((c == 't') && (ExecutingLineBuffer.startsWith("then", LineIndex))) {
-			LineIndex = LineIndex + 4;										// skip over the THEN
+		if (ExecutingLineBuffer.charAt(LineIndex) != '\n') {
+			if (!ExecutingLineBuffer.startsWith("then", LineIndex)) { checkEOL(); return false; }
+			LineIndex = LineIndex + 4;
 
 			if (!isNext('\n')) { return SingleLineIf(condition); }			// assume single-line IF
 
 			// at this point: "IF condition THEN\n" and LineIndex is after '\n'
 		}
-		else if ((c != '\n') && (!checkEOL())) { return false; }			// no THEN, nothing else allowed on line
-
+		
 		IfElseStack.push((condition) ? IEexec : IEskip1);
 
 		return true;
