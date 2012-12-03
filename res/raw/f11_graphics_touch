@@ -13,18 +13,20 @@ PRINT "Pressing UP makes the next star bigger."
 PRINT "Pressing DOWN makes the next star smaller"
 PRINT "Pressing GO toggles between the star and a galaxy bitmap."
 PRINT ""
-PRINT "When ready, Press the SPACE key."
+PRINT "When ready, Tap the screen."
 PRINT "When done, Press the BACK key."
 
-! Wait for the SPACE key to be pressed
-KB.TOGGLE
-LET done = 0
+! Wait for the screen to be tapped
+Tapped = 0
 DO
- INKEY$ key$
- IF key$ = " " THEN LET done = 1
-UNTIL done
-KB.HIDE
+UNTIL Tapped
+GOTO Start
 
+onConsoleTouch:
+Tapped = 1
+ConsoleTouch.Resume
+
+Start:
 ! open the Graphics Screen with a
 ! white background
 
