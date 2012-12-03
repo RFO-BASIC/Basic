@@ -150,7 +150,7 @@ public class GR extends Activity {
         Brightness = -1;
         Rendering = false;
 
-        Run.GRrunning = true;
+//        Run.GRrunning = true;
 //        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " on create display list =  "+Run.DisplayList);        
     }
     
@@ -475,7 +475,7 @@ public class GR extends Activity {
    					doSTT = false;
        		}
 
-            
+       		Run.GRrunning = true;
         	if (!Rendering) return;		// If Run.java did not ask to render then don't render
         	
             float scale = getResources().getDisplayMetrics().density;
