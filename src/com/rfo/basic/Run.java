@@ -10316,6 +10316,7 @@ private boolean doUserFunction(){
 	       RunPaused = false;
 	       NewTouch[0] = false;
 	       NewTouch[1] = false;
+	       NewTouch[2] = false;
 	       GR.doSTT = false;
 	       GRFront = true;
 	       CameraNumber = -1;
