@@ -11,7 +11,7 @@ PRINT "Example 1"
 
 IF 1<2 THEN PRINT 1 ELSE PRINT 1000
 
-IF 1>2 THEN PRINT 2000 ELSE PRINT 1
+IF 1>2 THEN PRINT 2000 ELSE PRINT 2
 
 IF 1 THEN
  PRINT 3
@@ -119,7 +119,7 @@ ELSEIF x=3
 ENDIF
 
 ! ESLEIF may be followed
-! by and ELSE; however
+! by an ELSE; however
 ! no following ELSEIF
 ! will ever be executed.
 

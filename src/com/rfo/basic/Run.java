@@ -676,10 +676,10 @@ public class Run extends ListActivity {
     public static Bundle s= new Bundle();				// A generic bundle
     
     public static Stack <Integer> IfElseStack;			// Stack for IF-ELSE-ENDIF operations
-    public static final int IEskip1 = 1;			     // Skip statements until ELSE, ELSEIF or ENDIF
-    public static final int IEskip2 = 2;				// Skip to until ENDIF
-    public static final int IEexec = 3;			        // Execute to ELSE, ELSEIF or ENDIF
-    public static final int IEinterrupt = 4;
+    public static final Integer IEskip1 = 1;			// Skip statements until ELSE, ELSEIF or ENDIF
+    public static final Integer IEskip2 = 2;			// Skip to until ENDIF
+    public static final Integer IEexec = 3;				// Execute to ELSE, ELSEIF or ENDIF
+    public static final Integer IEinterrupt = 4;
    
     public static Double GetNumberValue = (double)0;				// Return value from GetNumber()
     public static Double EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
@@ -1744,7 +1744,7 @@ public class Background extends AsyncTask<String, String, String>{
 				
            		if (WaitForInput){									// if waiting for Input
         			do{												// wait a bit
-                	try {Thread.sleep(500);}catch(InterruptedException e){};
+                	try {Thread.sleep(500);}catch(InterruptedException e){}
                 	if (BadInput){									// If user input was bad
                 		publishProgress("@@2");						// tell her and then
                 		}
@@ -1865,7 +1865,7 @@ public class Background extends AsyncTask<String, String, String>{
 							doDebugSelectDialog();
 						}else if (str[i].startsWith("@@J")){					// Alert dialog var not set called
 						
-        		}else {output.add(str[i]);};			// Not a signal, just write msg to screen.
+        		}else {output.add(str[i]);}				// Not a signal, just write msg to screen.
 
     	    	setListAdapter(AA);						// show the output
     	    	lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
@@ -2182,7 +2182,7 @@ private void InitVars(){
 	GPSoff = true;
 	GPSrunning = false;
 	
-	DoAverage = false;;
+	DoAverage = false;
 	DoReverse = false;
 	DoShuffle = false;
 	DoVariance = false;
@@ -2219,7 +2219,7 @@ private void InitVars(){
 	ServerBufferedReader = null ;
 	ServerPrintWriter = null ;
 	
-	TextToSpeech mTts = null;;
+	TextToSpeech mTts = null;
 	ttsInit = false;
 	ttsInitResult = 0;
 	ttsIntent = null; 
@@ -2277,7 +2277,7 @@ private void InitVars(){
 
 public void cleanUp(){
 	if (theMP != null){
-		try {Run.theMP.stop();} catch (IllegalStateException e){};
+		try {Run.theMP.stop();} catch (IllegalStateException e){}
 		if (theMP != null) theMP.release();
 		theMP = null;
 	}
@@ -2552,7 +2552,7 @@ protected void onPause() {
 	if (kbShown)  IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
 	
 /*	  if (theMP != null){
-		  try {theMP.pause();} catch (IllegalStateException e){};
+		  try {theMP.pause();} catch (IllegalStateException e){}
 		  }
 */	  
 	  RunPaused = true;
@@ -2741,27 +2741,21 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 
 			if (KeyWordValue == BKWnone) KeyWordValue = BKWlet;    // If no key word, then assume pseudo LET
-			int q;
+
 			if (!IfElseStack.empty()){					// if inside IF-ELSE-ENDIF
-				q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
-				switch (q){
-					case IEskip1:
+				Integer q = IfElseStack.peek();			// decide if we should skip to ELSE or ENDIF
+				if (q == IEskip1) {
 						if (KeyWordValue == BKWelse || 
 								KeyWordValue == BKWelseif ||
 								KeyWordValue == BKWif ||
 								KeyWordValue == BKWendif){}
 						else{KeyWordValue = SKIP;}
-						break;
-					case IEskip2:
+				} else if (q == IEskip2) {
 						if (KeyWordValue == BKWendif ||
 							KeyWordValue == BKWif ){}
 						else {KeyWordValue = SKIP;}
-						break;
-					case IEexec:
-					case IEinterrupt:
-						
-					}
 				}
+			}
 			
 			if (KeyWordValue != SKIP)
         		if (Echo)
@@ -2772,13 +2766,13 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	case BKWrem:
 	        		break;
 	        	case BKWdim:
-	        		if (!executeDIM()){SyntaxError();return false;};
+	        		if (!executeDIM()){SyntaxError();return false;}
 	        		break;
 	        	case BKWlet:
-	        		if (!executeLET()){SyntaxError();return false;};
+	        		if (!executeLET()){SyntaxError();return false;}
 	        		break;
 	        	case BKWelseif:
-	        		if (!executeELSEIF()){SyntaxError();return false;};
+	        		if (!executeELSEIF()){SyntaxError();return false;}
 	        		break;
 	        	case BKWend:
 	        	    PrintShow("END");
@@ -2787,10 +2781,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	    Stop = true;
 	        		return true;
 	        	case BKWprint:
-	        		if (!executePRINT(true)){SyntaxError();return false;};
+	        		if (!executePRINT(true)){SyntaxError();return false;}
 	        		break;
 	        	case BKWinput:
-	        		if (!executeINPUT()){SyntaxError();return false;};
+	        		if (!executeINPUT()){SyntaxError();return false;}
 	        		break;
 	        	case BKWif:
 	        		if (!executeIF()){SyntaxError();return false;}
@@ -2823,13 +2817,13 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        				RunTimeError("Undefined Label at:");
 	        				return false;
 	        			}
-	        			if (!checkEOL(true)) return false;
+	        			if (!checkEOL()) return false;
 	        			GosubStack.push(ExecutingLineIndex);
 	        			ExecutingLineIndex = gln;
 	        		}else{
 	        			SyntaxError();
 	        			return false;
-	        		};
+	        		}
 	        		break;
 	        	case BKWreturn:
 	        		if (!checkEOL()) return false;
@@ -3217,9 +3211,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		if (GRopen){
 			lv.performHapticFeedback(2, 1);
-			try {Thread.sleep(300);}catch(InterruptedException e){};
+			try {Thread.sleep(300);}catch(InterruptedException e){}
 			lv.performHapticFeedback(2, 1);
-			try {Thread.sleep(300);}catch(InterruptedException e){};
+			try {Thread.sleep(300);}catch(InterruptedException e){}
 			lv.performHapticFeedback(2, 1);
 		}
 
@@ -3238,16 +3232,6 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	   String ec = ExecutingLineBuffer.substring(LineIndex);
 	   RunTimeError("Extraneous characters in line: " + ec);
 	   return false;
-   }
-
-   private boolean checkEOL(boolean increment){
-	   if (increment) ++LineIndex;
-	   if (LineIndex >= ExecutingLineBuffer.length()) return true;
-	   if (ExecutingLineBuffer.charAt(LineIndex) == '\n') return true;
-	   String ec = ExecutingLineBuffer.substring(LineIndex);
-	   RunTimeError("Extraneous characters in line: " + ec);
-	   return false;
-	   
    }
 
 	private boolean isNext(char c) {		// Check the current character
@@ -3274,8 +3258,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				 KeyWordValue = i;						// set the key word number
 				 LineIndex = LineIndex + BasicKeyWords[i].length(); // move the line index to end of key word
 				 return true;							// and report back
-			 	};
-			};
+			 	}
+			}
 		KeyWordValue = BKWnone;							// no key word found
 		return false;									// report fail
 			
@@ -3368,44 +3352,27 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
         VarNames.add(var);
         VarIndex.add(0);									// Keep VarIndex in sync
         
-        double d = 0 ;
-        int kk = 0;
-        if (!VarIsNumeric){									// if var is string
-        	if (!VarIsArray){								// and not an array
-        		kk = StringVarValues.size();				// then the value index is the index
-        		StringVarValues.add("");					// to the next unused entry in string values		
-        		VarIndex.set(VarNumber,kk);					// list
-        		theValueIndex = kk;
-        		return true;
-        	}else{												// New Var is a string array								
-            	if (!doingDim){									// If not doing dim then we have a problem
-            		RunTimeError("Array must be DIMed before using");
-            		LineIndex = LI;
-    				VarNames.set(VarNumber, "!");
-            		return false;
-            	}
-//        		VarIndex.add(0);								// Var is new array being DIMed
-        		return true;									// Set the var index to zero for now
-        	}
-        }
-        														// New Var is numeric
-        if (!VarIsArray){										// Var is not a numeric array
-        	kk = NumericVarValues.size();                       // then the value index is the index
-        	NumericVarValues.add(d);                            // to the next unused entry in numeric values
-        	VarIndex.set(VarNumber, kk);				        // The var index is the next avail Numeric Value
-    		theValueIndex = kk;
-        	return true;
-        }else{													// New Numeric Var is Array
-        	if (!doingDim){										// If not doing dim, problem	
+        if (VarIsArray) {									// New Var is an array								
+        	if (!doingDim) {								// If not doing dim then we have a problem
         		RunTimeError("Array must be DIMed before using");
         		LineIndex = LI;
-				VarNames.set(VarNumber, "!");
+        		VarNames.set(VarNumber, "!");
         		return false;
+        	}												// Else doing Dim, leave var index = 0 for now
+        } else {											// New var is a scalar
+        	int kk = 0;
+        	if (!VarIsNumeric){								// if var is string
+        		kk = StringVarValues.size();				// then the value index is the index
+        		StringVarValues.add("");					// to the next unused entry in string values list
+        	} else {
+        													// New Var is numeric scalar
+        		kk = NumericVarValues.size();				// then the value index is the index
+        		NumericVarValues.add(0.0);					// to the next unused entry in numeric values list
         	}
-//    		VarIndex.add(0);									// Doing Dim, set var index = 0 for now
-        	return true;
+        	VarIndex.set(VarNumber, kk);					// The var index is the next avail Numeric Value
+        	theValueIndex = kk;
         }
-		
+        return true;
 	}
 	
 	private  boolean getNumber(){						// Get a number if there is one
@@ -3415,14 +3382,14 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		char c = ExecutingLineBuffer.charAt(i);
 		if (c<'0' || c>'9'){   // Must start with 0-9
 			return false;								// not a number.
-			};
+			}
 		
 		while ( (c >= '0' && c <='9') || c=='.' ){ // May have decimal point
 				++i;
 				if (i >= ExecutingLineBuffer.length()) return false;
 				c = ExecutingLineBuffer.charAt(i);
 
-			};
+			}
 																			// Terminated on non-numeric char
 		String num = ExecutingLineBuffer.substring(LineIndex,i);			// isolate the numeric characters
 		if (c=='e' || c == 'E'){
@@ -3434,7 +3401,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				++i;
 				if (i >= ExecutingLineBuffer.length()) return false;
 				c = ExecutingLineBuffer.charAt(i);
-			};
+			}
 		}
 		LineIndex = i;
 		double d = 0;
@@ -3442,7 +3409,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		catch (Exception e) {
 			RunTimeError("Error: " + e );
 			return false;
-		};
+		}
         GetNumberValue = d;													// Report the value 
 		return true;														// Say we found a number
 	}
@@ -3547,10 +3514,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 															// Evaluate a Numeric Expression
 		if (ExecutingLineBuffer.charAt(LineIndex)=='\n'){   // If eol, there is not expression
 			return false;
-		};
+		}
 		if (ExecutingLineBuffer.charAt(LineIndex)==')'){   // If eol, there is not expression
 			return false;
-		};
+		}
 		Stack<Double> ValueStack = new Stack<Double>();     // Each call to eval gets it's own stack
 		Stack<Integer>OpStack = new Stack<Integer>();		// thus we can recursively call eval
 		int SaveIndex = LineIndex;
@@ -3561,7 +3528,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if (!ENE(OpStack, ValueStack)){						// Now do the recursive evaluation
 			LineIndex = SaveIndex;							// if it fails, back up
 			return false;									// and die
-		};
+		}
 
 		if (ValueStack.empty())return false;
 		EvalNumericExpressionValue = ValueStack.pop();		// Recursive eval succeeded. Pop stack for results
@@ -3617,7 +3584,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		else {
 			return false;									// nothing left, fail
-			};
+			}
 
 		if (LineIndex >= ExecutingLineBuffer.length() ) return false;
 		c = ExecutingLineBuffer.charAt(LineIndex);
@@ -3633,20 +3600,20 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if (c==','){										// treat a comma as an eol
 			if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
 			return true;
-		};
+		}
 
 		if (c==';'){										// treat a ; as an EOL
 			if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
 			return true;
-		};
+		}
 
 		if (c==']'){										// treat a ] as an EOL
 			if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
 			return true;
-		};
+		}
 
 		k = LineIndex;
-		if (!getOp()){return false;};						// If operator does not follow, then fail
+		if (!getOp()){return false;}						// If operator does not follow, then fail
 		
 		switch  (OperatorValue){							// Handle special case operators
 															// (This is probably reduntant given the above)
@@ -3672,7 +3639,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		if (!ENE( theOpStack, theValueStack)){				// Recursively call ENE for rest of expression
 			return false;
-		};
+		}
 		
 		return true;						// Done
 	
@@ -3694,8 +3661,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				 OperatorValue = i;
 				 LineIndex = LineIndex + OperatorString[i].length();
 				 return true;
-			 	};
-			};
+			 	}
+			}
 		return false;
 		}
 	
@@ -4045,7 +4012,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				catch (Exception e) {
 					RunTimeError("Error: " + e );
 					return false;
-				};
+				}
 				theValueStack.push(d1);							// Push number onto value stack
 				break;
 			
@@ -4334,8 +4301,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				 SFNumber = i;											// the function number is the table index
 				 LineIndex = LineIndex + StringFunctions[i].length();	// move the line index over the function
 				 return true;											// report found
-			 	};
-			};
+			 	}
+			}
 		return false;													// report fail
 	}
 
@@ -4400,7 +4367,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			catch (Exception e) {
 				RunTimeError("Error: " + e );
 				   return false;
-			   };
+			   }
 			}
 		}
 		
@@ -4501,7 +4468,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if (!evalNumericExpression()){SyntaxError();return false;}
 				StringConstant = SSC;
 				if (!isNext(')')) { return false; }				// Function must end with ')'
-				if (StringConstant.length()==0){return true;};
+				if (StringConstant.length()==0){return true;}
 				d = EvalNumericExpressionValue;
 				e = (int) d;
 				if (e <= 0){
@@ -4521,7 +4488,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				
 				if (!evalNumericExpression()){SyntaxError();return false;}						// Get the displacement
 				StringConstant = SSC;
-//				if (StringConstant.length()==0){SyntaxError();return true;};
+//				if (StringConstant.length()==0){SyntaxError();return true;}
 				d = EvalNumericExpressionValue;
 				e = (int) d;
 				if (e <= 0) e = 1;
@@ -4571,7 +4538,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 					}
 				StringConstant = SSC;
 				if (!isNext(')')) { return false; }				// Function must end with ')'
-				if (StringConstant.length()==0){SyntaxError();return true;};
+				if (StringConstant.length()==0){SyntaxError();return true;}
 				d = EvalNumericExpressionValue;
 				e = (int) d;
 				if (e <= 0){
@@ -4676,7 +4643,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		catch (Exception e) {
 			RunTimeError("Error: " + e );
 			return false;
-		};
+		}
 		String Vstring =B.toPlainString();											// and convert the big decimal to a string
 
 		String FWstring = "";  		// Will hold the whole number part of the pattern (format) string
@@ -4852,13 +4819,13 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if (!getVar()){													// Get the array name var
 			SyntaxError();
 			return false;
-		};
+		}
 		doingDim = false;
 		
 		if (!VarIsArray){												//if there was no [ char, error
 			SyntaxError();
 			return false;
-		};
+		}
 
 		int svn = VarNumber;										// save the array variable table number
 		boolean svt = VarIsNumeric;										// and the array vaiable type
@@ -4886,7 +4853,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if (!getVar()){													// Get the array name var
 			SyntaxError();
 			return false;
-		};
+		}
 		unDiming = false;
 
 		return true;
@@ -4948,7 +4915,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		catch (Exception e) {
 			RunTimeError("Error: " + e );
 			   return false;
-		   };
+		   }
 
 	
 		Bundle ArrayEntry = new Bundle();						// Build the array table entry bundle
@@ -4986,14 +4953,12 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		ArrayList<Integer> sizes = ArrayEntry.getIntegerArrayList("sizes");
 
 		if (dims.size() != indicies.size()){						// insure index count = dim count
-			Show(
+			RunTimeError(
 					"Indices count(" +
 					indicies.size()+
 					") not same a dimension count ("+
 					dims.size()+
 					") at:");
-			Show(ExecutingLineBuffer);
-			SyntaxError = true;
 			return false;
 		}
 		
@@ -5004,15 +4969,13 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			int q = dims.get(i);							// q = DIMed value for this index
 			int r = sizes.get(i);							// r = size for this index
 			if (p>q){
-				Show("Index #"+
+				RunTimeError("Index #"+
 						(i+1) +
 						" (" +
 						p +
 						") exceeds dimension (" +
 						q +
 						") at:");		// insure Index <= DIMed index
-				RunTimeError(ExecutingLineBuffer);
-				SyntaxError = true;
 				return false;
 			}
 			if (p<=0){											// insure index >= 1
@@ -5040,7 +5003,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				PrintLine = PrintLine + StringConstant;										// field is string
 				WasSemicolon = false;
 			}else{
-				if (VarIsFunction){SyntaxError(); return false;};
+				if (VarIsFunction){SyntaxError(); return false;}
 			}
 			if (LI == LineIndex) return false;
 			}
@@ -5069,7 +5032,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		
 		
-	};
+	}
 	
 	private boolean executeGOTO() {
 		
@@ -5091,75 +5054,64 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				RunTimeError("Undefined Label at:");
 				return false;
 			}
-			if (!checkEOL(true)) return false;
+			if (!checkEOL()) return false;
 			ExecutingLineIndex = gln;
 		}else{
-			SyntaxError();
 			return false;
-		};
+		}
 
 		return true;
 	}
 	
 	private  boolean executeIF(){
-		int q =0;
 		
 		if (!IfElseStack.empty()){			 								// if inside of an IF block		
-			q = IfElseStack.peek();
-			if (q != IEexec){												// and not executing
+			Integer q = IfElseStack.peek();
+			if ((q != IEexec) && (q != IEinterrupt)) {						// and not executing
 				int index = ExecutingLineBuffer.indexOf("then");
-				if (index > 0){												// if there is a THEN
+				if (index < 0) {											// if there is no THEN
+					IfElseStack.push(IEskip2);								// need to skip to this if's end
+				} else {
 					LineIndex = index + 4;									// skip over the THEN
-					if	(ExecutingLineBuffer.charAt(LineIndex)=='\n'){      // if not single line if
+					if (isNext('\n')) {      								// if not single line if
 						IfElseStack.push(IEskip2);							// need to skip to this if's end
-						return true;
-						}
-					else return true;										// is single line no skip needed
-					}
-				IfElseStack.push(IEskip2);                                  // No THEN, need skip
+					}														// else is single line, no skip needed
+				}
 				return true;
-			}			
+			}
 		}
+		// Execute this IF
 		
+		PossibleKeyWord = "then";					// Tell getVar to expect a THEN
+		if (!evalNumericExpression()) { return false; }
+		PossibleKeyWord = "";						// getVar should no longer expect THEN
+		boolean condition = (EvalNumericExpressionValue != 0);
 		
-		PossibleKeyWord = "then";					// Tell get var to expect a THEN
-	    if (!evalNumericExpression()){SyntaxError();return false;}
-		PossibleKeyWord = "";						// Get var should not longer expect THEN
-		boolean condition = true;
-		if (EvalNumericExpressionValue == 0) condition = false;
-		
-		boolean SingleLine = false;
-		if	(ExecutingLineBuffer.charAt(LineIndex)!='\n'){
-			if (!ExecutingLineBuffer.startsWith("then", LineIndex)) return false;
+		if (ExecutingLineBuffer.charAt(LineIndex) != '\n') {
+			if (!ExecutingLineBuffer.startsWith("then", LineIndex)) { checkEOL(); return false; }
 			LineIndex = LineIndex + 4;
-			if (ExecutingLineBuffer.charAt(LineIndex)!='\n') SingleLine = true;
+
+			if (!isNext('\n')) { return SingleLineIf(condition); }			// assume single-line IF
+
+			// at this point: "IF condition THEN\n" and LineIndex is after '\n'
 		}
 		
-		if (SingleLine) return SingleLineIf(condition);
-		
-	    // SingleLine = false at this point
-		
-		if (condition) IfElseStack.push(IEexec);
-		else IfElseStack.push(IEskip1);
+		IfElseStack.push((condition) ? IEexec : IEskip1);
 
 		return true;
 	}
 	
 	private boolean SingleLineIf(boolean condition){
 		int index = ExecutingLineBuffer.lastIndexOf("else");
-		String SaveELB = "";
-		if (index > 0 ){
-			SaveELB = ExecutingLineBuffer;
-			ExecutingLineBuffer = ExecutingLineBuffer.substring(0, index);
-			ExecutingLineBuffer = ExecutingLineBuffer + "\n";
-		}
 		
-		if (condition){
+		if (condition) {
+			if (index > 0 ) {
+				ExecutingLineBuffer = ExecutingLineBuffer.substring(0, index) + "\n";
+			}
 			return StatementExecuter();
 		}
 
 		if (index > 0) {
-			ExecutingLineBuffer = SaveELB;
 			LineIndex = index + 4;
 			return StatementExecuter();
 		}
@@ -5167,46 +5119,41 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private  boolean executeELSE(){
-		int q =0;
 		
-		if (IfElseStack.empty()){			// If there is nothing on the stack
-			RunTimeError("Misplaced ELSE");			// we should find an ELSE
+		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
+			RunTimeError("Misplaced ELSE");
 			return false;
 		}
-		
 		if (!checkEOL() ) return false;
 
-		q = IfElseStack.pop();
-		
-		if (q == IEexec) IfElseStack.push(IEskip2);
-		else IfElseStack.push(IEexec);
+		Integer q = IfElseStack.pop();
+		IfElseStack.push((q == IEexec) ? IEskip2 : IEexec);
+
 		return true;
 	}
 	
 	private boolean executeELSEIF(){
-		int q =0;
 		
-		if (IfElseStack.empty()){			// If there is nothing on the stack
-			RunTimeError("Misplaced ELSEIF");			// we should find an ELSE
+		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
+			RunTimeError("Misplaced ELSEIF");
 			return false;
 		}
 		
-		q = IfElseStack.pop();
+		Integer q = IfElseStack.pop();
 
 		if (q == IEexec) {
 			IfElseStack.push(IEskip2);
-			return true;
+		} else {
+			PossibleKeyWord = "then";					// Tell getVar to expect a THEN
+			if (!evalNumericExpression()) { return false; }
+			PossibleKeyWord = "";						// getVar should no longer expect THEN
+			boolean condition = (EvalNumericExpressionValue != 0);
+
+			if (ExecutingLineBuffer.startsWith("then", LineIndex)) LineIndex = LineIndex + 4;
+			if (!checkEOL()) { return false; }
+
+			IfElseStack.push((condition) ? IEexec : IEskip1);
 		}
-		PossibleKeyWord = "then";					// Tell get var to expect a THEN
-	    if (!evalNumericExpression()){return false;}
-		PossibleKeyWord = "";					   // Tell get var to expect a THEN
-	    if (EvalNumericExpressionValue == 0) IfElseStack.push(IEskip1);
-	    else IfElseStack.push(IEexec);
-	    
-	    if (ExecutingLineBuffer.startsWith("then", LineIndex)) LineIndex = LineIndex + 4;
-	    if (!checkEOL() ) return false;
-	    
-		
 		return true;
 	}
 	
@@ -5228,18 +5175,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		Bundle b= new Bundle();						// A bundle to hold value for stack
 		
-		if (ExecutingLineIndex+1 >= Basic.lines.size() ){SyntaxError(); return false;}
+		if (ExecutingLineIndex+1 >= Basic.lines.size()) { return false; }
 		b.putInt("line",ExecutingLineIndex);							// Loop return location
 
-		if (!getNVar()){SyntaxError();return false;}
-		b.putInt("var", theValueIndex);					// For Var
+		if (!getNVar()) { return false; }
+		b.putInt("var", theValueIndex);										// For Var
 		int IndexValueIndex = theValueIndex;
 		
-		if (ExecutingLineBuffer.charAt(LineIndex)!='=') {SyntaxError();return false;}	// For Var =
-		++LineIndex;
+		if (!isNext('=')) { return false; }									// For Var =
 
 		PossibleKeyWord = "to";						// Tell get var that a TO is expected
-		if (!evalNumericExpression()){SyntaxError();return false;}						// for Var = <exp>
+		if (!evalNumericExpression()) { return false; }						// for Var = <exp>
 		PossibleKeyWord = "";
 		double fstart = EvalNumericExpressionValue;
 		NumericVarValues.set(IndexValueIndex, fstart);   // assign <exp> to Var
@@ -5248,7 +5194,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		LineIndex = LineIndex +2;
 		
 		PossibleKeyWord = "step";
-		if (!evalNumericExpression()){SyntaxError();return false;}			// For Var = <exp> to <exp>
+		if (!evalNumericExpression()) { return false; }						// For Var = <exp> to <exp>
 		PossibleKeyWord = "";
 		b.putDouble("limit", EvalNumericExpressionValue);
 		double flimit = EvalNumericExpressionValue;
@@ -5256,11 +5202,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		double step = 1.0;													//For Var = <exp> to <exp> <default step> 
 		if (ExecutingLineBuffer.startsWith("step", LineIndex)){
 			LineIndex = LineIndex + 4;
-			if (!evalNumericExpression()){SyntaxError();return false;}		// For Var = <exp> to <exp> step <exp>
+			if (!evalNumericExpression()) { return false; }					// For Var = <exp> to <exp> step <exp>
 			step = EvalNumericExpressionValue;
 		}
 		
-		if (!checkEOL(true)) return false;
+		if (!checkEOL()) return false;
 		
 		b.putDouble("step", step);
 		
@@ -5272,7 +5218,6 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		ForNextStack.push(b);
 		
 		return true;
-//		return true;
 	}
 	
 		private boolean executeF_N_BREAK(){
@@ -5468,7 +5413,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				return false;
 			}
 			++LineIndex;
-		};
+		}
 		for (int i = UserPrompt.length(); i < 19 ; ++i){
 			UserPrompt = UserPrompt + (" ");
 		}
@@ -5527,7 +5472,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	                 catch (Exception e) {
 	                       BadInput=true;
 	                       WaitForInput = true;//<====changed to true
-	                    };
+	                    }
 	                 NumericVarValues.set(VarIndex.get(inputVarNumber), d);
 	                 
 	              }else {                                          // String Input Handling
@@ -5746,8 +5691,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				  KeyWordValue = i;							// set the key word number
 				  LineIndex = LineIndex + Debug_KW[i].length(); // move the line index to end of key word
 				  return true;								// and report back
-			  };
-		  };
+			  }
+		  }
 		  KeyWordValue = debug_none;							// no key word found
 		  return false;										// report fail
 
@@ -5821,9 +5766,6 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  doingDim = false;
 			  
 			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-			  if (!VarIsNumeric){								// and that it is a numeric array
-				  RunTimeError("Array not numeric");
-			  }
 			  if (VarIsNew){									// and that it has been DIMed
 				  RunTimeError("Array not DIMed");
 				  return false;
@@ -6669,12 +6611,12 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		
 		fnRTN = true;										// Signal RunLoop() to return
-		return checkEOL(false);
+		return checkEOL();
 	}
 	
 	private boolean executeFN_END(){
-		if (FunctionStack.empty()){							// Insure RTN actually called from executing function
-			RunTimeError("misplaced fn.rtn");
+		if (FunctionStack.empty()){							// Insure END actually called from executing function
+			RunTimeError("misplaced fn.end");
 			return false;
 		}
 		
@@ -6688,7 +6630,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		
 		fnRTN = true;										// Signal RunLoop() to return
-		return checkEOL(false);
+		return checkEOL();
 
 	}
 	
@@ -6713,8 +6655,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				 ufBundle = b;
 				 LineIndex = LineIndex + name.length();
 				 return true;											// report found
-			 	};
-			};
+			 	}
+			}
 		return false;													// report fail
 
 	}
@@ -6747,101 +6689,79 @@ private boolean doUserFunction(){
 	int pCount = fVarName.size();										// The number of parameter
 
 	int i = 0;
-	if (pCount != 0)													// For each parameter
+	if (pCount != 0) {													// For each parameter
 		do {
-			boolean isGlobal = false;
-			
 			if (i >= pCount){														// Insure no more parms than defined
 				RunTimeError("Calling parameter count exceeds defined parameter count");
 				SyntaxError = true;
 				return false;
 				}
 		
+			boolean typeIsNumeric = (fVarType.get(i) != 0);
 			if (fVarArray.get(i) == 1){												// if this parm is an array
 				SkipArrayValues = true;
-				getVar();															// get the caling array
+				if (!getVar()) { SkipArrayValues = false; return false; }			// get the calling array
 				SkipArrayValues = false;
-				if (!VarIsArray) return false;										// make sure it is an array
-				if (!isNext(']')) return false;
-				boolean t = true ;
-				if (fVarType.get(i) == 1 && !VarIsNumeric) t=false;					// Insure type (string or number) match
-				if (fVarType.get(i) == 0 && VarIsNumeric) t=false;
-				if (!t){
+				if (!(VarIsArray && isNext(']'))) { return false; }					// make sure it is an array with no index
+				if (typeIsNumeric != VarIsNumeric) {								// Insure type (string or number) match
 					RunTimeError("Array parameter type mismatch at:");
-					SyntaxError = true;
 					return false;
-					}
+				}
 				
 				VarNames.add(fVarName.get(i));						// and add the var name
 				VarIndex.add(VarIndex.get(VarNumber));				// copy array table pointer to the new array.
-			}
+			} // end array
 			else{
-				isGlobal = isNext('&');   // if this is a Global Var
-
-				if (fVarType.get(i) == 0){                      		// if parm is string
-					
-					if (isGlobal){										// If Global
-						if (!getVar()) return false;					// then must be var not expression
-						if (VarIsNew){
-							RunTimeError("Call by reference vars must be predefined");
-							return false;
-						}
-						if (VarIsNumeric) return false;					// and must be numeric var
-						int thisValueIndex = VarIndex.get(VarNumber);	// get the calling var's value index
-						VarNames.add(fVarName.get(i));					// add the called var name to the var name table		
-						VarIndex.add(thisValueIndex);					// but give it the value index of the calling var
-					}else {
+				boolean isGlobal = isNext('&');   // if this is a Global Var
+				if (isGlobal) {
+					if (!getVar()) { return false; }				// then must be var not expression
+					if (VarIsNew){
+						RunTimeError("Call by reference vars must be predefined");
+						return false;
+					}
+					if (typeIsNumeric != VarIsNumeric) {								// Insure type (string or number) match
+						RunTimeError("Global parameter type mismatch at:");
+						return false;
+					}
+					int thisValueIndex = VarIndex.get(VarNumber);	// get the calling var's value index
+					VarNames.add(fVarName.get(i));					// add the called var name to the var name table		
+					VarIndex.add(thisValueIndex);					// but give it the value index of the calling var
+				} // end global
+				else {
+					if (!typeIsNumeric) {								// if parm is string
 						if (!evalStringExpression()){					// get the string value
 							RunTimeError("Parameter type mismatch at:");
-							SyntaxError = true;
 							return false;
 						}else{
 							VarIndex.add(StringVarValues.size());		// Put the string value into the
 							StringVarValues.add(StringConstant);        // string var values table
 							VarNames.add(fVarName.get(i));				// and add the var name
 						}
-					}
-				}else{
-					if (isGlobal){										// If Global
-						if (!getVar()) return false;					// then must be var not expression
-						if (VarIsNew){
-							RunTimeError("Call by reference vars must be predefined");
-							return false;
-						}
-						if (!VarIsNumeric) return false;					// and must be numeric var
-						int thisValueIndex = VarIndex.get(VarNumber);	// get the calling var's value index
-						VarNames.add(fVarName.get(i));					// add the called var name to the var name table		
-						VarIndex.add(thisValueIndex);					// but give it the value index of the calling var
-					}else {
-						int iSave = i;
-						int pcountSave = pCount;
+					}else{
 						if (!evalNumericExpression()){						// if parm is number
 							RunTimeError("Parameter type mismatch at:");	// get the numeric value
-							SyntaxError = true;
 							return false;
 						}else{
 							VarIndex.add(NumericVarValues.size());				// Put the number values into the
 							NumericVarValues.add(EvalNumericExpressionValue);   // numeric var values table
-							i = iSave;
-							pCount = pcountSave;
 							VarNames.add(fVarName.get(i));						// and add the var name
 						}
 					}
 				}
-			}
+			} // end scalar
 			
-		++i;											//  Keep going while calling parms exist
+			++i;											//  Keep going while calling parms exist
 				
-	}while ( isNext(','));
-	
-	// Every function must have a closing right parenthesis.
-	if (!isNext(')')) return false;
-	
+		} while ( isNext(','));
+	} // end if
+
 	if (i!=pCount){
 		RunTimeError("Too few calling parameters at:");
 		return false;
 	}
-	
+
+	// Every function must have a closing right parenthesis.
+	if (!isNext(')')) { return false; }
 
 	fsb.putInt("LI", LineIndex);                        // Save out index into the line buffer
 
@@ -6891,19 +6811,19 @@ private boolean doUserFunction(){
 			isNumeric = false;
 			sexp = StringConstant;
 		}else return false;
-		
-   		++ExecutingLineIndex;  // Next program line
-		while (ExecutingLineIndex < Basic.lines.size()){
+		if (!checkEOL()) { return false; }
+
+		while (++ExecutingLineIndex < Basic.lines.size()) {
 			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
 			if (ExecutingLineBuffer.startsWith("sw.end")) {
-				LineIndex = LineIndex + 6;
-				if (!checkEOL()) return false;
-				return true;
-			}else if (ExecutingLineBuffer.startsWith("sw.default")){
-				LineIndex = LineIndex + 10;
-				if (!checkEOL()) return false;
-				return true;
-			}else if (ExecutingLineBuffer.startsWith("sw.case")){
+				LineIndex = 6;
+				return (checkEOL());
+			}
+			if (ExecutingLineBuffer.startsWith("sw.default")){
+				LineIndex = 10;
+				return (checkEOL());
+			}
+			if (ExecutingLineBuffer.startsWith("sw.case")){
 				LineIndex = 7;
 				if (isNumeric){
 					if (!evalNumericExpression()) return false;
@@ -6915,7 +6835,6 @@ private boolean doUserFunction(){
 					if (sexp.equals(StringConstant)) return true;
 				}
 			}
-			++ExecutingLineIndex;
 		}
 		RunTimeError("No sw.end after sw.begin");
 		return false;
@@ -6926,12 +6845,13 @@ private boolean doUserFunction(){
 	}
 	
 	private boolean executeSW_BREAK(){
-		
-   		++ExecutingLineIndex;  // Next program line
-		while (ExecutingLineIndex < Basic.lines.size()){
+		if (!checkEOL()) { return false; }
+		while (++ExecutingLineIndex < Basic.lines.size()){
 			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
-			if (ExecutingLineBuffer.startsWith("sw.end")) return true;
-			++ExecutingLineIndex;  // Next program line	
+			if (ExecutingLineBuffer.startsWith("sw.end")) {
+				LineIndex = 6;
+				return checkEOL();
+			}
 		}
 		RunTimeError("sw.xxxx without sw.end");
 		return false;
@@ -7028,7 +6948,7 @@ private boolean doUserFunction(){
 						   catch (Exception e) {
 								RunTimeError("Error: " + e );
 							   return false;
-						   };
+						   }
 					   }else {																// Not loading from a raw resource
 						   try {
 							   File file = new File(fn);
@@ -7038,7 +6958,7 @@ private boolean doUserFunction(){
 						   catch (Exception e) {
 								RunTimeError("Error: " + e );
 							   return false;
-						   };
+						   }
 					   }
 
 				  
@@ -7095,7 +7015,7 @@ private boolean doUserFunction(){
 			return true;
 		}
 
-		if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+		if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 		double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber >= FileTable.size() || FileNumber < 0 ){
@@ -7121,7 +7041,7 @@ private boolean doUserFunction(){
 		}
 
 		
-		if (closed){return true;};				// Already closed
+		if (closed){return true;}				// Already closed
 		
 
 		if (FileMode == FMR){								// Close file open for read
@@ -7156,7 +7076,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber <0 ){
@@ -7166,7 +7086,7 @@ private boolean doUserFunction(){
 
 		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the string var
 		++LineIndex;
-		if (!getSVar()){return false;};						
+		if (!getSVar()){return false;}
 
 		int FileMode;							//     Variables for the bundle
 		boolean eof;
@@ -7191,9 +7111,9 @@ private boolean doUserFunction(){
 			return false;
 		}
 
-		
-		if (closed){
+		if (closed) {										// Check not Closed
 			RunTimeError("File is closed");
+			return false;
 		}
 		
 		if (FileMode != FMR){						// Varify open for read
@@ -7205,11 +7125,6 @@ private boolean doUserFunction(){
 			RunTimeError("Attempt to read beyond the EOF at:");
 			return false;
 		}*/
-		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
 
 		
         try {												// Read a line
@@ -7243,7 +7158,7 @@ private boolean doUserFunction(){
 			}
 
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber >= FileTable.size() || FileNumber < 0 ){
@@ -7312,7 +7227,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 			int FileNumber =  (int) d;
 			if (FileNumber >= FileTable.size() || FileNumber < 0 ){
@@ -7389,7 +7304,7 @@ private boolean doUserFunction(){
 						textPrintLine = textPrintLine + StringConstant;										// field is string
 					WasSemicolon = false;
 				}else{
-					if (VarIsFunction){SyntaxError(); return false;};
+					if (VarIsFunction){SyntaxError(); return false;}
 				}
 				if (LI == LineIndex) return false;
 				}
@@ -7417,7 +7332,7 @@ private boolean doUserFunction(){
 			
 			
 			
-		};
+		}
 
 		
 		private boolean executeTEXT_INPUT(){
@@ -7447,7 +7362,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber <0 ){
@@ -7457,7 +7372,7 @@ private boolean doUserFunction(){
 
 		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the position var expression
 		++LineIndex;
-		if (!evalNumericExpression()){return false;};	
+		if (!evalNumericExpression()){return false;}
 		int pto = (int) (double)EvalNumericExpressionValue;
 		if (pto < 1 ){
 			RunTimeError("Set position must be >= 1");
@@ -7481,9 +7396,9 @@ private boolean doUserFunction(){
 			return false;
 		}
 
-		
-		if (closed){
+		if (closed) {										// Check not Closed
 			RunTimeError("File is closed");
+			return false;
 		}
 		
 		if (FileMode != FMR){						// Varify open for read
@@ -7544,7 +7459,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber <0 ){
@@ -7554,7 +7469,7 @@ private boolean doUserFunction(){
 
 		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the position var
 		++LineIndex;
-		if (!getNVar()){return false;};						
+		if (!getNVar()){return false;}
 
 		if (FileNumber >= FileTable.size()){
 			RunTimeError("Invalid File Number at");
@@ -7689,7 +7604,7 @@ private boolean doUserFunction(){
 						   catch (Exception e) {
 								RunTimeError("Error: " + e );
 							   return false;
-						   };
+						   }
 					   }else {																// Not loading from a raw resource
 						   try {
 							   	  File file = new File(fn);
@@ -7700,7 +7615,7 @@ private boolean doUserFunction(){
 						   catch (Exception e) {
 								RunTimeError("Error: " + e );
 							   return false;
-						   };
+						   }
 					   }
 
 				  
@@ -7750,7 +7665,7 @@ private boolean doUserFunction(){
 					  catch (Exception e) {
 							RunTimeError("Error: " + e );
 						  return false;
-						  };
+						  }
 				  
 				  FileEntry.putInt("stream", DOSlist.size()); 	 //The stream parm indexes
 				  DOSlist.add(dos);								 //into the FISlist
@@ -7767,7 +7682,7 @@ private boolean doUserFunction(){
 					return true;
 				}
 
-				if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+				if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 				double d = EvalNumericExpressionValue;
 			int FileNumber =  (int) d;
 			if (FileNumber >= FileTable.size() || FileNumber < 0 ){
@@ -7794,7 +7709,7 @@ private boolean doUserFunction(){
 			}
 
 			
-			if (closed){return true;};				// Already closed
+			if (closed){return true;}				// Already closed
 
 			if (FileMode == FMR){								// Close file open for read
 				bis = BISlist.get(FileEntry.getInt("stream"));
@@ -7825,7 +7740,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber <0 ){
@@ -7928,7 +7843,7 @@ private boolean doUserFunction(){
     	    try { bos.close(); } catch (Exception e) {
     			RunTimeError("Error: " + e );}
 
-    	   
+    	    if (SyntaxError) { return false; }					// if RunTimeError was called
     	}
     	return true;
 		}
@@ -7941,12 +7856,11 @@ private boolean doUserFunction(){
 					return false;
 				}
 				
-				if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+				if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 				double d = EvalNumericExpressionValue;
 			int FileNumber =  (int) d;
 			if (FileNumber <0 ){
 				RunTimeError("Read file did not exist");
-				SyntaxError = true;
 				return false;
 			}
 			if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
@@ -7954,8 +7868,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Third parm is the return buffer string
-			++LineIndex;
+			if (!isNext(',')) { return false; }					// Third parm is the return buffer string
 			if (!getNVar()) return false;
 			
 		
@@ -8017,12 +7930,11 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber <0 ){
 			RunTimeError("Read file did not exist");
-			SyntaxError = true;
 			return false;
 		}
 		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
@@ -8030,13 +7942,11 @@ private boolean doUserFunction(){
 			return false;
 		}
 
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the byte count
-		++LineIndex;
+		if (!isNext(',')) { return false; }						// Second parm is the byte count
 		if (!evalNumericExpression()) return false;
 		int byteCount = (int) (double) EvalNumericExpressionValue;
 		
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the byte count
-		++LineIndex;
+		if (!isNext(',')) { return false; }						// Third parm is the return buffer string
 		if (!getSVar()) return false;
 		
 		int FileMode;							//     Variables for the bundle
@@ -8109,7 +8019,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber >= FileTable.size() || FileNumber < 0 ){
@@ -8117,8 +8027,7 @@ private boolean doUserFunction(){
 			return false;
 		}
 
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the byte var
-		++LineIndex;
+		if (!isNext(',')) { return false; }						// Second parm is the byte var
 
 		byte b = 0;
 		boolean OutputIsByte = true;
@@ -8171,6 +8080,7 @@ private boolean doUserFunction(){
 			}
 		} catch (IOException e) {
 			RunTimeError("I/O error at");
+			return false;
 		}
 		return true;
 		}
@@ -8181,7 +8091,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber >= FileTable.size() || FileNumber < 0 ){
@@ -8189,8 +8099,7 @@ private boolean doUserFunction(){
 			return false;
 		}
 
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the buffer
-		++LineIndex;
+		if (!isNext(',')) { return false; }						// Second parm is the buffer
 
 		if (!evalStringExpression()) return false;
 
@@ -8227,6 +8136,7 @@ private boolean doUserFunction(){
 	            FileEntry.putInt("position", p);
 		} catch (IOException e) {
 			RunTimeError("I/O error at");
+			return false;
 		}
 		return true;
 		}
@@ -8239,7 +8149,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-		if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+		if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 		double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber <0 ){
@@ -8250,7 +8160,7 @@ private boolean doUserFunction(){
 
 			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the position var expression
 			++LineIndex;
-			if (!evalNumericExpression()){return false;};	
+			if (!evalNumericExpression()){return false;}
 			int pto = (int) (double)EvalNumericExpressionValue;
 			if (pto < 1 ){
 				RunTimeError("Set position must be >= 1");
@@ -8333,7 +8243,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 			
-			if (!evalNumericExpression()){return false;};						// First parm is the filenumber expression
+			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
 			double d = EvalNumericExpressionValue;
 		int FileNumber =  (int) d;
 		if (FileNumber <0 ){
@@ -8343,7 +8253,7 @@ private boolean doUserFunction(){
 
 		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the position nexp
 		++LineIndex;
-		if (!getNVar()){return false;};						
+		if (!getNVar()){return false;}
 
 		if (FileNumber >= FileTable.size()){
 			RunTimeError("Invalid File Number at");
@@ -8531,7 +8441,7 @@ private boolean doUserFunction(){
 	  	lbDir = new File(Basic.filePath +"/data/");
 	    String s = "";
 	    
-	  	try {s = lbDir.getCanonicalPath();} catch(IOException e) {};
+	  	try {s = lbDir.getCanonicalPath();} catch(IOException e) {}
 	  	
 	  	if (!getVar()) return false;
 	  	if (VarIsNumeric) return false;
@@ -8547,8 +8457,7 @@ private boolean doUserFunction(){
 	  	ArrayList <String> FL1 = new ArrayList<String>();
 	  	ArrayList <String> DL1 = new ArrayList<String>();
 
-		if (!evalStringExpression())return false;					//get the path
-		if (SEisLE) return false;
+		if (!getStringArg()) { return false; }						//get the path
 
 	  	String FL[] = null;
 	 
@@ -8590,20 +8499,16 @@ private boolean doUserFunction(){
 		  FL1 = DL1;
 
 		  														// parse the ,D[]
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;}
-		  ++LineIndex;
+		  if (!isNext(',')) { return false; }
 		  doingDim = true;
-		  if (!getVar()){SyntaxError(); return false;}
+		  if (!getVar()) { doingDim = false; return false; }
 		  doingDim = false;
-		  if (VarIsNumeric){SyntaxError(); return false;} 
-		  if (!VarIsArray){SyntaxError(); return false;}
-		  if (!VarIsNew){
+		  if (VarIsNumeric || !VarIsArray) { return false; }
+		  if (!VarIsNew) {
 			  RunTimeError("DIR array must not be DIMed");
 			  return false;
 		  }
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=']'){SyntaxError(); return false;}
-			if (!checkEOL(true)) return false;
-
+		  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
 		  
 		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
 		  
@@ -8620,13 +8525,11 @@ private boolean doUserFunction(){
 			  ++ArrayValueStart;
 		  }
 		  
-		  
-		  
 		return true;
 	}
 	
 	private boolean executeGRABFILE(){
-		if (!getVar()){return false;};		                           // First parm is string var				
+		if (!getVar()){return false;}		                           // First parm is string var				
 		if (VarIsNumeric){return false;}
 		int saveVarIndex = theValueIndex;
 		
@@ -8668,7 +8571,7 @@ private boolean doUserFunction(){
 		  catch (Exception e) {
 				RunTimeError("Error: " + e );
 			  return false;												// as the file table number
-			  };
+			  }
 
 	    // Construct a String object from the byte array containing the response
 	    try{
@@ -8682,7 +8585,7 @@ private boolean doUserFunction(){
 	    } catch (Exception e) {
 			RunTimeError("Error: " + e );
 			   return false;
-		   };
+		   }
 	   
 	    StringVarValues.set(saveVarIndex, result);
 
@@ -8691,7 +8594,7 @@ private boolean doUserFunction(){
 	
 	  private boolean executeGRABURL(){
 		  
-			if (!getVar()){return false;};		                           // First parm is string var				
+			if (!getVar()){return false;}		                           // First parm is string var				
 			if (VarIsNumeric){return false;}
 			int saveVarIndex = theValueIndex;
 			
@@ -8730,7 +8633,7 @@ private boolean doUserFunction(){
 		    catch (Exception e) {
 				RunTimeError("Error: " + e );
 				   return false;
-			   };
+			   }
 
 		   
 		    StringVarValues.set(saveVarIndex, result);
@@ -8803,7 +8706,7 @@ private boolean doUserFunction(){
 			if (!checkEOL()) return false;
 
 		  
-		  try {Thread.sleep((int) d);}catch(InterruptedException e){};
+		  try {Thread.sleep((int) d);}catch(InterruptedException e){}
 
 		  return true;
 	  }
@@ -8818,14 +8721,14 @@ private boolean doUserFunction(){
 		  Intent i = new Intent(Intent.ACTION_VIEW);						  // Go to the html page
 //		  Intent i = new Intent(Intent.CATEGORY_BROWSABLE);
 		  i.setData(Uri.parse(url));
-      	try {Thread.sleep(500);}catch(InterruptedException e){};              // Sleep here stopped forced stop exceptions
+      	try {Thread.sleep(500);}catch(InterruptedException e){}              // Sleep here stopped forced stop exceptions
 
 		  try {startActivity(i);}
 //		  catch ( android.content.ActivityNotFoundException  e){
 		  catch ( Exception  e){
 			  RunTimeError("Error: " + e);
 			  return false;
-		  };
+		  }
 		  return true;
 	  }
 	  
@@ -9354,6 +9257,7 @@ private boolean doUserFunction(){
 
 		    	} catch (Exception e){
 		    		RunTimeError("! " + e);
+		    		return false;
 		    	} 
 
 		   if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
@@ -9377,37 +9281,37 @@ private boolean doUserFunction(){
     	      }else {
     	    	  switch (KeyWordValue){
     	    	  	case sql_open:
-    	    	  		if (!execute_sql_open()){return false;};
+    	    	  		if (!execute_sql_open()){return false;}
     	    	  		break;
     	    	  	case sql_close:
-    	    	  		if (!execute_sql_close()){return false;};
+    	    	  		if (!execute_sql_close()){return false;}
     	    	  		break;
     	    	  	case sql_insert:
-    	    	  		if (!execute_sql_insert()){return false;};
+    	    	  		if (!execute_sql_insert()){return false;}
     	    	  		break;
     	    	  	case sql_query:
-    	    	  		if (!execute_sql_query()){return false;};
+    	    	  		if (!execute_sql_query()){return false;}
     	    	  		break;
     	    	  	case sql_next:
-    	    	  		if (!execute_sql_next()){return false;};
+    	    	  		if (!execute_sql_next()){return false;}
     	    	  		break;
     	    	  	case sql_delete:
-    	    	  		if (!execute_sql_delete()){return false;};
+    	    	  		if (!execute_sql_delete()){return false;}
     	    	  		break;
     	    	  	case sql_update:
-    	    	  		if (!execute_sql_update()){return false;};
+    	    	  		if (!execute_sql_update()){return false;}
     	    	  		break;
     	    	  	case sql_exec:
-    	    	  		if (!execute_sql_exec()){return false;};
+    	    	  		if (!execute_sql_exec()){return false;}
     	    	  		break;
     	    	  	case sql_raw_query:
-    	    	  		if (!execute_sql_raw_query()){return false;};
+    	    	  		if (!execute_sql_raw_query()){return false;}
     	    	  		break;
     	    	  	case sql_drop_table:
-    	    	  		if (!execute_sql_drop_table()){return false;};
+    	    	  		if (!execute_sql_drop_table()){return false;}
     	    	  		break;
     	    	  	case sql_new_table:
-    	    	  		if (!execute_sql_new_table()){return false;};
+    	    	  		if (!execute_sql_new_table()){return false;}
     	    	  		break;
     	    	  	default:
     	    	  		return false;
@@ -9426,8 +9330,8 @@ private boolean doUserFunction(){
     					KeyWordValue = i;							// set the key word number
     					LineIndex = LineIndex + SQL_kw[i].length(); // move the line index to end of key word
     					return true;								// and report back
-    				};
-    			};
+    				}
+    			}
     			KeyWordValue = sql_none;							// no key word found
     			return false;										// report fail
 
@@ -9747,7 +9651,8 @@ private boolean doUserFunction(){
 	   }
 	   catch (Exception e){
 		   RunTimeError("Error: " + e);
-	   };
+		   return false;
+	   }
 
 	   return true;
        }
@@ -9989,163 +9894,163 @@ private boolean doUserFunction(){
    		else{
    	    	  switch (KeyWordValue){
    	    	  	case gr_open:
-   	    	  		if (!execute_gr_open()){return false;};
+   	    	  		if (!execute_gr_open()){return false;}
    	    	  		break;
    	    	  	case gr_render:
-   	    	  		if (!execute_gr_render()){return false;};
+   	    	  		if (!execute_gr_render()){return false;}
    	    	  		break;
    	    	  	case gr_color:
-   	    	  		if (!execute_gr_color()){return false;};
+   	    	  		if (!execute_gr_color()){return false;}
    	    	  		break;
    	    	  	case gr_line:
-   	    	  		if (!execute_gr_line()){return false;};
+   	    	  		if (!execute_gr_line()){return false;}
    	    	  		break;
    	    	  	case gr_rect:
-   	    	  		if (!execute_gr_rect()){return false;};
+   	    	  		if (!execute_gr_rect()){return false;}
    	    	  		break;
    	    	  	case gr_arc:
-   	    	  		if (!execute_gr_arc()){return false;};
+   	    	  		if (!execute_gr_arc()){return false;}
    	    	  		break;
    	    	  	case gr_circle:
-   	    	  		if (!execute_gr_circle()){return false;};
+   	    	  		if (!execute_gr_circle()){return false;}
    	    	  		break;
    	    	  	case gr_oval:
-   	    	  		if (!execute_gr_oval()){return false;};
+   	    	  		if (!execute_gr_oval()){return false;}
    	    	  		break;
    	    	  	case gr_cls:
-   	    	  		if (!execute_gr_cls()){return false;};
+   	    	  		if (!execute_gr_cls()){return false;}
    	    	  		break;
    	    	  	case gr_hide:
-   	    	  		if (!execute_gr_hide()){return false;};
+   	    	  		if (!execute_gr_hide()){return false;}
    	    	  		break;
    	    	  	case gr_show:
-   	    	  		if (!execute_gr_show()){return false;};
+   	    	  		if (!execute_gr_show()){return false;}
    	    	  		break;
    	    	  	case gr_touch:
-   	    	  		if (!execute_gr_touch(0)){return false;};
+   	    	  		if (!execute_gr_touch(0)){return false;}
    	    	  		break;
    	    	  	case gr_touch2:
-   	    	  		if (!execute_gr_touch(1)){return false;};
+   	    	  		if (!execute_gr_touch(1)){return false;}
    	    	  		break;
   	    	  	case gr_text_draw:
-   	    	  		if (!execute_gr_text_draw()){return false;};
+   	    	  		if (!execute_gr_text_draw()){return false;}
    	    	  		break;
    	    	  	case gr_text_align:
-   	    	  		if (!execute_gr_text_align()){return false;};
+   	    	  		if (!execute_gr_text_align()){return false;}
    	    	  		break;
    	    	  	case gr_text_size:
-   	    	  		if (!execute_gr_text_size()){return false;};
+   	    	  		if (!execute_gr_text_size()){return false;}
    	    	  		break;
    	    	  	case gr_text_underline:
-   	    	  		if (!execute_gr_text_underline()){return false;};
+   	    	  		if (!execute_gr_text_underline()){return false;}
    	    	  		break;
    	    	  	case gr_text_skew:
-   	    	  		if (!execute_gr_text_skew()){return false;};
+   	    	  		if (!execute_gr_text_skew()){return false;}
    	    	  		break;
    	    	  	case gr_text_bold:
-   	    	  		if (!execute_gr_text_bold()){return false;};
+   	    	  		if (!execute_gr_text_bold()){return false;}
    	    	  		break;
    	    	  	case gr_text_strike:
-   	    	  		if (!execute_gr_text_strike()){return false;};
+   	    	  		if (!execute_gr_text_strike()){return false;}
    	    	  		break;
    	    	  	case gr_bitmap_load:
-   	    	  		if (!execute_gr_bitmap_load()){return false;};
+   	    	  		if (!execute_gr_bitmap_load()){return false;}
    	    	  		break;
    	    	  	case gr_bitmap_scale:
-   	    	  		if (!execute_gr_bitmap_scale()){return false;};
+   	    	  		if (!execute_gr_bitmap_scale()){return false;}
    	    	  		break;
    	    	  	case gr_bitmap_draw:
-   	    	  		if (!execute_gr_bitmap_draw()){return false;};
+   	    	  		if (!execute_gr_bitmap_draw()){return false;}
    	    	  		break;
    	    	  	case gr_rotate_start:
-   	    	  		if (!execute_gr_rotate_start()){return false;};
+   	    	  		if (!execute_gr_rotate_start()){return false;}
    	    	  		break;
    	    	  	case gr_rotate_end:
-   	    	  		if (!execute_gr_rotate_end()){return false;};
+   	    	  		if (!execute_gr_rotate_end()){return false;}
    	    	  		break;
    	    	  	case gr_modify:
-   	    	  		if (!execute_gr_modify()){return false;};
+   	    	  		if (!execute_gr_modify()){return false;}
    	    	  		break;
    	    	  	case gr_orientation:
-   	    	  		if (!execute_gr_orientation()){return false;};
+   	    	  		if (!execute_gr_orientation()){return false;}
    	    	  		break;
    	    	  	case gr_screen:
-   	    	  		if (!execute_gr_screen()){return false;};
+   	    	  		if (!execute_gr_screen()){return false;}
    	    	  		break;
    	    	  	case gr_close:
-   	    	  		if (!execute_gr_close()){return false;};
+   	    	  		if (!execute_gr_close()){return false;}
    	    	  		break;
    	    	  	case gr_front:
-   	    	  		if (!execute_gr_front()){return false;};
+   	    	  		if (!execute_gr_front()){return false;}
    	    	  		break;
    	    	  	case gr_bound_touch:
-   	    	  		if (!execute_gr_bound_touch(0)){return false;};
+   	    	  		if (!execute_gr_bound_touch(0)){return false;}
    	    	  		break;
    	    	  	case gr_bound_touch2:
-   	    	  		if (!execute_gr_bound_touch(1)){return false;};
+   	    	  		if (!execute_gr_bound_touch(1)){return false;}
    	    	  		break;
    	    	  	case gr_bitmap_size:
-   	    	  		if (!execute_gr_bitmap_size()){return false;};
+   	    	  		if (!execute_gr_bitmap_size()){return false;}
    	    	  		break;
    	    	  	case gr_bitmap_delete:
-   	    	  		if (!execute_gr_bitmap_delete()){return false;};
+   	    	  		if (!execute_gr_bitmap_delete()){return false;}
    	    	  		break;
    	    	  	case gr_set_pixels:
-   	    	  		if (!execute_gr_set_pixels()){return false;};
+   	    	  		if (!execute_gr_set_pixels()){return false;}
    	    	  		break;
    	    	  	case gr_get_pixel:
-   	    	  		if (!execute_gr_get_pixel()){return false;};
+   	    	  		if (!execute_gr_get_pixel()){return false;}
    	    	  		break;
    	    	  	case gr_save:
-   	    	  		if (!execute_gr_save()){return false;};
+   	    	  		if (!execute_gr_save()){return false;}
    	    	  		break;
    	    	  	case gr_text_width:
-   	    	  		if (!execute_gr_text_width()){return false;};
+   	    	  		if (!execute_gr_text_width()){return false;}
    	    	  		break;
    	    	  	case gr_scale:
-   	    	  		if (!execute_gr_scale()){return false;};
+   	    	  		if (!execute_gr_scale()){return false;}
    	    	  		break;
    	    	  	case gr_newdl:
-   	    	  		if (!execute_gr_newdl()){return false;};
+   	    	  		if (!execute_gr_newdl()){return false;}
    	    	  		break;
    	    	  	case gr_clip:
-   	    	  		if (!execute_gr_clip()){return false;};
+   	    	  		if (!execute_gr_clip()){return false;}
    	    	  		break;
    	    	  	case gr_bitmap_crop:
-   	    	  		if (!execute_gr_bitmap_crop()){return false;};
+   	    	  		if (!execute_gr_bitmap_crop()){return false;}
    	    	  		break;
    	    	  	case gr_stroke_width:
-   	    	  		if (!execute_gr_stroke_width()){return false;};
+   	    	  		if (!execute_gr_stroke_width()){return false;}
    	    	  		break;
    	    	  	case gr_poly:
-   	    	  		if (!execute_gr_poly()){return false;};
+   	    	  		if (!execute_gr_poly()){return false;}
    	    	  		break;
    	    	  	case gr_statusbar_show:
-   	    	  		if (!execute_statusbar_show()){return false;};
+   	    	  		if (!execute_statusbar_show()){return false;}
    	    	  		break;
    	    	  	case gr_bitmap_save:
-   	    	  		if (!execute_bitmap_save()){return false;};
+   	    	  		if (!execute_bitmap_save()){return false;}
    	    	  		break;
    	    	  	case gr_camera_shoot:
    	    	  		CameraAuto = false;
    	    	  		CameraManual = false;
-   	    	  		if (!execute_camera_shoot()){return false;};
+   	    	  		if (!execute_camera_shoot()){return false;}
    	    	  		break;
    	    	  	case gr_camera_autoshoot:
    	    	  		CameraAuto = true;
    	    	  		CameraManual = false;
-   	    	  		if (!execute_camera_shoot()){return false;};
+   	    	  		if (!execute_camera_shoot()){return false;}
    	    	  		break;
    	    	  	case gr_camera_manualshoot:
    	    	  		CameraAuto = false;
    	    	  		CameraManual = true;
-   	    	  		if (!execute_camera_shoot()){return false;};
+   	    	  		if (!execute_camera_shoot()){return false;}
    	    	  		break;
    	    	  	case gr_screen_to_bitmap:
-   	    	  		if (!execute_screen_to_bitmap()){return false;};
+   	    	  		if (!execute_screen_to_bitmap()){return false;}
    	    	  		break;
    	    	  	case gr_paint_get:
-   	    	  		if (!execute_paint_get()){return false;};
+   	    	  		if (!execute_paint_get()){return false;}
    	    	  		break;
    	    	  	case gr_brightness:
    	    	  		if (!execute_brightness()) return false;
@@ -10201,8 +10106,8 @@ private boolean doUserFunction(){
 				  KeyWordValue = i;								// set the key word number
 				  LineIndex = LineIndex + GR_kw[i].length(); 	// move the line index to end of key word
 				  return true;									// and report back
-			  };
-		  };
+			  }
+		  }
 		  KeyWordValue = gr_none;								// no key word found
 		  return false;											// report fail
 	  }
@@ -10223,7 +10128,7 @@ private boolean doUserFunction(){
 	  public boolean execute_gr_bitmap_drawinto_start(){
 		   if (!evalNumericExpression()) return false;					// 
 		   if (!checkEOL()) return false;
-		   int q = (int) (double) EvalNumericExpressionValue;;
+		   int q = (int) (double) EvalNumericExpressionValue;
 		   if (q<1 | q >= BitmapList.size()){
 			   RunTimeError("Invalid Bitmap Pointer");
 			   return false;			   
@@ -10257,7 +10162,7 @@ private boolean doUserFunction(){
 	  
 	  public  void DisplayListClear(){
 //			StopDisplay = true;											// Sigmal GR to stop display
-//	    	try {Thread.sleep(500);}catch(InterruptedException e){};    // Give GR some time to do it
+//	    	try {Thread.sleep(500);}catch(InterruptedException e){}     // Give GR some time to do it
 //		BitmapList.clear();
 //		BitmapList.add(null);                             // Set Zero entry as null
 
@@ -10284,22 +10189,24 @@ private boolean doUserFunction(){
 //    	StopDisplay = false;										// Tell GR it can start displaying again
 	  }
 	  
-	  public boolean execute_gr_newdl(){
+	  private boolean execute_gr_newdl(){
 		  
 		  doingDim = false;									// Get the array variable
 		  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-		  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
+		  if (!getVar()) { SkipArrayValues = false; return false; }
 		  SkipArrayValues = false;
 		  doingDim = false;
 		  
-		  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
+		  if (!VarIsArray) { return false; }    			// Insure that it is an array
 		  if (!VarIsNumeric){								// and that it is a numeric array
 			  RunTimeError("Array not numeric");
+			  return false;
 		  }
 		  if (VarIsNew){									// and that it has been DIMed
 			  RunTimeError("Array not DIMed");
+			  return false;
 		  }
-			if (!checkEOL(true)) return false;
+		  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
 
 		  
 			Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
@@ -11228,7 +11135,7 @@ private boolean doUserFunction(){
 			   catch (Exception e) {
 					RunTimeError("Error: " + e );
 				   return false;
-			   };
+			   }
 			   
 		   }else {																// Not loading from a raw resource
 			   try {
@@ -11237,7 +11144,7 @@ private boolean doUserFunction(){
 			   catch (Exception e) {
 					RunTimeError("Error: " + e );
 				   return false;
-			   };
+			   }
 		   }
 		   
 		   System.gc();															// Garbage collect
@@ -11248,7 +11155,7 @@ private boolean doUserFunction(){
 		   catch (Exception e) {
 				RunTimeError("Error: " + e );
 			   return false;
-		   };
+		   }
 
 		   if (aBitmap == null ){
 			   RunTimeError("Bitmap load failed at:");
@@ -11265,7 +11172,7 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_bitmap_delete(){
 		   if (!evalNumericExpression()) return false;					// 
 		   if (!checkEOL()) return false;
-		   int q = (int) (double) EvalNumericExpressionValue;;
+		   int q = (int) (double) EvalNumericExpressionValue;
 		   if (q<1 | q >= BitmapList.size()){
 			   RunTimeError("Invalid Bitmap Pointer");
 			   return false;			   
@@ -11330,7 +11237,7 @@ private boolean doUserFunction(){
 			   catch (Exception e){
 				   RunTimeError("Error: " + e);
 				   return false;
-			   };
+			   }
 			   
 			System.gc();   
 			NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
@@ -11420,7 +11327,8 @@ private boolean doUserFunction(){
 		  }
 		  catch (Exception e){
 			  RunTimeError("Error: " + e);
-		  };
+			  return false;
+		  }
 
 		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
 		   BitmapList.add(aBitmap);
@@ -11666,7 +11574,7 @@ private boolean doUserFunction(){
 			  GRFront = true;
 		  }
 			if (!checkEOL()) return false;
-		  try {Thread.sleep(100);}catch(InterruptedException e){};
+		  try {Thread.sleep(100);}catch(InterruptedException e){}
 		  return true;
 	  }
 	  
@@ -11690,6 +11598,7 @@ private boolean doUserFunction(){
 			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
 			  if (!VarIsNumeric){								// and that it is a numeric array
 				  RunTimeError("Array not numeric");
+				  return false;
 			  }
 			  if (VarIsNew){									// and that it has been DIMed
 				  RunTimeError("Array not DIMed");
@@ -11701,7 +11610,6 @@ private boolean doUserFunction(){
 				int length = ArrayEntry.getInt("length");				// get the array length
 				if ((length % 2) != 0){
 					RunTimeError("Not an even number of elements in pixel array");
-					SyntaxError = true;
 					return false;
 				}
 				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
@@ -11809,8 +11717,8 @@ private boolean doUserFunction(){
 			
 	  		int alpha = Color.alpha(pixel);								// get the components of the pixel
 	  		int red = Color.red(pixel);
-	  		int green = Color.green(pixel);;
-	  		int blue = Color.blue(pixel);;
+	  		int green = Color.green(pixel);
+	  		int blue = Color.blue(pixel);
 	  		
 	  		if (!getNVar())return false;									// Alpha Var
 	  		NumericVarValues.set(theValueIndex, (double) alpha);
@@ -12296,9 +12204,9 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_gr_text_typeface(){
 		   if (!evalNumericExpression())return false;							// Get type
-		   int face = (int) (double) EvalNumericExpressionValue;
+		   int face = EvalNumericExpressionValue.intValue();
 
-			if (!checkEOL(true)) return false;
+			if (!checkEOL()) { return false; }
 			
 			int style = Typeface.NORMAL;	
 
@@ -12315,8 +12223,6 @@ private boolean doUserFunction(){
 				RunTimeError("Typface must be 1, 2. 3 or 4");
 				return false;
 			}
-			
-			
 			
 			Paint tPaint = newPaint(aPaint);						// Put the typeface into Paint
 			tPaint.setTypeface(tf);
@@ -12341,43 +12247,43 @@ private boolean doUserFunction(){
   	      	}else {
   	    	  switch (KeyWordValue){
   	    	  	case audio_load:
-  	    	  		if (!execute_audio_load()){return false;};
+  	    	  		if (!execute_audio_load()){return false;}
   	    	  		break;
   	    	  	case audio_play:
-  	    	  		if (!execute_audio_play()){return false;};
+  	    	  		if (!execute_audio_play()){return false;}
   	    	  		break;
   	    	  	case audio_loop:
-  	    	  		if (!execute_audio_loop()){return false;};
+  	    	  		if (!execute_audio_loop()){return false;}
   	    	  		break;
   	    	  	case audio_stop:
-  	    	  		if (!execute_audio_stop()){return false;};
+  	    	  		if (!execute_audio_stop()){return false;}
   	    	  		break;
   	    	  	case audio_volume:
-  	    	  		if (!execute_audio_volume()){return false;};
+  	    	  		if (!execute_audio_volume()){return false;}
   	    	  		break;
   	    	  	case audio_pcurrent:
-  	    	  		if (!execute_audio_pcurrent()){return false;};
+  	    	  		if (!execute_audio_pcurrent()){return false;}
   	    	  		break;
   	    	  	case audio_pseek:
-  	    	  		if (!execute_audio_pseek()){return false;};
+  	    	  		if (!execute_audio_pseek()){return false;}
   	    	  		break;
   	    	  	case audio_length:
-  	    	  		if (!execute_audio_length()){return false;};
+  	    	  		if (!execute_audio_length()){return false;}
   	    	  		break;
   	    	  	case audio_release:
-  	    	  		if (!execute_audio_release()){return false;};
+  	    	  		if (!execute_audio_release()){return false;}
   	    	  		break;
   	    	  	case audio_pause:
-  	    	  		if (!execute_audio_pause()){return false;};
+  	    	  		if (!execute_audio_pause()){return false;}
   	    	  		break;
   	    	  	case audio_isdone:
-  	    	  		if (!execute_audio_isdone()){return false;};
+  	    	  		if (!execute_audio_isdone()){return false;}
   	    	  		break;
   	    	  	case audio_record_start:
-  	    	  		if (!execute_audio_record_start()){return false;};
+  	    	  		if (!execute_audio_record_start()){return false;}
   	    	  		break;
   	    	  	case audio_record_stop:
-  	    	  		if (!execute_audio_record_stop()){return false;};
+  	    	  		if (!execute_audio_record_stop()){return false;}
   	    	  		break;
   	    	  	default:
   	    	  		return false;
@@ -12395,8 +12301,8 @@ private boolean doUserFunction(){
 				  KeyWordValue = i;						       // set the key word number
 				  LineIndex = LineIndex + Audio_KW[i].length(); // move the line index to end of key word
 				  return true;							      // and report back
-			  };
-		  };
+			  }
+		  }
 		  KeyWordValue = audio_none;						  // no key word found
 		  return false;									      // report fail
 
@@ -12410,7 +12316,7 @@ private boolean doUserFunction(){
 		   */
 
 /*		  if (theMP != null){
-			  try {theMP.stop();} catch (IllegalStateException e){};
+			  try {theMP.stop();} catch (IllegalStateException e){}
 			  theMP.release();
 			  theMP = null;
 		  }*/
@@ -12459,7 +12365,7 @@ private boolean doUserFunction(){
 			   catch (Exception e) {
 					RunTimeError("Error: " + e );
 				   return false;
-			   };
+			   }
 
 		   }else {																// Not loading from a raw resource
 			   try {
@@ -12474,7 +12380,7 @@ private boolean doUserFunction(){
 			   catch (Exception e) {
 					RunTimeError("Error: " + e );
 				   return false;
-			   };
+			   }
 		   }
 
 		   if (aMP == null){
@@ -12619,7 +12525,7 @@ private boolean doUserFunction(){
 
 			if (theMP == null) return true;                               // if theMP is null, Media player has stopped
 //		  MediaPlayer.setOnSeekCompleteListener (mSeekListener);
-//	  	 try {Thread.sleep(1000);}catch(InterruptedException e){};
+//	  	 try {Thread.sleep(1000);}catch(InterruptedException e){}
 	  	  try {Run.theMP.stop();}catch (Exception e) {
 				RunTimeError("Error: " + e );
 				return false;
@@ -12776,7 +12682,7 @@ private boolean doUserFunction(){
 		    	mRecorder.stop();
 		    	mRecorder.release();
 		    }
-		    catch (Exception e){};
+		    catch (Exception e){}
 	        mRecorder = null;
 
 		  return true;
@@ -12791,19 +12697,19 @@ private boolean doUserFunction(){
 	      	}else {
 	    	  switch (KeyWordValue){
 	    	  	case sensors_list:
-	    	  		if (!execute_sensors_list()){return false;};
+	    	  		if (!execute_sensors_list()){return false;}
 	    	  		break;
 	    	  	case sensors_open:
-	    	  		if (!execute_sensors_open()){return false;};
+	    	  		if (!execute_sensors_open()){return false;}
 	    	  		break;
 	    	  	case sensors_read:
-	    	  		if (!execute_sensors_read()){return false;};
+	    	  		if (!execute_sensors_read()){return false;}
 	    	  		break;
 	    	  	case sensors_close:
-	    	  		if (!execute_sensors_close()){return false;};
+	    	  		if (!execute_sensors_close()){return false;}
 	    	  		break;
 	    	  	case sensors_rotate:
-	    	  		if (!execute_sensors_rotate()){return false;};
+	    	  		if (!execute_sensors_rotate()){return false;}
 	    	  		break;
 	    	  	default:
 	    	  		return false;
@@ -12821,8 +12727,8 @@ private boolean doUserFunction(){
 				  KeyWordValue = i;						// set the key word number
 				  LineIndex = LineIndex + Sensors_KW[i].length(); // move the line index to end of key word
 				  return true;							// and report back
-			  };
-		  };
+			  }
+		  }
 		  KeyWordValue = sensors_none;							// no key word found
 		  return false;									// report fail
 
@@ -12855,17 +12761,14 @@ private boolean doUserFunction(){
 	       */
 	      
 		  doingDim = true;
-		  if (!getVar()){SyntaxError(); return false;}
+		  if (!getVar()) { doingDim = false; return false; }
 		  doingDim = false;
-		  if (VarIsNumeric){SyntaxError(); return false;} 
-		  if (!VarIsArray){SyntaxError(); return false;}
-		  if (!VarIsNew){
+		  if (VarIsNumeric || !VarIsArray) { return false; }
+		  if (!VarIsNew) {
 			  RunTimeError("DIR array must not be DIMed");
 			  return false;
 		  }
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=']'){SyntaxError(); return false;}
-			
-		  if (!checkEOL(true)) return false;
+		  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
 
 		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
 		  dimValues.add(SClength);                                 // Set the array dimension
@@ -13059,34 +12962,34 @@ private boolean doUserFunction(){
 		      	  }
 		    	  switch (KeyWordValue){
 		    	  	case gps_open:
-		    	  		if (!execute_gps_open()){return false;};
+		    	  		if (!execute_gps_open()){return false;}
 		    	  		break;
 		    	  	case gps_close:
-		    	  		if (!execute_gps_close()){return false;};
+		    	  		if (!execute_gps_close()){return false;}
 		    	  		break;
 		    	  	case gps_altitude:
-		    	  		if (!execute_gps_altitude()){return false;};
+		    	  		if (!execute_gps_altitude()){return false;}
 		    	  		break;
 		    	  	case gps_longitude:
-		    	  		if (!execute_gps_longitude()){return false;};
+		    	  		if (!execute_gps_longitude()){return false;}
 		    	  		break;
 		    	  	case gps_bearing:
-		    	  		if (!execute_gps_bearing()){return false;};
+		    	  		if (!execute_gps_bearing()){return false;}
 		    	  		break;
 		    	  	case gps_accuracy:
-		    	  		if (!execute_gps_accuracy()){return false;};
+		    	  		if (!execute_gps_accuracy()){return false;}
 		    	  		break;
 		    	  	case gps_speed:
-		    	  		if (!execute_gps_speed()){return false;};
+		    	  		if (!execute_gps_speed()){return false;}
 		    	  		break;
 		    	  	case gps_latitude:
-		    	  		if (!execute_gps_latitude()){return false;};
+		    	  		if (!execute_gps_latitude()){return false;}
 		    	  		break;
 		    	  	case gps_provider:
-		    	  		if (!execute_gps_provider()){return false;};
+		    	  		if (!execute_gps_provider()){return false;}
 		    	  		break;
 		    	  	case gps_time:
-		    	  		if (!execute_gps_time()){return false;};
+		    	  		if (!execute_gps_time()){return false;}
 		    	  		break;
 		    	  	default:
 		    	  		return false;
@@ -13104,8 +13007,8 @@ private boolean doUserFunction(){
 				  KeyWordValue = i;						// set the key word number
 				  LineIndex = LineIndex + GPS_KW[i].length(); // move the line index to end of key word
 				  return true;							// and report back
-			  };
-		  };
+			  }
+		  }
 		  KeyWordValue = sensors_none;							// no key word found
 		  return false;									// report fail
 
@@ -13200,11 +13103,11 @@ private boolean doUserFunction(){
 
 
 	  private boolean execute_gps_provider(){
-		  if (!getVar()){SyntaxError(); return false;}
-		  if (VarIsNumeric){SyntaxError(); return false;}
-		  StringVarValues.set(theValueIndex, GPS.Provider);
-			if (!checkEOL()) return false;
-		  return true;
+		  if (!getVar() || VarIsNumeric) { return false; }
+		  String provider = GPS.Provider;
+		  if (provider == null) { provider = ""; }
+		  StringVarValues.set(theValueIndex, provider);
+		  return checkEOL();
 	  }
 	  
 // ********************************************  Array Package  ***************************************
@@ -13222,41 +13125,41 @@ private boolean doUserFunction(){
 	    	if (!GetArrayKeyWord()){ return false;}
 		    	  switch (KeyWordValue){
 		    	  	case array_length:
-		    	  		if (!execute_array_length()){return false;};
+		    	  		if (!execute_array_length()){return false;}
 		    	  		break;
 		    	  	case array_load:
-		    	  		if (!execute_array_load()){return false;};
+		    	  		if (!execute_array_load()){return false;}
 		    	  		break;
 		    	  	case array_delete:
-		    	  		if (!executeUNDIM()){return false;};
+		    	  		if (!executeUNDIM()){return false;}
 		    	  		break;
 		    	  	case array_sort:
 		    	  		DoSort = true;
-		    	  		if (!execute_array_collection()){return false;};
+		    	  		if (!execute_array_collection()){return false;}
 		    	  		break;
 		    	  	case array_shuffle:
 		    	  		DoShuffle = true;
-		    	  		if (!execute_array_collection()){return false;};
+		    	  		if (!execute_array_collection()){return false;}
 		    	  		break;
 		    	  	case array_reverse:
 		    	  		DoReverse = true;
-		    	  		if (!execute_array_collection()){return false;};
+		    	  		if (!execute_array_collection()){return false;}
 		    	  		break;
 		    	  	case array_sum:
 		    	  		DoSum = true;
-		    	  		if (!execute_array_sum()){return false;};
+		    	  		if (!execute_array_sum()){return false;}
 		    	  		break;
 		    	  	case array_average:
 		    	  		DoAverage = true;
-		    	  		if (!execute_array_sum()){return false;};
+		    	  		if (!execute_array_sum()){return false;}
 		    	  		break;
 		    	  	case array_min:
 		    	  		DoMin = true;
-		    	  		if (!execute_array_sum()){return false;};
+		    	  		if (!execute_array_sum()){return false;}
 		    	  		break;
 		    	  	case array_max:
 		    	  		DoMax = true;
-		    	  		if (!execute_array_sum()){return false;};
+		    	  		if (!execute_array_sum()){return false;}
 		    	  		break;
 		    	  	case array_variance:
 		    	  		DoVariance = true;
@@ -13268,7 +13171,7 @@ private boolean doUserFunction(){
 		    	  		if (!execute_array_sum())return false;
 		    	  		break;
 		    	  	case array_copy:
-		    	  		if (!execute_array_copy()){return false;};
+		    	  		if (!execute_array_copy()){return false;}
 		    	  		break;
 		    	  	default:
 		    	  		return false;
@@ -13286,8 +13189,8 @@ private boolean doUserFunction(){
 				KeyWordValue = i;							// set the key word number
 				LineIndex = LineIndex + Array_KW[i].length(); // move the line index to end of key word
 				return true;								// and report back
-				};
-		};
+				}
+		}
 		KeyWordValue = array_none;						// no key word found
 		return false;										// report fail
 
@@ -13298,26 +13201,25 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// Length Variable
 		   if (!VarIsNumeric)return false;
 		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		   if (!isNext(',')) { return false; }
 
 			  doingDim = false;									// Get the array variable
 			  SkipArrayValues = true;
-			  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
+			  if (!getVar()) { SkipArrayValues = false; return false; }
 			  SkipArrayValues = false;
 			  doingDim = false;
-			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-			  if (VarIsNew){									// and that it has been DIMed
+			  if (!VarIsArray) { return false; }			    // Insure that it is an array
+			  if (VarIsNew) {									// and that it has been DIMed
 				  RunTimeError("Array not DIMed");
 				  return false;
 			  }
+			  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
 			  
 				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
 				ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
 				int length = ArrayEntry.getInt("length");               // Get the length from the bundle
 
 		   NumericVarValues.set(SaveValueIndex, (double) length);       // Set the length into the var value
-			if (!checkEOL(true)) return false;
 
 		return true;
 	}
@@ -13480,24 +13382,25 @@ private boolean doUserFunction(){
 		   if (!getVar())return false;							// The value return variable
 		   if (!VarIsNumeric)return false;						// These commands only for numeric arrays
 		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		   if (!isNext(',')) { return false; }
 
 		
 		  doingDim = false;									// Get the array variable
 		  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-		  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
+		  if (!getVar()) { SkipArrayValues = doingDim = false; return false; }
 		  SkipArrayValues = false;
 		  doingDim = false;
 		  
-		  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-		  if (!VarIsNumeric){								// and that it is a numeric array
+		  if (!VarIsArray) { return false; }			    // Insure that it is an array
+		  if (!VarIsNumeric) {								// and that it is a numeric array
 			  RunTimeError("Array not numeric");
+			  return false;
 		  }
-		  if (VarIsNew){									// and that it has been DIMed
+		  if (VarIsNew) {									// and that it has been DIMed
 			  RunTimeError("Array not DIMed");
 			  return false;
 		  }
+		  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
 		  
 			Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
 			ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
@@ -13534,7 +13437,6 @@ private boolean doUserFunction(){
 				if (DoStdDev) NumericVarValues.set(SaveValueIndex, sd);
 				else NumericVarValues.set(SaveValueIndex, variance);
 			}
-			if (!checkEOL(true)) return false;
 
 		return true;
 	}
@@ -13544,15 +13446,12 @@ private boolean doUserFunction(){
 		
 		  doingDim = false;									// Get the array variable
 		  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-		  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
+		  if (!getVar()) { SkipArrayValues = false; return false; }
 		  SkipArrayValues = false;
 		  doingDim = false;
 		  
-		  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-		  boolean SourceArrayNumeric = true;
-		  if (!VarIsNumeric){								// and that it is a numeric array
-			  SourceArrayNumeric = false;
-		  }
+		  if (!VarIsArray) { return false; }			    // Insure that it is an array
+		  boolean SourceArrayNumeric = VarIsNumeric;
 		  if (VarIsNew){									// and that it has been DIMed
 			  RunTimeError("Sourece Array not DIMed");
 			  return false;
@@ -13564,12 +13463,10 @@ private boolean doUserFunction(){
 		  int SourceBase = SourceArray.getInt("base");				// and the start of the array in the variable space
 		  
 		  int SourceStartIndex = 0;										// Get the Source Array Index
-		  int usl = SourceLength ;
-		  char c = ExecutingLineBuffer.charAt(LineIndex);	
-		  if (c != ']') {
+		  int usl = SourceLength;
+		  if (!isNext(']')) {
 			  
 			  if (!evalNumericExpression()) return false;
-			  c = ExecutingLineBuffer.charAt(LineIndex);
 			  SourceStartIndex = (int) (double)EvalNumericExpressionValue;
 			  SourceStartIndex = SourceStartIndex - 1;
 			  if (SourceStartIndex <0) SourceStartIndex = 0;
@@ -13578,27 +13475,21 @@ private boolean doUserFunction(){
 				  return false;
 			  }
 			  
-			  if (c == ','){
-				  ++LineIndex;
+			  if (isNext(',')) {
 				  if (!evalNumericExpression()) return false;
 				  usl = (int) (double)EvalNumericExpressionValue;
-				  c = ExecutingLineBuffer.charAt(LineIndex);
 			  }
-			  if (c != ']') return false;
+			  if (!isNext(']')) { return false; }
 		  }
 		  
 		  if (SourceStartIndex + usl >  SourceLength) usl = SourceLength - SourceStartIndex;
 		  int SourceCopyLimit = SourceStartIndex + usl;
 		  
-			  
-		  ++LineIndex;
-		  c = ExecutingLineBuffer.charAt(LineIndex);
-		  if (c != ',') return false;
-		  ++LineIndex;
+		  if (!isNext(',')) { return false; }
 		  													    	// *** Destination Array ***
 		  
 		  doingDim = true;                                    	    // get the array var name as a new array
-		  if (!getVar()){return false;}
+		  if (!getVar()) { doingDim = false; return false; }
 		  doingDim = false;
 		  if (!VarIsArray){return false;}       	    			// if var is not any array...
 		  if (!VarIsNew){
@@ -13607,22 +13498,19 @@ private boolean doUserFunction(){
 		  }
 			  int DestVarNumber = VarNumber;
 		  
-		  if ((SourceArrayNumeric && !VarIsNumeric) ||				// Insure both arrays are same type
-		     (!SourceArrayNumeric && VarIsNumeric)){
+		  if (SourceArrayNumeric != VarIsNumeric) {					// Insure both arrays are same type
 			  RunTimeError("Arrays not of same type");
 			  return false;
 		  }
 			  
 		  int Extras = 0;											// Get the extras parameter
-		  c = ExecutingLineBuffer.charAt(LineIndex);
-		  if (c != ']') {
-			  if (!evalNumericExpression()) return false;
-			  c = ExecutingLineBuffer.charAt(LineIndex);
-			  if (c != ']') return false;
-			  Extras = (int) (double)EvalNumericExpressionValue;
+		  if (!isNext(']')) {
+			  if (!evalNumericExpression()) { return false; }
+			  if (!isNext(']')) { return false; }
+			  Extras = EvalNumericExpressionValue.intValue();
 		  }
 			  
-		  if (!checkEOL(true)) return false;
+		  if (!checkEOL()) { return false; }
 			  
 		  ArrayList <String> StringSourceArray = new ArrayList <String>();     // Prepare the array lists
 		  ArrayList <Double> NumericSourceArray = new ArrayList <Double>();
@@ -13743,8 +13631,8 @@ private boolean doUserFunction(){
 				KeyWordValue = i;							// set the key word number
 				LineIndex = LineIndex + List_KW[i].length(); // move the line index to end of key word
 				return true;								// and report back
-				};
-		};
+				}
+		}
 		KeyWordValue = list_none;						// no key word found
 		return false;										// report fail
 
@@ -13762,29 +13650,23 @@ private boolean doUserFunction(){
 			type = list_is_string;
 		} else return false;
 
-		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		++LineIndex;
+		if (!isNext(',')) { return false; }
 		
-		   if (!getVar())return false;							// List pointer variable
-		   if (!VarIsNumeric)return false;
+		   if (!(getVar() && VarIsNumeric)) { return false; }	// List pointer variable
 		   int SaveValueIndex = theValueIndex;
 	
-	 int theIndex = 0;
+		if (!checkEOL()) { return false; }
 		   
+	 int theIndex = theLists.size();
 	 if ( type == list_is_string){										// Create a string list
-		 ArrayList<String> theStringList = new ArrayList <String>();
-		 theIndex = theLists.size();
-		 theLists.add(theStringList);
+		 theLists.add(new ArrayList <String>());
 	 }
 	 else if ( type == list_is_numeric){								// Create a numeric list
-		 ArrayList<Double> theNumericList = new ArrayList <Double>();
-		 theIndex = theLists.size();
-		 theLists.add(theNumericList);
+		 theLists.add(new ArrayList <Double>());
 	 }
 	 
 	   theListsType.add(type);											// add the type
 	   NumericVarValues.set(SaveValueIndex, (double) theIndex);   		// Return the list pointer    
-	   if (!checkEOL(true)) return false;
 		
 		return true;
 	}
@@ -14398,13 +14280,13 @@ private boolean doUserFunction(){
 		if (!getVar()){													// Get the array name var
 			SyntaxError();
 			return false;
-		};
+		}
 		doingDim = false;
 		
 		if (!VarIsArray){												//if there was no [ char, error
 			SyntaxError();
 			return false;
-		};
+		}
 
 		int svn = VarNumber;										// save the array variable table number
 		
@@ -14506,8 +14388,8 @@ private boolean doUserFunction(){
 				KeyWordValue = i;							// set the key word number
 				LineIndex = LineIndex + Bundle_KW[i].length(); // move the line index to end of key word
 				return true;								// and report back
-				};
-		};
+				}
+		}
 		KeyWordValue = list_none;						// no key word found
 		return false;										// report fail
 
@@ -14772,8 +14654,8 @@ private boolean doUserFunction(){
 				KeyWordValue = i;							// set the key word number
 				LineIndex = LineIndex + Stack_KW[i].length(); // move the line index to end of key word
 				return true;								// and report back
-				};
-		};
+				}
+		}
 		KeyWordValue = list_none;						// no key word found
 		return false;										// report fail
 
@@ -14791,21 +14673,19 @@ private boolean doUserFunction(){
 			type = stack_is_string;
 		} else return false;
 
-		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		++LineIndex;
-		
-		   if (!getVar())return false;							// Stack pointer variable
-		   if (!VarIsNumeric)return false;
+		if (!isNext(',')) { return false; }
+
+		   if (!(getVar() && VarIsNumeric)) { return false; }	// Stack pointer variable
 		   int SaveValueIndex = theValueIndex;
 	
+		if (!checkEOL()) { return false; }
 		   
 	 Stack theStack = new Stack();
 	 int theIndex = theStacks.size();
 	 theStacks.add(theStack);
 	 
 	   theStacksType.add(type);											// add the type
-	   NumericVarValues.set(SaveValueIndex, (double) theIndex);   		// Return the list pointer    
-	   if (!checkEOL(true)) return false;
+	   NumericVarValues.set(SaveValueIndex, (double) theIndex);   		// Return the stack pointer    
 		
 		return true;
 	}
@@ -15292,8 +15172,8 @@ private boolean doUserFunction(){
 				KeyWordValue = i;							// set the key word number
 				LineIndex = LineIndex + Socket_KW[i].length(); // move the line index to end of key word
 				return true;								// and report back
-				};
-		};
+				}
+		}
 		KeyWordValue = list_none;						// no key word found
 		return false;										// report fail
 
@@ -15575,7 +15455,7 @@ private boolean doUserFunction(){
 			return false;
 		}
 		
-		if (!getVar()){return false;};						// First parm is the filenumber vaiable
+		if (!getVar()){return false;}						// First parm is the filenumber vaiable
 		if (!VarIsNumeric){return false;}
 		double d = NumericVarValues.get(theValueIndex);
 		int FileNumber =  (int) d;
@@ -15685,7 +15565,7 @@ private boolean doUserFunction(){
 			return false;
 		}
 		
-		if (!getVar()){return false;};						// First parm is the filenumber vaiable
+		if (!getVar()){return false;}						// First parm is the filenumber vaiable
 		if (!VarIsNumeric){return false;}
 		double d = NumericVarValues.get(theValueIndex);
 		int FileNumber =  (int) d;
@@ -15791,7 +15671,7 @@ private boolean doUserFunction(){
 			return false;
 		}
 		
-		if (!getVar()){return false;};						// First parm is the filenumber vaiable
+		if (!getVar()){return false;}						// First parm is the filenumber vaiable
 		if (!VarIsNumeric){return false;}
 		double d = NumericVarValues.get(theValueIndex);
 		int FileNumber =  (int) d;
@@ -15855,7 +15735,7 @@ private boolean doUserFunction(){
         catch (Exception e) {
 			RunTimeError("Error: " + e );
 			   return false;
-		   };
+		   }
 
 		
 	
@@ -16066,8 +15946,8 @@ private boolean doUserFunction(){
 				  KeyWordValue = i;						// set the key word number
 				  LineIndex = LineIndex + ftp_KW[i].length(); // move the line index to end of key word
 				  return true;							// and report back
-			  };
-		  };
+			  }
+		  }
 		  KeyWordValue = 99;							// no key word found
 		  return false;									// report fail
 
@@ -16508,8 +16388,8 @@ private boolean doUserFunction(){
 					  KeyWordValue = i;						// set the key word number
 					  LineIndex = LineIndex + bt_KW[i].length(); // move the line index to end of key word
 					  return true;							// and report back
-				  };
-			  };
+				  }
+			  }
 			  KeyWordValue = 99;							// no key word found
 			  return false;									// report fail
 
@@ -16707,7 +16587,7 @@ private boolean doUserFunction(){
 		    
 		    private boolean execute_BT_device_name(){
 		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
-		            RunTimeError("Bluetooth not connected");;
+		            RunTimeError("Bluetooth not connected");
 		            return false;
 		        }
 		    	
@@ -16718,7 +16598,7 @@ private boolean doUserFunction(){
 		    
 		    private boolean execute_BT_write(){
 		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
-		            RunTimeError("Bluetooth not connected");;
+		            RunTimeError("Bluetooth not connected");
 		            return true;                                // Deliberatly not making error fatal
 		        }
 		        
@@ -16758,7 +16638,7 @@ private boolean doUserFunction(){
 							btPrintLine = btPrintLine + StringConstant;										// field is string
 						WasSemicolon = false;
 					}else{
-						if (VarIsFunction){SyntaxError(); return false;};
+						if (VarIsFunction){SyntaxError(); return false;}
 					}
 					if (LI == LineIndex) return false;
 					}
@@ -16784,9 +16664,7 @@ private boolean doUserFunction(){
 					}
 				} while (true);								// Exit loop happens internal to loop
 				
-				
-				
-			};
+			}
 		    
 		    private boolean execute_BT_read_ready(){
 		    	if (!getNVar()) return false;
@@ -16794,7 +16672,7 @@ private boolean doUserFunction(){
 		    	if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
 		    		synchronized (this){
 		    		d = (double)BT_Read_Buffer.size();
-		    		};
+		    		}
 		    	}
 		    	NumericVarValues.set(theValueIndex, d );
 		    	return true;
@@ -16812,7 +16690,7 @@ private boolean doUserFunction(){
 		    private boolean execute_BT_read_bytes(){
 		    	
 		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
-		            RunTimeError("Bluetooth not connected");;
+		            RunTimeError("Bluetooth not connected");
 		            return false;
 		        }
 		        
@@ -16882,8 +16760,8 @@ private boolean doUserFunction(){
 						  KeyWordValue = i;						// set the key word number
 						  LineIndex = LineIndex + su_KW[i].length(); // move the line index to end of key word
 						  return true;							// and report back
-					  };
-				  };
+					  }
+				  }
 				  KeyWordValue = 99;							// no key word found
 				  return false;									// report fail
 
@@ -17086,8 +16964,8 @@ private boolean doUserFunction(){
 				  KeyWordValue = i;						// set the key word number
 				  LineIndex = LineIndex + sp_KW[i].length(); // move the line index to end of key word
 				  return true;							// and report back
-			  };
-		  };
+			  }
+		  }
 		  KeyWordValue = 99;							// no key word found
 		  return false;									// report fail
 
@@ -17151,7 +17029,7 @@ private boolean doUserFunction(){
 			   catch (Exception e) {
 					RunTimeError("Error: " + e );
 				   return false;
-			   };
+			   }
 
 		   }else {																// Not loading from a raw resource
 			   try {
@@ -17160,7 +17038,7 @@ private boolean doUserFunction(){
 			   catch (Exception e) {
 					RunTimeError("Error: " + e );
 				   return false;
-			   };
+			   }
 		   }
 
 		  	
@@ -17679,8 +17557,8 @@ private boolean doUserFunction(){
 					  KeyWordValue = i;						// set the key word number
 					  LineIndex = LineIndex + html_KW[i].length(); // move the line index to end of key word
 					  return true;							// and report back
-				  };
-			  };
+				  }
+			  }
 			  KeyWordValue = 99;							// no key word found
 			  return false;									// report fail
 
