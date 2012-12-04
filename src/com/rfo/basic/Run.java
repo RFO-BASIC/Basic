@@ -1649,54 +1649,44 @@ public class Background extends AsyncTask<String, String, String>{
         			flag = true;									// and indicate no error
         		} else
         		
-        		if (BackKeyHit ) {
-         			if (OnBackKeyLine != 0) {
+        		if (BackKeyHit && OnBackKeyLine != 0) {
         				BackKeyHit = doInterrupt(OnBackKeyLine);
-        			}
+        			
         		} else
 
-        		if (MenuKeyHit ) {
-        			if (OnMenuKeyLine != 0) {
+        		if (MenuKeyHit && OnMenuKeyLine != 0) {
         				MenuKeyHit = doInterrupt(OnMenuKeyLine);
-        			}
+        			
         		} else
 
-        		if (timerExpired ) {
-        			if (OnTimerLine != 0) {
+        		if (timerExpired && OnTimerLine != 0) {
         				timerExpired = doInterrupt(OnTimerLine);
-        			}
+        			
         		} else
         		
-        		if (KeyPressed ) {
-        			if (OnKeyLine != 0) {
+        		if (KeyPressed && OnKeyLine != 0) {
         				KeyPressed = doInterrupt(OnKeyLine);
-         			}
+         			
         		} else
 
-        		if (NewTouch[2] ) {									// NewTouch[2] is only used to signal any touch
-        			if (OnTouchLine != 0) {							// and is not tracked like NewTouch[0] and NewTouch[1]
-        				NewTouch[2] = doInterrupt(OnTouchLine);		// used with onGRtouch.
-        			}
+        		if (NewTouch[2] && OnTouchLine != 0) {							// and is not tracked like NewTouch[0] and NewTouch[1]
+        				NewTouch[2] = doInterrupt(OnTouchLine);					// used with onGRtouch.
+        			
         		} else
         			
-        		if (btReadReady) {
-        			btReadReady = false;
-        			if (OnBTReadLine != 0) {
+        		if (btReadReady && OnBTReadLine != 0) {
         				btReadReady = doInterrupt(OnBTReadLine);
-        			}
+        			
         		} else
         		
-        		if (ConsoleTouched) {
-        			ConsoleTouched = false;
-        			if (onCTLine != 0) {
+        		if (ConsoleTouched && onCTLine != 0) {
         				ConsoleTouched = doInterrupt(onCTLine);
-        			}
+        			
         		} else
 
-        		if (bgStateChange) {
-        			if (OnBGLine != 0) {
+        		if (bgStateChange && OnBGLine != 0) {
         				bgStateChange = doInterrupt(OnBGLine);
-        			}
+        			
         		}
        		
         		for (int i=0; i<TempOutputIndex; ++i){				// if new output lines, the send them
