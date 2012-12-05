@@ -78,7 +78,7 @@ public class GR extends Activity {
     public static boolean OrientationChanged = false;
     public static float scaleX = 1f;
     public static float scaleY = 1f;
-    public static boolean Rendering = false;
+    public static Boolean Rendering = false;	// Boolean (not boolean) so it has a lock
     public static boolean NullBitMap = false;
     public static InputMethodManager GraphicsImm ;
     public static float Brightness = -1;
@@ -475,8 +475,10 @@ public class GR extends Activity {
    					doSTT = false;
        		}
 
-       		Run.GRrunning = true;
-        	if (!Rendering) return;		// If Run.java did not ask to render then don't render
+        	synchronized (Rendering) {
+        		Run.GRrunning = true;
+        		if (!Rendering) return;		// If Run.java did not ask to render then don't render
+        	}
         	
             float scale = getResources().getDisplayMetrics().density;
         	Paint thePaint;

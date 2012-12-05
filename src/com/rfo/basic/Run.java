@@ -10343,9 +10343,11 @@ private boolean doUserFunction(){
 			  return false;
 		  }
 		  
-		  if (GR.Rendering) return true;
+		synchronized (GR.Rendering) {
+			if (GR.Rendering) return true;
+			GR.Rendering = true;
+		}
 		  
-		  GR.Rendering = true;
 		  GR.NullBitMap = false;
 		  
 		  GR.drawView.postInvalidate();			// Start GR drawing.
@@ -11659,10 +11661,7 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_get_pixel(){
 	  		
             boolean retval = true;
-            GR.drawView.setDrawingCacheEnabled(true);
-            GR.Rendering = true;                                        // buildDrawingCache() renders
-			GR.drawView.buildDrawingCache();							// Build the cache
-			Bitmap b = GR.drawView.getDrawingCache();					// get the bitmap
+			Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
 			if (b == null){
 				RunTimeError("Could not capture screen bitmap. Sorry.");
 				retval = false;
@@ -11677,7 +11676,17 @@ private boolean doUserFunction(){
 			System.gc();
 			return retval;
 	  }
-		
+
+		// After it's done with the Bitmap, caller should call destroyDrawingCache()
+		private Bitmap getTheBitmap() {
+			synchronized (GR.Rendering) {
+				GR.drawView.setDrawingCacheEnabled(true);
+				GR.Rendering = true;									// buildDrawingCache() renders
+				GR.drawView.buildDrawingCache();						// Build the cache
+				return GR.drawView.getDrawingCache();					// get the bitmap
+			}
+		}
+
 		private boolean getTheBMpixel(Bitmap b){
 
 			int pixel = 0;
@@ -11764,9 +11773,8 @@ private boolean doUserFunction(){
 		  	String fn = StringConstant;
 		  	
 		  	int quality = 50;											// set default jpeg quality
-			if (ExecutingLineBuffer.charAt(LineIndex) == ',')			// if there is an optional quality parm
+			if (isNext(','))											// if there is an optional quality parm
 			{
-				++LineIndex;
 				if (!evalNumericExpression())return false;				// evaluate it
 				quality = (int) (double) EvalNumericExpressionValue;
 				if (quality < 0 || quality >100){
@@ -11778,10 +11786,7 @@ private boolean doUserFunction(){
 			if (!checkEOL()) return false;
 			
             boolean retval = true;
-            GR.drawView.setDrawingCacheEnabled(true);
-            GR.Rendering = true;                                        // buildDrawingCache() renders
-			GR.drawView.buildDrawingCache();							// Build the cache
-			Bitmap b = GR.drawView.getDrawingCache();					// get the bitmap
+			Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
 			if (b==null){
 				RunTimeError("Problem creating bitmap");
 				retval = false;
@@ -11800,21 +11805,18 @@ private boolean doUserFunction(){
 	  private boolean  execute_screen_to_bitmap(){
 		  if (!getNVar()) return false;
           boolean retval = true;
-          GR.drawView.setDrawingCacheEnabled(true);
-          GR.Rendering = true;                                       // buildDrawingCache() renders
-		  GR.drawView.buildDrawingCache();							// Build the cache
-		  Bitmap BM = GR.drawView.getDrawingCache();				// get the bitmap
-		  if (BM == null) {
+		  Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
+		  if (b == null) {
 			  RunTimeError("Could not capture screen bitmap. Sorry.");
 			  retval = false;
 		  } else {
 
 			  NumericVarValues.set(theValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
-			  BitmapList.add(BM.copy(Bitmap.Config.ARGB_8888 , true));			
+			  BitmapList.add(b.copy(Bitmap.Config.ARGB_8888 , true));			
 			  retval = true;
 
-			  BM.recycle();												// clean up bitmap
-			  BM = null;
+			  b.recycle();												// clean up bitmap
+			  b = null;
 		  }
 		  GR.drawView.destroyDrawingCache();							// clean up DrawingCache
 		  System.gc();
