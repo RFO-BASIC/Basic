@@ -40,6 +40,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 
 import com.rfo.basic.R;
@@ -72,7 +73,7 @@ public class Delete extends ListActivity {
     private static   ArrayList<String> FL1 = new ArrayList<String>();
     private static   ArrayList<String> DL1 = new ArrayList<String>();
     private static String FilePath = "";
-    public static String SD_FilePath = "rfo-basic";
+    public static String SD_FilePath = "";
     public static String IM_FilePath = "";
   	private static String FL[] = null;
 
@@ -128,6 +129,7 @@ public void onCreate(Bundle savedInstanceState) {
 	
   super.onCreate(savedInstanceState);
   setRequestedOrientation(Settings.getSreenOrientation(this));
+  SD_FilePath = Basic.AppPath;
   Delete1();                                 // This is so that we can re-enter delete from within delete 
   											 // without have to re-create the delete intent.
 }
@@ -239,7 +241,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {                     // If
 		File sdDir = null;
 		File lbDir = null;
 		
-		sdDir = new File("/sdcard/");							// Base dir is sdcard
+		sdDir = new File(Environment.getExternalStorageDirectory().getPath());							// Base dir is sdcard
 		lbDir = new File(sdDir.getAbsoluteFile()
 						 + "/" + FilePath);						// plus delete file path
 		FL = lbDir.list();
@@ -305,7 +307,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {                     // If
     	 }
     	 
     	 aFile = new File(theFileName);
-		  	 File sdDir = new File("/sdcard/");					// Base dir is sdcard
+		  	 File sdDir = new File(Environment.getExternalStorageDirectory().getPath());					// Base dir is sdcard
 			 aFile = new File(sdDir.getAbsoluteFile()
 					 + "/" + FilePath + "/" + theFileName);		// plus delete file path
 		final File theFile = aFile;

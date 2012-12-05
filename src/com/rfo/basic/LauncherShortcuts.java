@@ -135,10 +135,10 @@ public class LauncherShortcuts extends Activity {
 	  String AppName = this.theText3.getText().toString();
 	  
 	  String FullFileName ;                                   // The Program File Name
-	  FullFileName = "/sdcard/rfo-basic/source/" +FileName;
+	  FullFileName = Basic.filePath + "/source/" +FileName;
 
 	  String bmfn;											  // The bitmap file name
-	  bmfn = "/sdcard/rfo-basic/data/" +BitmapFileName; 
+	  bmfn = Basic.filePath + "/data/" +BitmapFileName; 
 	  Bitmap aBitmap = BitmapFactory.decodeFile(bmfn);        // get the actual bitmap
 
 	  setupShortcut( AppName, FullFileName, aBitmap);         // Go finish the shortcut setup

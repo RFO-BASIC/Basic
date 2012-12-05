@@ -244,7 +244,7 @@ public class AddProgramLine {
 		fn = fn.trim();
 
 		File file = null;
-		String FullFileName = "/sdcard/rfo-basic/source/" + 					// Base dir 
+		String FullFileName = Basic.filePath + "/source/" + 					// Base dir 
 		  	fn;													// plus filename
 		file = new File(FullFileName);								// is full path to the file to load
 		BufferedReader buf = null;

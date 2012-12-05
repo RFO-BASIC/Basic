@@ -8371,7 +8371,7 @@ private boolean doUserFunction(){
 
  		String state = Environment.getExternalStorageState();
     	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-    		RunTimeError("SDCARD not available.");
+    		RunTimeError("External Storage not available.");
     		return false;
     	}
 	  	File lbDir = new File(Basic.filePath +   "/data/" + StringConstant);
@@ -9344,7 +9344,7 @@ private boolean doUserFunction(){
     			
     	     	String state = Environment.getExternalStorageState();   // Make sure the SD is mounted
     	    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-    	    		RunTimeError("SDCARD not available.");
+    	    		RunTimeError("External Storage not available.");
     	    		return false;
     	    	}
 

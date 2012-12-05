@@ -43,6 +43,7 @@ import android.app.ListActivity;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 
 import com.rfo.basic.R;
@@ -144,9 +145,9 @@ private void Load1(){
   	File lbDir = null;
  
 	 ProgramPath = Basic.SD_ProgramPath;                 // Set Load path to current program path
-  	 sdDir = new File("/sdcard/");						// Base dir
+  	 sdDir = new File(Environment.getExternalStorageDirectory().getPath());						// Base dir
 	 lbDir = new File(sdDir.getAbsoluteFile()			// Plus Load path
-			+"/rfo-basic/source/" + ProgramPath);
+			+ "/" + Basic.AppPath + "/source/" + ProgramPath);
 	 lbDir.mkdirs();
 	 
 	 FL = lbDir.list();									// Get the list of files in this dir
@@ -295,7 +296,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
     																	//Write to SD Card
 
 			  File file = null;
-			  FullFileName = "/sdcard/rfo-basic/source/" + 					// Base dir 
+			  FullFileName = Basic.filePath + "/source/" + 					// Base dir 
 			  	Basic.SD_ProgramPath + 										// plus load path
 			  	"/" + 
 			  	aFileName;													// plus filename

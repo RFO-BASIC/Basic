@@ -78,7 +78,7 @@ private void doCameraUI(){
 
 
 private File getTempFile(Context context){
-	  File path = new File ("/sdcard/"+ AppPath + "/data/image.png");
+	  File path = new File (Basic.filePath + "/data/image.png");
 	  return path;
 	}
 
@@ -87,7 +87,7 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
   if (resultCode == RESULT_OK) {
   if (requestCode == 254){
         final File file = getTempFile(this);
-        String fn = new File("/sdcard/"+ AppPath + "/data/image.png").getAbsolutePath();
+        String fn = new File(Basic.filePath + "/data/image.png").getAbsolutePath();
         try {
 	        BitmapFactory.Options BFO = new BitmapFactory.Options();
 	        BFO.inSampleSize = 4;
@@ -171,11 +171,11 @@ protected void onDestroy(){
 		public void onPictureTaken(byte[] data, Camera camera) {
 			FileOutputStream outStream = null;
 			try {
-				outStream = new FileOutputStream("/sdcard/"+ Basic.AppPath + "/data/image.jpg");
+				outStream = new FileOutputStream(Basic.filePath + "/data/image.jpg");
 				outStream.write(data);
 				outStream.close();
 //				Log.d(TAG, "onPictureTaken - wrote bytes: " + data.length);
-		        String fn = new File("/sdcard/"+ Basic.AppPath + "/data/image.jpg").getAbsolutePath();
+		        String fn = new File(Basic.filePath + "/data/image.jpg").getAbsolutePath();
 		        System.gc();
 		        BitmapFactory.Options BFO = new BitmapFactory.Options();
 		        BFO.inSampleSize = 4;
@@ -193,11 +193,11 @@ protected void onDestroy(){
 		public void onPictureTaken(byte[] data, Camera camera) {
 			FileOutputStream outStream = null;
 			try {
-				outStream = new FileOutputStream("/sdcard/"+ Basic.AppPath + "/data/image.png");
+				outStream = new FileOutputStream(Basic.filePath + "/data/image.png");
 				outStream.write(data);
 				outStream.close();
 //				Log.d(TAG, "onPictureTaken - wrote bytes: " + data.length);
-		        String fn = new File("/sdcard/"+ Basic.AppPath + "/data/image.png").getAbsolutePath();
+		        String fn = new File(Basic.filePath + "/data/image.png").getAbsolutePath();
 		        System.gc();
 		        BitmapFactory.Options BFO = new BitmapFactory.Options();
 		        BFO.inSampleSize = 4;

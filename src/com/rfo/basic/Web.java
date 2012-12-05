@@ -201,7 +201,7 @@ public class Web extends Activity {
     	}
     
     	public void webLoadString(String data){
-    		File lbDir = new File("/sdcard/"+Basic.AppPath+"/data/");
+    		File lbDir = new File(Basic.filePath +"/data/");
     		String s = lbDir.getAbsolutePath();
     		s = "file://" + s + "/";
     		if (engine != null)engine.loadDataWithBaseURL(s, data, "text/html", "UTF-8", s+"*");
