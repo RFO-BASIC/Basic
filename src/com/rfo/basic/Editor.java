@@ -400,7 +400,8 @@ public class Editor extends Activity {
         		}
 				DisplayText = mText.getText().toString();
 				Editor.mText.setText(Editor.DisplayText);
-				mText.setSelection(start, end);							// Set the selection
+				if (start > 0 && end > 0 && start <= end)					// make sure values are not crash bait
+					mText.setSelection(start, end);							// Set the selection
 				mText.setCursorVisible(true);
 				SyntaxErrorDisplacement = -1;							// Reset the value
 
