@@ -2632,7 +2632,21 @@ public void onLowMemory(){
 //********************** Everything from here to end runs in the background task ***********************
 
 // The methods starting here are the core code for running a Basic program
-
+private Boolean CodeBlockStackFire(int ID, String CodeBlockEmpty_errorMSG, String MisplacedBreakInFunction_errorMSG){
+	while(!CodeBlockStack.empty()){
+		if (CodeBlockStack.peek().getInt("type")==ID){
+			CodeBlockStack.pop();
+			return true;
+		}
+		if (CodeBlockStack.peek().getInt("type")==Function_ID){
+			RunTimeError(MisplacedBreakInFunction_errorMSG);
+			return false;
+		}
+		CodeBlockStack.pop();
+	}
+	RunTimeError(CodeBlockEmpty_errorMSG);
+	return false;
+}
 private void trimArray(ArrayList Array, int start){
 	int last = Array.size()-1;
 	int k = last;
@@ -2759,10 +2773,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			if (KeyWordValue == BKWnone) KeyWordValue = BKWlet;    // If no key word, then assume pseudo LET
 			int q;
 			if(!CodeBlockStack.empty()){
-			if(CodeBlockStack.peek().getInt("type")==IfElse_ID){
-			//if (!IfElseStack.empty()){					// if inside IF-ELSE-ENDIF
-				q=CodeBlockStack.peek().getInt("q");
-				//q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
+			if(CodeBlockStack.peek().getInt("type")==IfElse_ID){					// if inside IF-ELSE-ENDIF
+				q=CodeBlockStack.peek().getInt("q");			// decide if we should skip to ELSE or ENDIF
 				switch (q){
 					case IEskip1:
 						if (KeyWordValue == BKWelse || 
@@ -5336,8 +5348,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			if (!checkEOL()) return false;
 			
 			
-			
-			while(CodeBlockStack.peek().getInt("type")!=ForNext_ID){
+			if(!CodeBlockStackFire(ForNext_ID,"F_N.BREAK without FOR/NEXT.","F_N.BREAK misplaced in function.")) return false;
+			/*while(CodeBlockStack.peek().getInt("type")!=ForNext_ID){
 				if (CodeBlockStack.isEmpty()){
 					RunTimeError("F_N.BREAK without for/next.");
 					return false;
@@ -5348,7 +5360,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				}
 				CodeBlockStack.pop();
 			}
-			CodeBlockStack.pop();
+			CodeBlockStack.pop();*/
 			if (!SkipToNext()) return false;
 			return true;
 
@@ -5430,26 +5442,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private boolean executeW_R_BREAK(){
-		if (CodeBlockStack.empty()){				// If the stack is empty
-			RunTimeError("No While Statement Active");			// then we have a misplaced NEXT
-			return false;
-		}
 		
 		if (!checkEOL()) return false;
 	
-		
-		while(CodeBlockStack.peek().getInt("type")!=WhileRepeat_ID){
-			if (CodeBlockStack.isEmpty()){				// If the stack is empty
-				RunTimeError("No While Statement Active");			// then we have a misplaced NEXT
-				return false;
-			}
-			if(CodeBlockStack.peek().getInt("type")==Function_ID){
-				RunTimeError("W_R.BREAK in function without While");
-				return false;
-			}
-			CodeBlockStack.pop();
-		}
-		CodeBlockStack.pop();
+		if(!CodeBlockStackFire(WhileRepeat_ID,"W_R.BREAK without WHILE/REPEAT.","W_R.BREAK misplaced in function.")) return false;
+	
 		if (!SkipToRepeat()) return false;
 		return true;
 	}
@@ -5507,9 +5504,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	    	return false; // End of program. No UNTIL found;
 		}
 		if (!checkEOL()) return false;
-		if (!SkipToUntil());
 		
-		while(CodeBlockStack.peek().getInt("type")!=DoUntil_ID){
+		if(!CodeBlockStackFire(DoUntil_ID,"D_U.BREAK without DO/UNTIL.","D_U.BREAK misplaced in function.")) return false;
+		/*while(CodeBlockStack.peek().getInt("type")!=DoUntil_ID){
 			if (CodeBlockStack.empty()){  // Empty stack = error
 				RunTimeError("DO without until");
 	    		return false; // End of program. No UNTIL found;
@@ -5520,7 +5517,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			}
 			CodeBlockStack.pop();
 		}
-		CodeBlockStack.pop();
+		CodeBlockStack.pop();*/
+		if(!SkipToUntil()) return false;
 		return true;
 	}
 	
@@ -6761,12 +6759,13 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	
 	private boolean  executeFN_RTN(){
+		while(!CodeBlockStack.empty()){
+			if(CodeBlockStack.peek().getInt("type")!=Function_ID) break;
+			CodeBlockStack.pop();
+		}
 		if (CodeBlockStack.empty()){							// Insure RTN actually called from executing function
 			RunTimeError("misplaced fn.rtn");
 			return false;
-		}
-		while(CodeBlockStack.peek().getInt("type")!=Function_ID) {
-			CodeBlockStack.pop();
 		}
 		Bundle fsb = new Bundle();							
 		fsb = CodeBlockStack.peek();						// Look at the Function Bundle on the stack
@@ -7050,7 +7049,8 @@ private boolean doUserFunction(){
 		while (ExecutingLineIndex < Basic.lines.size()){
 			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
 			if (ExecutingLineBuffer.startsWith("sw.end")){
-				while(CodeBlockStack.peek().getInt("type")!=Switch_ID){
+				if(!CodeBlockStackFire(Switch_ID,"SW.BREAK without SW.BEGIN/SW.END .","SW.BREAK misplaced in function.")) return false;
+				/*while(CodeBlockStack.peek().getInt("type")!=Switch_ID){
 					if(CodeBlockStack.empty()){
 						RunTimeError("sw.xxxx without sw.end");
 						return false;
@@ -7061,7 +7061,7 @@ private boolean doUserFunction(){
 					}
 					CodeBlockStack.pop();
 				}
-				CodeBlockStack.pop();
+				CodeBlockStack.pop();*/
 				return true;
 			}
 			++ExecutingLineIndex;  // Next program line	
