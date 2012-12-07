@@ -6760,7 +6760,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private boolean  executeFN_RTN(){
 		while(!CodeBlockStack.empty()){
-			if(CodeBlockStack.peek().getInt("type")!=Function_ID) break;
+			if(CodeBlockStack.peek().getInt("type")==Function_ID) break;
 			CodeBlockStack.pop();
 		}
 		if (CodeBlockStack.empty()){							// Insure RTN actually called from executing function
