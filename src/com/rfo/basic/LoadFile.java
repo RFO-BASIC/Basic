@@ -145,7 +145,7 @@ private void Load1(){
   	File lbDir = null;
  
 	 ProgramPath = Basic.SD_ProgramPath;                 // Set Load path to current program path
-  	 sdDir = new File(Environment.getExternalStorageDirectory().getPath());						// Base dir
+  	 sdDir = new File(Basic.basePath);						// Base dir
 	 lbDir = new File(sdDir.getAbsoluteFile()			// Plus Load path
 			+ "/" + Basic.AppPath + "/source/" + ProgramPath);
 	 lbDir.mkdirs();

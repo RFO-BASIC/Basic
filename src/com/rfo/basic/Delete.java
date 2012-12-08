@@ -241,7 +241,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {                     // If
 		File sdDir = null;
 		File lbDir = null;
 		
-		sdDir = new File(Environment.getExternalStorageDirectory().getPath());							// Base dir is sdcard
+		sdDir = new File(Basic.basePath);							// Base dir is sdcard
 		lbDir = new File(sdDir.getAbsoluteFile()
 						 + "/" + FilePath);						// plus delete file path
 		FL = lbDir.list();
@@ -307,7 +307,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {                     // If
     	 }
     	 
     	 aFile = new File(theFileName);
-		  	 File sdDir = new File(Environment.getExternalStorageDirectory().getPath());					// Base dir is sdcard
+		  	 File sdDir = new File(Basic.basePath);					// Base dir is sdcard
 			 aFile = new File(sdDir.getAbsoluteFile()
 					 + "/" + FilePath + "/" + theFileName);		// plus delete file path
 		final File theFile = aFile;

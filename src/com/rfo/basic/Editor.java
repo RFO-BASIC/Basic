@@ -856,7 +856,7 @@ public class Editor extends Activity {
         		Toaster("External Storage not available or not writeable.");    // toast,
         	} else {
 				//Write to SD Card
-				File sdDir = new File(Environment.getExternalStorageDirectory().getPath());
+				File sdDir = new File(Basic.basePath);
 				if (sdDir.exists() && sdDir.canWrite()) {
 					if (Basic.SD_ProgramPath.equals("Sample_Programs") || Basic.SD_ProgramPath.equals("/Sample_Programs")) Basic.SD_ProgramPath = "";
 					String PathA = "/" + Basic.AppPath + "/source/" + "/" + Basic.SD_ProgramPath;  // Base path

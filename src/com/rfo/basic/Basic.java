@@ -80,6 +80,7 @@ public class Basic extends ListActivity  {
     
 	public static Boolean DoAutoRun = false;
 	public static String filePath = "";
+	public static String basePath = "";
     private static final String LOGTAG = "Basic";
     private static final String CLASSTAG = Basic.class.getSimpleName();
     public static ArrayList<String> lines;       //Program lines for execution
@@ -112,7 +113,8 @@ public class Basic extends ListActivity  {
     	
         super.onCreate(savedInstanceState);					// Set up of fresh start
  //       setContentView(R.layout.main);
-        filePath =  Environment.getExternalStorageDirectory().getPath() + "/" + AppPath;
+        basePath = Environment.getExternalStorageDirectory().getPath();
+        filePath =  basePath + "/" + AppPath;
         if (isAPK) {
         	createForAPK();
         } else {
