@@ -112,8 +112,13 @@ public class Basic extends ListActivity  {
     public void onCreate(Bundle savedInstanceState) {
     	
         super.onCreate(savedInstanceState);					// Set up of fresh start
- //       setContentView(R.layout.main);
-        basePath = Environment.getExternalStorageDirectory().getPath();
+        
+        String test = Settings.getBaseDrive(this);
+        if (test.equals("none")) 
+        	basePath = Environment.getExternalStorageDirectory().getPath();
+        else 
+        	basePath = test;
+        
         filePath =  basePath + "/" + AppPath;
         if (isAPK) {
         	createForAPK();

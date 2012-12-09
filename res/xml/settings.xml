@@ -50,6 +50,7 @@ This file is part of BASIC! for Android
                 android:defaultValue="BW"
                 android:dialogTitle="Choose one" />
                 
+                
          <CheckBoxPreference
       			android:key="lined_editor"
      			android:title="Editor Lines"
@@ -85,6 +86,16 @@ This file is part of BASIC! for Android
                 android:entryValues="@array/orientationvalues_list_preference"
                 android:defaultValue="0"
                 android:dialogTitle="Choose one" />
+         
+          <ListPreference
+                android:key="base_drive_pref"
+                android:title="Base Drive"
+                android:summary="Select New Base Drive"
+                android:entries="@array/base_drive_names"
+                android:entryValues="@array/base_drive_values"
+                android:defaultValue="/mnt/sdcard"
+                android:dialogTitle="Choose one" />
+         
          
       
 </PreferenceScreen>

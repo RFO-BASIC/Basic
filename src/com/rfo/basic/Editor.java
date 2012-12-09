@@ -101,7 +101,6 @@ public class Editor extends Activity {
     public static int selectionEnd;
     public static final String Name = "BASIC! Program Editor - ";
 
-    public static boolean waitSelect = false;
     public static long startTime;						// Time used for blocking re-run
 
 
@@ -154,6 +153,8 @@ public class Editor extends Activity {
 
         @Override
         protected void onDraw(Canvas canvas) {
+        	
+        	
             if (Settings.getEditorColor(LEcontext).equals("BW")) {
           	    mText.setTextColor(0xff000000);
           	    mText.setBackgroundColor(0xffffffff);
@@ -380,6 +381,10 @@ public class Editor extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+    	if (Settings.changeBaseDrive) {
+    		doBaseDriveChange();
+    	}
+
 //        Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " onResume " + Basic.DoAutoRun);
         if (Basic.DoAutoRun) {
 			android.os.Process.killProcess(android.os.Process.myPid()) ;
@@ -664,7 +669,6 @@ public class Editor extends Activity {
 
 			case R.id.settings:										// SETTINGS
 				startActivity(new Intent(this, Settings.class));		// Start the Setting activity
-				waitSelect = true;
 				return true;
 
 			case R.id.exit:
@@ -954,8 +958,78 @@ public class Editor extends Activity {
 
 		toast.show();
 
-
     }
+    
+    private void doBaseDriveChange(){
+		Settings.changeBaseDrive = false;
+ 
+		String newBaseDrive = Settings.getBaseDrive(this);
+    	
+    	if (newBaseDrive.equals("none")) return;
+    	if (newBaseDrive.equals(Basic.basePath)) return;
+    	
+    	AlertDialog.Builder alt_bld = new AlertDialog.Builder(this);		// using a dialog box.
+
+    	alt_bld.setMessage("When BASIC! restarts the new Base Drive will be used.\n\n" + 
+    					  "Restart BASIC! Now\n" +
+    					  "or Wait and restart BASIC! yourself.")					
+    	.setCancelable(false)												// Do not allow user BACK key out of dialog
+    	
+// The click listeners ****************************
+    	.setPositiveButton("Restart Now", new DialogInterface.OnClickListener() {
+
+    	public void onClick(DialogInterface dialog, int id) {				
+    																		// Action for 'Restart Now' Button
+        	dialog.cancel();
+        	Intent restart = new Intent(Basic.BasicContext, Basic.class);
+        	startActivity(restart);
+        	finish();
+
+   	}
+    	})
+    	.setNegativeButton("Wait", new DialogInterface.OnClickListener() {
+    	public void onClick(DialogInterface dialog, int id) {
+    																		// Action for 
+        	dialog.cancel();
+        	waitMessage();    	}
+    	});
+// End of Click Listeners ****************************************
+    	
+    	AlertDialog alert = alt_bld.create();								// Display the dialog
+    	alert.setTitle("Base Drive Changed");
+    	alert.show();
+    
+    
+    }
+    
+    private void waitMessage(){
+    	AlertDialog.Builder alt_bld = new AlertDialog.Builder(this);		// using a dialog box.
+
+    	alt_bld.setMessage("When ready to resart with new base drive:\n\n " + 
+    						"Tap Menu -> Exit and then\n" +
+    						"Restart BASIC!")					
+    	.setCancelable(false)												// Do not allow user BACK key out of dialog
+    	
+// The click listeners ****************************
+    	.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+
+    	public void onClick(DialogInterface dialog, int id) {				
+    		dialog.cancel();																// Action for "OK" Button
+        	return;
+
+    		}
+    	});
+    	
+// End of Click Listeners ****************************************
+    	
+    	AlertDialog alert = alt_bld.create();								// Display the dialog
+    	alert.setTitle("Restart Later");
+    	alert.show();
+    
+
+    	
+    }
+
 
     // ************************** Process Key Words Stuff ********************
 

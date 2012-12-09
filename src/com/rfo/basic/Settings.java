@@ -28,14 +28,30 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 
+
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
+
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.os.Environment;
+import android.preference.ListPreference;
+import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.preference.PreferenceCategory;
 import android.preference.PreferenceManager;
+import android.preference.PreferenceScreen;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.View;
+import android.widget.ListView;
 
 // Called from Editor when user presses Menu->Settings
 
@@ -44,7 +60,8 @@ public class Settings extends PreferenceActivity {
 	private static float  Small_font = 12;
 	private static float  Medium_font = 18;
 	private static float  Large_font = 24;
-	   
+	
+	public static boolean changeBaseDrive = false;
 	   
 //Log.v(Settings.LOGTAG, " " + Settings.CLASSTAG + " context =  " + context);
 
@@ -52,7 +69,73 @@ public class Settings extends PreferenceActivity {
 	   protected void onCreate(Bundle savedInstanceState) {   // The method sets the initial displayed
 	      super.onCreate(savedInstanceState);				  // checked state from the xml file
 	      addPreferencesFromResource(R.xml.settings);         // it does not effect the above variables
-//	      finish();
+	      setBaseDrive();
+
+	   }
+	   
+	   public  void setBaseDrive() {
+		   int count = 3;
+		   
+		      String xentries[] = {"No external storage"};
+		      String xvalues[] = {"none"};
+		      
+		      String entries[] ;
+		      String values[];
+		      
+		      entries = values = getStorageDirectories();
+		      
+		      if (entries.length == 0) {
+		    	  entries = xentries;
+		    	  values = xvalues;
+		      }
+		      		      
+		      PreferenceManager PM = getPreferenceManager();
+		      ListPreference baseDrivePref = (ListPreference) PM.findPreference("base_drive_pref");
+		      baseDrivePref.setEntries(entries);
+		      baseDrivePref.setEntryValues(values);		   
+	   }
+	   
+	   public static String[] getStorageDirectories()
+	   {
+	       String[] dirs = null;
+	       BufferedReader bufReader = null;
+	       try {
+	           bufReader = new BufferedReader(new FileReader("/proc/mounts"));
+	           ArrayList <String> list = new ArrayList <String>();
+	           String line;
+	           while ((line = bufReader.readLine()) != null) {
+	               if (line.contains("vfat") || line.contains("/mnt")) {
+	                   StringTokenizer tokens = new StringTokenizer(line, " ");
+	                   String s = tokens.nextToken();
+	                   s = tokens.nextToken(); // Take the second token, i.e. mount point
+
+	                   if (s.equals(Environment.getExternalStorageDirectory().getPath())) {
+	                       list.add(s);
+	                   }
+	                   else if (line.contains("/dev/block/vold")) {
+	                       if (!line.contains("/mnt/secure") && !line.contains("/mnt/asec") && !line.contains("/mnt/obb") && !line.contains("/dev/mapper") && !line.contains("tmpfs")) {
+	                           list.add(s);
+	                       }
+	                   }
+	               }
+	           }
+
+	           dirs = new String[list.size()];
+	           for (int i = 0; i < list.size(); i++) {
+	               dirs[i] = list.get(i);
+	           }
+	       }
+	       catch (FileNotFoundException e) {}
+	       catch (IOException e) {}
+	       finally {
+	           if (bufReader != null) {
+	               try {
+	                   bufReader.close();
+	               }
+	               catch (IOException e) {}
+	           }
+	       }
+	       return dirs;
 	   }
 	   
 	   public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key pressed
@@ -62,6 +145,22 @@ public class Settings extends PreferenceActivity {
 		    }
 		    return super.onKeyUp(keyCode, event);
 
+	   }
+	   
+	   public boolean onPreferenceTreeClick (PreferenceScreen preferenceScreen, Preference preference) {
+		   changeBaseDrive = true;
+		   Preference p = preference;
+		   String title = p.getTitle().toString();
+		   if (title.equals("Base Drive")){
+			   changeBaseDrive = true;
+		   }
+		   return false;
+	   }
+	   
+	   public static String getBaseDrive(Context context) {
+		      String baseDrive = PreferenceManager.getDefaultSharedPreferences(context)
+			            .getString("base_drive_pref", "0");
+		      return baseDrive;
 	   }
 	   
 	   public static float getFont(Context context) {

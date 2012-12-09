@@ -34,11 +34,12 @@ This file is part of BASIC! for Android
         <item>Large</item>  
     </string-array>
     
-        <string-array name="fontvalues_list_preference">
+    <string-array name="fontvalues_list_preference">
         <item>Small</item>
         <item>Medium</item>
         <item>Large</item>  
     </string-array>
+    
     
     <string-array name="orientation_list_preference">
         <item>Variable By Sensors</item>
@@ -56,29 +57,38 @@ This file is part of BASIC! for Android
         <item>4</item>  
     </string-array>
     
-        <string-array name="es_list_preference">
+    <string-array name="es_list_preference">
         <item>Black Text On White Screen</item>
         <item>White Text on Black Screen</item>
         <item>White Text on Blue Screen</item>
     </string-array>
     
-        <string-array name="esvalues_list_preference">
+    <string-array name="esvalues_list_preference">
         <item>BW</item>
         <item>WB</item>
         <item>WBL</item>
     </string-array>
 
-        <string-array name="csf_list_preference">
+    <string-array name="csf_list_preference">
         <item>Monospace</item>
         <item>San Serif</item>
         <item>Serif</item>
     </string-array>
     
-        <string-array name="csfvalues_list_preference">
+    <string-array name="csfvalues_list_preference">
         <item>MS</item>
         <item>SS</item>
         <item>S</item>
     </string-array>
         
-   
+    <string-array name="base_drive_names">
+        <item>/mnt/sdcard</item>
+        <item>/mnt/sdcard</item>
+    </string-array>
+    
+    <string-array name="base_drive_values">
+        <item>/mnt/sdcard</item>
+    </string-array>
+        
+    
 </resources>
