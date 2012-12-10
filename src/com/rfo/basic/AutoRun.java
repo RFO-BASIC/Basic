@@ -130,6 +130,13 @@ public class AutoRun extends Activity {
 
 
 	private void  FileLoader(String aFileName) {							// Loads the selected file
+		
+		boolean baseDriveChanged = false;
+		int z = aFileName.indexOf(Basic.filePath);
+		if (z == -1) {
+			baseDriveChanged = true;
+			aFileName = " fubar";
+		}
 
 		BufferedReader buf = null;
 
@@ -166,7 +173,11 @@ public class AutoRun extends Activity {
         		size = 2;
         	}
 		} else {
-			Basic.lines.add("! Auto Run Error: \"" + aFileName + "\" not found");
+			if (baseDriveChanged) 
+				Basic.lines.add("! Shortcut created with different base drive.") ;
+			else
+				Basic.lines.add("! Shortcut Error: \"" + aFileName + "\" not found");
+			
 			Basic.DoAutoRun = false;
 			startActivity(new Intent(this, Editor.class));
 			finish();
