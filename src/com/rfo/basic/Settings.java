@@ -159,7 +159,7 @@ public class Settings extends PreferenceActivity {
 	   
 	   public static String getBaseDrive(Context context) {
 		      String baseDrive = PreferenceManager.getDefaultSharedPreferences(context)
-			            .getString("base_drive_pref", "0");
+			            .getString("base_drive_pref", "none");
 		      return baseDrive;
 	   }
 	   
