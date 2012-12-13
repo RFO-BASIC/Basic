@@ -1339,7 +1339,6 @@ public class Run extends ListActivity {
     //
     public static ArrayList <String> BT_Read_Buffer;
     public static BluetoothDevice btConnectDevice = null;
-    public static boolean btCSrunning = false;
     public static boolean btReadReady = false;
     public static int OnBTReadLine = 0;
     
@@ -1818,18 +1817,8 @@ public class Background extends AsyncTask<String, String, String>{
         			output.clear();
         		}else if (str[i].startsWith("@@6")){            // Done with background task
         			cancel(true);
-        		}else if (str[i].startsWith("@@7")){
-    	            if (mChatService == null){
-    	            	mChatService = new BluetoothChatService(context, mHandler);
-    	            	mChatService.start(bt_Secure);
-    	            	btCSrunning = true;
-    	            }
-
-        		}else if (str[i].startsWith("@@8")){
-    		    	Intent serverIntent = null;
-    	            serverIntent = new Intent(context, DeviceListActivity.class);
-    	            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
-    	            
+        		}else if (str[i].startsWith("@@7")){			// NOT CURRENTLY USED
+        		}else if (str[i].startsWith("@@8")){			// NOT CURRENTLY USED
         		}else if (str[i].startsWith("@@9")){			// from checkpointProgress
         			ProgressPending = false;					// progress is published, done waiting
         		}else if (str[i].startsWith("@@A")){
@@ -5004,10 +4993,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 						if (doPrint){
 							PrintShow(PrintLine);	// then output the line
 							PrintLine = "";
-							return true;
 						}
-						else return true;
-					} else {return true;}
+					}
+					return true;
 			}
 			
 			if (c == ','){							// if the seperator is a comma
@@ -16316,12 +16304,9 @@ private boolean doUserFunction(){
 		
 		public boolean executeBT(){
 			if (!GetBTKeyWord()){ return false;}
-			// mBluetoothAdapter is initialized during Run initialization
-			// if there is no blue tooth then it will be null
-			if (mBluetoothAdapter == null && KeyWordValue != bt_open){
-				RunTimeError("Bluetooth not opened");
-				return false;
-			}
+
+			if (KeyWordValue == bt_status) { return execute_BT_status(); }
+
 			if ( mChatService == null && KeyWordValue != bt_open){
 				RunTimeError("Bluetooth not opened");
 				return false;
@@ -16333,9 +16318,6 @@ private boolean doUserFunction(){
 				break;
 			case bt_close:
 				if (!execute_BT_close()) return false;
-				break;
-			case bt_status:
-				if (!execute_BT_status()) return false;
 				break;
 			case bt_connect:
 				if (!execute_BT_connect()) return false;
@@ -16367,6 +16349,7 @@ private boolean doUserFunction(){
 			case bt_disconnect:
 				if (!execute_BT_disconnect()) return false;
 				break;
+			case bt_status:			// already handled
 			default:
 			}
 			return true;
@@ -16387,8 +16370,16 @@ private boolean doUserFunction(){
 			  return false;									// report fail
 
 		  		}
-		  
-		  private boolean execute_BT_open(){
+
+		private synchronized boolean execute_BT_status() {
+			if (!getNVar() || !checkEOL()) { return false; }
+			int state = (mBluetoothAdapter == null) ? BluetoothChatService.STATE_NOT_ENABLED :
+						(mChatService == null)      ? BluetoothChatService.STATE_NONE        : bt_state;
+			NumericVarValues.set(theValueIndex, (double) state);
+			return true;
+		}
+
+		  private synchronized boolean execute_BT_open(){
 
 			  
 			  if (mBluetoothAdapter == null) {
@@ -16401,10 +16392,11 @@ private boolean doUserFunction(){
 		    	if (evalNumericExpression()) {									// the accept thread in BlueTootChatService
 		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
 		    	}
+		    	if (!checkEOL()) { return false; }
 
-		        
-		        bt_enabled = 0;													// Enable BT Chat Service
-		        bt_state = BluetoothChatService.STATE_NOT_ENABLED;
+		      bt_enabled = mBluetoothAdapter.isEnabled() ? 1 : 0;				// Is BT enabled?
+		      if (bt_enabled == 0) {
+		        bt_state = BluetoothChatService.STATE_NOT_ENABLED;				// Enable BT
 		        if (GRopen) {
 		        	GR.doEnableBT = true;
           		  	GR.drawView.postInvalidate();									// Start GR drawing.
@@ -16419,21 +16411,23 @@ private boolean doUserFunction(){
 	            	RunTimeError("Bluetooth Not Enabled");
 	            	return false;
 	            }
+	          }
 	            
 	            bt_state = BluetoothChatService.STATE_NONE;
 	            btConnectDevice = null;
             	mOutStringBuffer = new StringBuffer("");
             	BT_Read_Buffer = new ArrayList<String>();
-	            btCSrunning = false;
-	            
-           		Show("@@7");													// Starts the accept thread
+
+				mChatService = new BluetoothChatService(this, mHandler);		// Starts the accept thread
+				mChatService.start(bt_Secure);
+
 		        return true;
 
 		  }
 		  
 		  private boolean execute_BT_close(){
 			  if (mChatService != null) mChatService.stop();
-			  return true;
+			  return checkEOL();
 		  }
 		  
 		    public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -16514,7 +16508,6 @@ private boolean doUserFunction(){
 		        String address = data.getExtras()
 		            .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
 		        btConnectDevice = null;
-	            while (!btCSrunning) Thread.yield();
 		        try {
 		        	btConnectDevice = mBluetoothAdapter.getRemoteDevice(address);
 			        if ( btConnectDevice != null) mChatService.connect(btConnectDevice, secure);
@@ -16523,20 +16516,13 @@ private boolean doUserFunction(){
 		        	RunTimeError("Connect error: " + e);
 		        }
 		    }
-
-		    
-		    public boolean execute_BT_status(){
-		    	if (!getNVar()) return false;
-		    	NumericVarValues.set(theValueIndex, (double) mChatService.mState);
-//		    	int state = mChatService.getState();
-		    	return true;
-		    }
 		    
 		    private boolean execute_BT_connect(){
 		    	bt_Secure = true;
 		    	if (evalNumericExpression()) {
 		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
 		    	}
+		    	if (!checkEOL()) { return false; }
 		    	
 		        if (GRopen) {
 		        	GR.startConnectBT = true;
@@ -16553,20 +16539,20 @@ private boolean doUserFunction(){
 		        	}else {
 		        		startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
 		        	}
-
-//		    		Show("@@8");
 		        }
 		    		return true;
 		    }
 		    
 		    private boolean execute_BT_disconnect(){
+		    	if (!checkEOL()) { return false; }
 		    	mChatService.disconnect();
 		    	return true;
 		    }
 		    
 		    private boolean execute_BT_reconnect(){
+		    	if (!checkEOL()) { return false; }
 		    	if (btConnectDevice == null) {
-		    		RunTimeError("No previously connected");
+		    		RunTimeError("Not previously connected");
 		    		return false;
 		    	}
 		    	mChatService.connect(btConnectDevice, bt_Secure);
@@ -16574,23 +16560,24 @@ private boolean doUserFunction(){
 		    }
 		    
 		    private boolean execute_BT_listen(){
+		    	if (!checkEOL()) { return false; }
 //		    	mChatService.start();
 		    	return true;
 		    }
 		    
 		    private boolean execute_BT_device_name(){
-		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
+		        if (bt_state != BluetoothChatService.STATE_CONNECTED) {
 		            RunTimeError("Bluetooth not connected");
 		            return false;
 		        }
 		    	
-		    	if (!getSVar()) return false;
+		    	if (!getSVar() || !checkEOL()) return false;
 		    	StringVarValues.set(theValueIndex, mConnectedDeviceName);
 		    	return true;
 		    }
 		    
 		    private boolean execute_BT_write(){
-		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
+		        if (bt_state != BluetoothChatService.STATE_CONNECTED) {
 		            RunTimeError("Bluetooth not connected");
 		            return true;                                // Deliberatly not making error fatal
 		        }
@@ -16641,10 +16628,9 @@ private boolean doUserFunction(){
 							if (!WasSemicolon){				// if not ended in semi-colon
 								if (doPrint){
 									btPrintLineReady = true;
-									return true;
 								}
-								else return true;
-							} else {return true;}
+							}
+							return true;
 					}
 					
 					if (c == ','){							// if the seperator is a comma
@@ -16660,9 +16646,9 @@ private boolean doUserFunction(){
 			}
 		    
 		    private boolean execute_BT_read_ready(){
-		    	if (!getNVar()) return false;
+		    	if (!getNVar() || !checkEOL()) return false;
 		    	double d = 0;
-		    	if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+		    	if (bt_state == BluetoothChatService.STATE_CONNECTED) {
 		    		synchronized (this){
 		    		d = (double)BT_Read_Buffer.size();
 		    		}
@@ -16682,13 +16668,13 @@ private boolean doUserFunction(){
 		    
 		    private boolean execute_BT_read_bytes(){
 		    	
-		        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
+		        if (bt_state != BluetoothChatService.STATE_CONNECTED) {
 		            RunTimeError("Bluetooth not connected");
 		            return false;
 		        }
 		        
 		        String msg = "";
-		        if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+		        if (bt_state == BluetoothChatService.STATE_CONNECTED) {
 		        	synchronized (this){
 		        		int index = BT_Read_Buffer.size();
 		        		if (index > 0 ){
@@ -16698,14 +16684,14 @@ private boolean doUserFunction(){
 		        	}
 		        }
 		        
-		        if (!getSVar()) return false;
+		        if (!getSVar() || !checkEOL()) return false;
 		        StringVarValues.set(theValueIndex, msg);
 		        
 		    	return true;
 		    }
 		    
 		    private boolean execute_BT_set_uuid(){
-		    	if (!evalStringExpression()) return false;
+		    	if (!evalStringExpression() || !checkEOL()) return false;
 		    	UUID MY_UUID_SECURE = UUID.fromString(StringConstant);
 		    	UUID MY_UUID_INSECURE = UUID.fromString(StringConstant);
 		    	return true;

@@ -332,7 +332,6 @@ public class GR extends Activity {
         String address = data.getExtras()
             .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
         Run.btConnectDevice = null;
-        while (!Run.btCSrunning) Thread.yield();
         try {
         	Run.btConnectDevice = Run.mBluetoothAdapter.getRemoteDevice(address);
 	        if ( Run.btConnectDevice != null) Run.mChatService.connect(Run.btConnectDevice, secure);

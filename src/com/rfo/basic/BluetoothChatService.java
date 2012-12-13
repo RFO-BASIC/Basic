@@ -63,7 +63,7 @@ public class BluetoothChatService {
     private AcceptThread mInsecureAcceptThread;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
-    public int mState;
+    private int mState;
 
     // Constants that indicate the current connection state
     public static final int STATE_NOT_ENABLED = -1;
@@ -98,7 +98,7 @@ public class BluetoothChatService {
 
     /**
      * Return the current connection state. */
-    public synchronized int getState() {
+    private synchronized int getState() {
         return mState;
     }
 
@@ -152,7 +152,7 @@ public class BluetoothChatService {
      * @param socket  The BluetoothSocket on which the connection was made
      * @param device  The BluetoothDevice that has been connected
      */
-    public synchronized void connected(BluetoothSocket socket, BluetoothDevice
+    private synchronized void connected(BluetoothSocket socket, BluetoothDevice
             device, final String socketType) {
         if (D) Log.d(TAG, "connected, Socket Type:" + socketType);
 
@@ -414,12 +414,16 @@ public class BluetoothChatService {
             // Always cancel discovery because it will slow down a connection
             mAdapter.cancelDiscovery();
 
+            if (mmSocket == null) {
+                connectionFailed();
+                return;
+            }
+
             // Make a connection to the BluetoothSocket
             try {
                 // This is a blocking call and will only return on a
                 // successful connection or an exception
-                if (mmSocket != null) mmSocket.connect();
-                else connectionFailed();
+                mmSocket.connect();
             } catch (Exception e) {
                 // Close the socket
             	Log.e(TAG, "Connect run IOException ", e);
@@ -465,7 +469,6 @@ public class BluetoothChatService {
 
         public ConnectedThread(BluetoothSocket socket, String socketType) {
             Log.d(TAG, "create ConnectedThread: " + socketType);
-            mState = STATE_CONNECTED;
             mmSocket = socket;
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
