@@ -103,7 +103,7 @@ RETURN
 skip1:
 
 title$ = "First look"
-GOSUB show_all:
+GOSUB show_all
 
 GOTO skip2
 
@@ -191,7 +191,7 @@ SQL.QUERY Cursor, DB_Ptr, tbname$,  Columns$, Where$
 ! Now go display the result
 
 title$ = "People with grades of 90 or better."
-GOSUB show_query_results;
+GOSUB show_query_results
 
 !
 ! Bill Wilkinson was doing so poorly in the class
