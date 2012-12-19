@@ -194,11 +194,6 @@ public class Basic extends ListActivity  {
     private void createForAPK() {											// Create code for APK
     	
         BasicContext = getApplicationContext();
-
-        // Set AppPath for the name of the directory in the sdcard root where you will be storing data and database files
-// The name can be anything you want it to be as long as it does not interfere with some other applications directory
-        
-        AppPath = "rfo-myapp";                              // Set the I/O path for this application
         
 // Establish an output screen so that file load progress can be shown.        
         
