@@ -41,6 +41,7 @@ package com.rfo.basic;
 
 //Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
+import android.util.DisplayMetrics;
 import android.util.Log;
 import java.util.*;
 
@@ -468,8 +469,8 @@ public class Run extends ListActivity {
     	"hex(", "oct(", "bin(", "shift(",
     	"randomize(", "background(",
     	"atan(", "cbrt(", "cosh(", "hypot(",
-    	"sinh(", "pow(", "log10("
-    	
+    	"sinh(", "pow(", "log10(",
+    	"ucode("
     };
     
     public static final int MFsin = 0;			// Enumerated name for the Match Functions
@@ -514,7 +515,7 @@ public class Run extends ListActivity {
     public static final int MFsinh = 39;
     public static final int MFpow = 40;
     public static final int MFlog10 = 41;
-
+    public static final int MFucode = 42;
 
     public static  int MFNumber = 0;				// Will contain a math function's enumerated name value
     
@@ -3997,10 +3998,15 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 			case MFascii:
 				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	if (StringConstant.equals("")) d1 =256;
-	        	else {
-	        		d1 = (double)(StringConstant.charAt(0) & 0x00FF);
-	        	}
+				if (StringConstant.equals("")) d1 =256;
+				else d1 = (double)(StringConstant.charAt(0) & 0x00FF);
+				theValueStack.push(d1);							// Push number onto value stack
+				break;
+
+			case MFucode:
+				if (!getStringArg()) { return false; }			// Get and check the string expression
+				if (StringConstant.equals("")) d1 = 0x10000;
+				else d1 = (double)(StringConstant.charAt(0));
 				theValueStack.push(d1);							// Push number onto value stack
 				break;
 			
@@ -4557,7 +4563,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				return Format(SSC, EvalNumericExpressionValue);									// and then do the format
 
 			case SFchr:																			// CHR$
-				if (!evalNumericExpression()){SyntaxError();return false;}
+				if (!evalNumericExpression()){return false;}
 				d = EvalNumericExpressionValue;
 				StringConstant = "" + (char) d;
 				break;
@@ -11529,16 +11535,19 @@ private boolean doUserFunction(){
 	  }
 	  
 	  private boolean execute_gr_screen(){
-		   if (!getVar())return false;							// Width variable 
-		   if (!VarIsNumeric)return false;
+		   if (!getNVar()) return false;						// Width variable 
 		   NumericVarValues.set(theValueIndex,(double) GR.Width); 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		   if (!isNext(',')) return false;
 
-		   if (!getVar())return false;							// Heigth Variable
-		   if (!VarIsNumeric)return false;						// 
+		   if (!getNVar()) return false;						// Heigth Variable
 		   NumericVarValues.set(theValueIndex, (double) GR.Heigth); 
-			if (!checkEOL()) return false;
+		   if (isNext(',')) {
+			   if (!getNVar()) return false;					// Optional Density variable
+			   DisplayMetrics dm = new DisplayMetrics();
+			   getWindowManager().getDefaultDisplay().getMetrics(dm);
+			   NumericVarValues.set(theValueIndex, (double) dm.densityDpi);
+		   }
+		   if (!checkEOL()) return false;
 
 		  return true;
 	  }
