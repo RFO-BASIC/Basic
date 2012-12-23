@@ -124,17 +124,18 @@ SW.END
 GR.BITMAP.DELETE bm_ptr
 
 ! Close graphics
+
 GR.CLOSE
 
 ! The autoshoot mode places an
-! image file, image.jpg in the
+! image file, image.png in the
 ! /sdcard/rfo-basic/data/
 ! directory
 !
 ! We will send that image to
 ! the client
 
-BYTE.OPEN R, fr, "image.jpg"
+BYTE.OPEN R, fr, "image.png"
 PRINT "Sending image"
 SOCKET.SERVER.WRITE.FILE fr
 PRINT "Image sent"
