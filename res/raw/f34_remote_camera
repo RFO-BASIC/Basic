@@ -31,14 +31,14 @@ IF type = 0
  "Thanks for playing"
  END
 ELSEIF type = 2
- GOTO doViewer:
+ GOTO xdoViewer
 ENDIF
 
 !***********  Camera Server Server Demo  **************
 
 ServerErrorCount = 0
 ServerMaxError = 100
-RecoveryState = -1;
+RecoveryState = -1
 
 INPUT "Enter the port number", port, 1080
 
@@ -203,7 +203,7 @@ IF RecoverState = 0
 
  ! ****************** Client Demo ****************
 
- DOViewer:
+ xDOViewer:
 
   ! Load an array with the
   ! Select Options
