@@ -10222,6 +10222,11 @@ private boolean doUserFunction(){
 		  aBundle.putInt("hide", 0);
 		  DisplayListAdd(aBundle);
 		  
+			synchronized (GR.Rendering) {
+				if (GR.Rendering) return true;
+				GR.Rendering = true;
+			}
+
 		  GR.drawView.postInvalidate();		  // Start the draw so the command will get executed.
 		  GRopen = false;
 		  GRFront = false;
