@@ -41,17 +41,14 @@ package com.rfo.basic;
 
 //Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
+import android.util.DisplayMetrics;
 import android.util.Log;
-import java.util.*;
-
-import com.rfo.basic.*;
 
 import static com.rfo.basic.Basic.*;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -67,24 +64,22 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import	java.io.BufferedReader;
-import 	java.lang.Thread;
-import 	java.lang.reflect.Array;
-import java.lang.String;
-import 	java.nio.charset.Charset;
+import java.io.BufferedReader;
+import java.math.BigDecimal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
+import java.util.Random;
+import java.util.Set;
 import java.util.Stack;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
-import java.lang.Math;
-import java.lang.Double;
-import java.lang.Character;
-import java.lang.String;
-import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
@@ -196,7 +191,6 @@ import android.util.Base64;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.util.Log;
 import 	android.database.sqlite.SQLiteException;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.Canvas;
@@ -212,10 +206,8 @@ import android.graphics.drawable.Drawable;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.TextToSpeech.OnUtteranceCompletedListener;
 import android.text.format.Time;
-import android.util.Log;
 
 import org.apache.commons.net.ftp.*;
-import android.widget.*;
 import android.widget.AdapterView.OnItemClickListener;
 
 /* Executes the Basic program. Run splits into two parts.
@@ -468,8 +460,8 @@ public class Run extends ListActivity {
     	"hex(", "oct(", "bin(", "shift(",
     	"randomize(", "background(",
     	"atan(", "cbrt(", "cosh(", "hypot(",
-    	"sinh(", "pow(", "log10("
-    	
+    	"sinh(", "pow(", "log10(",
+    	"ucode("
     };
     
     public static final int MFsin = 0;			// Enumerated name for the Match Functions
@@ -514,7 +506,7 @@ public class Run extends ListActivity {
     public static final int MFsinh = 39;
     public static final int MFpow = 40;
     public static final int MFlog10 = 41;
-
+    public static final int MFucode = 42;
 
     public static  int MFNumber = 0;				// Will contain a math function's enumerated name value
     
@@ -3997,10 +3989,15 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 			case MFascii:
 				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	if (StringConstant.equals("")) d1 =256;
-	        	else {
-	        		d1 = (double)(StringConstant.charAt(0) & 0x00FF);
-	        	}
+				if (StringConstant.equals("")) d1 =256;
+				else d1 = (double)(StringConstant.charAt(0) & 0x00FF);
+				theValueStack.push(d1);							// Push number onto value stack
+				break;
+
+			case MFucode:
+				if (!getStringArg()) { return false; }			// Get and check the string expression
+				if (StringConstant.equals("")) d1 = 0x10000;
+				else d1 = (double)(StringConstant.charAt(0));
 				theValueStack.push(d1);							// Push number onto value stack
 				break;
 			
@@ -4557,7 +4554,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				return Format(SSC, EvalNumericExpressionValue);									// and then do the format
 
 			case SFchr:																			// CHR$
-				if (!evalNumericExpression()){SyntaxError();return false;}
+				if (!evalNumericExpression()){return false;}
 				d = EvalNumericExpressionValue;
 				StringConstant = "" + (char) d;
 				break;
@@ -6847,39 +6844,27 @@ private boolean doUserFunction(){
 	
 // ***************************** Data I/O Operations ***********************************
 	    
-	private  boolean executeTEXT_OPEN(){
-													// Open a file
-		
+	private boolean executeTEXT_OPEN(){										// Open a file
 		boolean append = false;												// Assume not append
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		int FileMode = 0;
-		if (c == 'a'){						// First parm is a, w or r
-				append = true;				// append is a special case
-				c = 'w';					// of write
-		}
-		if (c == 'w'){						// w
-			FileMode =FMW;
+		int FileMode = 0;													// Default to FMR
+		switch (ExecutingLineBuffer.charAt(LineIndex)) {					// First parm is a, w or r
+		case 'a':
+			append = true;					// append is a special case of write
+		case 'w':							// write
+			FileMode = FMW;
 			++LineIndex;
-		}else if (c == 'r'){				// of r
+			break;
+		case 'r':							// read
 			FileMode = FMR;
 			++LineIndex;
-			c = ExecutingLineBuffer.charAt(LineIndex);
-//			if (c=='w'){
-//				FileMode = FMRW;
-//				++LineIndex;
-//			}
 		}
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;}
-		++LineIndex;
-		if (!getNVar()){return false;}				// Next parameter if the FileNumber variable
+		if (!isNext(',')) { return false; }
+		if (!getNVar()){return false;}				// Next parameter is the FileNumber variable
 		NumericVarValues.set(theValueIndex, (double) FileTable.size());
 		int saveValueIndex = theValueIndex;         // Save in case read file not found.
 
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;}
-		++LineIndex;
-
-		if (!evalStringExpression()){return false;} // Final paramter is the filename
-		if (SEisLE) return false;
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }		// Final paramter is the filename
 		String fileName = StringConstant;
 		if (!checkEOL()) return false;
 
@@ -6890,101 +6875,70 @@ private boolean doUserFunction(){
 		FileEntry.putInt("position", 1);
 		FileEntry.putBoolean("isText", true);
 
-		BufferedReader buf = null;
+		File file = new File(Basic.filePath + "/data/" + fileName);
 
-		if (FileMode == FMR){												// Read was seleced
+		if (FileMode == FMR) {											// Read was selected
+			BufferedReader buf = null;
+			if (file.exists()) {
+				try {
+					buf = new BufferedReader(new FileReader(file), 8192);
+					if (buf != null) buf.mark((int) file.length());
+				} catch (Exception e) {
+					RunTimeError("Error: " + e);
+					return false;
+				}
+			} else {													// file does not exist
+				if (Basic.isAPK) {										// if not standard BASIC! then is user APK
+					int resID = getRawResourceID(fileName);				// try to load the file from a raw resource
+					if (resID == 0) { return false; }
+					try {
+						InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+						InputStreamReader inputreader = new InputStreamReader(inputStream);
+						buf = new BufferedReader(inputreader, 8192);
+					} catch (Exception e) {
+						RunTimeError("Error: " + e);
+						return false;
+					}
+				} else {												// standard BASIC!
+					NumericVarValues.set(saveValueIndex, (double) -1);	// report file does not exist
+					return true;
+				}
+			}
 
-			    	
-					   String fn0 = Basic.filePath + "/data/" + fileName;				// Add the path to the filename
-					   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
-					   
-					   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
-					  
-					   boolean loadRaw = false;												// Assume not loading raw resource
-
-					   if (!Basic.isAPK){							// if not standard BASIC!
-						   																	// then is user APK
-						   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
-					       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
-					   }
-					   
-					   Uri theURI = null;
-					   int resID = 0;
-					   
-					   if (loadRaw) {														// If loading a raw resource file
-						   String rawFileName = getRawFileName(fileName);					// Convert conventional filename to raw resource name
-						   if (rawFileName.equals("")) {
-							   RunTimeError("Error converting to raw filename");
-							   return false;
-						   }
-						   try {
-							   resID = Basic.BasicContext.getResources().getIdentifier (rawFileName, "raw", packageName);  // Get the resourc ID
-			    	           InputStream inputStream = BasicContext.getResources().openRawResource(resID);
-			    	           InputStreamReader inputreader = new InputStreamReader(inputStream);
-			    	           buf = new BufferedReader(inputreader, 8192);
-						   }
-						   catch (Exception e) {
-								RunTimeError("Error: " + e );
-							   return false;
-						   }
-					   }else {																// Not loading from a raw resource
-						   try {
-							   File file = new File(fn);
-							   buf = new BufferedReader(new FileReader(file), 8192);
-							   if (buf != null ) buf.mark((int)file.length());
-						   }
-						   catch (Exception e) {
-								RunTimeError("Error: " + e );
-							   return false;
-						   }
-					   }
-
-				  
-
-			  
-			  FileEntry.putInt("stream", BRlist.size()); 	 //The stream parm indexes
-			  BRlist.add(buf);								 //into the FISlist
-			  FileTable.add(FileEntry);
-		}
-		
-		if (FileMode == FMW){										// Write Selected
-        	File file = new File(Basic.filePath + "/data/"+ fileName);
-        	if (append){
-        		if (!file.exists()){
-        		try {
-            		file.createNewFile();
-            		} catch (Exception e){
-            			RunTimeError("Error: " +e);
-            			return false;
-            			}
-            	}
-        		
-        	} else {
-        	try {
-        		file.createNewFile();
-        		} catch (Exception e){
-        			RunTimeError("Error: " +e);
-        			return false;
-        			}
-        	}
-        	if (!file.exists() || !file.canWrite()){
-        		RunTimeError("Problem opening " + fileName);
-	    		return false;
-        	}
-            FileWriter writer = null;
-        	try{
-        		writer = new FileWriter(file, append);						// open the filewriter for the SD Card
-        		}catch (Exception e) {
-        			RunTimeError("Error: " + e );
-        				return false;
-        		}
-			FileEntry.putInt("stream", FWlist.size()); 	 	 //The stream parm indexes
-			FWlist.add(writer);								 //into the FISlist
+			FileEntry.putInt("stream", BRlist.size());		// The stream parm indexes
+			BRlist.add(buf);								// into the FISlist
 			FileTable.add(FileEntry);
-
 		}
-	return true;												// Done
-		
+
+		else if (FileMode == FMW) {										// Write Selected
+			if (append && file.exists()) {
+				FileEntry.putInt("position", (int) file.length()+1);
+			} else {										// if not appending overwrite existing file
+				try {										// if no file create a new one
+					file.createNewFile();
+				} catch (Exception e) {
+					RunTimeError("Error: " + e);
+					return false;
+				}
+			}
+			if (!(file.exists() && file.canWrite())) {
+				RunTimeError("Problem opening " + fileName);
+				return false;
+			}
+
+			FileWriter writer = null;
+			try {
+				writer = new FileWriter(file, append);		// open the filewriter for the SD Card
+			} catch (Exception e) {
+				RunTimeError("Error: " + e);
+				return false;
+			}
+
+			FileEntry.putInt("stream", FWlist.size());		// The stream parm indexes
+			FWlist.add(writer);								// into the FISlist
+			FileTable.add(FileEntry);
+		}
+		return true;													// Done
 	}
 	
 		private  boolean executeTEXT_CLOSE(){
@@ -7232,8 +7186,7 @@ private boolean doUserFunction(){
 		FileEntry = FileTable.get(FileNumber);
 		FileMode = FileEntry.getInt("mode");
 		if (FWlist.size() == 0 ){
-			RunTimeError("Wait 10 seconds before re-running");
-			Stop = true;
+			RunTimeError("No files opened for write");
 			return false;
 		}
 		writer = FWlist.get(FileEntry.getInt("stream"));
@@ -7492,167 +7445,118 @@ private boolean doUserFunction(){
 			return true;
 		}
 
-		private  boolean executeBYTE_OPEN(){
-			// Open a file
-			
-			boolean append = false;												// Assume not append
-			char c = ExecutingLineBuffer.charAt(LineIndex);
-			int FileMode = 0;
-			if (c == 'a'){						// First parm is a, w or r
-					append = true;				// append is a special case
-					c = 'w';					// of write
-			}
-			if (c == 'w'){						// w
-				FileMode =FMW;
-				++LineIndex;
-			}else if (c == 'r'){				// of r
-				FileMode = FMR;
-				++LineIndex;
-				c = ExecutingLineBuffer.charAt(LineIndex);
-			}
-			
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;}
+	private boolean executeBYTE_OPEN(){										// Open a file
+		boolean append = false;												// Assume not append
+		int FileMode = 0;													// Default to FMR
+		switch (ExecutingLineBuffer.charAt(LineIndex)) {					// First parm is a, w or r
+		case 'a':
+			append = true;					// append is a special case of write
+		case 'w':							// write
+			FileMode = FMW;
 			++LineIndex;
-			if (!getNVar()){return false;}				// Next parameter if the FileNumber variable
-			NumericVarValues.set(theValueIndex, (double) FileTable.size());
-			int saveValueIndex = theValueIndex;
-
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;}
+			break;
+		case 'r':							// read
+			FileMode = FMR;
 			++LineIndex;
+		}
+		if (!isNext(',')) { return false; }
+		if (!getNVar()){return false;}				// Next parameter is the FileNumber variable
+		NumericVarValues.set(theValueIndex, (double) FileTable.size());
+		int saveValueIndex = theValueIndex;         // Save in case read file not found.
 
-			if (!evalStringExpression()){return false;} // Final paramter is the filename
-			if (SEisLE) return false;
-			String theFileName = StringConstant;
-			if (!checkEOL()) return false;
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }		// Final paramter is the filename
+		String fileName = StringConstant;
+		if (!checkEOL()) return false;
 
-			Bundle FileEntry = new Bundle();			// Prepare the filetable bundle
-			FileEntry.putInt("mode", FileMode);
-			FileEntry.putBoolean("eof", false);
-			FileEntry.putBoolean("closed",false);
-			FileEntry.putInt("position", 1);
-			FileEntry.putBoolean("isText", false);
-			
-			String FullFileName = "";
-
-			if (FileMode == FMR){												// Read was seleced
-//				DataInputStream dis = null;
-				BufferedInputStream bis = null;
-				if (theFileName.startsWith("http")){
-					try{
-						URL url = new URL(theFileName);
-						URLConnection connection = url.openConnection();
-						InputStream fis = connection.getInputStream();
+		Bundle FileEntry = new Bundle();			// Prepare the filetable bundle
+		FileEntry.putInt("mode", FileMode);
+		FileEntry.putBoolean("eof", false);
+		FileEntry.putBoolean("closed",false);
+		FileEntry.putInt("position", 1);
+		FileEntry.putBoolean("isText", false);
+		
+		if (FileMode == FMR) {												// Read was selected
+			BufferedInputStream bis = null;
+			if (fileName.startsWith("http")) {
+				try {
+					URL url = new URL(fileName);
+					URLConnection connection = url.openConnection();
+					InputStream fis = connection.getInputStream();
+					bis = new BufferedInputStream(fis, 8192);
+				} catch (Exception e) {
+					RunTimeError("Problem: " + e + " at:");
+					return false;
+				}
+			} else {
+				File file = new File(Basic.filePath + "/data/" + fileName);
+				if (file.exists()) {
+					try {
+						FileInputStream fis = new FileInputStream(file);
 						bis = new BufferedInputStream(fis, 8192);
-					}catch (Exception e){
-						RunTimeError("Problem: " + e + " at:");
+						if (bis != null) bis.mark((int) file.length());
+					} catch (Exception e) {
+						RunTimeError("Error: " + e);
 						return false;
 					}
-					
-				}else {
-					
-					   String fn0 = Basic.filePath + "/data/" + theFileName;				// Add the path to the filename
-					   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
-					   
-					   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
-					  
-					   boolean loadRaw = false;												// Assume not loading raw resource
-
-					   if (!Basic.isAPK){							// if not standard BASIC!
-						   																	// then is user APK
-						   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
-					       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
-					   }
-					   
-					   
-					   Uri theURI = null;
-					   int resID = 0;
-					   
-					   if (loadRaw) {														// If loading a raw resource file
-						   String rawFileName = getRawFileName(theFileName);					// Convert conventional filename to raw resource name
-						   if (rawFileName.equals("")) {
-							   RunTimeError("Error converting to raw filename");
-							   return false;
-						   }
-						   try {
-							   resID = Basic.BasicContext.getResources().getIdentifier (rawFileName, "raw", packageName);  // Get the resourc ID
-			    	           InputStream inputStream = BasicContext.getResources().openRawResource(resID);
-							   bis = new BufferedInputStream(inputStream, 8192);
-
-						   }
-						   catch (Exception e) {
-								RunTimeError("Error: " + e );
-							   return false;
-						   }
-					   }else {																// Not loading from a raw resource
-						   try {
-							   	  File file = new File(fn);
-								  FileInputStream fis = new FileInputStream(file);
-							      bis = new BufferedInputStream(fis, 8192);
-								  if (bis != null) bis.mark((int)file.length());
-						   }
-						   catch (Exception e) {
-								RunTimeError("Error: " + e );
-							   return false;
-						   }
-					   }
-
-				  
+				} else {													// file does not exist
+					if (Basic.isAPK) {										// if not standard BASIC! then is user APK
+						int resID = getRawResourceID(fileName);				// try to load the file from a raw resource
+						if (resID == 0) { return false; }
+						try {
+							InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+							bis = new BufferedInputStream(inputStream, 8192);
+						} catch (Exception e) {
+							RunTimeError("Error: " + e);
+							return false;
+						}
+					} else {												// standard BASIC!
+						NumericVarValues.set(saveValueIndex, (double) -1);	// report file does not exist
+						return true;
 					}
-				FileEntry.putInt("stream", BISlist.size()); 	 //The stream parm indexes
-				BISlist.add(bis);								 //into the FISlist
-				FileTable.add(FileEntry);
-				  
+				}
 			}
-			
-		
-			if (FileMode == FMW){										// Write Selected
-		    		
 
-		    																	//Write to SD Card
-		        	File file = new File(Basic.filePath + "/data/" + theFileName);
-		        	if (append){
-		        		if (!file.exists()){
-		            		try {
-		                		file.createNewFile();
-		                		} catch (Exception e){
-		                			RunTimeError("Error: " +e);
-		                			return false;
-		                			}
-		                	}else{
-		                		FileEntry.putInt("position", (int) file.length()+1);
-		                	}
-		        	}else {
-		        	try {
-		        		file.createNewFile();
-		        		} catch (Exception e){
-		        			RunTimeError("Error: " +e);
-		        			return false;
-		        			}
-		        	}
-		        	if (!file.exists() || !file.canWrite()){
-		        		RunTimeError("Problem opening " + theFileName);
-			    		return false;
-		        	}
-		        	
-					  String afile = file.getAbsolutePath();
-					  DataOutputStream dos = null;
-					  try{
-						  FileOutputStream fos = new FileOutputStream(afile, append);
-					      dos = new DataOutputStream(fos);
-					  }				
-					  catch (Exception e) {
-							RunTimeError("Error: " + e );
-						  return false;
-						  }
-				  
-				  FileEntry.putInt("stream", DOSlist.size()); 	 //The stream parm indexes
-				  DOSlist.add(dos);								 //into the FISlist
-				  FileTable.add(FileEntry);
-
-			}
-		return true;												// Done
-			
+			FileEntry.putInt("stream", BISlist.size());		// The stream parm indexes
+			BISlist.add(bis);								// into the FISlist
+			FileTable.add(FileEntry);
 		}
+
+		else if (FileMode == FMW) {											// Write Selected
+																			// Write to SD Card
+			File file = new File(Basic.filePath + "/data/" + fileName);
+			if (append && file.exists()) {
+				FileEntry.putInt("position", (int) file.length()+1);
+			} else {										// if not appending overwrite existing file
+				try {										// if no file create a new one
+					file.createNewFile();
+				} catch (Exception e) {
+					RunTimeError("Error: " + e);
+					return false;
+				}
+			}
+			if (!(file.exists() && file.canWrite())) {
+				RunTimeError("Problem opening " + fileName);
+				return false;
+			}
+
+			String afile = file.getAbsolutePath();
+			DataOutputStream dos = null;
+			try {
+				FileOutputStream fos = new FileOutputStream(afile, append);
+				dos = new DataOutputStream(fos);
+			}				
+			catch (Exception e) {
+				RunTimeError("Error: " + e );
+				return false;
+			}
+			
+			FileEntry.putInt("stream", DOSlist.size());		// The stream parm indexes
+			DOSlist.add(dos);								// into the FISlist
+			FileTable.add(FileEntry);
+		}
+		return true;														// Done
+	}
 		
 			private  boolean executeBYTE_CLOSE(){
 				if (FileTable.size() == 0){
@@ -8904,7 +8808,7 @@ private boolean doUserFunction(){
 					return false;
 			}
 							
-			int length = Array.getLength(r);              // Get the number of strings generated
+			int length = r.length;                             // Get the number of strings generated
 			
 			if (length == 0){
 				RunTimeError(REString + " is invalid argument at");
@@ -11075,63 +10979,57 @@ private boolean doUserFunction(){
 		  output = input.substring(0, index);   // isolate suff in front of dot
 		  return output;						// return the output filename
 	  }
-	  
-	  private boolean execute_gr_bitmap_load(){
-		   if (!getVar())return false;							// Graphic Bitmap Pointer Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
 
-		   if (!evalStringExpression()) return false;							// Get the file path
-		   if (SEisLE) return false;
-		   if (!checkEOL()) return false;
-		   String fileName = StringConstant;									// The filename as given by the user
+	private int getRawResourceID(String fileName) {
+		int resID = 0;													// 0 is not a valid resource ID
+		String rawFileName = getRawFileName(fileName);					// Convert conventional filename to raw resource name
+		if (!rawFileName.equals("")) {
+			String packageName = BasicContext.getPackageName();			// Get the package name
+			resID = BasicContext.getResources().getIdentifier(rawFileName, "raw", packageName);	// Get the resource ID
+		}
+		if (resID == 0) {
+			RunTimeError("Error getting raw resource");
+		}
+		return resID;
+	}
 
-		   String fn0 = Basic.filePath + "/data/" + fileName;				// Add the path to the filename
-		   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
-		   
-		   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
-		  
-		   boolean loadRaw = false;												// Assume not loading raw resource
+	private boolean execute_gr_bitmap_load(){
+		if (!getNVar())return false;									// Graphic Bitmap Pointer Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) { return false; }
 
-		   if (!Basic.isAPK){							// if not standard BASIC!
-			   																	// then is user APK
-			   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
-		       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
-		   }
-		   
-		   InputStream inputStream = null;										// Establish an input stream
-		   
-		   if (loadRaw) {														// If loading a raw resource file
-			   String rawFileName = getRawFileName(fileName);			// Convert conventional filename to raw resource name
-			   if (rawFileName.equals("")) {
-				   RunTimeError("Error converting to raw filename");
-				   return false;
-			   }
-			   int id = Basic.BasicContext.getResources().getIdentifier (rawFileName, "raw", packageName);  // Get the resourc ID
-			   try {
-				   inputStream = Basic.BasicContext.getResources().openRawResource(id);  // Open an input stream from raw resource
-			   }
-			   catch (Exception e) {
+		if (!getStringArg()) return false;								// Get the file path
+		if (!checkEOL()) return false;
+		String fileName = StringConstant;								// The filename as given by the user
+		String fn = Basic.filePath + "/data/" + fileName;
+		File file = new File(fn);
+		InputStream inputStream = null;									// Establish an input stream
+
+		if (file.exists()) {
+			try {
+				inputStream = new FileInputStream(fn);					// Open an input stream from the SDCARD file
+			} catch (Exception e) {
+				RunTimeError("Error: " + e);
+				return false;
+			}
+		} else {														// file does not exist
+			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
+				int resID = getRawResourceID(fileName);					// try to load the file from a raw resource
+				if (resID == 0) { return false; }
+				try {
+					inputStream = BasicContext.getResources().openRawResource(resID);	// Open an input stream from raw resource
+				} catch (Exception e) {
 					RunTimeError("Error: " + e );
-				   return false;
-			   }
-			   
-		   }else {																// Not loading from a raw resource
-			   try {
-				   inputStream = new FileInputStream(fn);						// Open an input stream from the SDCARD file
-			   }
-			   catch (Exception e) {
-					RunTimeError("Error: " + e );
-				   return false;
-			   }
-		   }
+					return false;
+				}
+			}															// else standard BASIC!, inputStream is still null
+		}
 		   
 		   System.gc();															// Garbage collect
 		   
 		   try{
 			   aBitmap = BitmapFactory.decodeStream(inputStream);				// Create bitmap from the input stream
+			   inputStream.close();
 		   }           
 		   catch (Exception e) {
 				RunTimeError("Error: " + e );
@@ -11529,16 +11427,19 @@ private boolean doUserFunction(){
 	  }
 	  
 	  private boolean execute_gr_screen(){
-		   if (!getVar())return false;							// Width variable 
-		   if (!VarIsNumeric)return false;
+		   if (!getNVar()) return false;						// Width variable 
 		   NumericVarValues.set(theValueIndex,(double) GR.Width); 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		   if (!isNext(',')) return false;
 
-		   if (!getVar())return false;							// Heigth Variable
-		   if (!VarIsNumeric)return false;						// 
+		   if (!getNVar()) return false;						// Heigth Variable
 		   NumericVarValues.set(theValueIndex, (double) GR.Heigth); 
-			if (!checkEOL()) return false;
+		   if (isNext(',')) {
+			   if (!getNVar()) return false;					// Optional Density variable
+			   DisplayMetrics dm = new DisplayMetrics();
+			   getWindowManager().getDefaultDisplay().getMetrics(dm);
+			   NumericVarValues.set(theValueIndex, (double) dm.densityDpi);
+		   }
+		   if (!checkEOL()) return false;
 
 		  return true;
 	  }
@@ -12289,8 +12190,7 @@ private boolean doUserFunction(){
 
 	  		}
 	  	  
-	  private boolean execute_audio_load(){
-		  
+	private boolean execute_audio_load(){
 		  /* If there is already an audio running,
 		   * then stop it and 
 		   * release its resources.
@@ -12301,68 +12201,41 @@ private boolean doUserFunction(){
 			  theMP.release();
 			  theMP = null;
 		  }*/
-		  setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 //		  AudioManager audioSM = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
-		  MediaPlayer aMP;
+		MediaPlayer aMP = null;
 		  
-		  if (!getNVar())return false;											// Get the Player Number Var
-		  int saveValueIndex = theValueIndex;
-	  	  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-	  	  ++LineIndex;
-		  
-		  if (!evalStringExpression()) return false;							// Get the file path
-		  if (SEisLE) return false;
-			
-		  if (!checkEOL()) return false;
-		  
-		   String fileName = StringConstant;									// The filename as given by the user
+		if (!getNVar())return false;									// Get the Player Number Var
+		int saveValueIndex = theValueIndex;
+		if (!isNext(',')) { return false; }
 
-		   String fn0 = Basic.filePath + "/data/" + fileName;				// Add the path to the filename
-		   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
-		   
-		   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
-		  
-		   boolean loadRaw = false;												// Assume not loading raw resource
+		if (!getStringArg()) return false;								// Get the file path
+		if (!checkEOL()) return false;
+		String fileName = StringConstant;								// The filename as given by the user
+		String fn = Basic.filePath + "/data/" + fileName;
+		File file = new File(fn);
 
-		   if (!Basic.isAPK){							// if not standard BASIC!
-			   																	// then is user APK
-			   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
-		       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
-		   }
-		   
-		   Uri theURI = null;
-		   int resID = 0;
-		   
-		   if (loadRaw) {														// If loading a raw resource file
-			   String rawFileName = getRawFileName(fileName);					// Convert conventional filename to raw resource name
-			   if (rawFileName.equals("")) {
-				   RunTimeError("Error converting to raw filename");
-				   return false;
-			   }
-			   try {
-				   resID = Basic.BasicContext.getResources().getIdentifier (rawFileName, "raw", packageName);  // Get the resourc ID
-				   aMP = MediaPlayer.create(Basic.BasicContext, resID);
-			   }
-			   catch (Exception e) {
-					RunTimeError("Error: " + e );
-				   return false;
-			   }
-
-		   }else {																// Not loading from a raw resource
-			   try {
-				   File mFile = new File(fn0);
-				   theURI = Uri.fromFile(mFile);                // Create Uri for the file
-				   if (theURI == null){
-					   RunTimeError(StringConstant + "Not Found at:");
-					   return false;
-				   }
-				   aMP = MediaPlayer.create(Basic.BasicContext, theURI);  // Create a new Media Player
-			   }
-			   catch (Exception e) {
-					RunTimeError("Error: " + e );
-				   return false;
-			   }
-		   }
+		Uri theURI = null;
+		int resID = 0;
+		if (file.exists()) {
+			try {
+				theURI = Uri.fromFile(file);							// Create Uri for the file
+				if (theURI == null) {
+					RunTimeError(StringConstant + "Not Found at:");
+					return false;
+				}
+				aMP = MediaPlayer.create(BasicContext, theURI);			// Create a new Media Player
+			} catch (Exception e) {
+				RunTimeError("Error: " + e);
+				return false;
+			}
+		} else {														// file does not exist
+			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
+				resID = getRawResourceID(fileName);						// try to load the file from a raw resource
+				if (resID == 0) { return false; }
+				aMP = MediaPlayer.create(BasicContext, resID);
+			}															// else standard BASIC!, aMP is still null
+		}
 
 		   if (aMP == null){
 			   RunTimeError(StringConstant + "Not Found at:");
@@ -12377,8 +12250,8 @@ private boolean doUserFunction(){
 		   theMpUriList.add(theURI);
 		   theMpResIDList.add(resID);
 
-		   return true;
-	  }
+		return true;
+	}
 	  
 	  private boolean execute_audio_release(){
 
@@ -16964,68 +16837,30 @@ private boolean doUserFunction(){
 		  return true;
 	  }
 	  
-	  private boolean execute_SP_load(){
-		  
-		  if (!getNVar()) return false;
-		  int savedIndex = theValueIndex;
-		  
-			char c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
+	private boolean execute_SP_load(){
+		if (!getNVar()) return false;
+		int savedIndex = theValueIndex;
+		if (!isNext(',')) { return false; }
 
-		  
-		  if (!evalStringExpression() ) return false;
-		  if (SEisLE) return false;
-			
-		  if (!checkEOL()) return false;
-		  
-		   String fileName = StringConstant;									// The filename as given by the user
+		if (!getStringArg()) return false;								// Get the file path
+		if (!checkEOL()) return false;
+		String fileName = StringConstant;								// The filename as given by the user
+		String fn = Basic.filePath + "/data/" + fileName;
+		File file = new File(fn);
 
-		   String fn0 = Basic.filePath + "/data/" + fileName;				// Add the path to the filename
-		   String fn = new File(fn0).getAbsolutePath();							// convert to absolute path				
-		   
-		   String packageName = Basic.BasicContext.getPackageName();			// Get the package name
-		  
-		   boolean loadRaw = false;												// Assume not loading raw resource
-
-		   if (!Basic.isAPK){							// if not standard BASIC!
-			   File theFile = new File(fn);										// if the file has not been loaded onto the SDCARD									
-		       if (!theFile.exists())  loadRaw = true;							// then the file to be loaded from a raw resource
-		   }
-		   
-		   int SoundID = -1;
-		   
-		   if (loadRaw) {														// If loading a raw resource file
-			   String rawFileName = getRawFileName(fileName);					// Convert conventional filename to raw resource name
-			   if (rawFileName.equals("")) {
-				   RunTimeError("Error converting to raw filename");
-				   return false;
-			   }
-			   try {
-				   int resID = Basic.BasicContext.getResources().getIdentifier (rawFileName, "raw", packageName);  // Get the resourc ID
-				   SoundID = theSoundPool.load(Basic.BasicContext, resID, 1);
-			   }
-			   catch (Exception e) {
-					RunTimeError("Error: " + e );
-				   return false;
-			   }
-
-		   }else {																// Not loading from a raw resource
-			   try {
-				   SoundID = theSoundPool.load(fn, 1);
-			   }
-			   catch (Exception e) {
-					RunTimeError("Error: " + e );
-				   return false;
-			   }
-		   }
-
-		  	
-		  
-		  	NumericVarValues.set(savedIndex, (double) SoundID );
-		  
-		  return true;
-	  }
+		int SoundID = 0;
+		if (file.exists()) {
+			SoundID = theSoundPool.load(fn, 1);
+		} else {														// file does not exist
+			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
+				int resID = getRawResourceID(fileName);					// try to load the file from a raw resource
+				if (resID == 0) { return false; }
+				SoundID = theSoundPool.load(BasicContext, resID, 1);
+			}															// else standard BASIC!, SoundID is 0
+		}
+		NumericVarValues.set(savedIndex, (double) SoundID );
+		return true;
+	}
 	  
 	  private boolean execute_SP_play(){
 		  
