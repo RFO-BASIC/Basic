@@ -3348,32 +3348,34 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private  boolean getNumber(){						// Get a number if there is one
 														// Attempt to parse out a number
-
+		char c = 0;
+		int max = ExecutingLineBuffer.length();
 		int i = LineIndex;
-		char c = ExecutingLineBuffer.charAt(i);
-		if (c<'0' || c>'9'){   // Must start with 0-9
-			return false;								// not a number.
-			}
-		
-		while ( (c >= '0' && c <='9') || c=='.' ){ // May have decimal point
-				++i;
-				if (i >= ExecutingLineBuffer.length()) return false;
-				c = ExecutingLineBuffer.charAt(i);
-
-			}
-																			// Terminated on non-numeric char
-		String num = ExecutingLineBuffer.substring(LineIndex,i);			// isolate the numeric characters
-		if (c=='e' || c == 'E'){
-			num = num + "E";
-			++i;
+		while (i < max) {								// Must start with one or more digits
 			c = ExecutingLineBuffer.charAt(i);
-			while ( (c >= '0' && c <='9') ){
-				num = num + c;
-				++i;
-				if (i >= ExecutingLineBuffer.length()) return false;
+			if (c > '9' || c < '0') { break; }			// If not a digit, done with whole part
+			++i;
+		}
+		if (i == LineIndex) { return false; }			// No digits, not a number
+
+		if (c == '.') {									// May have a decimal point
+			while (++i < max) {							// Followed by more digits
 				c = ExecutingLineBuffer.charAt(i);
+				if (c > '9' || c < '0') { break; }		// If not a digit, done with fractional part
 			}
 		}
+		if (c == 'e' || c == 'E') {						// Is there an exponent
+			if (++i < max) {
+				c = ExecutingLineBuffer.charAt(i);
+				if (c == '+' || c == '-') { ++i; }		// Is there a sign on the exponent
+			}
+			while (i < max) {							// Get the exponent
+				c = ExecutingLineBuffer.charAt(i);
+				if (c > '9' || c < '0') { break; }		// If not a digit, done with exponent
+				++i;
+			}
+		}
+		String num = ExecutingLineBuffer.substring(LineIndex,i);			// isolate the numeric characters
 		LineIndex = i;
 		double d = 0;
 		try { d = Double.parseDouble(num);}									// have java parse it into a double
