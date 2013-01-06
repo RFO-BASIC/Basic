@@ -30,8 +30,6 @@ This file is part of BASIC! for Android
     This product includes software developed by
     The Apache Software Foundation (http://www.apache.org/).
     
-    Contains contributions from Marc Sammartano.
-    
 	*************************************************************************************************/
 
 
@@ -163,7 +161,6 @@ import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.text.format.Time;
-import android.util.Log;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -4978,7 +4975,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				WasSemicolon = false;
 			}else{
 				if (evalStringExpression()){
-				PrintLine = PrintLine + StringConstant;										// field is string
+					PrintLine = PrintLine + StringConstant;								// field is string
 				WasSemicolon = false;
 			}else{
 				if (VarIsFunction){SyntaxError(); return false;}
@@ -4997,10 +4994,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 					return true;
 			}
 			
-			if (c == ','){							// if the seperator is a comma
+			if (c == ','){							// if the separator is a comma
 				PrintLine = PrintLine + ", ";		// add comma + blank to the line
 				++LineIndex;
-			}else if ( c== ';'){					// if seperator is semi-colon
+			}else if ( c== ';'){					// if separator is semi-colon
 				++LineIndex;						// don't add anything to output
 				WasSemicolon = true;				// and signal we had a semicolon
 				if (ExecutingLineBuffer.charAt(LineIndex) == '\n'){return true;} // if now eol, return without outputting
@@ -5502,7 +5499,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 // ************************************************** Read Commands **********************************
 	
 	// Parse and bundle the data list of a READ.DATA statement
-	// Called from PreScan() and NOT from 
+	// Called from PreScan() and NOT from statementExecuter().
 	private boolean executeREAD_DATA() {
 		do {													// Sweep up the data values
 			Bundle b = new Bundle();
@@ -6845,7 +6842,72 @@ private boolean doUserFunction(){
 // *****************************  End of core Basic Methods ****************************
 	
 // ***************************** Data I/O Operations ***********************************
-	    
+
+	private boolean checkReadFile(int FileNumber, ArrayList<?> list){		// Validate input file for read commands
+		// Note: if list is null, list size is not checked - needed for POSITION_GET
+		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
+		else if (FileNumber < 0)                    { RunTimeError("Read file did not exist"); }
+		else if (list != null && list.size() == 0)  { RunTimeError("No files opened for read"); }
+		else if (FileNumber >= FileTable.size())    { RunTimeError("Invalid File Number at"); }
+		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
+	}
+
+	private boolean checkWriteFile(int FileNumber, ArrayList<?> list){		// Validate input file for write commands 
+		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
+		else if (list.size() == 0)                  { RunTimeError("No files opened for write"); }
+		else if (FileNumber >= FileTable.size() || FileNumber < 0)
+													{ RunTimeError("Invalid File Number at"); }
+		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
+	}
+
+	private boolean checkReadTextAttributes(Bundle FileEntry) {				// Validate common FileEntry items
+																			// for commands that read text files
+		int FileMode = FileEntry.getInt("mode");
+		boolean closed = FileEntry.getBoolean("closed");
+		boolean isText = FileEntry.getBoolean("isText");
+
+		if (!isText)              { RunTimeError("File not opened for text"); }
+		else if (closed)          { RunTimeError("File is closed"); }
+		else if (FileMode != FMR) { RunTimeError("File not opened for read at"); }
+		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
+	}
+
+	private boolean checkReadByteAttributes(Bundle FileEntry) {				// Validate common FileEntry items
+																			// for commands that read binary files
+		int FileMode = FileEntry.getInt("mode");
+		boolean closed = FileEntry.getBoolean("closed");
+		boolean isText = FileEntry.getBoolean("isText");
+
+		if (isText)               { RunTimeError("File not opened for byte"); }
+		else if (closed)          { RunTimeError("File is closed"); }
+		else if (FileMode != FMR) { RunTimeError("File not opened for read at"); }
+		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
+	}
+
+	private boolean checkWriteTextAttributes(Bundle FileEntry) {			// Validate common FileEntry items
+																			// for commands that write text files
+		int FileMode = FileEntry.getInt("mode");
+		boolean closed = FileEntry.getBoolean("closed");
+		boolean isText = FileEntry.getBoolean("isText");
+
+		if (!isText)              { RunTimeError("File not opened for text"); }
+		else if (closed)          { RunTimeError("File is closed"); }
+		else if (FileMode != FMW) { RunTimeError("File not opened for write at"); }
+		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
+	}
+
+	private boolean checkWriteByteAttributes(Bundle FileEntry) {			// Validate common FileEntry items
+																			// for commands that write binary files
+		int FileMode = FileEntry.getInt("mode");
+		boolean closed = FileEntry.getBoolean("closed");
+		boolean isText = FileEntry.getBoolean("isText");
+
+		if (isText)               { RunTimeError("File not opened for byte"); }
+		else if (closed)          { RunTimeError("File is closed"); }
+		else if (FileMode != FMW) { RunTimeError("File not opened for write at"); }
+		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
+	}
+
 	private boolean executeTEXT_OPEN(){										// Open a file
 		boolean append = false;												// Assume not append
 		int FileMode = 0;													// Default to FMR
@@ -6943,53 +7005,42 @@ private boolean doUserFunction(){
 		return true;													// Done
 	}
 	
-		private  boolean executeTEXT_CLOSE(){
-			
+	private  boolean executeTEXT_CLOSE(){
 		if (FileTable.size() == 0){
 			return true;
 		}
 
-		if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-		double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber >= FileTable.size() || FileNumber < 0 ){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (FileNumber >= FileTable.size() || FileNumber < 0 ) {
 			RunTimeError("Invalid File Number at");
 			return false;
 		}
 		if (!checkEOL()) return false;
 
-		int FileMode;							//     Variables for the bundle
-		BufferedReader buf = null;
-		FileWriter writer = null;
-		boolean closed;
-
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);  // and the values from the bundle
-		FileMode = FileEntry.getInt("mode");
-		closed = FileEntry.getBoolean("closed");
-
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		int FileMode = FileEntry.getInt("mode");
+		boolean closed = FileEntry.getBoolean("closed");
 		boolean isText = FileEntry.getBoolean("isText");
+
 		if (!isText){
 			RunTimeError("File not opened for text");
 			return false;
 		}
-
 		
-		if (closed){return true;}				// Already closed
+		if (closed) { return true; }							// Already closed
 		
-
-		if (FileMode == FMR){								// Close file open for read
-			buf = BRlist.get(FileEntry.getInt("stream"));
+		if (FileMode == FMR) {									// Close file open for read
+			BufferedReader buf = BRlist.get(FileEntry.getInt("stream"));
     		try {
     			buf.close();
     		} catch (Exception e) {
     			RunTimeError("Error:" + e);
     			return false;
 			}
-
 		}
-		if (FileMode == FMW){									// close file open for write
-			writer = FWlist.get(FileEntry.getInt("stream"));
+		else if (FileMode == FMW) {								// close file open for write
+			FileWriter writer = FWlist.get(FileEntry.getInt("stream"));
 			try {
 				writer.flush();
 				writer.close();
@@ -6997,180 +7048,55 @@ private boolean doUserFunction(){
     			RunTimeError("Error:" + e);
     			return false;
 			}
+		} else {
+			RunTimeError("File not opened for read or write");
+			return false;
 		}
 		FileEntry.putBoolean("closed", true);					// mark the file closed.
-		FileTable.set(FileNumber, FileEntry);
 		return true;
 	}
 	
-		private  boolean executeTEXT_READLN(){
+	private  boolean executeTEXT_READLN(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkReadFile(FileNumber, BRlist)) { return false; }			// Check runtime errors
 
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
+		if (!isNext(',')) { return false; }
+		if (!getSVar()) { return false; }									// Second parm is the string var
+		if (!checkEOL()) { return false; }
+
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkReadTextAttributes(FileEntry)) { return false; }			// Check runtime errors
+
+		boolean eof = FileEntry.getBoolean("eof");
+		String data = null;
+		if (eof) {											// If already eof don't read
+			data = "EOF";									// but force returned data to "EOF"
+		} else {
+			BufferedReader buf = BRlist.get(FileEntry.getInt("stream"));
+			try {											// Read a line
+				data = buf.readLine();
+			} catch (IOException e) {
+				RunTimeError("I/O error at:");
 				return false;
 			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
+			if (data == null){
+				data = "EOF";								// Hit eof, force returned data
+				FileEntry.putBoolean("eof", true);			// and mark Bundle
+			} else {
+				int p = FileEntry.getInt("position");		// Not eof, update position in Bundle
+				FileEntry.putInt("position", ++p);
+			}
 		}
-
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the string var
-		++LineIndex;
-		if (!getSVar()){return false;}
-
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		BufferedReader buf = null;
-		boolean closed;
-
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		eof = FileEntry.getBoolean("eof");
-		buf = BRlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-		
-		boolean isText = FileEntry.getBoolean("isText");
-		if (!isText){
-			RunTimeError("File not opened for text");
-			return false;
-		}
-
-		if (closed) {										// Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
-		
-		if (FileMode != FMR){						// Varify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
-		
-/*		if (eof){											//Check not EOF
-			RunTimeError("Attempt to read beyond the EOF at:");
-			return false;
-		}*/
-
-		
-        try {												// Read a line
-            	String data = buf.readLine();
-            	BRlist.set(FileEntry.getInt("stream"), buf);
-            	if (data == null){
-            		data="EOF";
-            		FileEntry.putBoolean("eof", true);
-//            		FileEntry.putBoolean("closed", true);
-        			}
-            	else {
-            		int p = FileEntry.getInt("position");
-            		++p;
-            		FileEntry.putInt("position", p);
-            	}
-        		FileTable.set(FileNumber, FileEntry);
-        		StringVarValues.set(theValueIndex, data);
-             }
-        	catch (IOException e) {
-        		RunTimeError("I/O error at:");
-        		return false;
-        	}
-        return true;
+		StringVarValues.set(theValueIndex, data);			// Give the data to the user
+		return true;
 	}
 	
-/*		private  boolean executeTEXT_WRITELN(){
+	private boolean executeTEXT_WRITELN(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
 
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
-				return false;
-			}
-
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber >= FileTable.size() || FileNumber < 0 ){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the string var
-		++LineIndex;
-
-		if (!evalStringExpression()){SyntaxError(); return false;}
-		if (SEisLE) return false;
-		if (!checkEOL()) return false;
-	
-		
-		int FileMode;							//     Variables for the bundle
-		FileWriter writer = null;
-		boolean closed;
-
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FWlist.size() == 0 ){
-			RunTimeError("Wait 10 seconds before re-running");
-			Stop = true;
-			return false;
-		}
-		writer = FWlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-		
-		boolean isText = FileEntry.getBoolean("isText");
-		if (!isText){
-			RunTimeError("File not opened for text");
-			return false;
-		}
-
-		
-		if (FileMode != FMW){						// Varify open for read
-			RunTimeError("File not opened for write at");
-			return false;
-		}
-		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
-		try {
-				writer.write(StringConstant);					//Oh, and write the line
-				writer.write("\r\n");
-		} catch (IOException e) {
-			RunTimeError("I/O error at");
-			return false;
-		}
-		
-    	int p = FileEntry.getInt("position");
-    	++p;
-    	FileEntry.putInt("position", p);
-
-		return true;
-	}*/
-		
-		private boolean executeTEXT_WRITELN(){
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
-				return false;
-			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-			int FileNumber =  (int) d;
-			if (FileNumber >= FileTable.size() || FileNumber < 0 ){
-				RunTimeError("Invalid File Number at");
-				return false;
-			}
-
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Set up to parse the stuff to print
-		++LineIndex;
+		if (!isNext(',')) { return false; }				// Set up to parse the stuff to print
 
 		if (!TextPRINT(true)) return false;				// build up the text line
 		if (!textPrintLineReady) return true;			// If not ready to print, wait
@@ -7178,52 +7104,25 @@ private boolean doUserFunction(){
 		textPrintLineReady = false;						// Reset the signal
 		StringConstant = textPrintLine;					// Copy the line to StringConstant for writing
 		textPrintLine = "";								// clear the text print line
-		
-		int FileMode;							//     Variables for the bundle
-		FileWriter writer = null;
-		boolean closed;
 
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FWlist.size() == 0 ){
-			RunTimeError("No files opened for write");
-			return false;
-		}
-		writer = FWlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-		
-		boolean isText = FileEntry.getBoolean("isText");
-		if (!isText){
-			RunTimeError("File not opened for text");
-			return false;
-		}
+		if (!checkWriteFile(FileNumber, FWlist)) { return false; }			// Check runtime errors
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkWriteTextAttributes(FileEntry)) { return false; }			// Check runtime errors
 
-		
-		if (FileMode != FMW){						// Varify open for read
-			RunTimeError("File not opened for write at");
-			return false;
-		}
-		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
+		FileWriter writer = FWlist.get(FileEntry.getInt("stream"));
 		try {
-				writer.write(StringConstant);					//Oh, and write the line
-				writer.write("\r\n");
+			writer.write(StringConstant);				// Oh, and write the line
+			writer.write("\r\n");
 		} catch (IOException e) {
 			RunTimeError("I/O error at");
 			return false;
 		}
 		
-    	int p = FileEntry.getInt("position");
-    	++p;
-    	FileEntry.putInt("position", p);
+		int p = FileEntry.getInt("position");
+		FileEntry.putInt("position", ++p);
 
-			return true;
-		}
+		return true;
+	}
 		
 		private  boolean TextPRINT(boolean doPrint){
 			boolean WasSemicolon = false;
@@ -7234,7 +7133,7 @@ private boolean doUserFunction(){
 					WasSemicolon = false;
 				}else{
 					if (evalStringExpression()){
-						textPrintLine = textPrintLine + StringConstant;										// field is string
+						textPrintLine = textPrintLine + StringConstant;								// field is string
 					WasSemicolon = false;
 				}else{
 					if (VarIsFunction){SyntaxError(); return false;}
@@ -7247,16 +7146,15 @@ private boolean doUserFunction(){
 						if (!WasSemicolon){				// if not ended in semi-colon
 							if (doPrint){
 								textPrintLineReady = true;
-								return true;
 							}
-							else return true;
-						} else {return true;}
+						}
+						return true;
 				}
 				
-				if (c == ','){							// if the seperator is a comma
+				if (c == ','){							// if the separator is a comma
 					textPrintLine = textPrintLine + ", ";		// add comma + blank to the line
 					++LineIndex;
-				}else if ( c== ';'){					// if seperator is semi-colon
+				}else if ( c== ';'){					// if separator is semi-colon
 					++LineIndex;						// don't add anything to output
 					WasSemicolon = true;				// and signal we had a semicolon
 					if (ExecutingLineBuffer.charAt(LineIndex) == '\n'){return true;} // if now eol, return without outputting
@@ -7274,8 +7172,7 @@ private boolean doUserFunction(){
 			int saveValueIndex = theValueIndex;
 			
 			TextInputString = "";
-			if (ExecutingLineBuffer.charAt(LineIndex)==','){ 
-				++LineIndex;
+			if (isNext(',')) { 
 				if (!evalStringExpression()) return false;
 			    TextInputString = StringConstant;
 			}
@@ -7289,149 +7186,84 @@ private boolean doUserFunction(){
 			return true;
 		}
 		
-		private boolean executeTEXT_POSITION_SET(){
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
-				return false;
-			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
+	private boolean executeTEXT_POSITION_SET(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkReadFile(FileNumber, BRlist)) { return false; }			// Check runtime errors
 
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the position var expression
-		++LineIndex;
-		if (!evalNumericExpression()){return false;}
-		int pto = (int) (double)EvalNumericExpressionValue;
-		if (pto < 1 ){
+		if (!isNext(',')) { return false; }									// Second parm is the position var expression
+		if (!evalNumericExpression()) {return false; }
+		int pto = EvalNumericExpressionValue.intValue();
+		if (pto < 1) {
 			RunTimeError("Set position must be >= 1");
 			return false;
 		}
+		if (!checkEOL()) { return false; }
 
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		int FileMode = FileEntry.getInt("mode");
-		boolean eof = FileEntry.getBoolean("eof");
-		boolean closed = FileEntry.getBoolean("closed");
-		
-		boolean isText = FileEntry.getBoolean("isText");
-		if (!isText){
-			RunTimeError("File not opened for text");
-			return false;
-		}
-
-		if (closed) {										// Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
-		
-		if (FileMode != FMR){						// Varify open for read
-			RunTimeError("File not opened for read");
-			return false;
-		}
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkReadTextAttributes(FileEntry)) { return false; }			// Check runtime errors
 		
 		BufferedReader buf = BRlist.get(FileEntry.getInt("stream"));
-
 		int pnow = FileEntry.getInt("position");
-		
-		if (pnow == pto) return true;
+		boolean eof = FileEntry.getBoolean("eof");
 		
 		if (pto < pnow) {
 			try {
-				buf.reset();
-				FileEntry.putBoolean("eof", false);
-				FileEntry.putInt("position", 1);
-				FileTable.set(FileNumber, FileEntry);
-			}
-			catch (Exception e){
-//				RunTimeError("Error: " + e);
-//				return false;
-			}
-			pnow = 1;
-			if (pto == 1 ) return true;
-		}
-		String data = null;
-		while (pnow < pto ){
-			
-	        try {												// Read a line
-            	data = buf.readLine();
-            	BRlist.set(FileEntry.getInt("stream"), buf);
-            	if (data == null){
-            		data="EOF";
-            		FileEntry.putBoolean("eof", true);
-            		pto = pnow;
-        			}
-            	else {
-            		++pnow;
-            		FileEntry.putInt("position", pnow);
-            		StringVarValues.set(theValueIndex, data);
-            	}
-             }
-        	catch (Exception e) {
-//        		RunTimeError("Error: " + e);
-//        		return false;
-        	}
-		} 
-
-		FileTable.set(FileNumber, FileEntry);
-		return true;
-		}
-		
-		private boolean executeTEXT_POSITION_GET(){
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
+				buf.reset();								// Back to start of file
+			} catch (Exception e) {
+				RunTimeError("Error: " + e);
 				return false;
 			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
+			eof = false;
+			pnow = 1;
 		}
-
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the position var
-		++LineIndex;
-		if (!getNVar()){return false;}
-
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
+		String data = null;
+		while ((pnow < pto) && !eof) {
+			try {											// Read a line
+				data = buf.readLine();
+			} catch (Exception e) {
+				RunTimeError("Error: " + e);
+				return false;
+			}
+			if (data == null) {
+				eof = true;									// Hit eof, mark Bundle
+			} else {
+				++pnow;										// Not eof, update position for Bundle
+			}
 		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		
+		FileEntry.putInt("position", pnow);					// Update Bundle
+		FileEntry.putBoolean("eof", eof);
+		return true;
+	}
+
+	private boolean executeTEXT_POSITION_GET(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkReadFile(FileNumber, null)) { return false; }				// Check runtime errors
+
+		if (!isNext(',')) { return false; }									// Second parm is the position var
+		if (!getNVar()) { return false; }
+		if (!checkEOL()) { return false; }
+
+		Bundle FileEntry = FileTable.get(FileNumber);		// Get the bundle
 		boolean isText = FileEntry.getBoolean("isText");
 		if (!isText){
 			RunTimeError("File not opened for text");
 			return false;
 		}
 
-		int p = FileEntry.getInt("position");
-		double dp = (double) p;
-		NumericVarValues.set(theValueIndex, dp);
+		double p = FileEntry.getInt("position");
+		NumericVarValues.set(theValueIndex, p);
 
-			return true;
-		}
+		return true;
+	}
 		
-		private boolean executeTGET(){
+	private boolean executeTGET(){
 			if (!getSVar()) return false;
 			int saveValueIndex = theValueIndex;
 			
 			TextInputString = "";
-			if (ExecutingLineBuffer.charAt(LineIndex)!=',')return false; 
-			++LineIndex;
+			if (!isNext(',')) { return false; }
 			
 			if (!evalStringExpression()) return false;
 			TextInputString = StringConstant;
@@ -7445,7 +7277,7 @@ private boolean doUserFunction(){
 		    
 		    StringVarValues.set(saveValueIndex, TextInputString);
 			return true;
-		}
+	}
 
 	private boolean executeBYTE_OPEN(){										// Open a file
 		boolean append = false;												// Assume not append
@@ -7467,7 +7299,7 @@ private boolean doUserFunction(){
 		int saveValueIndex = theValueIndex;         // Save in case read file not found.
 
 		if (!isNext(',')) { return false; }
-		if (!getStringArg()) { return false; }		// Final paramter is the filename
+		if (!getStringArg()) { return false; }		// Final parameter is the filename
 		String fileName = StringConstant;
 		if (!checkEOL()) return false;
 
@@ -7559,630 +7391,364 @@ private boolean doUserFunction(){
 		}
 		return true;														// Done
 	}
-		
-			private  boolean executeBYTE_CLOSE(){
-				if (FileTable.size() == 0){
-					
-					return true;
-				}
-
-				if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-				double d = EvalNumericExpressionValue;
-			int FileNumber =  (int) d;
-			if (FileNumber >= FileTable.size() || FileNumber < 0 ){
-				RunTimeError("Invalid File Number at");
-				return false;
-			}
-			if (!checkEOL()) return false;
-
-
-			int FileMode;							//     Variables for the bundle
-			BufferedInputStream bis = null;
-			DataOutputStream dos = null;
-			boolean closed;
-
-			Bundle FileEntry = new Bundle();		// Get the bundle 
-			FileEntry = FileTable.get(FileNumber);  // and the values from the bundle
-			FileMode = FileEntry.getInt("mode");
-			closed = FileEntry.getBoolean("closed");
-			
-			boolean isText = FileEntry.getBoolean("isText");
-			if (isText){
-				RunTimeError("File not opened for byte");
-				return false;
-			}
-
-			
-			if (closed){return true;}				// Already closed
-
-			if (FileMode == FMR){								// Close file open for read
-				bis = BISlist.get(FileEntry.getInt("stream"));
-	    		try {
-	    			bis.close();
-	    		} catch (IOException e) {
-//	    			Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
-				}
-
-			}
-			if (FileMode == FMW){									// close file open for write
-				dos = DOSlist.get(FileEntry.getInt("stream"));
-				try {
-					dos.flush();
-					dos.close();
-				} catch (IOException e) {
-//	    			Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
-				}
-			}
-			FileEntry.putBoolean("closed", true);					// mark the file closed.
-			FileTable.set(FileNumber, FileEntry);
+	
+	private  boolean executeBYTE_CLOSE(){
+		if (FileTable.size() == 0){
 			return true;
 		}
-		 
-		private boolean executeBYTE_COPY(){
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
-				return false;
-			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
-		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
+
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (FileNumber >= FileTable.size() || FileNumber < 0) {
 			RunTimeError("Invalid File Number at");
 			return false;
 		}
-
-
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the byte var
-		++LineIndex;
-
-		if (!evalStringExpression()) return false;
 		if (!checkEOL()) return false;
-		
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		BufferedInputStream bis = null;
-		boolean closed;
 
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMR){						// Varify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
-		eof = FileEntry.getBoolean("eof");
-		closed = FileEntry.getBoolean("closed");
-		
+		Bundle FileEntry = FileTable.get(FileNumber);		// Get the bundle
+		int FileMode = FileEntry.getInt("mode");
+		boolean closed = FileEntry.getBoolean("closed");
 		boolean isText = FileEntry.getBoolean("isText");
+
 		if (isText){
 			RunTimeError("File not opened for byte");
 			return false;
 		}
 
-		
-		if (FileMode != FMR){						// Varify open for read
-			RunTimeError("File not opened for read at");
+		if (closed) { return true; }						// Already closed
+
+		if (FileMode == FMR) {								// Close file open for read
+			BufferedInputStream bis = BISlist.get(FileEntry.getInt("stream"));
+			try {
+				bis.close();
+			} catch (IOException e) {
+//				Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
+				RunTimeError("Error:" + e);
+				return false;
+			}
+		} else if (FileMode == FMW) {						// close file open for write
+			DataOutputStream dos = DOSlist.get(FileEntry.getInt("stream"));
+			try {
+				dos.flush();
+				dos.close();
+			} catch (IOException e) {
+//				Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
+				RunTimeError("Error:" + e);
+				return false;
+			}
+		} else {
+			RunTimeError("File not opened for read or write");
 			return false;
 		}
-		
-		if (eof){											//Check not EOF
+		FileEntry.putBoolean("closed", true);				// mark the file closed.
+		return true;
+	}
+	
+	private boolean executeBYTE_COPY(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the source filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkReadFile(FileNumber, BISlist)) { return false; }			// Check runtime errors
+
+		if (!isNext(',')) { return false; }
+		if (!evalStringExpression()) { return false; }						// Second parm is the destination file name
+		if (!checkEOL()) { return false; }
+
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkReadByteAttributes(FileEntry)) { return false; }			// Check runtime errors
+
+		boolean eof = FileEntry.getBoolean("eof");
+		if (eof){											// Check not EOF
 			RunTimeError("Attempt to read beyond the EOF at:");
 			return false;
 		}
 		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
-		
-		bis = BISlist.get(FileEntry.getInt("stream"));
+		BufferedInputStream bis = BISlist.get(FileEntry.getInt("stream"));
+		int p = FileEntry.getInt("position");
 		
 		String theFileName = StringConstant;
-		String FullFileName = "";
-		
-    	File file = new File(Basic.filePath + "/data/" + theFileName);
+		File file = new File(Basic.filePath + "/data/" + theFileName);
 
-    	try {
-    		file.createNewFile();
-    		} catch (IOException e){
-    			RunTimeError(theFileName + " I/O Error");
-    			return false;
-    			}
-    	if (!file.exists() || !file.canWrite()){
-    		RunTimeError("Problem opening " + theFileName);
-    		return false;
-    	}
-    	
-    	BufferedOutputStream bos = null;
-    	try {
-    	    bos = new BufferedOutputStream(new FileOutputStream(file), 8192);
-    	    byte[] buffer = new byte[1024];
-
-    	    int len = 0;
-
-    	    while((len = bis.read(buffer)) != -1) {
-    	        bos.write(buffer, 0, len);
-    	    }
-    	} catch (Exception e) {
-    	     RunTimeError("Exception: " + e);
-    	     return false;
-    	} finally {
-    	
-    		try { bos.flush(); } catch (Exception e) {
-    			RunTimeError("Error: " + e );}
-
-    	    try { bis.close(); } catch (Exception e) {
-    			RunTimeError("Error: " + e );}
-
-    	    try { bos.close(); } catch (Exception e) {
-    			RunTimeError("Error: " + e );}
-
-    	    if (SyntaxError) { return false; }					// if RunTimeError was called
-    	}
-    	return true;
+		try {
+			file.createNewFile();
+		} catch (IOException e) {
+			RunTimeError(theFileName + " I/O Error");
+			return false;
 		}
+		if (!file.exists() || !file.canWrite()) {
+			RunTimeError("Problem opening " + theFileName);
+			return false;
+		}
+		
+		BufferedOutputStream bos = null;
+		try {
+			bos = new BufferedOutputStream(new FileOutputStream(file), 8192);
+			byte[] buffer = new byte[1024];
+			int len = 0;
 
-    	
-		private  boolean executeBYTE_READ_BYTE(){
+			while((len = bis.read(buffer)) != -1) {
+				bos.write(buffer, 0, len);
+				p += len;
+			}
+		} catch (Exception e) {
+			RunTimeError("Exception: " + e);
+			return false;
+		} finally {
+			try { bos.flush(); } catch (Exception e) {
+				RunTimeError("Error: " + e );}
 
-				if (FileTable.size() == 0){
-					RunTimeError("No files opened");
-					return false;
+			try { bis.close(); } catch (Exception e) {
+				RunTimeError("Error: " + e );}
+
+			try { bos.close(); } catch (Exception e) {
+				RunTimeError("Error: " + e );}
+
+			if (SyntaxError) { return false; }					// if RunTimeError was called
+		}
+		FileEntry.putInt("position", p);
+		FileEntry.putBoolean("eof", true);
+		return true;
+	}
+
+	private  boolean executeBYTE_READ_BYTE(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkReadFile(FileNumber, BISlist)) { return false; }			// Check runtime errors
+		
+		if (!isNext(',')) { return false; }
+		if (!getNVar()) { return false; }									// Second parm is the return data var
+		if (!checkEOL()) { return false; }
+		
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkReadByteAttributes(FileEntry)) { return false; }			// Check runtime errors
+
+		boolean eof = FileEntry.getBoolean("eof");
+		int data = -1;
+		if (!eof) {											// If already eof don't read
+			BufferedInputStream bis = BISlist.get(FileEntry.getInt("stream"));
+			int p = FileEntry.getInt("position");
+			try {
+				data = bis.read();							// Read a byte
+			} catch (Exception e) {
+				RunTimeError("Error: ");
+				return false;
+			}
+			if (data < 0) {
+				FileEntry.putBoolean("eof", true);			// Hit eof, mark Bundle
+			} else {
+				FileEntry.putInt("position", ++p);			// Not eof, update position in Bundle
+			}
+		}
+		NumericVarValues.set(theValueIndex, (double) data);	// Give the data to the user
+		return true;
+	}
+		
+	private boolean executeBYTE_READ_BUFFER(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkReadFile(FileNumber, BISlist)) { return false; }			// Check runtime errors
+
+		if (!isNext(',')) { return false; }
+		if (!evalNumericExpression()) { return false; }						// Second parm is the byte count
+		int byteCount = EvalNumericExpressionValue.intValue();
+
+		if (!isNext(',')) { return false; }									// Third parm is the return buffer string
+		if (!getSVar()) { return false; }
+		if (!checkEOL()) { return false; }
+		
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkReadByteAttributes(FileEntry)) { return false; }			// Check runtime errors
+
+		boolean eof = FileEntry.getBoolean("eof");
+		String buff = "";
+		if (!eof) {											// If already eof don't read
+			BufferedInputStream bis = BISlist.get(FileEntry.getInt("stream"));
+			int p = FileEntry.getInt("position");
+			byte[] byteArray = new byte[byteCount];
+			int count = 0;
+			try {
+				count = bis.read(byteArray, 0, byteCount);	// Read the bytes
+			}catch (Exception e) {
+				RunTimeError("Error: " + e);
+				return false;
+			}
+			if (count < 0) {
+				FileEntry.putBoolean("eof", true);			// Hit eof, mark Bundle
+			} else {
+				FileEntry.putInt("position", p + count);	// No eof, update position in Bundle
+				buff = new String(byteArray);				// convert bytes to String for user
+				if (count < byteCount) {
+					buff = buff.substring(0, count);
 				}
-				
-				if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-				double d = EvalNumericExpressionValue;
-			int FileNumber =  (int) d;
-			if (FileNumber <0 ){
-				RunTimeError("Read file did not exist");
-				return false;
 			}
-			if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
-				RunTimeError("Invalid File Number at");
-				return false;
-			}
-
-			if (!isNext(',')) { return false; }					// Third parm is the return buffer string
-			if (!getNVar()) return false;
-			
-		
-			int FileMode;							//     Variables for the bundle
-			boolean eof;
-			BufferedInputStream bis = null;
-			boolean closed;
-
-			
-			Bundle FileEntry = new Bundle();		// Get the bundle 
-			FileEntry = FileTable.get(FileNumber);
-			FileMode = FileEntry.getInt("mode");
-			eof = FileEntry.getBoolean("eof");
-			closed = FileEntry.getBoolean("closed");
-			
-			boolean isText = FileEntry.getBoolean("isText");
-			if (isText){
-				RunTimeError("File not opened for byte");
-				return false;
-			}
-			
-			if (FileMode != FMR){						// Varify open for read
-				RunTimeError("File not opened for read at");
-				return false;
-			}
-			
-			if (closed){											//Check not Closed
-				RunTimeError("File is closed");
-				return false;
-			}
-
-			bis = BISlist.get(FileEntry.getInt("stream"));
-			
-			String buffer = "";
-
-	        try {												// Read a byte
-	            	int data = bis.read();
-	            	if (data < 0){
-	            		FileEntry.putBoolean("eof", true);
-	        			}
-	            	else{
-	                    int p = FileEntry.getInt("position");
-	                    FileEntry.putInt("position", ++p);
-	            	}
-	        		NumericVarValues.set(theValueIndex, (double) data);
-	             }
-	        	catch (Exception e) {
-	        		RunTimeError("Error: ");
-	        		return false;
-	        }
-        	FileTable.set(FileNumber, FileEntry);
-	        	
-	        return true;
 		}
-		
-		private boolean executeBYTE_READ_BUFFER(){
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
-				return false;
-			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
-		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
+		StringVarValues.set(theValueIndex, buff);			// Give the data to the user
+		return true;
+	}
+	
+	private  boolean executeBYTE_WRITE_BYTE(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkWriteFile(FileNumber, DOSlist)) { return false; }			// Check runtime errors
 
-		if (!isNext(',')) { return false; }						// Second parm is the byte count
-		if (!evalNumericExpression()) return false;
-		int byteCount = (int) (double) EvalNumericExpressionValue;
-		
-		if (!isNext(',')) { return false; }						// Third parm is the return buffer string
-		if (!getSVar()) return false;
-		
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		BufferedInputStream bis = null;
-		boolean closed;
-
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		eof = FileEntry.getBoolean("eof");
-		closed = FileEntry.getBoolean("closed");
-		
-		boolean isText = FileEntry.getBoolean("isText");
-		if (isText){
-			RunTimeError("File not opened for byte");
-			return false;
-		}
-
-		
-		if (FileMode != FMR){						// Varify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
-		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
-
-		bis = BISlist.get(FileEntry.getInt("stream"));
-//		ByteArrayBuffer byteArray = new ByteArrayBuffer(byteCount);
-		byte[] byteArray = new byte[byteCount];
-
-		int dataByte = 0;
-		boolean isFull = false;
-		int count = 0;
-
-        try {												// Read a byte
-		    
-		    count = bis.read(byteArray, 0, byteCount);
-             
-        	}catch (Exception e) {
-        		RunTimeError("Error: " + e);
-        		return false;
-        	}
-        	
-        int p = FileEntry.getInt("position");
-        
-        if (count<0){
-        	StringVarValues.set(theValueIndex, "");
-        	return true; 
-        }
-        FileEntry.putInt("position", p + count);        
-        FileTable.set(FileNumber, FileEntry);
-        
-        String buff = new String(byteArray, 0);
-        if (count < byteCount){
-        	buff = buff.substring(0, count);
-        }
-        StringVarValues.set(theValueIndex, buff);
-
-        return true;
-		}
-		
-		private  boolean executeBYTE_WRITE_BYTE(){
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
-				return false;
-			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber >= FileTable.size() || FileNumber < 0 ){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-
-		if (!isNext(',')) { return false; }						// Second parm is the byte var
+		if (!isNext(',')) { return false; }									// Second parm is the byte var
 
 		byte b = 0;
 		boolean OutputIsByte = true;
-		if (evalNumericExpression()){
-			d = EvalNumericExpressionValue;
-			int i = (int) d;
-			 b = (byte) i;
-		} else{
-			if (!evalStringExpression()) return false;
+		if (evalNumericExpression()) {
+			b = EvalNumericExpressionValue.byteValue();
+		} else {
+			if (!evalStringExpression()) { return false; }
 			OutputIsByte = false;
 		}
-		if (!checkEOL()) return false;
+		if (!checkEOL()) { return false; }
 	
-		
-		int FileMode;							//     Variables for the bundle
-		DataOutputStream dos = null;
-		boolean closed;
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkWriteByteAttributes(FileEntry)) { return false; }			// Check runtime errors
 
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		dos = DOSlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-		
-		if (FileMode != FMW){						// Varify open for read
-			RunTimeError("File not opened for write at");
-			return false;
-		}
-		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
+		DataOutputStream dos = DOSlist.get(FileEntry.getInt("stream"));
+		int p = FileEntry.getInt("position");
 		try {
-			if (OutputIsByte){
-				dos.writeByte(b);					//Oh, and write the byte
-	            int p = FileEntry.getInt("position");
-	            ++p;
-	            FileEntry.putInt("position", p);
-			}else{
-				
-				for (int k=0; k<StringConstant.length(); ++k){
-					byte bb = (byte)StringConstant.charAt(k);
-					dos.writeByte(bb);
+			if (OutputIsByte) {
+				dos.writeByte(b);							// Oh, and write the byte
+				++p;
+			} else {
+				int len = StringConstant.length();
+				for (int k = 0; k < len; ++k) {				// or bytes
+					b = (byte)StringConstant.charAt(k);
+					dos.writeByte(b);
 				}
-	            int p = FileEntry.getInt("position");
-	            p = p + StringConstant.length();
-	            FileEntry.putInt("position", p);
+				p += len;
 			}
 		} catch (IOException e) {
 			RunTimeError("I/O error at");
 			return false;
 		}
+		FileEntry.putInt("position", p);					// update position in Bundle
 		return true;
-		}
+	}
 		
-		private boolean executeBYTE_WRITE_BUFFER(){
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
-				return false;
-			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber >= FileTable.size() || FileNumber < 0 ){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
+	private boolean executeBYTE_WRITE_BUFFER(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkWriteFile(FileNumber, DOSlist)) { return false; }			// Check runtime errors
 
-		if (!isNext(',')) { return false; }						// Second parm is the buffer
+		if (!isNext(',')) { return false; }									// Second parm is the buffer
+		if (!evalStringExpression()) { return false; }
+		if (!checkEOL()) { return false; }
 
-		if (!evalStringExpression()) return false;
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkWriteByteAttributes(FileEntry)) { return false; }			// Check runtime errors
 
-		if (!checkEOL()) return false;
-	
-		
-		int FileMode;							//     Variables for the bundle
-		DataOutputStream dos = null;
-		boolean closed;
-
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		dos = DOSlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-		
-		if (FileMode != FMW){						// Varify open for read
-			RunTimeError("File not opened for write at");
-			return false;
-		}
-		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
+		DataOutputStream dos = DOSlist.get(FileEntry.getInt("stream"));
+		int p = FileEntry.getInt("position");
+		int len = StringConstant.length();
 		try {
-				for (int k=0; k<StringConstant.length(); ++k){
-					byte bb = (byte)StringConstant.charAt(k);
-					dos.writeByte(bb);
-				}
-	            int p = FileEntry.getInt("position");
-	            p = p + StringConstant.length();
-	            FileEntry.putInt("position", p);
+			for (int k = 0; k < len; ++k) {									// Write the buffer
+				byte bb = (byte)StringConstant.charAt(k);
+				dos.writeByte(bb);
+			}
 		} catch (IOException e) {
 			RunTimeError("I/O error at");
 			return false;
 		}
+		p += len;
+		FileEntry.putInt("position", p);					// update position in Bundle
 		return true;
 		}
 
 		
-		private boolean executeBYTE_POSITION_SET(){
-			
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
-				return false;
-			}
-			
-		if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-		double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
+	private boolean executeBYTE_POSITION_SET(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkReadFile(FileNumber, BISlist)) { return false; }			// Check runtime errors
+
+		if (!isNext(',')) { return false; }									// Second parm is the position var expression
+		if (!evalNumericExpression()) { return false; }
+		int pto = EvalNumericExpressionValue.intValue();
+		if (pto < 1) {
+			RunTimeError("Set position must be >= 1");
 			return false;
 		}
+		if (!checkEOL()) { return false; }
 
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkReadByteAttributes(FileEntry)) { return false; }			// Check runtime errors
+		
+		BufferedInputStream bis = BISlist.get(FileEntry.getInt("stream"));
+		int pnow = FileEntry.getInt("position");
+		boolean eof = FileEntry.getBoolean("eof");
 
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the position var expression
-			++LineIndex;
-			if (!evalNumericExpression()){return false;}
-			int pto = (int) (double)EvalNumericExpressionValue;
-			if (pto < 1 ){
-				RunTimeError("Set position must be >= 1");
+		if (pto < pnow) {
+			try {
+				bis.reset();								// Back to start of file
+			} catch (Exception e) {
+				RunTimeError("Error: " + e);
 				return false;
 			}
-
-			if (FileNumber >= FileTable.size()){
-				RunTimeError("Invalid File Number at");
-				return false;
-			}
-			
-			Bundle FileEntry = new Bundle();		// Get the bundle 
-			FileEntry = FileTable.get(FileNumber);
-			int FileMode = FileEntry.getInt("mode");
-			boolean eof = FileEntry.getBoolean("eof");
-			boolean closed = FileEntry.getBoolean("closed");
-			
-			boolean isText = FileEntry.getBoolean("isText");
-			if (isText){
-				RunTimeError("File not opened for byte");
-				return false;
-			}
-
-			
-			if (closed){
-				RunTimeError("File is closed");
-			}
-			
-			if (FileMode != FMR){						// Varify open for read
-				RunTimeError("File not opened for read");
-				return false;
-			}
-			
-			BufferedInputStream bis = null;
-			bis = BISlist.get(FileEntry.getInt("stream"));
-			int pnow = FileEntry.getInt("position");
-			
-			if (pnow == pto) return true;
-			
-			if (pto < pnow) {
-				try {
-					bis.reset();
-					FileEntry.putBoolean("eof", false);
-					FileEntry.putInt("position", 1);
-					FileTable.set(FileNumber, FileEntry);
-				}
-				catch (Exception e){
-					RunTimeError("Error: " + e);
-					return false;
-				}
-				pnow = 1;
-				if (pto == 1 ) return true;
-			}
-			
+			eof = false;
+			pnow = 1;
+		}
+		if ((pnow != pto) && !eof) {
+			int skip = pto - pnow - 1;						// Skip plus single read will get to target position
 			int data = -1;
-			while (pnow < pto ){
-				
-		        try {												// Read a byte
-	            	data = bis.read();
-	            	if (data < 0){
-	            		FileEntry.putBoolean("eof", true);
-	        			}
-	            	else{
-	                    FileEntry.putInt("position", ++pnow);
-	            	}
-	             }
-	        	catch (Exception e) {
-	        		RunTimeError("Error: ");
-	        		return false;
-	        	}
-	        }
-
-			FileTable.set(FileNumber, FileEntry);
-			return true;
-		}
-		
-		private boolean executeBYTE_POSITION_GET(){
-			if (FileTable.size() == 0){
-				RunTimeError("No files opened");
+			try {
+				int avail = bis.available();				// Don't skip past eof
+				skip = (int)bis.skip(Math.min(skip, avail));
+				data = bis.read();							// Read to check eof
+			} catch (Exception e) {
+				RunTimeError("Error: ");
 				return false;
 			}
-			
-			if (!evalNumericExpression()){return false;}						// First parm is the filenumber expression
-			double d = EvalNumericExpressionValue;
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
+			pnow += skip;									// Count bytes skipped
+			if (data >= 0) { ++pnow; }						// If byte was read, count that, too
+			else { eof = true; }							// otherwise mark eof in Bundle
 		}
+		FileEntry.putInt("position", pnow);					// Update Bundle
+		FileEntry.putBoolean("eof", eof);
+		return true;
+	}
+		
+	private boolean executeBYTE_POSITION_GET(){
+		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkReadFile(FileNumber, null)) { return false; }				// Check runtime errors
 
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} // Second parm is the position nexp
-		++LineIndex;
+		if (!isNext(',')) { return false; }									// Second parm is the position var
 		if (!getNVar()){return false;}
+		if (!checkEOL()) { return false; }
 
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		
+		Bundle FileEntry = FileTable.get(FileNumber);		// Get the bundle
 		boolean isText = FileEntry.getBoolean("isText");
 		if (isText){
 			RunTimeError("File not opened for byte");
 			return false;
 		}
 
-		int p = FileEntry.getInt("position");
-		double dp = (double) p;
-		NumericVarValues.set(theValueIndex, dp);
+		double p = FileEntry.getInt("position");
+		NumericVarValues.set(theValueIndex, p);
 
-			return true;
-		}
+		return true;
+	}
 		
 	private boolean executeMKDIR(){
-		if (!evalStringExpression())return false;					//get the path
-		if (SEisLE) return false;
-		if (!checkEOL()) return false;
+		if (!getStringArg()) { return false; }				// get the path
+		if (!checkEOL()) { return false; }
 
-		  File lbDir = new File(Basic.filePath + "/data/" +StringConstant);
-		  lbDir.mkdirs();
-		  if (!lbDir.exists()){									// did we get a dir?
-			  RunTimeError(StringConstant + " makdr failed");
-			  return false;
-		  }
+		File lbDir = new File(Basic.filePath + "/data/" + StringConstant);
+		lbDir.mkdirs();
+		if (!lbDir.exists()){								// did we get a dir?
+			RunTimeError(StringConstant + " mkdir failed");
+			return false;
+		}
 		
 		return true;
 	}
 	
 	private boolean executeRENAME(){
-		if (!evalStringExpression())return false;					//get the old file name
-		if (SEisLE) return false;
+		if (!getStringArg()) { return false; }				// get the old file name
 		String Old = StringConstant;
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;}
-		++LineIndex;
-		if (!evalStringExpression())return false;					//get the old file name
-		if (SEisLE) return false;
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }				// get the new file name
 		String New = StringConstant;
 		if (!checkEOL()) return false;
 
@@ -8197,7 +7763,7 @@ private boolean doUserFunction(){
 	        	}
 				  	 sdDir = new File(Basic.filePath + "/data/"  );
 			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/" +  Old);
-		  if (!lbDir.exists()){									// did we get a dir?
+		  if (!lbDir.exists()){								// did we get a dir?
 			  RunTimeError(Old + " directory/file not in this path");
 			  return false;
 		  }
@@ -13128,7 +12694,7 @@ private boolean doUserFunction(){
         		c = ',';                                                      // pretend we had a comma
 			}else ++LineIndex;          // If not line continue character, increment to next character
 			
-		}while (c == ',');              // Continue looping while there are comma seperators
+		}while (c == ',');              // Continue looping while there are comma separators
 		
 		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
 		  int ValuesSize = Values.size();
@@ -13164,7 +12730,7 @@ private boolean doUserFunction(){
         		c = ',';													   // pretend the char was a comma
 			}else ++LineIndex;
 			
-		}while (c == ',');   // Loop while there are comma seperators
+		}while (c == ',');   // Loop while there are comma separators
 		
 		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
 		  int ValuesSize = Values.size();
@@ -13773,7 +13339,7 @@ private boolean doUserFunction(){
 	        		c = ',';													   // pretend the char was a comma
 				}else ++LineIndex;
 				
-			}while (c == ',');   // Loop while there are comma seperators
+			}while (c == ',');   // Loop while there are comma separators
 			break;
 			
 		case list_is_numeric:
@@ -13792,7 +13358,7 @@ private boolean doUserFunction(){
 	        		c = ',';                                                      // pretend we had a comma
 				}else ++LineIndex;          // If not line continue character, increment to next character
 				
-			}while (c == ',');              // Continue looping while there are comma seperators
+			}while (c == ',');              // Continue looping while there are comma separators
 			
 
 			break;
@@ -15342,7 +14908,7 @@ private boolean doUserFunction(){
 		Bundle FileEntry = new Bundle();		// Get the bundle 
 		FileEntry = FileTable.get(FileNumber);
 		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMR){						// Varify open for read
+		if (FileMode != FMR){						// Verify open for read
 			RunTimeError("File not opened for read at");
 			return false;
 		}
@@ -15452,7 +15018,7 @@ private boolean doUserFunction(){
 		Bundle FileEntry = new Bundle();		// Get the bundle 
 		FileEntry = FileTable.get(FileNumber);
 		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMR){						// Varify open for read
+		if (FileMode != FMR){						// Verify open for read
 			RunTimeError("File not opened for read at");
 			return false;
 		}
@@ -15559,7 +15125,7 @@ private boolean doUserFunction(){
 		Bundle FileEntry = new Bundle();		// Get the bundle 
 		FileEntry = FileTable.get(FileNumber);
 		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMW){						// Varify open for read
+		if (FileMode != FMW){						// Verify open for read
 			RunTimeError("File not opened for read at");
 			return false;
 		}
@@ -16513,10 +16079,10 @@ private boolean doUserFunction(){
 							return true;
 					}
 					
-					if (c == ','){							// if the seperator is a comma
+					if (c == ','){							// if the separator is a comma
 						btPrintLine = btPrintLine + ", ";		// add comma + blank to the line
 						++LineIndex;
-					}else if ( c== ';'){					// if seperator is semi-colon
+					}else if ( c== ';'){					// if separator is semi-colon
 						++LineIndex;						// don't add anything to output
 						WasSemicolon = true;				// and signal we had a semicolon
 						if (ExecutingLineBuffer.charAt(LineIndex) == '\n'){return true;} // if now eol, return without outputting
