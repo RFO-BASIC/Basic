@@ -7690,18 +7690,21 @@ private boolean doUserFunction(){
 		}
 		if ((pnow != pto) && !eof) {
 			int skip = pto - pnow - 1;						// Skip plus single read will get to target position
+			int skipped = 0;
 			int data = -1;
-			try {
-				int avail = bis.available();				// Don't skip past eof
-				skip = (int)bis.skip(Math.min(skip, avail));
-				data = bis.read();							// Read to check eof
-			} catch (Exception e) {
-				RunTimeError("Error: ");
-				return false;
-			}
-			pnow += skip;									// Count bytes skipped
-			if (data >= 0) { ++pnow; }						// If byte was read, count that, too
-			else { eof = true; }							// otherwise mark eof in Bundle
+			do {
+				try {
+					int avail = bis.available();			// Don't skip past eof
+					skipped += (int)bis.skip(Math.min(skip - skipped, avail));
+					data = bis.read();						// Read to check eof
+				} catch (Exception e) {
+					RunTimeError("Error: ");
+					return false;
+				}
+				if (data >= 0) { ++skipped; }				// If byte was read, count it
+				else { eof = true; break; }					// otherwise mark eof in Bundle
+			} while (skipped < skip);
+			pnow += skipped;								// Count bytes skipped
 		}
 		FileEntry.putInt("position", pnow);					// Update Bundle
 		FileEntry.putBoolean("eof", eof);
@@ -12164,7 +12167,7 @@ private boolean doUserFunction(){
 	  private boolean execute_sensors_list(){
 		  
 		  if (SensorsClass != null){                 // If SensorsClass is null ....
-			  RunTimeError("Sensors alread opened");
+			  RunTimeError("Sensors already opened");
 			  return false;
 		  }
 		  
@@ -12215,12 +12218,12 @@ private boolean doUserFunction(){
 	  private boolean execute_sensors_open(){
 		  
 		  if (SensorsClass != null){               // If null.............
-			  RunTimeError("Sensors alread opened at:");
+			  RunTimeError("Sensors already opened at:");
 			  return false;
 		  }
 		  
-		  SensorValues = new double[MaxSensors][4];                       // an array to hold the value
-		  for (int i=0; i<10; ++i){								  // initialize the array to zero
+		  SensorValues = new double[MaxSensors+1][4];                     // an array to hold the value
+		  for (int i=0; i<=MaxSensors; ++i){							  // initialize the array to zero
 			  for (int j=0; j<4; ++j) SensorValues[i][j]= 0;
 		  }
 		  
