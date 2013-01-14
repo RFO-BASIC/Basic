@@ -77,7 +77,7 @@ public class Basic extends ListActivity  {
     	""
     };
     
-    
+    public static int ProcessID;
 	public static Boolean DoAutoRun = false;
 	public static String filePath = "";
 	public static String basePath = "";
@@ -112,6 +112,8 @@ public class Basic extends ListActivity  {
     public void onCreate(Bundle savedInstanceState) {
     	
         super.onCreate(savedInstanceState);					// Set up of fresh start
+        
+        ProcessID = android.os.Process.myPid();
         
         String test = Settings.getBaseDrive(this);
         if (test.equals("none")) 

@@ -1880,7 +1880,7 @@ public void onCreate(Bundle savedInstanceState) {
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Create  " + ExecutingLineIndex );
 	
 	if (Basic.lines == null){
-        android.os.Process.killProcess(android.os.Process.myPid()) ;
+        android.os.Process.killProcess(Basic.ProcessID) ;
 	}
 	
 //	System.gc();
@@ -2367,7 +2367,7 @@ public boolean onTouchEvent(MotionEvent event){
     	
     	if (Stop == false) Stop = true;
     	else {
-    		if (DoAutoRun) android.os.Process.killProcess(android.os.Process.myPid()) ;
+    		if (DoAutoRun) android.os.Process.killProcess(Basic.ProcessID) ;
     		else finish();
     	}
         return false;
@@ -2880,7 +2880,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		break;
 	        	case BKWexit:
 	        		Stop = true;
-	                android.os.Process.killProcess(android.os.Process.myPid()) ;
+	                android.os.Process.killProcess(Basic.ProcessID) ;
 	                break;
 	        	case BKWclipboard_get:
 	        		if (!executeCLIPBOARD_GET()){SyntaxError(); return false;}

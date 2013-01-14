@@ -124,7 +124,7 @@ public class GPS extends Activity implements LocationListener{
 //        	Run.GRopen = false;
         	Run.Stop = true;
         	finish();
-        	if (Basic.DoAutoRun) android.os.Process.killProcess(android.os.Process.myPid()) ;
+        	if (Basic.DoAutoRun) android.os.Process.killProcess(Basic.ProcessID) ;
         	return true;
         }
  	   return super.onKeyUp(keyCode, event);

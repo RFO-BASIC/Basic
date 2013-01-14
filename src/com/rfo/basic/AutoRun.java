@@ -64,7 +64,7 @@ public class AutoRun extends Activity {
     protected void onCreate(Bundle savedInstanceState) {   
 		super.onCreate(savedInstanceState);
 
-//	   Log.v(AutoRun.LOGTAG, " " + AutoRun.CLASSTAG + " On Create PID  " + android.os.Process.myPid());
+//	   Log.v(AutoRun.LOGTAG, " " + AutoRun.CLASSTAG + " On Create PID  " + Basic.ProcessID);
 
 		// The program filename is in the bundle placed in the intent extras by Basic.java
 
