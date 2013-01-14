@@ -134,8 +134,12 @@ public class AutoRun extends Activity {
 		boolean baseDriveChanged = false;
 		int z = aFileName.indexOf(Basic.filePath);
 		if (z == -1) {
-			baseDriveChanged = true;
-			aFileName = " fubar";
+			if (aFileName.startsWith("/source/"))
+				aFileName = Basic.filePath + aFileName;
+			else {
+				baseDriveChanged = true;
+				aFileName = " fubar";
+			}
 		}
 
 		BufferedReader buf = null;
