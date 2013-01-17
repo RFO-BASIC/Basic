@@ -10532,36 +10532,32 @@ private boolean doUserFunction(){
 		  return true;
 	  }
 	  
-	  private String getRawFileName(String input) {
-		  
-		  // Converts a file name with upper and lower case characters
-		  // to a lower case filename.
-		  // The dot extension is appended to the end of the filename
-		  // preceeded by "_"
-		  
-		  // MyFile.png = myfile_png
-		  // bigSound.mp3 = bigsound_mp3
-		  // Earth.jpg = earth_jpg
-		  
-		  // if there is no dot extension, returns empty string ""
-		  
-		  // If the isAudio flag is true then
-		  // the _mp3 (or whatever) will not be appended
-		  
-		  String output = "";                   // Set to empty string
-		  input = input.toLowerCase();			// Convert to lower case
-		  int index = input.indexOf(".");		// Find the dot
-		  if (index == -1) return output;		// if no dot, return ""
-		  output = input.substring(0, index);   // isolate suff in front of dot
-		  return output;						// return the output filename
-	  }
+	private String getAlternateRawFileName(String input) {
+		// Converts a file name with upper and lower case characters to a lower case filename.
+		// The dot extension is appended to the end of the filename preceeded by "_".
+		// Any other dots in the file are also converted to "_".
+
+		// MyFile.png = myfile_png
+		// bigSound.mp3 = bigsound_mp3
+		// Earth.jpg = earth_jpg
+		// Earth.blue.jpg = earth_blue_jpg
+
+		// if there is no dot extension, returns original string
+
+		return input.toLowerCase().replace(".", "_");					// Convert to lower case, convert all '.' to '_'
+	}
 
 	private int getRawResourceID(String fileName) {
+		if (fileName == null) fileName = "";
+		String packageName = BasicContext.getPackageName();				// Get the package name
 		int resID = 0;													// 0 is not a valid resource ID
-		String rawFileName = getRawFileName(fileName);					// Convert conventional filename to raw resource name
-		if (!rawFileName.equals("")) {
-			String packageName = BasicContext.getPackageName();			// Get the package name
-			resID = BasicContext.getResources().getIdentifier(rawFileName, "raw", packageName);	// Get the resource ID
+		for (int attempt = 1; (resID == 0) && (attempt <= 2); ++attempt) {
+			String rawFileName =
+				(attempt == 1) ? getAlternateRawFileName(fileName) :	// Convert conventional filename to raw resource name, BASIC!-style
+				(attempt == 2) ? Basic.getRawFileName(fileName) : "";	// If first try didn't work, try again, Android-style.
+			if (!rawFileName.equals("")) {
+				resID = BasicContext.getResources().getIdentifier(rawFileName, "raw", packageName);	// Get the resource ID
+			}
 		}
 		if (resID == 0) {
 			RunTimeError("Error getting raw resource");

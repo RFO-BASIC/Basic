@@ -27,8 +27,6 @@ Copyright (C) 2010, 2011, 2012 Paul Laughton
 
 package com.rfo.basic;
 
-import static com.rfo.basic.Basic.BasicContext;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -91,6 +89,7 @@ public class Basic extends ListActivity  {
     
     public static Context BasicContext;			// saved so we do not have to pass it around
     public static Context theRunContext = null;
+    public static String BasicPackage = null;
     
     public static String DataPath = "";			// Used in RunProgram to determine where data is stored
     public static String SD_ProgramPath = "";		// Used by Load/Save
@@ -114,6 +113,8 @@ public class Basic extends ListActivity  {
         super.onCreate(savedInstanceState);					// Set up of fresh start
         
         ProcessID = android.os.Process.myPid();
+        BasicContext = getApplicationContext();
+        BasicPackage = BasicContext.getPackageName();
         
         String test = Settings.getBaseDrive(this);
         if (test.equals("none")) 
@@ -132,9 +133,6 @@ public class Basic extends ListActivity  {
     }
     
     private void createForSB() {							// Create code for Standard Basic
-
-        BasicContext = getApplicationContext();
-        
         
 /* If we have entered Basic and there is a program running, then we should not
  * Interfere with that run. We will just exit this attempt. A program running
@@ -154,14 +152,7 @@ public class Basic extends ListActivity  {
 //        samplesLoaded = false;
 
         if (!samplesLoaded){        							// If sample files not loaded, then load them
-      	  	output = new ArrayList<String>();
-        	AA=new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);  // Establish the output screen
-      	  	lv = getListView();
-      	  	lv.setTextFilterEnabled(false);
-      	  	lv.setTextFilterEnabled(false);
-      	  	lv.setSelection(0);
-        	theBackground = new Background();						// Start the background task to load
-        	theBackground.execute("");								// sample and graphics
+        	runBackgroundLoader();									// Start the background task to load samples and graphics
         															// and then go to the editor
         } else 
         // ************ Samples were already loaded ***************************
@@ -177,7 +168,7 @@ public class Basic extends ListActivity  {
         final String action = myIntent.getAction();
         Bundle b = myIntent.getExtras();
         if (b != null) {												   // There is a bundle, thus shortcut run.
-        	String FileName = myIntent.getStringExtra("com.rfo.basic.fn"); // The tag for the filename parameter
+        	String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // The tag for the filename parameter
         	Bundle bb = new Bundle();
         	bb.putString("fn", FileName);								  // fn is the tag for the filename parameter
         	Intent intent = new  Intent(Basic.this, AutoRun.class);		  // in the bundle going to AutoRun
@@ -194,9 +185,10 @@ public class Basic extends ListActivity  {
     }
     
     private void createForAPK() {											// Create code for APK
-    	
-        BasicContext = getApplicationContext();
-        
+    	runBackgroundLoader();
+    }
+    
+    private void runBackgroundLoader() {
 // Establish an output screen so that file load progress can be shown.        
         
   	  	output = new ArrayList<String>();
@@ -323,7 +315,23 @@ public class Basic extends ListActivity  {
     		return false;
     	}
     	else return false;    }
- 
+
+	public static String getRawFileName(String input) {
+		// Converts a file name to an Android internal resource name. 
+		// Upper-case characters are converted to lower-case.
+		// If there is a dot in the name, the dot and everything after it are dropped.
+
+		// MyFile.png = myfile
+		// bigSound.mp3 = bigsound
+		// Earth.jpg = earth
+
+		if (input == null) return "";
+		String output = input.toLowerCase();		// Convert to lower case
+		int index = output.indexOf(".");			// Find the dot
+		if (index == -1) return output;				// if no dot, return as is
+		return output.substring(0, index);			// else isolate stuff in front of dot
+	}
+
     // The loading of the sample files and graphics is done in a background, Async Task rather than the UI task
     // Progress is shown by sending progress messages to the UI task.
  
@@ -402,44 +410,18 @@ public class Basic extends ListActivity  {
     	        	setListAdapter(AA);						// show the output
     		    	lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
     	        }
-    	        
-    	  	  private String getRawFileName(String input) {
-    			  
-    			  // Converts a file name with upper and lower case characters
-    			  // to a lower case filename.
-    			  // The dot extension is appended to the end of the filename
-    			  // preceeded by "_"
-    			  
-    			  // MyFile.png = myfile_png
-    			  // bigSound.mp3 = bigsound_mp3
-    			  // Earth.jpg = earth_jpg
-    			  
-    			  // if there is no dot extension, returns empty string ""
-    			  
-    			  // If the isAudio flag is true then
-    			  // the _mp3 (or whatever) will not be appended
-    			  
-    			  String output = "";                   // Set to empty string
-    			  input = input.toLowerCase();			// Convert to lower case
-    			  int index = input.indexOf(".");		// Find the dot
-    			  if (index == -1) return input;		// if no dot, return the input as is
-    			  output = input.substring(0, index);   // isolate suff in front of dot
-    			  return output;						// return the output filename
-    		  }
 
-    	        
     	        private void LoadGraphics(){
     	        	
     	        	// Loads the icons and audio used for the example programs
     	        	// The files are copied form res.raw to the SD Card
     	        	int resID;
-    	        	String packageName = Basic.BasicContext.getPackageName();
     	        	String PathA;
     	        	
     	        	for (int index = 0; index <=loadFileNames.length; ++index) {
     	        		if (loadFileNames[index].equals("") )return;
     	        		String fn = getRawFileName(loadFileNames[index]);
-    	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", packageName);
+    	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
 		    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
 		    	        if (loadFileNames[index].endsWith(".db"))
 		    	        	PathA = filePath + "/databases/" + loadFileNames[index];
@@ -511,9 +493,8 @@ public class Basic extends ListActivity  {
     	    		// because the the_list will not be there in APKs
     	    		
     	        	int resID;
-    	    		String packageName = Basic.BasicContext.getPackageName();
 	        		String fn = getRawFileName("the_list");
-	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", packageName);
+	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
 	    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
 
     	            InputStreamReader inputreader = new InputStreamReader(inputStream);
@@ -544,8 +525,7 @@ public class Basic extends ListActivity  {
     	        	// into the source/help directory
     	        	publishProgress(".");							 // Show progress for each program loaded
     	        	
-    	        	String ResName = "com.rfo.basic:raw/"+theFileName;
-    	        	int ResId = BasicContext.getResources().getIdentifier(ResName, null, null);
+    	        	int ResId = BasicContext.getResources().getIdentifier(theFileName, "raw", BasicPackage);
     	            InputStream inputStream = BasicContext.getResources().openRawResource(ResId);
     	            InputStreamReader inputreader = new InputStreamReader(inputStream);
     	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
@@ -604,8 +584,8 @@ public class Basic extends ListActivity  {
     	        	// Reads the program file from res.raw/my_program and 
     	            // puts it into memory
     	        	AddProgramLine APL = new AddProgramLine();
-    	        	String ResName = "com.rfo.basic:raw/my_program";
-    	        	int ResId = BasicContext.getResources().getIdentifier(ResName, null, null);
+    	        	String ResName = "my_program";
+    	        	int ResId = BasicContext.getResources().getIdentifier(ResName, "raw", BasicPackage);
     	            InputStream inputStream = BasicContext.getResources().openRawResource(ResId);
     	            InputStreamReader inputreader = new InputStreamReader(inputStream);
     	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
