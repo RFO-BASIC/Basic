@@ -1450,6 +1450,7 @@ public class Run extends ListActivity {
     public static int OnTimerLine;
     public static Timer theTimer;
     public static boolean timerExpired;
+    public static boolean timerStarting;
     
     //********************** Phone RCV variables *************************
     
@@ -17292,6 +17293,7 @@ private boolean doUserFunction(){
 			};
 
 		   timerExpired= false;
+		   timerStarting = true;
 		   theTimer = new Timer();
 		   theTimer.scheduleAtFixedRate (tt, 100, interval);	   
 		   
@@ -17301,7 +17303,10 @@ private boolean doUserFunction(){
 		
 		   Runnable toRunRepeatedly = new Runnable() {
 			    public void run() {
-			    	timerExpired= true;
+			    	if (timerStarting)
+			    		timerStarting = false;
+			    	else
+			    		timerExpired= true;
 			    }
 		   };
 
