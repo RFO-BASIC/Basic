@@ -53,6 +53,7 @@ import android.view.View.OnClickListener;
  */
 
 public class LauncherShortcuts extends Activity {
+	public static final String EXTRA_LS_FILENAME = "com.rfo.basic.fn";
     private EditText theText1;    
     private EditText theText2;    
     private EditText theText3;
@@ -159,7 +160,7 @@ public class LauncherShortcuts extends Activity {
       Intent shortcutIntent = new Intent(Intent.ACTION_MAIN);        // Tells launcher where what to launch
       shortcutIntent.setClassName(this, Basic.class.getName());		 // which is Basic.java
       
-      shortcutIntent.putExtra("com.rfo.basic.fn", FileName);		 // Use the full filename for the file to load
+      shortcutIntent.putExtra(EXTRA_LS_FILENAME, FileName);			 // Use the full filename for the file to load
 
       Intent intent = new Intent();
       intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent);
