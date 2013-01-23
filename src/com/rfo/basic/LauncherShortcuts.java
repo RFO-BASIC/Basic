@@ -33,6 +33,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Environment;
 import android.widget.Button;
 import android.widget.EditText;
 import android.graphics.Bitmap;
@@ -130,6 +131,18 @@ public class LauncherShortcuts extends Activity {
   private void handleOK() {
 	  
 	  // The user has pressed OK
+	  
+	  if (Basic.filePath.equals("")) {							// If BASIC! had not been run in a while,
+		  														// then filePath will be an empty string
+		  														// In this case, establish paths as Basic.java
+		  														// does when it is run.
+	        String test = Settings.getBaseDrive(this);
+	        if (test.equals("none")) 
+	        	Basic.basePath = Environment.getExternalStorageDirectory().getPath();
+	        else 
+	        	Basic.basePath = test;
+	        Basic.filePath =  Basic.basePath + "/" + Basic.AppPath;
+	  }
 	  
 	  String FileName = this.theText1.getText().toString();
 	  String BitmapFileName = this.theText2.getText().toString();

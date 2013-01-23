@@ -93,7 +93,7 @@ This file is part of BASIC! for Android
                 android:summary="Select New Base Drive"
                 android:entries="@array/base_drive_names"
                 android:entryValues="@array/base_drive_values"
-                android:defaultValue="/mnt/sdcard"
+                android:defaultValue="none"
                 android:dialogTitle="Choose one" />
          
          

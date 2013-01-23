@@ -68,8 +68,7 @@ This file is part of BASIC! for Android
      	 
      	     	 <application android:icon="@drawable/icon" 
     			 android:label="@string/app_name"
-    			 android:debuggable="false" 
-    			 
+    			 android:debuggable="false"
     			 android:name="Debugger">
     			 
   			 
