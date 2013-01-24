@@ -293,6 +293,8 @@ public class Editor extends Activity {
 
 		if (Basic.BasicContext == null) {							         // If we have lost context then
 			android.os.Process.killProcess(Basic.ProcessID) ;   // things have gone very bad. Die!
+	        android.os.Process.killProcess(android.os.Process.myPid()) ;
+
 		}
 
 		/*
@@ -388,6 +390,8 @@ public class Editor extends Activity {
 //        Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " onResume " + Basic.DoAutoRun);
         if (Basic.DoAutoRun) {
 			android.os.Process.killProcess(Basic.ProcessID) ;
+	        android.os.Process.killProcess(android.os.Process.myPid()) ;
+
         } else {
         	if (SyntaxErrorDisplacement >= 0 &&
 				SyntaxErrorDisplacement < AddProgramLine.lineCharCounts.size()) {	// If run ended in error, select error line
@@ -538,7 +542,10 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.search:
-				if (mText == null) android.os.Process.killProcess(Basic.ProcessID) ;
+				if (mText == null) {
+					android.os.Process.killProcess(Basic.ProcessID) ;
+					android.os.Process.killProcess(android.os.Process.myPid()) ;
+				}
 				DisplayText = mText.getText().toString();
 				selectionStart = mText.getSelectionStart();
 				selectionEnd = mText.getSelectionEnd();
@@ -546,7 +553,10 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.format:
-				if (mText == null) android.os.Process.killProcess(Basic.ProcessID) ;
+				if (mText == null) {
+					android.os.Process.killProcess(Basic.ProcessID) ;
+					android.os.Process.killProcess(android.os.Process.myPid()) ;
+				}
 				DisplayText = mText.getText().toString();
 				startActivity(new Intent(this, Format.class));			// Start the format activity
 				Basic.Saved = false;
@@ -674,6 +684,7 @@ public class Editor extends Activity {
 			case R.id.exit:
 				finish();
 				android.os.Process.killProcess(Basic.ProcessID) ;
+		        android.os.Process.killProcess(android.os.Process.myPid()) ;
 				return true;
 
 			default:

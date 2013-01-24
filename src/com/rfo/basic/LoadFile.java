@@ -369,6 +369,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
             Basic.Saved =true;											// check
             if (Editor.mText == null) {
             	android.os.Process.killProcess(Basic.ProcessID) ;
+            	android.os.Process.killProcess(android.os.Process.myPid()) ;
             }
             Editor.mText.setText(Editor.DisplayText);
             finish();													// LoadFile is done

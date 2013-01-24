@@ -219,7 +219,10 @@ public class GR extends Activity {
         	Run.Stop = true;
  
         	finish();
-        	if (Basic.DoAutoRun) android.os.Process.killProcess(Basic.ProcessID) ;
+        	if (Basic.DoAutoRun) {
+        		android.os.Process.killProcess(Basic.ProcessID) ;
+        		android.os.Process.killProcess(android.os.Process.myPid()) ;
+			}
 
         }*/
         return true;
@@ -242,7 +245,10 @@ public class GR extends Activity {
         	Run.Stop = true;
  
         	finish();
-        	if (Basic.DoAutoRun) android.os.Process.killProcess(Basic.ProcessID) ;
+        	if (Basic.DoAutoRun) {
+        		android.os.Process.killProcess(Basic.ProcessID) ;
+        		android.os.Process.killProcess(android.os.Process.myPid()) ;
+			}
         	return true;
 
         }
