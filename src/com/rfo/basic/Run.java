@@ -8784,6 +8784,10 @@ private boolean doUserFunction(){
 			RunTimeError(errStr);									// DB has been closed
 			return false;
 		}
+		if (i < 0 || i > DataBases.size()) {
+			RunTimeError("Invalid Database Pointer at:");
+			return false;
+		}
 		return true;
 	}
 
@@ -8806,6 +8810,10 @@ private boolean doUserFunction(){
 			RunTimeError(errStr);									// DB has been closed
 			return false;
 		}
+		if (i < 0 || i > DataBases.size()) {
+			RunTimeError("Invalid Database Pointer at:");
+			return false;
+		}
 		return true;
 	}
 
@@ -8825,6 +8833,10 @@ private boolean doUserFunction(){
 		int i = NumericVarValues.get(theValueIndex).intValue();
 		if (i == 0) {												// If pointer is zero
 			RunTimeError("Cursor done at:");						// then cursor is used up
+			return false;
+		}
+		if (i < 0 || i > Cursors.size()) {
+			RunTimeError("Invalid Cursor Pointer at:");
 			return false;
 		}
 		return true;
