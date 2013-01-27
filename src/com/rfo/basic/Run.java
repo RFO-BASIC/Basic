@@ -151,9 +151,6 @@ import android.os.PowerManager;
 import android.os.Vibrator;
 import android.os.SystemClock;
 import android.os.ResultReceiver;
-import android.provider.MediaStore;
-import android.provider.MediaStore.Images;
-import android.provider.MediaStore.Images.Media;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.telephony.PhoneStateListener;
@@ -199,10 +196,6 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-
-import android.speech.tts.TextToSpeech;
-import android.speech.tts.TextToSpeech.OnUtteranceCompletedListener;
-import android.text.format.Time;
 
 import org.apache.commons.net.ftp.*;
 import android.widget.AdapterView.OnItemClickListener;
@@ -850,7 +843,6 @@ public class Run extends ListActivity {
     public static final int sql_new_table =10;
     public static final int sql_none = 98;
     
-	public static boolean SQL_return = true;
     public static ArrayList<SQLiteDatabase> DataBases; 	 // List of created data bases
     public static ArrayList<Cursor> Cursors; 	 		 // List of created data bases
     
@@ -2105,7 +2097,6 @@ private void InitVars(){
     ItemSelected = false;                 // Signal from Select.java saying an item has been selected 
     SelectMessage = "" ; 				// The toast message for Select.java to display
     
-	SQL_return = true;
     DataBases = new ArrayList<SQLiteDatabase>() ; 	 // List of created data bases
    Cursors = new ArrayList<Cursor>() ; 	 		 // List of created data bases
    
@@ -3454,48 +3445,32 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			return checkEOL();								// then done
 		}
 		
+		if (!isNext('=')) {									// Var must be followed by =
+			return false;
+		}
+		
 //		if (theValueIndex == null) return false;            // Why? Because it is sometimes null
 		
 		int AssignToVarNumber = theValueIndex;				// Save the assign to Var Number
 		
-		if (!isNext('=')) {									// Var must be followed by =
-				return false;
+		if (VarIsNumeric) {									// if var is number then 
+			if (!evalNumericExpression()) { return false; }	// evaluate following numeric expression
+			NumericVarValues.set(AssignToVarNumber, EvalNumericExpressionValue);  // and assign results to the var
+		} else {											// Assignment is string expression
+			if (!getStringArg()) { return false; }			// Evaluate the string expression
+			StringVarValues.set(AssignToVarNumber, StringConstant); // Assign result to the string var
 		}
-		
-		if (VarIsNumeric){									// if var is number then 
-			if (!evalNumericExpression()){					// evaluate following numeric expression
-				return false;
-			}
-			NumericVarValues.set(AssignToVarNumber, EvalNumericExpressionValue);  //and assign results to the var
-			if (!checkEOL())return false;
-
-			return true;									// Done with Numeric assignment
-		}
-															// Assignment is string expression
-		if (!evalStringExpression()){return false;}			// Evaluate the string expression
-		if (SEisLE) return false;
-		StringVarValues.set(AssignToVarNumber, StringConstant); // Assign result to the string var
-		
-		if (!checkEOL())return false;
-		
-//		return checkEOL();
-
-		return true;										// Done with string assignment
-		
-		
+		return checkEOL();
 	}	
 	
 	private  boolean evalNumericExpression(){			// Evaluate a numeric expression
 
 		if (LineIndex >= ExecutingLineBuffer.length() ) return false;
 															// Evaluate a Numeric Expression
-		if (ExecutingLineBuffer.charAt(LineIndex)=='\n'){   // If eol, there is not expression
-			return false;
-		}
-		if (ExecutingLineBuffer.charAt(LineIndex)==')'){   // If eol, there is not expression
-			return false;
-		}
-		Stack<Double> ValueStack = new Stack<Double>();     // Each call to eval gets it's own stack
+		char c = ExecutingLineBuffer.charAt(LineIndex);
+		if (c == '\n' || c == ')') { return false; }		// If eol or starts with ')', there is not an expression
+
+		Stack<Double> ValueStack = new Stack<Double>();     // Each call to eval gets its own stack
 		Stack<Integer>OpStack = new Stack<Integer>();		// thus we can recursively call eval
 		int SaveIndex = LineIndex;
 		
@@ -8796,18 +8771,85 @@ private boolean doUserFunction(){
     			return false;										// report fail
 
     		}
-    	   
+
+	private boolean getDbPtrArg() {									// first arg of command is DB Pointer Variable
+		String errStr = "Database not opened at:";
+		if (DataBases.isEmpty()) {
+			RunTimeError(errStr);
+			return false;
+		}
+		if (!getNVar()) { return false; }							// the DB table pointer
+		int i = NumericVarValues.get(theValueIndex).intValue();
+		if (i == 0) {												// If pointer is zero
+			RunTimeError(errStr);									// DB has been closed
+			return false;
+		}
+		return true;
+	}
+
+	private boolean getVarAndDbPtrArgs(int[] args) {				// first arg of command is a numeric variable
+																	// and second is a DB table pointer
+		String errStr = "Database not opened at:";
+		if (DataBases.isEmpty()){
+			RunTimeError(errStr);
+			return false;
+		}
+		if (!getNVar()) { return false; }							// user's nvar
+		args[0] = theValueIndex;
+
+		if (!isNext(',')) { return false; }
+		if (!getNVar()) { return false; }							// the DB table pointer
+		args[1] = theValueIndex;
+
+		int i = NumericVarValues.get(theValueIndex).intValue();
+		if (i == 0) {												// If pointer is zero
+			RunTimeError(errStr);									// DB has been closed
+			return false;
+		}
+		return true;
+	}
+
+	private boolean getVarAndCursorPtrArgs(int[] args) {			// first arg of command is a numeric variable
+																	// and second is a DB cursor pointer
+		if (Cursors.isEmpty()) {									// Make sure there is at least one cursor
+			RunTimeError("Cursor not available at:");
+			return false;
+		}
+		if (!getNVar()) { return false; }							// user's nvar
+		args[0] = theValueIndex;
+
+		if (!isNext(',')) { return false; }
+		if (!getNVar()) { return false; }							// the DB cursor pointer
+		args[1] = theValueIndex;
+
+		int i = NumericVarValues.get(theValueIndex).intValue();
+		if (i == 0) {												// If pointer is zero
+			RunTimeError("Cursor done at:");						// then cursor is used up
+			return false;
+		}
+		return true;
+	}
+
+	private boolean getColumnValuePairs(ContentValues values) {		// Get column/value pairs from user command
+		if (!isNext(',')) { return false; }
+		do {
+			if (!getStringArg()) { return false; }					// Column
+			String Column = StringConstant;
+			if (!isNext(',') || !getStringArg()) { return false; }	// Value
+			String Value = StringConstant;
+			values.put(Column, Value);								// Store the pair
+		} while (isNext(','));
+		return true;
+	}
+
     	  private boolean execute_sql_open(){
 
     		   if (!getVar())return false;							// DB Pointer Variable
     		   if (!VarIsNumeric)return false;						// for the DB table pointer
     		   int SaveValueIndex = theValueIndex;
 
-    		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-    		   ++LineIndex;
-    		   
-    		   if (!evalStringExpression())return false;							// Get Data Base Name
-    		   if (SEisLE) return false;
+    		   if (!isNext(',')) return false;
+    		   if (!getStringArg()) return false;					// Get Data Base Name
     		   String DBname = StringConstant;
     		   
     			if (!checkEOL()) return false;
@@ -8826,7 +8868,7 @@ private boolean doUserFunction(){
 
     		   SQLiteDatabase db;
     		   
-    		   try{															// Do the open or create
+    		   try{													// Do the open or create
     			   db = SQLiteDatabase.openOrCreateDatabase(theFile, null );
     		   } catch  (Exception e){
     			   RunTimeError("SQL Exception: "+e);
@@ -8840,144 +8882,73 @@ private boolean doUserFunction(){
     		   DataBases.add(db);
     		   return true;
     	   }
-    	   
-    	  private boolean execute_sql_close(){
-    		  
-    		  if (DataBases.isEmpty()){						// If no databases have been opened
-    			  RunTimeError("Database not opened at:");
-    			  return false;
-    		  }
-    		  
-   		   if (!getVar())return false;							// DB Pointer Variable
-		   if (!VarIsNumeric)return false;						// for the DB table pointer
-		   double d = NumericVarValues.get(theValueIndex);
-			if (!checkEOL()) return false;
 
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Database not opened at:");					// DB has been prviously closed
-			  return false;		   
-		   }
-		   
-		   int I = (int) d;
-		   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
+		private boolean execute_sql_close(){
+		
+			if (!getDbPtrArg()) return false;						// get variable for the DB table pointer
+			int i = NumericVarValues.get(theValueIndex).intValue();
+			if (!checkEOL()) return false;
+			
+			SQLiteDatabase db = DataBases.get(i-1);					// get the data base
 		   try {
-			   db.close();										   // Try closeing it
+			   db.close();											// Try closing it
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e );
+				RunTimeError("Error: " + e);
 			   return false;
 		   }
 		   
-		   NumericVarValues.set(theValueIndex, 0.0);			// Set the pointer to 0 to indicate closed.
+		   NumericVarValues.set(theValueIndex, 0.0);				// Set the pointer to 0 to indicate closed.
 		   
     	   return true;
     		  
     	  }
 
-    	  private boolean execute_sql_insert(){
-    		  
- 		  if (DataBases.isEmpty()){								// If no databases have been opened...
- 			 RunTimeError("Database not opened at:");
-			  return false;
-		  }
+		private boolean execute_sql_insert(){
+		
+			if (!getDbPtrArg()) return false;						// get variable for the DB table pointer
+			int i = NumericVarValues.get(theValueIndex).intValue();
+			SQLiteDatabase db = DataBases.get(i-1);					// get the data base
 
-  		   if (!getVar())return false;							// DB Pointer Variable
-		   if (!VarIsNumeric)return false;						// for the DB table pointer
-		   double d = NumericVarValues.get(theValueIndex);
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;						// Table Name
+			String TableName = StringConstant;
 
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Database not opened at:");					// DB has been closed
-			  return false;		   
-		   }
-		   int I = (int) d;
-		   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
+			ContentValues values = new ContentValues();
+			if (!getColumnValuePairs(values)) return false;			// Get column/value pairs from user command
 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   if (!evalStringExpression())return false;			   // Table Name
-		   if (SEisLE) return false;
-		   String TableName = StringConstant;
-
-	       ContentValues values = new ContentValues();
-	       
-	       // Get column/value pairs from user command
-	       
-		   char c;
-		   String Column;
-		   String Value;
-		   if (ExecutingLineBuffer.charAt(LineIndex)!=',') return false;
-		   ++LineIndex;
-		   
-		   do{
-    		   if (!evalStringExpression())return false;						// Columns
-    		   if (SEisLE) return false;
-    		   Column = StringConstant;
-
-    		   if (ExecutingLineBuffer.charAt(LineIndex)!=',') return false;
-    		   ++LineIndex;
-
-    		   if (!evalStringExpression())return false;						// Values
-    		   if (SEisLE) return false;
-    		   Value = StringConstant;
-
-    		   values.put(Column, Value);										// save the pair
-
-    	       c = ExecutingLineBuffer.charAt(LineIndex);
-    		   ++LineIndex;
-		   } while (c == ',');
+			if (!checkEOL()) return false;
 
 		   try {													// Now insert the pairs into the named table
 	        db.insertOrThrow(TableName, null, values);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e );
+				RunTimeError("Error: " + e);
 			   return false;
 		   }
 
 		   return true;
    	   }
-    	  
-       private boolean execute_sql_query(){
-    	   
-  		  if (DataBases.isEmpty()){								// If no databases opened ..
-  			RunTimeError("Invalid Database Pointer at:");
-			  return false;
-		  }
 
-		   if (!getVar())return false;							// Quary Cursor Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
+		private boolean execute_sql_query(){
+		
+			int[] args = new int[2];							// Get the first two args:
+			if (!getVarAndDbPtrArgs(args)) return false;
+			int SaveValueIndex = args[0];						// Query Cursor Variable
+			int DbTablePointerIndex = args[1];					// DB table pointer
 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+			int i = NumericVarValues.get(DbTablePointerIndex).intValue();
+			SQLiteDatabase db = DataBases.get(i-1);				// get the data base
 
-  		   if (!getVar())return false;							// DB Pointer Variable
-		   if (!VarIsNumeric)return false;						// for the DB table pointer
-		   double d = NumericVarValues.get(theValueIndex);
-
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Invalid Database Pointer at:");					// DB has been closed
-			  return false;		   
-		   }
-		   
-		   int I = (int) d;
-		   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
-
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-
-		   if (!evalStringExpression())return false;			// Table Name
-		   if (SEisLE) return false;
-		   String TableName = StringConstant;
-		   
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-
-		   if (!evalStringExpression())return false;			// String of comma seperated columns to get
-		   if (SEisLE) return false;
-		   String RawColumns = StringConstant;
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;					// Table Name
+			String TableName = StringConstant;
+			
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;					// String of comma separated columns to get
+			String RawColumns = StringConstant;
 		   
 		   ArrayList<String> cList = new ArrayList<String>();	// Must convert string to an array of columns
 		   														// starting by creating an Array List of column names
-		   int i = 0;
+
 		   String cTemp = "";									// Parse the Raw Columns
 		   for (int j=0; j<RawColumns.length(); ++j){
 			   char t = RawColumns.charAt(j);
@@ -8998,28 +8969,23 @@ private boolean doUserFunction(){
 		   String Where = "";									// if no Where given, set empty
 		   String Order = "";									// if no Order given, set empty
 		   
-		   if (ExecutingLineBuffer.charAt(LineIndex) == ','){	// if no comma, then no optional Where
-			   ++LineIndex;
-			   if (!evalStringExpression())return false;		// Where Value
-			   if (SEisLE) return false;
-			   Where = StringConstant;
-			   
-			   if (ExecutingLineBuffer.charAt(LineIndex) == ','){	// if no comma, then no optional Where
-				   ++LineIndex;
-				   if (!evalStringExpression())return false;		// Where Value
-				   if (SEisLE) return false;
-				   Order = StringConstant;
-			   }
-			   
-		   }
+			if (isNext(',')) {									// if no comma, then no optional Where
+				if (!getStringArg()) return false;				// Where Value
+				Where = StringConstant;
+
+				if (isNext(',')) {								// if no comma, then no optional Order
+					if (!getStringArg()) return false;			// Oder Value
+					Order = StringConstant;
+				}
+			}
+			if (!checkEOL()) return false;
 
 		   Cursor cursor;
-		   try{													// Do the quary and get the cursor
+		   try{													// Do the query and get the cursor
 	           cursor = db.query(TableName, Q_Columns, Where, null, null,
 	              null, Order);
 		   } catch (Exception e) {
-				RunTimeError("Error: " + e );
-
+				RunTimeError("Error: " + e);
 			   return false;
 		   }
 		   
@@ -9029,83 +8995,58 @@ private boolean doUserFunction(){
 		   return true;
        }
 
-       private boolean execute_sql_next(){
+		private boolean execute_sql_next(){
 
-    	   if (Cursors.isEmpty()) {								// Make sure there is at least one cursor
-    		   RunTimeError("Cursor not available at:");
-			  return false;
-		  }
-    	   
-		   if (!getVar())return false;							// Done Flag Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveDoneIndex = theValueIndex;
-		   NumericVarValues.set(SaveDoneIndex, 0.00);           // set Not Done
-		   if (!isNext(',')) return false;
+			int[] args = new int[2];							// Get the first two args:
+			if (!getVarAndCursorPtrArgs(args)) return false;
+			int SaveDoneIndex = args[0];						// Done Flag variable
+			int SaveCursorIndex = args[1];						// DB Cursor pointer
 
-  		   if (!getVar())return false;							// DB Cursor Variable
-		   if (!VarIsNumeric)return false;						// for the Cursor pointer
-		   double d = NumericVarValues.get(theValueIndex);
-		   int SaveCursorIndex = theValueIndex;
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Cursor done at:");							// then cursor is used up
-			  return false;		   
-		   }
-		   int I = (int) d;
-		   Cursor cursor = Cursors.get(I-1);					// get the cursor
+			NumericVarValues.set(SaveDoneIndex, 0.00);			// set Not Done
+			int i = NumericVarValues.get(SaveCursorIndex).intValue();
+			Cursor cursor = Cursors.get(i-1);					// get the cursor
 
 		   String result;
 		   if (cursor.moveToNext()) {							// if there is another row, go there
 			   for (int index = 0; isNext(','); ++index) {
-				   if (!getVar())return false;							// Get next result variable
-				   if (VarIsNumeric)return false;						// 
+				   if (!getSVar())return false;					// Get next result variable
 				   try{
 				   result = cursor.getString(index); 			// get the result
 				   } catch (Exception e) {
-						RunTimeError("Error: " + e );
+						RunTimeError("Error: " + e);
 					   return false;
 				   }
 				   if (result == null) { result = ""; }
-				   StringVarValues.set(theValueIndex, result);			// set result into var
+				   StringVarValues.set(theValueIndex, result);	// set result into var
 			   }
+			   return checkEOL();
+
 		   } else {												// no next row, cursor is used up
 			   cursor.close();
 			   NumericVarValues.set(SaveDoneIndex, 1.00);
 			   NumericVarValues.set(SaveCursorIndex, 0.0);
+
+			   return true;
 		   }
-		   
-    	   return true;
        }
 
-       private boolean execute_sql_delete(){
+	private boolean execute_sql_delete(){
 
-    	   if (DataBases.isEmpty()){
-    		   RunTimeError("Database not opened at:");
-			  return false;
-		  }
-		  
-		   if (!getVar())return false;							// DB Pointer Variable
-	   if (!VarIsNumeric)return false;						    // for the DB table pointer
-	   double d = NumericVarValues.get(theValueIndex);
+		if (!getDbPtrArg()) return false;						// get variable for the DB table pointer
+		int i = NumericVarValues.get(theValueIndex).intValue();
+		SQLiteDatabase db = DataBases.get(i-1);					// get the data base
 
-	   if (d == 0.0) {										// If pointer is zero
-		   RunTimeError("Database not opened at:");					// DB has been closed
-		  return false;		   
-	   }
-	   int I = (int) d;
-	   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
-	   
-	   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-	   ++LineIndex;
-	   if (!evalStringExpression())return false;			// Table Name
-	   if (SEisLE) return false;
-	   String TableName = StringConstant;
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;						// Table Name
+		String TableName = StringConstant;
 
-	   String Where = null;									// if no Where given, set null
-	   if (ExecutingLineBuffer.charAt(LineIndex) == ','){	// if no comma, then no optional Where
-		   ++LineIndex;
-		   if (!evalStringExpression())return false;		// Where Value
-		   Where = StringConstant;
-	   }
+		String Where = null;										// if no Where given, set null
+		if (isNext(',')) {										// if no comma, then no optional Where
+			if (!getStringArg()) return false;					// Where Value
+			Where = StringConstant;
+		}
+		if (!checkEOL()) return false;
+
 	   try {
 		   db.delete(TableName, Where, null);					// do the deletes
 	   }
@@ -9115,93 +9056,47 @@ private boolean doUserFunction(){
 	   }
 
 	   return true;
-       }
+	}
 
-       private boolean execute_sql_update() {
+		private boolean execute_sql_update() {
 
-  		  if (DataBases.isEmpty()){
-  			RunTimeError("Database not opened at:");
-			  return false;
-		  }
+			if (!getDbPtrArg()) return false;					// get variable for the DB table pointer
+			int i = NumericVarValues.get(theValueIndex).intValue();
+			SQLiteDatabase db = DataBases.get(i-1);				// get the data base
 
-  		   if (!getVar())return false;							// DB Pointer Variable
-		   if (!VarIsNumeric)return false;						// for the DB table pointer
-		   double d = NumericVarValues.get(theValueIndex);
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Database not opened at:");					// DB has been closed
-			  return false;		   
-		   }
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;					// Table Name
+			String TableName = StringConstant;
 
-		   int I = (int) d;
-		   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
+			ContentValues values = new ContentValues();
+			if (!getColumnValuePairs(values)) return false;		// Get column/value pairs from user command
 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   if (!evalStringExpression())return false;			// Table Name
-		   if (SEisLE) return false;
-		   String TableName = StringConstant;
+			String Where = null;								// Where is optional
+			if (isNext(':')) {									// Colon indicates Where follows
+				if (!getStringArg()) return false;				// Where Value
+				Where = StringConstant;
+			}
+			if (!checkEOL()) return false;
 
-	       ContentValues values = new ContentValues();
-	       
-		   char c;
-		   String Column;
-		   String Value;
-		   if (ExecutingLineBuffer.charAt(LineIndex)!=',') return false;
-		   ++LineIndex;
-		   do{
-    		   if (!evalStringExpression())return false;						// Columns
-    		   if (SEisLE) return false;
-    		   Column = StringConstant;
-    		   if (ExecutingLineBuffer.charAt(LineIndex)!=',') return false;
-    		   ++LineIndex;
-    		   if (!evalStringExpression())return false;						// Values
-    		   if (SEisLE) return false;
-    		   Value = StringConstant;
-    	       values.put(Column, Value);
-    		   c = ExecutingLineBuffer.charAt(LineIndex);
-    		   ++LineIndex;
-		   } while (c == ',');
-		   
-		   String Where = null;									// Where is optional
-		   if (c == ':'){										// Colon indicates Where follows
-			   if (!evalStringExpression())return false;		// Where Value
-			   if (SEisLE) return false;
-			   Where = StringConstant;
-		   }
-		   
 		   try {
 	        db.update(TableName, values, Where, null);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e );
+				RunTimeError("Error: " + e);
 			   return false;
 		   }
 
-    	   
     	   return true;
        }
-       
-       private boolean execute_sql_exec(){
-    	   
-   		  if (DataBases.isEmpty()){
-   			RunTimeError("Database not opened at:");
-			  return false;
-		  }
 
-  		   if (!getVar())return false;							// DB Pointer Variable
-		   if (!VarIsNumeric)return false;						// for the DB table pointer
-		   double d = NumericVarValues.get(theValueIndex);
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Database not opened");					// DB has been closed
-			  return false;		   
-		   }
+		private boolean execute_sql_exec(){
+			if (!getDbPtrArg()) return false;					// get variable for the DB table pointer
+			int i = NumericVarValues.get(theValueIndex).intValue();
+			SQLiteDatabase db = DataBases.get(i-1);				// get the data base
 
-		   int I = (int) d;
-		   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
-
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   if (!evalStringExpression())return false;			// Command string
-		   String CommandString = StringConstant;
+			if (!isNext(',')) return false;
+			if (!evalStringExpression()) return false;			// Command string
+			String CommandString = StringConstant;
+			if (!checkEOL()) return false;
 
 		   try {
 		        db.execSQL(CommandString);
@@ -9212,119 +9107,82 @@ private boolean doUserFunction(){
 
     	   return true;
        }
-       
-      private boolean execute_sql_raw_query(){
-  		  if (DataBases.isEmpty()){
-  			RunTimeError("Database not opened at:");
-			  return false;
-		  }
 
-		   if (!getVar())return false;							// Quary Cursor Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		private boolean execute_sql_raw_query(){
 
-  		   if (!getVar())return false;							// DB Pointer Variable
-		   if (!VarIsNumeric)return false;						// for the DB table pointer
-		   double d = NumericVarValues.get(theValueIndex);
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Database not opened at:");					// DB has been closed
-			  return false;		   
-		   }
+			int[] args = new int[2];							// Get the first two args:
+			if (!getVarAndDbPtrArgs(args)) return false;
+			int SaveValueIndex = args[0];						// Query Cursor Variable
+			int DbTablePointerIndex = args[1];					// DB table pointer
 
-		   int I = (int) d;
-		   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
+			int i = NumericVarValues.get(DbTablePointerIndex).intValue();
+			SQLiteDatabase db = DataBases.get(i-1);				// get the data base
 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   if (!evalStringExpression())return false;			// Command string
-		   if (SEisLE) return false;
-		   String QuaryString = StringConstant;
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;					// Command string
+			String QueryString = StringConstant;
+			if (!checkEOL()) return false;
 
 		   Cursor cursor;
-		   try{													// Do the quary and get the cursor
-	           cursor = db.rawQuery(QuaryString, null);
+		   try{													// Do the query and get the cursor
+	           cursor = db.rawQuery(QueryString, null);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e );
+				RunTimeError("Error: " + e);
 			   return false;
 		   }
 		   
 		   NumericVarValues.set(SaveValueIndex, (double) Cursors.size()+1); // Save the Cursor index into the var
 		   Cursors.add(cursor);												// and save the cursor.
 
-		   
     	  return true;
       }
-      
-      private boolean execute_sql_drop_table(){
 
-  		   if (!getVar())return false;							// DB Pointer Variable
-		   if (!VarIsNumeric)return false;						// for the DB table pointer
-		   double d = NumericVarValues.get(theValueIndex);
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Database not opened at:");					// DB has been closed
-			  return false;		   
-		   }
+		private boolean execute_sql_drop_table(){
 
-		   int I = (int) d;
-		   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
+			if (!getDbPtrArg()) return false;					// get variable for the DB table pointer
+			int i = NumericVarValues.get(theValueIndex).intValue();
+			SQLiteDatabase db = DataBases.get(i-1);				// get the data base
 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   if (!evalStringExpression())return false;			// Table Name
-		   if (SEisLE) return false;
-		   String TableName = StringConstant;
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;					// Table Name
+			String TableName = StringConstant;
+			if (!checkEOL()) return false;
 
-		   String CommandString = StringConstant;
-		   
-		   CommandString = "DROP TABLE IF EXISTS " + TableName;
+			String CommandString = "DROP TABLE IF EXISTS " + TableName;
 
 		   try {
 		        db.execSQL(CommandString);
 			   }catch (Exception e) {
-					RunTimeError("Error: " + e );
+					RunTimeError("Error: " + e);
 				   return false;
 			   }
 		   
     	  return true;
       }
 
-      private boolean execute_sql_new_table(){
+		private boolean execute_sql_new_table(){
 
- 		   if (!getVar())return false;							// DB Pointer Variable
-		   if (!VarIsNumeric)return false;						// for the DB table pointer
-		   double d = NumericVarValues.get(theValueIndex);
-		   if (d == 0.0) {										// If pointer is zero
-			   RunTimeError("Database not opened at:");					// DB has been closed
-			  return false;		   
-		   }
+			if (!getDbPtrArg()) return false;						// get variable for the DB table pointer
+			int i = NumericVarValues.get(theValueIndex).intValue();
+			SQLiteDatabase db = DataBases.get(i-1);					// get the data base
 
-		   int I = (int) d;
-		   SQLiteDatabase db = DataBases.get(I-1);					// get the data base
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;			   			// Table Name
+			String TableName = StringConstant;
 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   if (!evalStringExpression())return false;			// Table Name
-		   String TableName = StringConstant;
+			if (!isNext(',')) return false;
+			ArrayList <String> Columns = new ArrayList<String>();
+			do{
+				if (!getStringArg()) return false;						// Columns
+				Columns.add(StringConstant);
+			} while (isNext(','));
+			if (!checkEOL()) return false;
 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   char c;
-		   ArrayList <String> Columns = new ArrayList<String>();
-		   do{
-    		   if (!evalStringExpression())return false;						// Columns
-    		   if (SEisLE) return false;
-    		   Columns.add(StringConstant);
-    		   c = ExecutingLineBuffer.charAt(LineIndex);
-    		   ++LineIndex;
-		   } while (c == ',');
-		   
 		   String columns = "";
 		   int cc = Columns.size();
-		   for (int i =0; i<cc; ++i){
-			   columns = columns + Columns.get(i) + " TEXT";
-			   if (i != cc-1) columns = columns +  " , ";
+		   for (int j =0; j<cc; ++j){
+			   columns = columns + Columns.get(j) + " TEXT";
+			   if (j != cc-1) columns = columns +  " , ";
 		   }
 		   
 		   String CommandString = StringConstant;	   
@@ -9335,7 +9193,7 @@ private boolean doUserFunction(){
 		   try {
 		        db.execSQL(CommandString);
 			   }catch (Exception e) {
-					RunTimeError("Error: " + e );
+					RunTimeError("Error: " + e);
 				   return false;
 			   }
 		   
@@ -9594,12 +9452,12 @@ private boolean doUserFunction(){
 			   return false;			   
 		   }
 		   Bitmap SrcBitMap = BitmapList.get(q);
-		   if (!SrcBitMap.isMutable()){
-			   RunTimeError("Bitmaps loaded from files not changeable.");
-			   return false;
-		   }
 		   if (SrcBitMap == null){
 			   RunTimeError("Bitmap was deleted");
+			   return false;
+		   }
+		   if (!SrcBitMap.isMutable()){
+			   RunTimeError("Bitmaps loaded from files not changeable.");
 			   return false;
 		   }
 		   
@@ -17345,8 +17203,4 @@ private boolean doUserFunction(){
 		   return doResume();
 	   }
 
-	    
-
-
-	
 } // End of Run
