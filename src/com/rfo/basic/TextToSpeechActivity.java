@@ -80,7 +80,7 @@ public class TextToSpeechActivity extends Activity implements TextToSpeech.OnIni
        	
         	finish();
         	if (Basic.DoAutoRun) {
-        		android.os.Process.killProcess(Basic.ProcessID) ;
+//        		android.os.Process.killProcess(Basic.ProcessID) ;
         		android.os.Process.killProcess(android.os.Process.myPid()) ;
         	}
 

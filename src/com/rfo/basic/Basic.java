@@ -112,9 +112,9 @@ public class Basic extends ListActivity  {
     	
         super.onCreate(savedInstanceState);					// Set up of fresh start
         
-        if (ProcessID != 0 )
-        	android.os.Process.killProcess(ProcessID) ;
-        
+        Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " Entry Process ID =  " + ProcessID);
+//        if (ProcessID != 0 )
+//        	android.os.Process.killProcess(ProcessID) ;
         ProcessID = android.os.Process.myPid();
         BasicContext = getApplicationContext();
         BasicPackage = BasicContext.getPackageName();

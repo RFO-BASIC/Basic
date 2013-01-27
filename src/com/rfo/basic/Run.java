@@ -1881,7 +1881,7 @@ public void onCreate(Bundle savedInstanceState) {
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Create  " + ExecutingLineIndex );
 	
 	if (Basic.lines == null){
-        android.os.Process.killProcess(Basic.ProcessID) ;
+//        android.os.Process.killProcess(Basic.ProcessID) ;
         android.os.Process.killProcess(android.os.Process.myPid()) ;
         
 	}
@@ -2371,7 +2371,7 @@ public boolean onTouchEvent(MotionEvent event){
     	if (Stop == false) Stop = true;
     	else {
     		if (DoAutoRun) {
-    			android.os.Process.killProcess(Basic.ProcessID) ;
+//    			android.os.Process.killProcess(Basic.ProcessID) ;
     			android.os.Process.killProcess(android.os.Process.myPid()) ;
     		}
     		else finish();
