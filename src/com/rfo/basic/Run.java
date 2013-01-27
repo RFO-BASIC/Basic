@@ -215,7 +215,14 @@ public class Run extends ListActivity {
     private static final String LOGTAG = "Run";
     private static final String CLASSTAG = Run.class.getSimpleName();
 //  Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
-    
+
+	public static class Command {						// Map a command key word string to its execution function
+		private final String mName;						// The command key word
+		public Command(String name) { mName = name; }
+		public String name() { return mName; }			// Get the command key word
+		public boolean run() { return false; }			// Run the command execution function
+	}
+
 // **********  The variables for the Basic Key words ****************************    
     
     public static final String BasicKeyWords[]={
@@ -825,24 +832,28 @@ public class Run extends ListActivity {
     // *********************  SQL Variables  **************************************
     
     public static final String SQL_kw[] = {				// SQL Commands
-    	"open", "close", "insert", "query",
+    	"open", "close", "insert",
+    	"query.length", "query.position", "query",
     	"next", "delete", "update", "exec",
     	"raw_query", "drop_table", "new_table"
     };
-    
-    public static final int sql_open = 0;				// SQL Command enums
-    public static final int sql_close = 1;				
-    public static final int sql_insert = 2;
-    public static final int sql_query = 3;
-    public static final int sql_next = 4;
-    public static final int sql_delete = 5;
-    public static final int sql_update = 6;
-    public static final int sql_exec = 7;
-    public static final int sql_raw_query =8;
-    public static final int sql_drop_table =9;
-    public static final int sql_new_table =10;
-    public static final int sql_none = 98;
-    
+
+	private final Command[] SQL_cmd = new Command[] {	// Map SQL command key words to their execution functions
+		new Command("open")             { public boolean run() { return execute_sql_open(); } },
+		new Command("close")            { public boolean run() { return execute_sql_close(); } },
+		new Command("insert")           { public boolean run() { return execute_sql_insert(); } },
+		new Command("query.length")     { public boolean run() { return execute_sql_query_length(); } },
+		new Command("query.position")   { public boolean run() { return execute_sql_query_position(); } },
+		new Command("query")            { public boolean run() { return execute_sql_query(); } },
+		new Command("next")             { public boolean run() { return execute_sql_next(); } },
+		new Command("delete")           { public boolean run() { return execute_sql_delete(); } },
+		new Command("update")           { public boolean run() { return execute_sql_update(); } },
+		new Command("exec")             { public boolean run() { return execute_sql_exec(); } },
+		new Command("raw_query")        { public boolean run() { return execute_sql_raw_query(); } },
+		new Command("drop_table")       { public boolean run() { return execute_sql_drop_table(); } },
+		new Command("new_table")        { public boolean run() { return execute_sql_new_table(); } }
+	};
+
     public static ArrayList<SQLiteDatabase> DataBases; 	 // List of created data bases
     public static ArrayList<Cursor> Cursors; 	 		 // List of created data bases
     
@@ -8709,68 +8720,18 @@ private boolean doUserFunction(){
 	  
 	  // ************************************************ SQL Package ***************************************	  
 
-
-     public  boolean executeSQL(){
-    	if (!GetSQLKeyWord()){
-    	    	  return false;
-    	      }else {
-    	    	  switch (KeyWordValue){
-    	    	  	case sql_open:
-    	    	  		if (!execute_sql_open()){return false;}
-    	    	  		break;
-    	    	  	case sql_close:
-    	    	  		if (!execute_sql_close()){return false;}
-    	    	  		break;
-    	    	  	case sql_insert:
-    	    	  		if (!execute_sql_insert()){return false;}
-    	    	  		break;
-    	    	  	case sql_query:
-    	    	  		if (!execute_sql_query()){return false;}
-    	    	  		break;
-    	    	  	case sql_next:
-    	    	  		if (!execute_sql_next()){return false;}
-    	    	  		break;
-    	    	  	case sql_delete:
-    	    	  		if (!execute_sql_delete()){return false;}
-    	    	  		break;
-    	    	  	case sql_update:
-    	    	  		if (!execute_sql_update()){return false;}
-    	    	  		break;
-    	    	  	case sql_exec:
-    	    	  		if (!execute_sql_exec()){return false;}
-    	    	  		break;
-    	    	  	case sql_raw_query:
-    	    	  		if (!execute_sql_raw_query()){return false;}
-    	    	  		break;
-    	    	  	case sql_drop_table:
-    	    	  		if (!execute_sql_drop_table()){return false;}
-    	    	  		break;
-    	    	  	case sql_new_table:
-    	    	  		if (!execute_sql_new_table()){return false;}
-    	    	  		break;
-    	    	  	default:
-    	    	  		return false;
-    	    	  }
-    	    	  return true;
-    	      }
-    	   }
-
-    	   
-    	  private  boolean GetSQLKeyWord(){							// Get a Basic key word if it is there
-    																// is the current line index at a key word?
-    			String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-    			int i = 0;
-    			for (i = 0; i<SQL_kw.length; ++i){					// loop through the key word list
-    				if (Temp.startsWith(SQL_kw[i])){    			// if there is a match
-    					KeyWordValue = i;							// set the key word number
-    					LineIndex = LineIndex + SQL_kw[i].length(); // move the line index to end of key word
-    					return true;								// and report back
-    				}
-    			}
-    			KeyWordValue = sql_none;							// no key word found
-    			return false;										// report fail
-
-    		}
+	private boolean executeSQL(){									// Get SQL command key word if it is there
+		String temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
+		for (Command c : SQL_cmd) {									// loop through the command list
+			String name = c.name();
+			if (temp.startsWith(name)) {							// if there is a match
+				LineIndex += name.length();							// move the line index to end of key word
+				return c.run();										// run the function and report back
+			}
+		}
+		RunTimeError("Unknown SQL command");
+		return false;												// no key word found
+	}
 
 	private boolean getDbPtrArg() {									// first arg of command is DB Pointer Variable
 		String errStr = "Database not opened at:";
@@ -9041,6 +9002,34 @@ private boolean doUserFunction(){
 			   return true;
 		   }
        }
+
+	private boolean execute_sql_query_length(){					// Report the number of rows in a query result
+		int[] args = new int[2];								// Get the first two args:
+		if (!getVarAndCursorPtrArgs(args)) return false;
+		int ValueIndex = args[0];								// variable for number of rows
+		int CursorIndex = args[1];								// DB Cursor pointer
+		if (!checkEOL()) return false;
+
+		int i = NumericVarValues.get(CursorIndex).intValue();
+		Cursor cursor = Cursors.get(i - 1);						// get the cursor
+		double nRows = cursor.getCount();
+		NumericVarValues.set(ValueIndex, nRows);				// return number of rows to user
+		return true;
+	}
+
+	private boolean execute_sql_query_position(){				// Report current position in query results
+		int[] args = new int[2];								// Get the first two args:
+		if (!getVarAndCursorPtrArgs(args)) return false;
+		int ValueIndex = args[0];								// variable for position
+		int CursorIndex = args[1];								// DB Cursor pointer
+		if (!checkEOL()) return false;
+
+		int i = NumericVarValues.get(CursorIndex).intValue();
+		Cursor cursor = Cursors.get(i - 1);						// get the cursor
+		double position = cursor.getPosition();
+		NumericVarValues.set(ValueIndex, position + 1);			// return position to user, 1-based
+		return true;
+	}
 
 	private boolean execute_sql_delete(){
 
