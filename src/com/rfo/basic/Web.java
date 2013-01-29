@@ -152,8 +152,23 @@ public class Web extends Activity {
         }
         
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-        	int index = failingUrl.indexOf("FORM?");
-        	if (index == -1) doAddData.addData("ERR", errorCode + " " + description + failingUrl);
+        	if (failingUrl.contains("#")) { // Workaround to load a file if there is a hash appended to the file path
+			Log.v("LOG", "failing url:" + failingUrl);
+                        String[] temp;
+                        temp = failingUrl.split("#");
+                        view.loadUrl(temp[0]); // load page without internal link
+
+                        try {
+                            Thread.sleep(400);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
+                        view.loadUrl(failingUrl); // try again
+                } else {
+			int index = failingUrl.indexOf("FORM?");
+			if (index == -1) doAddData.addData("ERR", errorCode + " " + description + failingUrl);
+		}
           }
         
         public void onLoadResource (WebView view, String url){
@@ -201,7 +216,12 @@ public class Web extends Activity {
     	}
     
     	public void webLoadString(String data){
-    		File lbDir = new File(Basic.filePath +"/data/");
+    		File lbDir;
+		if (Basic.isAPK) {
+			lbDir = new File("/android_asset/");
+		} else {
+			lbDir = new File(Basic.filePath +"/data/");
+		}
     		String s = lbDir.getAbsolutePath();
     		s = "file://" + s + "/";
     		if (engine != null)engine.loadDataWithBaseURL(s, data, "text/html", "UTF-8", s+"*");
