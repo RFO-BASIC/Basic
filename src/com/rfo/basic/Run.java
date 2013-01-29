@@ -7568,7 +7568,7 @@ private boolean doUserFunction(){
 				FileEntry.putBoolean("eof", true);			// Hit eof, mark Bundle
 			} else {
 				FileEntry.putInt("position", p + count);	// No eof, update position in Bundle
-				buff = new String(byteArray);				// convert bytes to String for user
+				buff = new String(byteArray, 0);			// convert bytes to String for user
 				if (count < byteCount) {
 					buff = buff.substring(0, count);
 				}
