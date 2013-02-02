@@ -47,10 +47,12 @@ import static com.rfo.basic.Basic.*;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileReader;
+import java.io.Flushable;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -1884,7 +1886,7 @@ public void onCreate(Bundle savedInstanceState) {
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Create  " + ExecutingLineIndex );
 	
 	if (Basic.lines == null){
-        android.os.Process.killProcess(Basic.ProcessID) ;
+//        android.os.Process.killProcess(Basic.ProcessID) ;
         android.os.Process.killProcess(android.os.Process.myPid()) ;
         
 	}
@@ -2373,7 +2375,7 @@ public boolean onTouchEvent(MotionEvent event){
     	if (Stop == false) Stop = true;
     	else {
     		if (DoAutoRun) {
-    			android.os.Process.killProcess(Basic.ProcessID) ;
+//    			android.os.Process.killProcess(Basic.ProcessID) ;
     			android.os.Process.killProcess(android.os.Process.myPid()) ;
     		}
     		else finish();
@@ -4796,7 +4798,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 
 		int svn = VarNumber;										// save the array variable table number
-		boolean svt = VarIsNumeric;										// and the array vaiable type
+		boolean svt = VarIsNumeric;										// and the array variable type
 		
 		ArrayList <Integer> dimValues =new ArrayList<Integer>();        // A list to hold the array index values
 		if (ExecutingLineBuffer.charAt(LineIndex)== ']') return false;
@@ -6836,6 +6838,22 @@ private boolean doUserFunction(){
 	
 // ***************************** Data I/O Operations ***********************************
 
+	// args: stream to flush, previous exception or null;
+	// return: previous exception if any, else new exception if any, else null 
+	private static IOException flushStream(Flushable stream, IOException ex) {	// flush a stream
+		if (stream != null) { return ex; }
+		try { stream.flush(); return ex; }
+		catch ( IOException e ) { return (ex == null) ? e : ex; }
+	}
+
+	// args: stream to close, previous exception or null
+	// return: previous exception if any, else new exception if any, else null 
+	private static IOException closeStream(Closeable stream, IOException ex) {	// close a stream
+		if (stream != null) { return ex; }
+		try { stream.close(); return ex; }
+		catch ( IOException e ) { return (ex == null) ? e : ex; }
+	}
+
 	private boolean checkReadFile(int FileNumber, ArrayList<?> list){		// Validate input file for read commands
 		// Note: if list is null, list size is not checked - needed for POSITION_GET
 		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
@@ -7568,7 +7586,7 @@ private boolean doUserFunction(){
 				FileEntry.putBoolean("eof", true);			// Hit eof, mark Bundle
 			} else {
 				FileEntry.putInt("position", p + count);	// No eof, update position in Bundle
-				buff = new String(byteArray);				// convert bytes to String for user
+				buff = new String(byteArray, 0);			// convert bytes to String for user
 				if (count < byteCount) {
 					buff = buff.substring(0, count);
 				}
@@ -14470,635 +14488,395 @@ private boolean doUserFunction(){
 		return false;										// report fail
 
 	}
-	
-	private boolean executeCLIENT_CONNECT(){
-		
-		if (!evalStringExpression()) return false;
-		String SocketClientsServerAdr = StringConstant;
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
 
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int SocketClientsServerPort  = (int) (double)EvalNumericExpressionValue;
-		
-        try{
-        	theClientSocket = new Socket(SocketClientsServerAdr, SocketClientsServerPort);
-        	ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
-        	ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
-        	}catch (Exception e) {
-    			RunTimeError("Error: " + e );
-        		theClientSocket = null;
-        		return false;
-        	}
-		
+	private boolean isServerSocketConnected() {
+		return isServerSocketConnected("No current connection");
+	}
+
+	private boolean isServerSocketConnected(String msgNullSocket) {
+		if (theServerSocket == null){
+			RunTimeError(msgNullSocket);
+			return false;
+		}
+		if (!theServerSocket.isConnected()){
+			RunTimeError("Server Connection Disrupted");
+			return false;
+		}
 		return true;
 	}
-	
-	private boolean executeCLIENT_READ_READY(){
-		
+
+	private boolean isClientSocketConnected() {
 		if (theClientSocket == null){
 			RunTimeError("Client Socket Not Opened");
 			return false;
 		}
-		
-		double ready = 0 ;
-		
-		try{
-		if (ClientBufferedReader.ready()) ready = 1;
-			} catch (IOException e) {
-				RunTimeError( e.toString());
-				theClientSocket = null;
-				return false;
-			}
-    	
-		if (!getNVar()) return false;
-		
-		NumericVarValues.set(theValueIndex, ready);
-		
-		return true;
-	}
-	
-	private boolean executeCLIENT_READ_LINE(){
-
-		if (theClientSocket == null){
-			RunTimeError("Client Socket Not Opened");
-			return false;
-		}
-		
 		if (!theClientSocket.isConnected()){
 			RunTimeError("Client Connection Disrupted");
 			return false;
 		}
-		
-		String line = null;
-		
-		try{
-			line = ClientBufferedReader.readLine();
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theClientSocket = null;
-				return false;
-    	}
-    	
-    	if (line == null){
-    		line = "NULL";
-    	}
-    	
-		if (!getSVar()) return false;
-		StringVarValues.set(theValueIndex, line);
-    	
 		return true;
 	}
-	
-	private boolean executeCLIENT_WRITE_LINE(boolean byteMode){
-		if (theClientSocket == null){
-			RunTimeError("Client Socket Not Opened");
-			return false;
-		}
-		
-		if (!theClientSocket.isConnected()){
-			RunTimeError("Client Connection Disrupted");
-			return false;
-		}
-		
-		if (!evalStringExpression()) return false;
-		
-		if (byteMode){
-			try {
-				OutputStream os = theClientSocket.getOutputStream();
-				for (int k=0; k<StringConstant.length(); ++k){
-					byte bb = (byte)StringConstant.charAt(k);
-					os.write(bb);
-				}
-			}
-			catch(Exception e){}
-			return true;
-		}
-		
-		ClientPrintWriter.println(StringConstant);
-		return true;
-	}
-	
-	private boolean executeCLIENT_SERVER_IP(){
-		
-		if (theClientSocket == null){
-			RunTimeError("Client Socket Not Opened");
-			return false;
-		}
-		
-		if (!theClientSocket.isConnected()){
-			RunTimeError("Client Connection Disrupted");
-			return false;
-		}
-		
-		InetAddress ia = theClientSocket.getInetAddress();
-		String sia = ia.toString();
-		 
-		if (!getSVar()) return false;
-		StringVarValues.set(theValueIndex, sia);
 
-
-		return true;
-	}
-	
-	
 	private boolean executeSERVER_CREATE(){
-		try{
-			
-			if (!evalNumericExpression()) return false;							// Get the List pointer
-			int SocketServersServerPort  = (int) (double)EvalNumericExpressionValue;
+		
+		if (!evalNumericExpression()) return false;							// Get the List pointer
+		if (!checkEOL()) return false;
 
+		int SocketServersServerPort = EvalNumericExpressionValue.intValue();
+		try {
 			newSS = new ServerSocket(SocketServersServerPort);
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
+			return false;
+		}
 
-				theClientSocket = null;
-				return false;
-			}
-			
 		return true;
 	}
-	
+
 	private boolean executeSERVER_ACCEPT(){
 		
 		if (newSS == null) {
 			RunTimeError("Server not created");
 			return false;
 		}
-		try{
-			
+		if (!checkEOL()) return false;
+
+		try {
 			theServerSocket = newSS.accept();
-        	ServerBufferedReader = new BufferedReader(new InputStreamReader(theServerSocket.getInputStream()));
-        	ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
+			ServerBufferedReader = new BufferedReader(new InputStreamReader(theServerSocket.getInputStream()));
+			ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
 
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theClientSocket = null;
-				return false;
-			}
-			
-		
-		return true;
-	}
-	
-	private boolean executeSERVER_READ_READY(){
-		if (theServerSocket == null){
-			RunTimeError("No current client accepted");
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
 			return false;
 		}
-		
-		double ready = 0 ;
-		
-		try{
-		if (ServerBufferedReader.ready()) ready = 1;
-			} catch (IOException e) {
-				RunTimeError( e.toString());
-				theServerSocket = null;
-				return false;
-			}
-    	
-		if (!getNVar()) return false;
-		
-		NumericVarValues.set(theValueIndex, ready);
-		
+
 		return true;
 	}
 
-	
-	private boolean executeSERVER_READ_LINE(){
-		if (theServerSocket == null){
-			RunTimeError("No current connection");
+	private boolean executeCLIENT_CONNECT(){
+
+		if (!getStringArg()) return false;									// get the server address
+		String SocketClientsServerAdr = StringConstant;
+		
+		if (!isNext(',')) return false;										// move to the port number
+		if (!evalNumericExpression()) return false;							// get the port number
+		int SocketClientsServerPort = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+		
+		try {
+			theClientSocket = new Socket(SocketClientsServerAdr, SocketClientsServerPort);
+			ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
+			ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
+
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
 			return false;
 		}
+
+		return true;
+	}
+
+	private boolean executeSERVER_CLIENT_IP(){
+		if (!isServerSocketConnected("Server not connected to a client")) return false;
+		return socketIP(theServerSocket);
+	}
+
+	private boolean executeCLIENT_SERVER_IP(){
+		if (!isClientSocketConnected()) return false;
+		return socketIP(theClientSocket);
+	}
+
+	private boolean socketIP(Socket socket){
 		
 		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
 
-		
-		if (!theServerSocket.isConnected()){
-			StringVarValues.set(theValueIndex, "Server Connection Disrupted");		
-			return true;
-		}
+		InetAddress ia = socket.getInetAddress();
+		String sia = ia.toString();
 
-		String line = null;
-		
-		try{
-			line = ServerBufferedReader.readLine();
-		}
-			catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theServerSocket = null;
-				return false;
-    	}
-    	
-    	if (line == null){
-    		line = "NULL";
-    	}
-    	
-		StringVarValues.set(theValueIndex, line);
-
+		StringVarValues.set(theValueIndex, sia);
 		return true;
 	}
-	
+
+	private boolean executeSERVER_READ_READY(){
+		if (!isServerSocketConnected("No current client accepted")) return false;
+		return socketReadReady(ServerBufferedReader);
+	}
+
+	private boolean executeCLIENT_READ_READY(){
+		if (!isClientSocketConnected()) return false;
+		return socketReadReady(ClientBufferedReader);
+	}
+
+	private boolean socketReadReady(BufferedReader reader){
+
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+
+		double ready = 0 ;
+		try {
+			if (reader.ready()) { ready = 1; }
+		} catch (IOException e) {
+			RunTimeError("Error: " + e);
+			return false;
+		}
+
+		NumericVarValues.set(theValueIndex, ready);
+		return true;
+	}
+
+	private boolean executeSERVER_READ_LINE(){
+		if (!isServerSocketConnected()) return false;
+		return socketReadLine(ServerBufferedReader);
+	}
+
+	private boolean executeCLIENT_READ_LINE(){
+		if (!isClientSocketConnected()) return false;
+		return socketReadLine(ClientBufferedReader);
+	}
+
+	private boolean socketReadLine(BufferedReader reader){
+
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+		
+		String line = null;
+		try {
+			line = reader.readLine();
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
+			return false;
+		}
+		
+		if (line == null){
+			line = "NULL";
+		}
+
+		StringVarValues.set(theValueIndex, line);
+		return true;
+	}
+
 	private boolean executeSERVER_WRITE_LINE(boolean byteMode){
-		if (theServerSocket == null){
-			RunTimeError("No current connection");
-			return false;
-		}
-		
-		if (!theServerSocket.isConnected()){
-			RunTimeError("Server Connection Disrupted");
-			return false;
-		}
-		
-		if (!evalStringExpression()) return false;
-		
+		if (!isServerSocketConnected()) return false;
+		return socketWriteLine(theServerSocket, ServerPrintWriter, byteMode);
+	}
+
+	private boolean executeCLIENT_WRITE_LINE(boolean byteMode){
+		if (!isClientSocketConnected()) return false;
+		return socketWriteLine(theClientSocket, ClientPrintWriter, byteMode);
+	}
+
+	private boolean socketWriteLine(Socket socket, PrintWriter writer, boolean byteMode){
+
+		if (!getStringArg()) return false;
+		if (!checkEOL()) return false;
+
+		String err = null;
 		if (byteMode){
+			OutputStream os = null;
 			try {
-				OutputStream os = theServerSocket.getOutputStream();
+				os = socket.getOutputStream();
 				for (int k=0; k<StringConstant.length(); ++k){
 					byte bb = (byte)StringConstant.charAt(k);
 					os.write(bb);
 				}
+			} catch (Exception e) {
+				err = "Error: " + e;
+			} finally {
+				IOException ex = flushStream(os, null);
+				ex = closeStream(os, ex);
+				if (ex != null && err != null) {
+					err = "Error: " + ex;
+				}
 			}
-			catch(Exception e){}
-			return true;
+		} else {
+			writer.println(StringConstant);
+			if (writer.checkError()) {
+				err = "Error writing to socket";
+			}
 		}
-		
-		ServerPrintWriter.println(StringConstant);
+		if (err != null) {
+			RunTimeError(err);
+			return false;
+		}
 		return true;
 	}
-	
+
 	private boolean executeSERVER_PUTFILE(){
-
-		if (theServerSocket == null){
-			RunTimeError("No current connection");
-			return false;
-		}
-		
-		if (!theServerSocket.isConnected()){
-			RunTimeError("Server Connection Disrupted");
-			return false;
-		}
-		
-		if (FileTable.size() == 0){
-			RunTimeError("No files opened");
-			return false;
-		}
-		
-		if (!getVar()){return false;}						// First parm is the filenumber vaiable
-		if (!VarIsNumeric){return false;}
-		double d = NumericVarValues.get(theValueIndex);
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
-		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		BufferedInputStream bis = null;
-		boolean closed;
-
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMR){						// Verify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
-
-		eof = FileEntry.getBoolean("eof");
-		bis = BISlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-				
-		if (eof){											//Check not EOF
-			RunTimeError("Attempt to read beyond the EOF at:");
-			return false;
-		}
-		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
-
-    	DataOutputStream dos ;
-	    ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*16);
-
-        try {
-			OutputStream os = theServerSocket.getOutputStream();
-		    dos = new DataOutputStream(os);
-        	
-        	int current = 0;
-		    
-		    while((current = bis.read()) != -1){
-		    	long ts = SystemClock.elapsedRealtime();
-		    	byteArray.append((byte)current);
-		    	if (byteArray.isFull()){
-		    		byte[] b = byteArray.toByteArray();
-		    		dos.write(b, 0, 1024*16);
-		    		byteArray.clear();
-		    	}
-		    	long te = SystemClock.elapsedRealtime();          // If rate is slower than 1kb/sec
-		    	if (te - ts > 16000){							  // terminate transmission
-			    	dos.flush();
-			    	dos.close();
-	        		bis.close();
-	        		FileEntry.putBoolean("eof", true);
-	        		FileEntry.putBoolean("closed", true);
-	        		FileTable.set(FileNumber, FileEntry);
-	        		executeSERVER_DISCONNECT();
-	        		RunTimeError("Data transmission time out.");
-	        		return false;
-		    	}
-
-		    }
-		    int count = byteArray.length();
-		    byte[] b = byteArray.toByteArray();
-		    dos.write(b, 0, count);
-		    	dos.flush();
-		    	dos.close();
-        		bis.close();
-        		FileEntry.putBoolean("eof", true);
-        		FileEntry.putBoolean("closed", true);
-        		FileTable.set(FileNumber, FileEntry);
-         }
-    	 catch (Exception e) {
-    		 RunTimeError("Error: " + e);
-    		return false;
-    		}
-		return true;
+		if (!isServerSocketConnected()) return false;
+		return socketPutFile(theServerSocket);
 	}
-	
+
 	private boolean executeCLIENT_PUTFILE(){
+		if (!isClientSocketConnected()) return false;
+		return socketPutFile(theClientSocket);
+	}
 
-		if (theClientSocket == null){
-			RunTimeError("No current connection");
-			return false;
-		}
-		
-		if (!theClientSocket.isConnected()){
-			RunTimeError("Client Connection Disrupted");
-			return false;
-		}
-		
-		if (FileTable.size() == 0){
-			RunTimeError("No files opened");
-			return false;
-		}
-		
-		if (!getVar()){return false;}						// First parm is the filenumber vaiable
-		if (!VarIsNumeric){return false;}
-		double d = NumericVarValues.get(theValueIndex);
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
-		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		BufferedInputStream bis = null;
-		boolean closed;
+	private boolean executeCLIENT_GETFILE(){
+		if (!isClientSocketConnected()) return false;
+		return socketGetFile(theClientSocket);
+	}
 
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMR){						// Verify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
+	private boolean socketPutFile(Socket socket) {
 
-		eof = FileEntry.getBoolean("eof");
-		bis = BISlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-				
-		if (eof){											//Check not EOF
+		if (!evalNumericExpression()) { return false; }						// Parm is the filenumber variable
+		if (!checkEOL()) { return false; }
+
+		int FileNumber = NumericVarValues.get(theValueIndex).intValue();
+		if (!checkReadFile(FileNumber, BISlist)) { return false; }			// Check runtime errors
+
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkReadByteAttributes(FileEntry)) { return false; }			// Check runtime errors
+
+		boolean eof = FileEntry.getBoolean("eof");
+		if (eof) {															// Check not EOF
 			RunTimeError("Attempt to read beyond the EOF at:");
 			return false;
 		}
 		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
+		BufferedInputStream bis = BISlist.get(FileEntry.getInt("stream"));
+		int bufferSize = 1024*16;
+		try {
+			OutputStream os = socket.getOutputStream();
+			DataOutputStream dos = new DataOutputStream(os);
+
+			// Set buffer size to 16K bytes, timeout to 16 sec, time out if rate is slower than 1kb/sec
+			if (!streamCopy(bis, dos, bufferSize, (long)bufferSize)) {		// Copy from file to socket
+				RunTimeError("Data transmission time out.");				// Timeout
+				executeSERVER_DISCONNECT();
+				return false;
+			}
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
 			return false;
 		}
-
-    	DataOutputStream dos ;
-	    ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*16);
-
-        try {
-			OutputStream os = theClientSocket.getOutputStream();
-		    dos = new DataOutputStream(os);
-        	
-        	int current = 0;
-		    
-		    while((current = bis.read()) != -1){
-		    	long ts = SystemClock.elapsedRealtime();
-		    	byteArray.append((byte)current);
-		    	if (byteArray.isFull()){
-		    		byte[] b = byteArray.toByteArray();
-		    		dos.write(b, 0, 1024*16);
-		    		byteArray.clear();
-		    	}
-		    	long te = SystemClock.elapsedRealtime();          // If rate is slower than 1kb/sec
-		    	if (te - ts > 16000){							  // terminate transmission
-			    	dos.flush();
-			    	dos.close();
-	        		bis.close();
-	        		FileEntry.putBoolean("eof", true);
-	        		FileEntry.putBoolean("closed", true);
-	        		FileTable.set(FileNumber, FileEntry);
-	        		executeSERVER_DISCONNECT();
-	        		RunTimeError("Data transmission time out.");
-	        		return false;
-		    	}
-
-		    }
-		    int count = byteArray.length();
-		    byte[] b = byteArray.toByteArray();
-		    dos.write(b, 0, count);
-		    	dos.flush();
-		    	dos.close();
-        		bis.close();
-        		FileEntry.putBoolean("eof", true);
-        		FileEntry.putBoolean("closed", true);
-        		FileTable.set(FileNumber, FileEntry);
-         }
-    	 catch (Exception e) {
-    		 RunTimeError("Error: " + e);
-    		return false;
-    		}
-		return true;
+		FileEntry.putBoolean("eof", true);
+		FileEntry.putBoolean("closed", true);
+		return true;														// Success
 	}
-	
-	
-	private boolean executeCLIENT_GETFILE(){
 
-		if (theClientSocket == null){
-			RunTimeError("Client Socket Not Opened");
+	private boolean socketGetFile(Socket socket) {
+
+		if (!evalNumericExpression()) { return false; }						// Parm is the filenumber variable
+		if (!checkEOL()) { return false; }
+
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkWriteFile(FileNumber, DOSlist)) { return false; }			// Check runtime errors
+
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkWriteByteAttributes(FileEntry)) { return false; }			// Check runtime errors
+
+		DataOutputStream dos = DOSlist.get(FileEntry.getInt("stream"));
+		int bufferSize = 1024*512;
+		try {
+			InputStream is = socket.getInputStream();
+			BufferedInputStream bis = new BufferedInputStream(is);
+			streamCopy(bis, dos, bufferSize, 0L);							// Copy from socket to file
+
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
 			return false;
 		}
-		
-		if (!theClientSocket.isConnected()){
-			RunTimeError("Client Connection Disrupted");
-			return false;
-		}
-		
-		if (!getVar()){return false;}						// First parm is the filenumber vaiable
-		if (!VarIsNumeric){return false;}
-		double d = NumericVarValues.get(theValueIndex);
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
-		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-
-		if (!checkEOL()) return false;
-		
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		DataOutputStream dos = null;
-
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMW){						// Verify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
-		dos = DOSlist.get(FileEntry.getInt("stream"));
-
-		BufferedInputStream bis = null;
-		
-	    ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*512);
-
-        try {
-    		dos = DOSlist.get(FileEntry.getInt("stream"));
-    		InputStream is = theClientSocket.getInputStream();
-    		bis = new BufferedInputStream(is);
-        	int current = 0;
-		    
-		    while((current = bis.read()) != -1){
-		    	byteArray.append((byte)current);
-		    	if (byteArray.isFull()){
-		    		byte[] b = byteArray.toByteArray();
-		    		dos.write(b, 0, 1024*512);
-		    		byteArray.clear();
-		    	}
-		    }
-		    int count = byteArray.length();
-		    byte[] b = byteArray.toByteArray();
-		    dos.write(b, 0, count);
-		    	dos.flush();
-		    	dos.close();
-        		bis.close();
-        		FileEntry.putBoolean("eof", true);
-        		FileEntry.putBoolean("closed", true);
-        		FileTable.set(FileNumber, FileEntry);
-         }
-        catch (Exception e) {
-			RunTimeError("Error: " + e );
-			   return false;
-		   }
-
-		
-	
-		return true;
+		FileEntry.putBoolean("eof", true);
+		FileEntry.putBoolean("closed", true);
+		return true;														// Success
 	}
-	
-	
+
+	private static boolean streamCopy(BufferedInputStream bis, DataOutputStream dos, int bufferSize,
+										long timeoutTime)		// time in ms, 0 means no timeout check
+										throws IOException {
+		IOException ex = null;
+		ByteArrayBuffer byteArray = new ByteArrayBuffer(bufferSize);
+		int current = 0;
+		boolean timeout = false;
+		long ts = SystemClock.elapsedRealtime();
+		try {
+			while (!timeout && ((current = bis.read()) != -1)) {			// Read the input stream
+				byteArray.append((byte)current);
+				if (byteArray.isFull()) {
+					dos.write(byteArray.toByteArray(), 0, bufferSize);		// Write the output stream
+					byteArray.clear();
+
+					if (timeoutTime != 0) {							// If caller wants timeout checked
+						long te = SystemClock.elapsedRealtime();	// If rate is too slow
+						timeout = (te - ts > 16000); 				// terminate transmission
+						ts = te;									// reset the start time
+					}
+				}
+			}
+			int count = byteArray.length();
+			if (count > 0) {										// If there is anything in the buffer
+				dos.write(byteArray.toByteArray(), 0, count);		// write it to the output stream
+			}
+			dos.flush();											// flush the output stream
+			return !timeout;
+
+		} catch (IOException e) {
+			ex = e;
+			return false;		// doesn't return
+		} finally {
+			ex = closeStream(dos, ex);								// close the streams
+			ex = closeStream(bis, ex);
+			if (ex != null) { throw ex; }
+		}
+	}
+
 	private boolean executeSERVER_DISCONNECT(){
+		if (!checkEOL()) return false;
 		if (theServerSocket == null) return true;
 
-		try{
+		try {
 			theServerSocket.close();
 			
-			} catch (Exception e) {
-				RunTimeError( e.toString());
-				theServerSocket = null;
-				return false;
-			}
-		theServerSocket = null;
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
+			return false;
+		} finally {
+			ServerPrintWriter = null;
+			ServerBufferedReader = null;
+			theServerSocket = null;
+		}
 
 		return true;
 	}
-	
+
 	private boolean executeSERVER_CLOSE(){
-		try{
-			if (theServerSocket != null) theServerSocket.close();
+		if (!checkEOL()) return false;
+		if (theServerSocket != null) executeSERVER_DISCONNECT();
+
+		try {
 			if (newSS != null) newSS.close();
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theServerSocket = null;
-				return false;
-			}
-		theServerSocket = null;
-		newSS = null;
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
+			return false;
+		} finally {
+			newSS = null;
+		}
 		return true;
 	}
-	
+
 	private boolean executeCLIENT_CLOSE(){
+		if (!checkEOL()) return false;
 		if (theClientSocket == null) return true;
-		try{
+
+		try {
 			theClientSocket.close();
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theClientSocket = null;
-				return false;
-			}
+		} catch (Exception e) {
+			RunTimeError("Error: " + e);
+			return false;
+		} finally {
+			ClientPrintWriter = null;
+			ClientBufferedReader = null;
 			theClientSocket = null;
+		}
 		return true;
 	}
-	
-	private boolean executeSERVER_CLIENT_IP(){
-		
-		if (theServerSocket == null){
-			RunTimeError("Server not connected to a client");
-			return false;
-		}
-		
-		if (!theServerSocket.isConnected()){
-			RunTimeError("Server Connection Disrupted");
-			return false;
-		}
-		
-		InetAddress ia = theServerSocket.getInetAddress();
-		String sia = ia.toString();
-		 
-		if (!getSVar()) return false;
-		StringVarValues.set(theValueIndex, sia);
-		return true;
-	}
-	
+
 	private boolean executeMYIP(){
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+
 		String IP = "";
 		try {
 			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
@@ -15107,8 +14885,6 @@ private boolean doUserFunction(){
 					InetAddress inetAddress = enumIpAddr.nextElement();
 					if (!(inetAddress. isLoopbackAddress() || inetAddress. isLinkLocalAddress ())) {
 							IP = inetAddress.getHostAddress().toString();
-//							IP = inetAddress.getHostAddress().toString();
-							if (!getSVar()) return false;
 							StringVarValues.set(theValueIndex, IP);
 							return true;
 						}
@@ -16839,12 +16615,26 @@ private boolean doUserFunction(){
           return true;
 	  }
 	  
-	  private boolean execute_html_load_url(){				// Load an internet url
-		  if (!evalStringExpression()) return false;
-//		  Web.aWebView.webLoadUrl(StringConstant);
-		  PrintShow("@@CLU" + StringConstant);
-		  return true;
-	  }
+      private boolean execute_html_load_url(){              // Load an internet url
+          if (!evalStringExpression()) return false;
+
+          String urlString = StringConstant;
+          String protocolName = urlString.substring(0,4);
+          if (!protocolName.equals("http") && !protocolName.equals("java") && !protocolName.equals("file")) {
+            String fn = Basic.filePath + "/data/" + urlString;
+            File file = new File(fn);
+            if (file.exists()) {
+                urlString = "file://" + Basic.filePath + "/data/" + urlString;
+            } else {
+                if (Basic.isAPK) {                              // if not standard BASIC! then is user APK
+                    urlString = "file:///android_asset/" + urlString;       // try to load the file from the assets resource
+                }
+            }
+          }
+//        Web.aWebView.webLoadUrl(urlString);
+          PrintShow("@@CLU" + urlString);
+          return true;
+      }
 	  
 	  private boolean execute_html_load_string(){			// Load an html string
 		  if (!evalStringExpression()) return false;
