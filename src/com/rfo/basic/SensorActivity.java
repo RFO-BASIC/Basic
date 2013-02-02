@@ -112,7 +112,7 @@ public class SensorActivity extends Activity implements SensorEventListener {
         	
          	finish();
         	if (Basic.DoAutoRun) {
-        		android.os.Process.killProcess(Basic.ProcessID) ;
+//        		android.os.Process.killProcess(Basic.ProcessID) ;
         		android.os.Process.killProcess(android.os.Process.myPid()) ;
         	}
 
