@@ -14818,8 +14818,7 @@ private boolean doUserFunction(){
 					InetAddress inetAddress = enumIpAddr.nextElement();
 					if (!(inetAddress. isLoopbackAddress() || inetAddress. isLinkLocalAddress ())) {
 						IP = inetAddress.getHostAddress().toString();
-						StringVarValues.set(theValueIndex, IP);
-						return true;
+						break;
 					}
 				}
 			}
@@ -14827,6 +14826,7 @@ private boolean doUserFunction(){
 			return RunTimeError(e);
 		}
 		
+		StringVarValues.set(theValueIndex, IP);
 		return true;
 	}
 	
