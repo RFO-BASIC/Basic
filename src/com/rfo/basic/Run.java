@@ -3205,6 +3205,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	   errorMsg = msg + "\nLine: " + ExecutingLineBuffer;
    }
 
+   private boolean RunTimeError(Exception e) {
+	   RunTimeError("Error: " + e);
+	   return false;
+   }
+
    private boolean checkEOL(){
 	   if (LineIndex >= ExecutingLineBuffer.length()) return true;
 	   if (ExecutingLineBuffer.charAt(LineIndex) == '\n') return true;
@@ -3388,8 +3393,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		double d = 0;
 		try { d = Double.parseDouble(num);}									// have java parse it into a double
 		catch (Exception e) {
-			RunTimeError("Error: " + e );
-			return false;
+			return RunTimeError(e);
 		}
         GetNumberValue = d;													// Report the value 
 		return true;														// Say we found a number
@@ -3975,8 +3979,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 				try { d1 = Double.parseDouble(StringConstant);}			// have java parse it into a double
 				catch (Exception e) {
-					RunTimeError("Error: " + e );
-					return false;
+					return RunTimeError(e);
 				}
 				theValueStack.push(d1);							// Push number onto value stack
 				break;
@@ -4333,10 +4336,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				LineIndex = SaveLineIndex;					// assume the + operation is numeric
 				flag = false;
 			}else {
-			try {Temp2 = Temp2 + StringConstant;}					// build up the right side string
-			catch (Exception e) {
-				RunTimeError("Error: " + e );
-				   return false;
+				try {Temp2 = Temp2 + StringConstant;}		// build up the right side string
+				catch (Exception e) {
+				   return RunTimeError(e);
 			   }
 			}
 		}
@@ -4611,8 +4613,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		BigDecimal B = BigDecimal.valueOf(0.0);
 		try { B = BigDecimal.valueOf(Math.abs(Fvalue));}
 		catch (Exception e) {
-			RunTimeError("Error: " + e );
-			return false;
+			return RunTimeError(e);
 		}
 		String Vstring =B.toPlainString();											// and convert the big decimal to a string
 
@@ -4883,9 +4884,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		}
 		catch (Exception e) {
-			RunTimeError("Error: " + e );
-			   return false;
-		   }
+			return RunTimeError(e);
+		}
 
 	
 		Bundle ArrayEntry = new Bundle();						// Build the array table entry bundle
@@ -6959,8 +6959,7 @@ private boolean doUserFunction(){
 					buf = new BufferedReader(new FileReader(file), 8192);
 					if (buf != null) buf.mark((int) file.length());
 				} catch (Exception e) {
-					RunTimeError("Error: " + e);
-					return false;
+					return RunTimeError(e);
 				}
 			} else {													// file does not exist
 				if (Basic.isAPK) {										// if not standard BASIC! then is user APK
@@ -6971,8 +6970,7 @@ private boolean doUserFunction(){
 						InputStreamReader inputreader = new InputStreamReader(inputStream);
 						buf = new BufferedReader(inputreader, 8192);
 					} catch (Exception e) {
-						RunTimeError("Error: " + e);
-						return false;
+						return RunTimeError(e);
 					}
 				} else {												// standard BASIC!
 					NumericVarValues.set(saveValueIndex, (double) -1);	// report file does not exist
@@ -6992,8 +6990,7 @@ private boolean doUserFunction(){
 				try {										// if no file create a new one
 					file.createNewFile();
 				} catch (Exception e) {
-					RunTimeError("Error: " + e);
-					return false;
+					return RunTimeError(e);
 				}
 			}
 			if (!(file.exists() && file.canWrite())) {
@@ -7005,8 +7002,7 @@ private boolean doUserFunction(){
 			try {
 				writer = new FileWriter(file, append);		// open the filewriter for the SD Card
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 
 			FileEntry.putInt("stream", FWlist.size());		// The stream parm indexes
@@ -7046,8 +7042,7 @@ private boolean doUserFunction(){
     		try {
     			buf.close();
     		} catch (Exception e) {
-    			RunTimeError("Error:" + e);
-    			return false;
+    			return RunTimeError(e);
 			}
 		}
 		else if (FileMode == FMW) {								// close file open for write
@@ -7056,8 +7051,7 @@ private boolean doUserFunction(){
 				writer.flush();
 				writer.close();
 			} catch (Exception e) {
-    			RunTimeError("Error:" + e);
-    			return false;
+    			return RunTimeError(e);
 			}
 		} else {
 			RunTimeError("File not opened for read or write");
@@ -7222,8 +7216,7 @@ private boolean doUserFunction(){
 			try {
 				buf.reset();								// Back to start of file
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			eof = false;
 			pnow = 1;
@@ -7233,8 +7226,7 @@ private boolean doUserFunction(){
 			try {											// Read a line
 				data = buf.readLine();
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			if (data == null) {
 				eof = true;									// Hit eof, mark Bundle
@@ -7341,8 +7333,7 @@ private boolean doUserFunction(){
 						bis = new BufferedInputStream(fis, 8192);
 						if (bis != null) bis.mark((int) file.length());
 					} catch (Exception e) {
-						RunTimeError("Error: " + e);
-						return false;
+						return RunTimeError(e);
 					}
 				} else {													// file does not exist
 					if (Basic.isAPK) {										// if not standard BASIC! then is user APK
@@ -7352,8 +7343,7 @@ private boolean doUserFunction(){
 							InputStream inputStream = BasicContext.getResources().openRawResource(resID);
 							bis = new BufferedInputStream(inputStream, 8192);
 						} catch (Exception e) {
-							RunTimeError("Error: " + e);
-							return false;
+							return RunTimeError(e);
 						}
 					} else {												// standard BASIC!
 						NumericVarValues.set(saveValueIndex, (double) -1);	// report file does not exist
@@ -7376,8 +7366,7 @@ private boolean doUserFunction(){
 				try {										// if no file create a new one
 					file.createNewFile();
 				} catch (Exception e) {
-					RunTimeError("Error: " + e);
-					return false;
+					return RunTimeError(e);
 				}
 			}
 			if (!(file.exists() && file.canWrite())) {
@@ -7392,8 +7381,7 @@ private boolean doUserFunction(){
 				dos = new DataOutputStream(fos);
 			}				
 			catch (Exception e) {
-				RunTimeError("Error: " + e );
-				return false;
+				return RunTimeError(e);
 			}
 			
 			FileEntry.putInt("stream", DOSlist.size());		// The stream parm indexes
@@ -7434,8 +7422,7 @@ private boolean doUserFunction(){
 				bis.close();
 			} catch (IOException e) {
 //				Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
-				RunTimeError("Error:" + e);
-				return false;
+				return RunTimeError(e);
 			}
 		} else if (FileMode == FMW) {						// close file open for write
 			DataOutputStream dos = DOSlist.get(FileEntry.getInt("stream"));
@@ -7444,8 +7431,7 @@ private boolean doUserFunction(){
 				dos.close();
 			} catch (IOException e) {
 //				Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
-				RunTimeError("Error:" + e);
-				return false;
+				return RunTimeError(e);
 			}
 		} else {
 			RunTimeError("File not opened for read or write");
@@ -7504,16 +7490,9 @@ private boolean doUserFunction(){
 			RunTimeError("Exception: " + e);
 			return false;
 		} finally {
-			try { bos.flush(); } catch (Exception e) {
-				RunTimeError("Error: " + e );}
-
-			try { bis.close(); } catch (Exception e) {
-				RunTimeError("Error: " + e );}
-
-			try { bos.close(); } catch (Exception e) {
-				RunTimeError("Error: " + e );}
-
-			if (SyntaxError) { return false; }					// if RunTimeError was called
+			try { bos.flush(); } catch (Exception e) { return RunTimeError(e); }
+			try { bis.close(); } catch (Exception e) { return RunTimeError(e); }
+			try { bos.close(); } catch (Exception e) { return RunTimeError(e); }
 		}
 		FileEntry.putInt("position", p);
 		FileEntry.putBoolean("eof", true);
@@ -7540,8 +7519,7 @@ private boolean doUserFunction(){
 			try {
 				data = bis.read();							// Read a byte
 			} catch (Exception e) {
-				RunTimeError("Error: ");
-				return false;
+				return RunTimeError(e);
 			}
 			if (data < 0) {
 				FileEntry.putBoolean("eof", true);			// Hit eof, mark Bundle
@@ -7579,8 +7557,7 @@ private boolean doUserFunction(){
 			try {
 				count = bis.read(byteArray, 0, byteCount);	// Read the bytes
 			}catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			if (count < 0) {
 				FileEntry.putBoolean("eof", true);			// Hit eof, mark Bundle
@@ -7693,8 +7670,7 @@ private boolean doUserFunction(){
 			try {
 				bis.reset();								// Back to start of file
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			eof = false;
 			pnow = 1;
@@ -7709,8 +7685,7 @@ private boolean doUserFunction(){
 					skipped += (int)bis.skip(Math.min(skip - skipped, avail));
 					data = bis.read();						// Read to check eof
 				} catch (Exception e) {
-					RunTimeError("Error: ");
-					return false;
+					return RunTimeError(e);
 				}
 				if (data >= 0) { ++skipped; }				// If byte was read, count it
 				else { eof = true; break; }					// otherwise mark eof in Bundle
@@ -8033,9 +8008,8 @@ private boolean doUserFunction(){
 		      bis = new BufferedInputStream(fis);
 		  }				
 		  catch (Exception e) {
-				RunTimeError("Error: " + e );
-			  return false;												// as the file table number
-			  }
+			  return RunTimeError(e);
+		  }
 
 	    // Construct a String object from the byte array containing the response
 	    try{
@@ -8047,9 +8021,8 @@ private boolean doUserFunction(){
 		    result = new String(byteArray.toByteArray(),0);
 
 	    } catch (Exception e) {
-			RunTimeError("Error: " + e );
-			   return false;
-		   }
+			return RunTimeError(e);
+		}
 	   
 	    StringVarValues.set(saveVarIndex, result);
 
@@ -8095,10 +8068,8 @@ private boolean doUserFunction(){
 		    
 		    }
 		    catch (Exception e) {
-				RunTimeError("Error: " + e );
-				   return false;
-			   }
-
+				return RunTimeError(e);
+			}
 		   
 		    StringVarValues.set(saveVarIndex, result);
 
@@ -8190,8 +8161,7 @@ private boolean doUserFunction(){
 		  try {startActivity(i);}
 //		  catch ( android.content.ActivityNotFoundException  e){
 		  catch ( Exception  e){
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 		  return true;
 	  }
@@ -8385,9 +8355,8 @@ private boolean doUserFunction(){
 			try {
 				r = SearchString.split(REString);              // split the string
 			}
-				catch (Exception e){
-					RunTimeError("Error: " + e);
-					return false;
+			catch (Exception e){
+				return RunTimeError(e);
 			}
 							
 			int length = r.length;                             // Get the number of strings generated
@@ -8594,8 +8563,7 @@ private boolean doUserFunction(){
 	        	audioTrack.play();											// Play the track
 	        }
 	        catch (Exception e){
-	        	RunTimeError("Error: " + e);
-	        	return false;
+	        	return RunTimeError(e);
 	        }
 	        
 	        int x =0;
@@ -8884,8 +8852,7 @@ private boolean doUserFunction(){
 		   try {
 			   db.close();											// Try closing it
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+			   return RunTimeError(e);
 		   }
 		   
 		   NumericVarValues.set(theValueIndex, 0.0);				// Set the pointer to 0 to indicate closed.
@@ -8912,8 +8879,7 @@ private boolean doUserFunction(){
 		   try {													// Now insert the pairs into the named table
 	        db.insertOrThrow(TableName, null, values);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+			   return RunTimeError(e);
 		   }
 
 		   return true;
@@ -8976,8 +8942,7 @@ private boolean doUserFunction(){
 	           cursor = db.query(TableName, Q_Columns, Where, null, null,
 	              null, Order);
 		   } catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+			   return RunTimeError(e);
 		   }
 		   
 		   NumericVarValues.set(SaveValueIndex, (double) Cursors.size()+1); // Save the Cursor index into the var
@@ -9004,8 +8969,7 @@ private boolean doUserFunction(){
 				   try{
 				   result = cursor.getString(index); 			// get the result
 				   } catch (Exception e) {
-						RunTimeError("Error: " + e);
-					   return false;
+						return RunTimeError(e);
 				   }
 				   if (result == null) { result = ""; }
 				   StringVarValues.set(theValueIndex, result);	// set result into var
@@ -9070,8 +9034,7 @@ private boolean doUserFunction(){
 		   db.delete(TableName, Where, null);					// do the deletes
 	   }
 	   catch (Exception e){
-		   RunTimeError("Error: " + e);
-		   return false;
+		   return RunTimeError(e);
 	   }
 
 	   return true;
@@ -9100,8 +9063,7 @@ private boolean doUserFunction(){
 		   try {
 	        db.update(TableName, values, Where, null);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+				return RunTimeError(e);
 		   }
 
     	   return true;
@@ -9146,8 +9108,7 @@ private boolean doUserFunction(){
 		   try{													// Do the query and get the cursor
 	           cursor = db.rawQuery(QueryString, null);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+				return RunTimeError(e);
 		   }
 		   
 		   NumericVarValues.set(SaveValueIndex, (double) Cursors.size()+1); // Save the Cursor index into the var
@@ -9172,8 +9133,7 @@ private boolean doUserFunction(){
 		   try {
 		        db.execSQL(CommandString);
 			   }catch (Exception e) {
-					RunTimeError("Error: " + e);
-				   return false;
+					return RunTimeError(e);
 			   }
 		   
     	  return true;
@@ -9212,8 +9172,7 @@ private boolean doUserFunction(){
 		   try {
 		        db.execSQL(CommandString);
 			   }catch (Exception e) {
-					RunTimeError("Error: " + e);
-				   return false;
+					return RunTimeError(e);
 			   }
 		   
     	  
@@ -10465,8 +10424,7 @@ private boolean doUserFunction(){
 			try {
 				inputStream = new FileInputStream(fn);					// Open an input stream from the SDCARD file
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 		} else {														// file does not exist
 			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
@@ -10475,8 +10433,7 @@ private boolean doUserFunction(){
 				try {
 					inputStream = BasicContext.getResources().openRawResource(resID);	// Open an input stream from raw resource
 				} catch (Exception e) {
-					RunTimeError("Error: " + e );
-					return false;
+					return RunTimeError(e);
 				}
 			}															// else standard BASIC!, inputStream is still null
 		}
@@ -10488,8 +10445,7 @@ private boolean doUserFunction(){
 			   inputStream.close();
 		   }           
 		   catch (Exception e) {
-				RunTimeError("Error: " + e );
-			   return false;
+				return RunTimeError(e);
 		   }
 
 		   if (aBitmap == null ){
@@ -10570,8 +10526,7 @@ private boolean doUserFunction(){
 			
 			try {aBitmap = Bitmap.createScaledBitmap(SrcBitMap, Width, Height, parm);}
 			   catch (Exception e){
-				   RunTimeError("Error: " + e);
-				   return false;
+				   return RunTimeError(e);
 			   }
 			   
 			System.gc();   
@@ -10661,8 +10616,7 @@ private boolean doUserFunction(){
 			  aBitmap = Bitmap.createBitmap(SourceBitmap, x, y, width, height);
 		  }
 		  catch (Exception e){
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 
 		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
@@ -10752,8 +10706,7 @@ private boolean doUserFunction(){
 			   aBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
 		   }
 		   catch (Exception e) {
-			   RunTimeError("Error: " + e);
-			   return false;
+			   return RunTimeError(e);
 		   }
 		   
 		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
@@ -11106,8 +11059,7 @@ private boolean doUserFunction(){
 			ostream.close();
 		} 
 		catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 		return true;
 	}
@@ -11476,8 +11428,7 @@ private boolean doUserFunction(){
 				else tCamera = Camera.open(CameraNumber);
 			}
 			catch (Exception e){
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			
 		    if (tCamera == null){
@@ -11503,8 +11454,7 @@ private boolean doUserFunction(){
 		    try{
 		    	startActivityForResult(cameraIntent, BASIC_GENERAL_INTENT);
 		    } catch (Exception e){
-		    	RunTimeError("Error: " + e);
-		    	return false;
+		    	return RunTimeError(e);
 		    }
 
 			while (!CameraDone) Thread.yield();
@@ -11682,8 +11632,7 @@ private boolean doUserFunction(){
 				}
 				aMP = MediaPlayer.create(BasicContext, theURI);			// Create a new Media Player
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 		} else {														// file does not exist
 			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
@@ -11764,8 +11713,7 @@ private boolean doUserFunction(){
 //		  Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " play " +theMP );
 		  try {theMP.prepare();}
 		  catch (Exception e) {
-//				RunTimeError("Error: " + e );
-//				return false;
+//				return RunTimeError(e);
 		  }
 		  theMP.start();
 		  
@@ -11837,8 +11785,7 @@ private boolean doUserFunction(){
 //		  MediaPlayer.setOnSeekCompleteListener (mSeekListener);
 //	  	 try {Thread.sleep(1000);}catch(InterruptedException e){}
 	  	  try {Run.theMP.stop();}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				return false;
+				return RunTimeError(e);
 	  	  }
 
 	  	  theMP = null;                                                 // Signal MP stopped
@@ -11850,8 +11797,7 @@ private boolean doUserFunction(){
 		  if (!checkEOL()) return false;
 		  if (theMP == null) return true;                               // if theMP is null, Media player has stopped
 	  	  try {Run.theMP.pause();} catch (Exception e) {
-				RunTimeError("Error: " + e );
-				return false;
+				return RunTimeError(e);
 	  	  }
 	  	  theMP = null;                                                 // Signal MP stopped
 		  return true;
@@ -14321,8 +14267,7 @@ private boolean doUserFunction(){
             Dest = Dest.trim();
             
         } catch (Exception e) {
-        	RunTimeError("Error: " + e);
-        	return false;
+        	return RunTimeError(e);
         }
         
 
@@ -14374,8 +14319,7 @@ private boolean doUserFunction(){
             
         } 
         catch (Exception e) {
-        	RunTimeError("Error: " + e);
-        	return false;
+        	return RunTimeError(e);
         }
         
         String Dest = "@@@@";
@@ -14388,8 +14332,7 @@ private boolean doUserFunction(){
             // Encode bytes to UTF 8 to get a string
             Dest = new String(utf8, "UTF8");
         } catch (Exception e) {
-        	RunTimeError("Error: " + e);
-        	return false;
+        	return RunTimeError(e);
         }
 
         if (Dest.equals("@@@@")){
@@ -14526,8 +14469,7 @@ private boolean doUserFunction(){
 		try {
 			newSS = new ServerSocket(SocketServersServerPort);
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 
 		return true;
@@ -14547,8 +14489,7 @@ private boolean doUserFunction(){
 			ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
 
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 
 		return true;
@@ -14570,8 +14511,7 @@ private boolean doUserFunction(){
 			ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
 
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 
 		return true;
@@ -14618,8 +14558,7 @@ private boolean doUserFunction(){
 		try {
 			if (reader.ready()) { ready = 1; }
 		} catch (IOException e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 
 		NumericVarValues.set(theValueIndex, ready);
@@ -14645,8 +14584,7 @@ private boolean doUserFunction(){
 		try {
 			line = reader.readLine();
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 		
 		if (line == null){
@@ -14748,8 +14686,7 @@ private boolean doUserFunction(){
 				return false;
 			}
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 		FileEntry.putBoolean("eof", true);
 		FileEntry.putBoolean("closed", true);
@@ -14775,8 +14712,7 @@ private boolean doUserFunction(){
 			streamCopy(bis, dos, bufferSize, 0L);							// Copy from socket to file
 
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 		FileEntry.putBoolean("eof", true);
 		FileEntry.putBoolean("closed", true);
@@ -14830,8 +14766,7 @@ private boolean doUserFunction(){
 			theServerSocket.close();
 			
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		} finally {
 			ServerPrintWriter = null;
 			ServerBufferedReader = null;
@@ -14848,8 +14783,7 @@ private boolean doUserFunction(){
 		try {
 			if (newSS != null) newSS.close();
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		} finally {
 			newSS = null;
 		}
@@ -14863,8 +14797,7 @@ private boolean doUserFunction(){
 		try {
 			theClientSocket.close();
 		} catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		} finally {
 			ClientPrintWriter = null;
 			ClientBufferedReader = null;
@@ -14884,17 +14817,16 @@ private boolean doUserFunction(){
 				for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
 					InetAddress inetAddress = enumIpAddr.nextElement();
 					if (!(inetAddress. isLoopbackAddress() || inetAddress. isLinkLocalAddress ())) {
-							IP = inetAddress.getHostAddress().toString();
-							StringVarValues.set(theValueIndex, IP);
-							return true;
-						}
+						IP = inetAddress.getHostAddress().toString();
+						StringVarValues.set(theValueIndex, IP);
+						return true;
 					}
 				}
-			} catch (Exception e) {
-				RunTimeError("Error: " + e );
-				return false;
 			}
-			
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
+		
 		return true;
 	}
 	
@@ -15081,7 +15013,7 @@ private boolean doUserFunction(){
 					return status;
 					}
 			} catch(Exception e) {
-				RunTimeError( "Error: " + e);
+				RunTimeError(e);
 			}
 
 			return false;
@@ -15093,7 +15025,7 @@ private boolean doUserFunction(){
 		        String workingDir = mFTPClient.printWorkingDirectory();
 		        return workingDir;
 		    } catch(Exception e) {
-		        RunTimeError( "Error: " + e);
+		        RunTimeError(e);
 		    }
 		    return null;
 		}
@@ -15107,10 +15039,8 @@ private boolean doUserFunction(){
 			        FTPdir = null;
 			        return true;
 			    } catch (Exception e) {
-			        RunTimeError("Error: " + e);
+			        return RunTimeError(e);
 			    }
-
-			    return false;
 		}
 		
 		private boolean executeFTP_DIR(){
@@ -15140,8 +15070,7 @@ private boolean doUserFunction(){
 			            theStringList.add(name);
 			        }
 			    } catch(Exception e) {
-			        RunTimeError("Error: " + e);
-			        return false;
+			        return RunTimeError(e);
 			    }
 			
 			return true;
@@ -15163,8 +15092,7 @@ private boolean doUserFunction(){
 		        	return false;
 		        }
 		    } catch(Exception e) {
-		        RunTimeError("Error: " + e);
-		        return false;
+		        return RunTimeError(e);
 		    }
 		    FTPdir = directory_path;
 
@@ -15203,11 +15131,8 @@ private boolean doUserFunction(){
 
 		        return status;
 		    } catch (Exception e) {
-		        RunTimeError( "Error: " + e);
-		        return false;
+		        return RunTimeError(e);
 		    }
-
-//		    return status;
 		}
 		
 		private boolean executeFTP_PUT(){
@@ -15245,11 +15170,8 @@ private boolean doUserFunction(){
 				srcFileStream.close();
 				return status;
 			} catch (Exception e) {
-				RunTimeError( "Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
-
-//			return status;
 		}	
 		
 		public boolean executeFTP_CMD(){
@@ -15280,13 +15202,10 @@ private boolean doUserFunction(){
 				int l = response.length;
 				for (int i = 0; i < l; ++i)
 					PrintShow(response[i]);
+				return true;
 			} catch (Exception e) {
-				RunTimeError( "Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
-			
-			return true;
-			
 		}
 		
 		private boolean executeFTP_DELETE(){
@@ -15550,7 +15469,7 @@ private boolean doUserFunction(){
 		        }
 		    }
 		    
-		    public final Handler mHandler = new Handler() {
+		    public final Handler mHandler = new Handler() {		// Currently used only for Bluetooth messages
 		        @Override
 		        public void handleMessage(Message msg) {
 		            switch (msg.what) {
@@ -15919,9 +15838,8 @@ private boolean doUserFunction(){
         	try {
         		file.createNewFile();
         		}catch (Exception e) {
-        			RunTimeError("Error: " + e );
-        			return false;
-        			}
+        			return RunTimeError(e);
+        		}
         	if (!file.exists() || !file.canWrite()){
         		RunTimeError("Problem opening " + theFileName);
 	    		return false;
@@ -15938,8 +15856,7 @@ private boolean doUserFunction(){
 				writer.flush();
 				writer.close();
         		}catch (Exception e) {
-        			RunTimeError("Error: " + e );
-        				return false;
+        			return RunTimeError(e);
         		}
 //        	Log.d(LOGTAG, "executeCONSOLE_DUMP: file " + theFileName + " written");
 		
@@ -16356,8 +16273,7 @@ private boolean doUserFunction(){
 		  try {
 			  sm.sendTextMessage(number, null, msg, null, null);
 		  } catch (Exception e) {
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 		  
 		  return true;
@@ -16424,8 +16340,7 @@ private boolean doUserFunction(){
 		  try {
 			  startActivityForResult(callIntent, BASIC_GENERAL_INTENT);  
 		  } catch (Exception e){
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 		  return true;
 	  }
@@ -16507,8 +16422,7 @@ private boolean doUserFunction(){
 		  try {
 			  startActivityForResult(intent, BASIC_GENERAL_INTENT);
 		  }catch (Exception e){
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 		  
 		  return true;
