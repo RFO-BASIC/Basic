@@ -225,6 +225,20 @@ public class Run extends ListActivity {
 		public boolean run() { return false; }			// Run the command execution function
 	}
 
+	private boolean executeCommand(Command[] commands, String type){// If the current line starts with a key word in a command list
+																	// execute the command. The "type" is used only to report errors.
+		String line = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
+		for (Command c : commands) {								// loop through the command list
+			String name = c.name();
+			if (line.startsWith(name)) {							// if there is a match
+				LineIndex += name.length();							// move the line index to end of key word
+				return c.run();										// run the function and report back
+			}
+		}
+		RunTimeError("Unknown " + type + " command");
+		return false;												// no key word found
+	}
+
 // **********  The variables for the Basic Key words ****************************    
     
     public static final String BasicKeyWords[]={
@@ -1182,9 +1196,41 @@ public class Run extends ListActivity {
 		"server.client.ip", "client.server.ip",
 		"server.write.file", "client.read.file",
 		"server.write.bytes", "client.write.bytes",
-		"client.write.file"
+		"client.write.file", "server.read.file"
 	};
-	
+
+	private final Command[] Socket_cmd = new Command[] {	// Map Socket command key words to their execution functions
+		new Command("client.")          { public boolean run() { return executeSocketClient(); } },
+		new Command("server.")          { public boolean run() { return executeSocketServer(); } },
+		new Command("myip")             { public boolean run() { return executeMYIP(); } }
+	};
+                                    
+	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket client command key words to their execution functions
+		new Command("connect")          { public boolean run() { return executeCLIENT_CONNECT(); } },
+		new Command("read.ready")       { public boolean run() { return executeCLIENT_READ_READY(); } },
+		new Command("read.line")        { public boolean run() { return executeCLIENT_READ_LINE(); } },
+		new Command("write.line")       { public boolean run() { return executeCLIENT_WRITE_LINE(); } },
+		new Command("write.bytes")      { public boolean run() { return executeCLIENT_WRITE_BYTES(); } },
+		new Command("close")            { public boolean run() { return executeCLIENT_CLOSE(); } },
+		new Command("server.ip")        { public boolean run() { return executeCLIENT_SERVER_IP(); } },
+		new Command("read.file")        { public boolean run() { return executeCLIENT_GETFILE(); } },
+		new Command("write.file")       { public boolean run() { return executeCLIENT_PUTFILE(); } }
+	};
+
+	private final Command[] SocketServer_cmd = new Command[] {	// Map Socket server command key words to their execution functions
+		new Command("create")           { public boolean run() { return executeSERVER_CREATE(); } },
+		new Command("connect")          { public boolean run() { return executeSERVER_ACCEPT(); } },
+		new Command("read.ready")       { public boolean run() { return executeSERVER_READ_READY(); } },
+		new Command("read.line")        { public boolean run() { return executeSERVER_READ_LINE(); } },
+		new Command("write.line")       { public boolean run() { return executeSERVER_WRITE_LINE(); } },
+		new Command("write.bytes")      { public boolean run() { return executeSERVER_WRITE_BYTES(); } },
+		new Command("client.ip")        { public boolean run() { return executeSERVER_CLIENT_IP(); } },
+		new Command("disconnect")       { public boolean run() { return executeSERVER_DISCONNECT(); } },
+		new Command("close")            { public boolean run() { return executeSERVER_CLOSE(); } },
+		new Command("read.file")        { public boolean run() { return executeSERVER_GETFILE(); } },
+		new Command("write.file")       { public boolean run() { return executeSERVER_PUTFILE(); } }
+	};
+
 	public static final int client_connect = 0;
 	public static final int client_read_line = 1;
 	public static final int client_write_line = 2;
@@ -1205,6 +1251,7 @@ public class Run extends ListActivity {
 	public static final int server_putbytes = 17;
 	public static final int client_putbytes = 18;
 	public static final int client_putfile= 19;
+	public static final int server_getfile = 20;
 	
 	public static Socket theClientSocket ;
 	public static BufferedReader ClientBufferedReader ;
@@ -8707,16 +8754,7 @@ private boolean doUserFunction(){
 	  // ************************************************ SQL Package ***************************************	  
 
 	private boolean executeSQL(){									// Get SQL command key word if it is there
-		String temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		for (Command c : SQL_cmd) {									// loop through the command list
-			String name = c.name();
-			if (temp.startsWith(name)) {							// if there is a match
-				LineIndex += name.length();							// move the line index to end of key word
-				return c.run();										// run the function and report back
-			}
-		}
-		RunTimeError("Unknown SQL command");
-		return false;												// no key word found
+		return executeCommand(SQL_cmd, "SQL");
 	}
 
 	private boolean getDbPtrArg() {									// first arg of command is DB Pointer Variable
@@ -14346,90 +14384,17 @@ private boolean doUserFunction(){
 	}
 	
 //************************************** Socket Commands  ******************************************
-	
-	private boolean executeSOCKET(){
-		if (!GetSocketKeyWord()){ return false;}
-		switch (KeyWordValue){
-		case client_connect:
-			if (!executeCLIENT_CONNECT())return false;
-			break;
-		case client_read_line:
-			if (!executeCLIENT_READ_LINE()) return false;
-			break;
-		case client_putbytes:
-			if (!executeCLIENT_WRITE_LINE(true)) return false;
-			break;
-		case client_write_line:
-			if (!executeCLIENT_WRITE_LINE(false)) return false;
-			break;
-		case server_create:
-			if (!executeSERVER_CREATE()) return false;
-			break;
-		case server_accept:
-			if (!executeSERVER_ACCEPT()) return false;
-			break;
-		case server_read_line:
-			if (!executeSERVER_READ_LINE()) return false;
-			break;
-		case server_putbytes:
-			if (!executeSERVER_WRITE_LINE(true)) return false;
-			break;
-		case server_write_line:
-			if (!executeSERVER_WRITE_LINE(false)) return false;
-			break;
-		case server_close:
-			if (!executeSERVER_CLOSE()) return false;
-			break;
-		case client_close:
-			if (!executeCLIENT_CLOSE()) return false;
-			break;
-		case myip:
-			if (!executeMYIP()) return false;
-			break;
-		case client_read_ready:
-			if (!executeCLIENT_READ_READY()) return false;
-			break;
-		case server_read_ready:
-			if (!executeSERVER_READ_READY()) return false;
-			break;
-		case server_disconnect:
-			if (!executeSERVER_DISCONNECT()) return false;
-			break;
-		case server_client_ip:
-			if (!executeSERVER_CLIENT_IP()) return false;
-			break;
-		case client_server_ip:
-			if (!executeCLIENT_SERVER_IP()) return false;
-			break;
-		case client_getfile:
-			if (!executeCLIENT_GETFILE()) return false;
-			break;
-		case server_putfile:
-			if (!executeSERVER_PUTFILE()) return false;
-			break;
-		case client_putfile:
-			if (!executeCLIENT_PUTFILE()) return false;
-			break;
-			
-		default:
-		}
-		return true;
-	}
-	
-	private  boolean GetSocketKeyWord(){						// Get a Basic key word if it is there
-		// is the current line index at a key word?
-		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		int i = 0;
-		for (i = 0; i<Socket_KW.length; ++i){				// loop through the key word list
-			if (Temp.startsWith(Socket_KW[i])){    			// if there is a match
-				KeyWordValue = i;							// set the key word number
-				LineIndex = LineIndex + Socket_KW[i].length(); // move the line index to end of key word
-				return true;								// and report back
-				}
-		}
-		KeyWordValue = list_none;						// no key word found
-		return false;										// report fail
 
+	private boolean executeSOCKET(){								// Get Socket command key word if it is there
+		return executeCommand(Socket_cmd, "Socket");
+	}
+
+	private boolean executeSocketServer(){							// Get Socket Server command key word if it is there
+		return executeCommand(SocketServer_cmd, "Socket Server");
+	}
+
+	private boolean executeSocketClient(){							// Get Socket Client command key word if it is there
+		return executeCommand(SocketClient_cmd, "Socket Client");
 	}
 
 	private boolean isServerSocketConnected() {
@@ -14595,17 +14560,27 @@ private boolean doUserFunction(){
 		return true;
 	}
 
-	private boolean executeSERVER_WRITE_LINE(boolean byteMode){
+	private boolean executeSERVER_WRITE_LINE(){
 		if (!isServerSocketConnected()) return false;
-		return socketWriteLine(theServerSocket, ServerPrintWriter, byteMode);
+		return socketWrite(theServerSocket, ServerPrintWriter, false);
 	}
 
-	private boolean executeCLIENT_WRITE_LINE(boolean byteMode){
+	private boolean executeCLIENT_WRITE_LINE(){
 		if (!isClientSocketConnected()) return false;
-		return socketWriteLine(theClientSocket, ClientPrintWriter, byteMode);
+		return socketWrite(theClientSocket, ClientPrintWriter, false);
 	}
 
-	private boolean socketWriteLine(Socket socket, PrintWriter writer, boolean byteMode){
+	private boolean executeSERVER_WRITE_BYTES(){
+		if (!isServerSocketConnected()) return false;
+		return socketWrite(theServerSocket, ServerPrintWriter, true);
+	}
+
+	private boolean executeCLIENT_WRITE_BYTES(){
+		if (!isClientSocketConnected()) return false;
+		return socketWrite(theClientSocket, ClientPrintWriter, true);
+	}
+
+	private boolean socketWrite(Socket socket, PrintWriter writer, boolean byteMode){
 
 		if (!getStringArg()) return false;
 		if (!checkEOL()) return false;
@@ -14649,6 +14624,11 @@ private boolean doUserFunction(){
 	private boolean executeCLIENT_PUTFILE(){
 		if (!isClientSocketConnected()) return false;
 		return socketPutFile(theClientSocket);
+	}
+
+	private boolean executeSERVER_GETFILE(){
+		if (!isServerSocketConnected()) return false;
+		return socketGetFile(theServerSocket);
 	}
 
 	private boolean executeCLIENT_GETFILE(){
