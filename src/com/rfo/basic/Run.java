@@ -65,6 +65,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.BufferedReader;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.math.BigDecimal;
 
 import java.util.ArrayList;
@@ -1186,17 +1187,16 @@ public class Run extends ListActivity {
 //  ******************************* Socket Variables **************************************************
 
 	public static final String Socket_KW[] = {
-		"client.connect", "client.read.line",
-		"client.write.line", "server.create",
-		"server.connect",
-		"server.write.line", "server.read.line",
-		"server.close", "client.close",
-		"myip", "client.read.ready",
-		"server.read.ready", "server.disconnect",
-		"server.client.ip", "client.server.ip",
-		"server.write.file", "client.read.file",
-		"server.write.bytes", "client.write.bytes",
-		"client.write.file", "server.read.file"
+		"myip", "client.connect", "client.status",
+		"client.read.ready", "client.read.line",
+		"client.write.line", "client.write.bytes",
+		"client.close", "client.server.ip",
+		"client.read.file", "client.write.file",
+		"server.create", "server.connect", "server.status",
+		"server.read.ready", "server.read.line",
+		"server.write.line", "server.write.bytes",
+		"server.disconnect", "server.close", "server.client.ip",
+		"server.read.file", "server.write.file"
 	};
 
 	private final Command[] Socket_cmd = new Command[] {	// Map Socket command key words to their execution functions
@@ -1207,6 +1207,7 @@ public class Run extends ListActivity {
                                     
 	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket client command key words to their execution functions
 		new Command("connect")          { public boolean run() { return executeCLIENT_CONNECT(); } },
+		new Command("status")           { public boolean run() { return executeCLIENT_STATUS(); } },
 		new Command("read.ready")       { public boolean run() { return executeCLIENT_READ_READY(); } },
 		new Command("read.line")        { public boolean run() { return executeCLIENT_READ_LINE(); } },
 		new Command("write.line")       { public boolean run() { return executeCLIENT_WRITE_LINE(); } },
@@ -1220,47 +1221,39 @@ public class Run extends ListActivity {
 	private final Command[] SocketServer_cmd = new Command[] {	// Map Socket server command key words to their execution functions
 		new Command("create")           { public boolean run() { return executeSERVER_CREATE(); } },
 		new Command("connect")          { public boolean run() { return executeSERVER_ACCEPT(); } },
+		new Command("status")           { public boolean run() { return executeSERVER_STATUS(); } },
 		new Command("read.ready")       { public boolean run() { return executeSERVER_READ_READY(); } },
 		new Command("read.line")        { public boolean run() { return executeSERVER_READ_LINE(); } },
 		new Command("write.line")       { public boolean run() { return executeSERVER_WRITE_LINE(); } },
 		new Command("write.bytes")      { public boolean run() { return executeSERVER_WRITE_BYTES(); } },
-		new Command("client.ip")        { public boolean run() { return executeSERVER_CLIENT_IP(); } },
 		new Command("disconnect")       { public boolean run() { return executeSERVER_DISCONNECT(); } },
 		new Command("close")            { public boolean run() { return executeSERVER_CLOSE(); } },
+		new Command("client.ip")        { public boolean run() { return executeSERVER_CLIENT_IP(); } },
 		new Command("read.file")        { public boolean run() { return executeSERVER_GETFILE(); } },
 		new Command("write.file")       { public boolean run() { return executeSERVER_PUTFILE(); } }
 	};
 
-	public static final int client_connect = 0;
-	public static final int client_read_line = 1;
-	public static final int client_write_line = 2;
-	public static final int server_create = 3;
-	public static final int server_accept = 4;
-	public static final int server_write_line = 5;
-	public static final int server_read_line = 6;
-	public static final int server_close = 7;
-	public static final int client_close = 8;
-	public static final int myip = 9;
-	public static final int client_read_ready = 10;
-	public static final int server_read_ready = 11;
-	public static final int server_disconnect = 12;
-	public static final int server_client_ip = 13;
-	public static final int client_server_ip = 14;
-	public static final int server_putfile = 15;
-	public static final int client_getfile = 16;
-	public static final int server_putbytes = 17;
-	public static final int client_putbytes = 18;
-	public static final int client_putfile= 19;
-	public static final int server_getfile = 20;
+    // Constants that indicate the current connection state
+    public static final int STATE_NOT_ENABLED = -1;	// channel is not enabled, or server socket not created
+    public static final int STATE_NONE = 0;			// channel is doing nothing (initial state)
+    public static final int STATE_LISTENING = 1;	// now listening for incoming connections
+    public static final int STATE_CONNECTING = 2;	// now initiating an outgoing connection
+    public static final int STATE_CONNECTED = 3;	// now connected to a remote device
+    public static final int STATE_READING = 4;		// now reading from a remote device
+    public static final int STATE_WRITING = 5;		// now writing to a remote device
+
+    private int clientSocketState;
+    private int serverSocketState;
+
+    private Socket theClientSocket ;
+    private BufferedReader ClientBufferedReader ;
+    private PrintWriter ClientPrintWriter ;
 	
-	public static Socket theClientSocket ;
-	public static BufferedReader ClientBufferedReader ;
-	public static PrintWriter ClientPrintWriter ;
-	
-	public static ServerSocket newSS;
-	public static Socket theServerSocket ;
-	public static BufferedReader ServerBufferedReader ;
-	public static PrintWriter ServerPrintWriter ;
+    private ServerSocket newSS;
+    private SocketConnectThread serverSocketConnectThread; 
+    private Socket theServerSocket ;
+    private BufferedReader ServerBufferedReader ;
+    private PrintWriter ServerPrintWriter ;
 	
 	// *************************************************** Debug Commands ****************************
 	
@@ -2237,10 +2230,14 @@ private void InitVars(){
 	ClientPrintWriter = null;
 	
 	newSS = null;
+	serverSocketConnectThread = null;
 	theServerSocket = null ;
 	ServerBufferedReader = null ;
 	ServerPrintWriter = null ;
-	
+
+	clientSocketState = STATE_NONE;
+	serverSocketState = STATE_NONE;
+
 	TextToSpeech mTts = null;
 	ttsInit = false;
 	ttsInitResult = 0;
@@ -2328,7 +2325,15 @@ public void cleanUp(){
 		}
 	theServerSocket = null;
 	}
-	  
+
+	if (serverSocketConnectThread != null) {
+		serverSocketConnectThread.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+			public void uncaughtException(Thread thread, Throwable ex) { }	// Silence is golden
+		});
+		serverSocketConnectThread.interrupt();
+		serverSocketConnectThread = null;
+	}
+
 	if (newSS != null){
 		try{
 			newSS.close();
@@ -2344,7 +2349,10 @@ public void cleanUp(){
 			}
 			theClientSocket = null;
 		}
-	
+
+	clientSocketState = STATE_NONE;
+	serverSocketState = STATE_NONE;
+
 	execute_audio_record_stop();
 
 	Stop = true;										// make sure the background task stops
@@ -14446,18 +14454,36 @@ private boolean doUserFunction(){
 			RunTimeError("Server not created");
 			return false;
 		}
-		if (!checkEOL()) return false;
-
-		try {
-			theServerSocket = newSS.accept();
-			ServerBufferedReader = new BufferedReader(new InputStreamReader(theServerSocket.getInputStream()));
-			ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
-
-		} catch (Exception e) {
-			return RunTimeError(e);
+		boolean block = true;			// Default if no "wait" parameter is to block. This preserves
+										// behavior from before v01.73, when the parameter was added.
+		if (evalNumericExpression()) {										// Optional "wait" parameter
+			block = (EvalNumericExpressionValue != 0.0);
 		}
+		if (!checkEOL()) return false;
+		if ((theServerSocket != null) && theServerSocket.isConnected()) return true;
 
+		serverSocketState = STATE_LISTENING;
+		serverSocketConnectThread = new SocketConnectThread();
+		serverSocketConnectThread.start();
+		if (block) {
+			while (serverSocketState == STATE_LISTENING) { Thread.yield(); }
+			if (serverSocketState != STATE_CONNECTED) { return false; }
+		}
 		return true;
+	}
+
+	private class SocketConnectThread extends Thread {
+		public void run() {
+			try {
+				theServerSocket = newSS.accept();
+				ServerBufferedReader = new BufferedReader(new InputStreamReader(theServerSocket.getInputStream()));
+				ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
+				serverSocketState = STATE_CONNECTED;
+			} catch (Exception e) {
+				RunTimeError(e);
+				serverSocketState = STATE_NONE;
+			}
+		}
 	}
 
 	private boolean executeCLIENT_CONNECT(){
@@ -14474,11 +14500,38 @@ private boolean doUserFunction(){
 			theClientSocket = new Socket(SocketClientsServerAdr, SocketClientsServerPort);
 			ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
 			ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
-
+			clientSocketState = STATE_CONNECTED;
 		} catch (Exception e) {
+			clientSocketState = STATE_NONE;
 			return RunTimeError(e);
 		}
 
+		return true;
+	}
+
+	private boolean executeSERVER_STATUS() {
+
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+
+		double status = (newSS == null)                         ? STATE_NOT_ENABLED
+					  : (serverSocketState == STATE_LISTENING)  ? STATE_LISTENING
+					  : (theServerSocket == null)               ? STATE_NONE
+					  : theServerSocket.isConnected()           ? STATE_CONNECTED
+					  :                                           STATE_NONE;
+		NumericVarValues.set(theValueIndex, status);
+		return true;
+	}
+
+	private boolean executeCLIENT_STATUS() {
+
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+
+		double status = (theClientSocket == null)               ? STATE_NONE
+					  : theClientSocket.isConnected()           ? STATE_CONNECTED
+					  :                                           STATE_NONE;
+		NumericVarValues.set(theValueIndex, status);
 		return true;
 	}
 
@@ -14751,6 +14804,7 @@ private boolean doUserFunction(){
 			ServerPrintWriter = null;
 			ServerBufferedReader = null;
 			theServerSocket = null;
+			serverSocketState = STATE_NONE;
 		}
 
 		return true;
@@ -14782,6 +14836,7 @@ private boolean doUserFunction(){
 			ClientPrintWriter = null;
 			ClientBufferedReader = null;
 			theClientSocket = null;
+			clientSocketState = STATE_NONE;
 		}
 		return true;
 	}
