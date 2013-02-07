@@ -14482,6 +14482,8 @@ private boolean doUserFunction(){
 			} catch (Exception e) {
 				RunTimeError(e);
 				serverSocketState = STATE_NONE;
+			} finally {
+				serverSocketConnectThread = null;							// null global reference to itself
 			}
 		}
 	}
