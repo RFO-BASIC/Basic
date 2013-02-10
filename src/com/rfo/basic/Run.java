@@ -10410,7 +10410,8 @@ private boolean doUserFunction(){
 
 		// if there is no dot extension, returns original string
 
-		return input.toLowerCase().replace(".", "_");					// Convert to lower case, convert all '.' to '_'
+		int idx = input.replaceAll("\\", "/").lastIndexOf("/");
+		return idx >= 0 ? input.substring(idx + 1).toLowerCase().replace(".", "_") : input.toLowerCase().replace(".", "_"); // Convert to lower case, convert all '.' to '_'
 	}
 
 	private int getRawResourceID(String fileName) {
