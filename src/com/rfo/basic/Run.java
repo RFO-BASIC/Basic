@@ -47,10 +47,12 @@ import static com.rfo.basic.Basic.*;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileReader;
+import java.io.Flushable;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -63,6 +65,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.BufferedReader;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.math.BigDecimal;
 
 import java.util.ArrayList;
@@ -221,6 +224,20 @@ public class Run extends ListActivity {
 		public Command(String name) { mName = name; }
 		public String name() { return mName; }			// Get the command key word
 		public boolean run() { return false; }			// Run the command execution function
+	}
+
+	private boolean executeCommand(Command[] commands, String type){// If the current line starts with a key word in a command list
+																	// execute the command. The "type" is used only to report errors.
+		String line = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
+		for (Command c : commands) {								// loop through the command list
+			String name = c.name();
+			if (line.startsWith(name)) {							// if there is a match
+				LineIndex += name.length();							// move the line index to end of key word
+				return c.run();										// run the function and report back
+			}
+		}
+		RunTimeError("Unknown " + type + " command");
+		return false;												// no key word found
 	}
 
 // **********  The variables for the Basic Key words ****************************    
@@ -1170,48 +1187,73 @@ public class Run extends ListActivity {
 //  ******************************* Socket Variables **************************************************
 
 	public static final String Socket_KW[] = {
-		"client.connect", "client.read.line",
-		"client.write.line", "server.create",
-		"server.connect",
-		"server.write.line", "server.read.line",
-		"server.close", "client.close",
-		"myip", "client.read.ready",
-		"server.read.ready", "server.disconnect",
-		"server.client.ip", "client.server.ip",
-		"server.write.file", "client.read.file",
-		"server.write.bytes", "client.write.bytes",
-		"client.write.file"
+		"myip", "client.connect", "client.status",
+		"client.read.ready", "client.read.line",
+		"client.write.line", "client.write.bytes",
+		"client.close", "client.server.ip",
+		"client.read.file", "client.write.file",
+		"server.create", "server.connect", "server.status",
+		"server.read.ready", "server.read.line",
+		"server.write.line", "server.write.bytes",
+		"server.disconnect", "server.close", "server.client.ip",
+		"server.read.file", "server.write.file"
 	};
+
+	private final Command[] Socket_cmd = new Command[] {	// Map Socket command key words to their execution functions
+		new Command("client.")          { public boolean run() { return executeSocketClient(); } },
+		new Command("server.")          { public boolean run() { return executeSocketServer(); } },
+		new Command("myip")             { public boolean run() { return executeMYIP(); } }
+	};
+                                    
+	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket client command key words to their execution functions
+		new Command("connect")          { public boolean run() { return executeCLIENT_CONNECT(); } },
+		new Command("status")           { public boolean run() { return executeCLIENT_STATUS(); } },
+		new Command("read.ready")       { public boolean run() { return executeCLIENT_READ_READY(); } },
+		new Command("read.line")        { public boolean run() { return executeCLIENT_READ_LINE(); } },
+		new Command("write.line")       { public boolean run() { return executeCLIENT_WRITE_LINE(); } },
+		new Command("write.bytes")      { public boolean run() { return executeCLIENT_WRITE_BYTES(); } },
+		new Command("close")            { public boolean run() { return executeCLIENT_CLOSE(); } },
+		new Command("server.ip")        { public boolean run() { return executeCLIENT_SERVER_IP(); } },
+		new Command("read.file")        { public boolean run() { return executeCLIENT_GETFILE(); } },
+		new Command("write.file")       { public boolean run() { return executeCLIENT_PUTFILE(); } }
+	};
+
+	private final Command[] SocketServer_cmd = new Command[] {	// Map Socket server command key words to their execution functions
+		new Command("create")           { public boolean run() { return executeSERVER_CREATE(); } },
+		new Command("connect")          { public boolean run() { return executeSERVER_ACCEPT(); } },
+		new Command("status")           { public boolean run() { return executeSERVER_STATUS(); } },
+		new Command("read.ready")       { public boolean run() { return executeSERVER_READ_READY(); } },
+		new Command("read.line")        { public boolean run() { return executeSERVER_READ_LINE(); } },
+		new Command("write.line")       { public boolean run() { return executeSERVER_WRITE_LINE(); } },
+		new Command("write.bytes")      { public boolean run() { return executeSERVER_WRITE_BYTES(); } },
+		new Command("disconnect")       { public boolean run() { return executeSERVER_DISCONNECT(); } },
+		new Command("close")            { public boolean run() { return executeSERVER_CLOSE(); } },
+		new Command("client.ip")        { public boolean run() { return executeSERVER_CLIENT_IP(); } },
+		new Command("read.file")        { public boolean run() { return executeSERVER_GETFILE(); } },
+		new Command("write.file")       { public boolean run() { return executeSERVER_PUTFILE(); } }
+	};
+
+    // Constants that indicate the current connection state
+    public static final int STATE_NOT_ENABLED = -1;	// channel is not enabled, or server socket not created
+    public static final int STATE_NONE = 0;			// channel is doing nothing (initial state)
+    public static final int STATE_LISTENING = 1;	// now listening for incoming connections
+    public static final int STATE_CONNECTING = 2;	// now initiating an outgoing connection
+    public static final int STATE_CONNECTED = 3;	// now connected to a remote device
+    public static final int STATE_READING = 4;		// now reading from a remote device
+    public static final int STATE_WRITING = 5;		// now writing to a remote device
+
+    private int clientSocketState;
+    private int serverSocketState;
+
+    private Socket theClientSocket ;
+    private BufferedReader ClientBufferedReader ;
+    private PrintWriter ClientPrintWriter ;
 	
-	public static final int client_connect = 0;
-	public static final int client_read_line = 1;
-	public static final int client_write_line = 2;
-	public static final int server_create = 3;
-	public static final int server_accept = 4;
-	public static final int server_write_line = 5;
-	public static final int server_read_line = 6;
-	public static final int server_close = 7;
-	public static final int client_close = 8;
-	public static final int myip = 9;
-	public static final int client_read_ready = 10;
-	public static final int server_read_ready = 11;
-	public static final int server_disconnect = 12;
-	public static final int server_client_ip = 13;
-	public static final int client_server_ip = 14;
-	public static final int server_putfile = 15;
-	public static final int client_getfile = 16;
-	public static final int server_putbytes = 17;
-	public static final int client_putbytes = 18;
-	public static final int client_putfile= 19;
-	
-	public static Socket theClientSocket ;
-	public static BufferedReader ClientBufferedReader ;
-	public static PrintWriter ClientPrintWriter ;
-	
-	public static ServerSocket newSS;
-	public static Socket theServerSocket ;
-	public static BufferedReader ServerBufferedReader ;
-	public static PrintWriter ServerPrintWriter ;
+    private ServerSocket newSS;
+    private SocketConnectThread serverSocketConnectThread; 
+    private Socket theServerSocket ;
+    private BufferedReader ServerBufferedReader ;
+    private PrintWriter ServerPrintWriter ;
 	
 	// *************************************************** Debug Commands ****************************
 	
@@ -2188,10 +2230,14 @@ private void InitVars(){
 	ClientPrintWriter = null;
 	
 	newSS = null;
+	serverSocketConnectThread = null;
 	theServerSocket = null ;
 	ServerBufferedReader = null ;
 	ServerPrintWriter = null ;
-	
+
+	clientSocketState = STATE_NONE;
+	serverSocketState = STATE_NONE;
+
 	TextToSpeech mTts = null;
 	ttsInit = false;
 	ttsInitResult = 0;
@@ -2279,7 +2325,15 @@ public void cleanUp(){
 		}
 	theServerSocket = null;
 	}
-	  
+
+	if (serverSocketConnectThread != null) {
+		serverSocketConnectThread.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+			public void uncaughtException(Thread thread, Throwable ex) { }	// Silence is golden
+		});
+		serverSocketConnectThread.interrupt();
+		serverSocketConnectThread = null;
+	}
+
 	if (newSS != null){
 		try{
 			newSS.close();
@@ -2295,7 +2349,10 @@ public void cleanUp(){
 			}
 			theClientSocket = null;
 		}
-	
+
+	clientSocketState = STATE_NONE;
+	serverSocketState = STATE_NONE;
+
 	execute_audio_record_stop();
 
 	Stop = true;										// make sure the background task stops
@@ -3203,6 +3260,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	   errorMsg = msg + "\nLine: " + ExecutingLineBuffer;
    }
 
+   private boolean RunTimeError(Exception e) {
+	   RunTimeError("Error: " + e);
+	   return false;
+   }
+
    private boolean checkEOL(){
 	   if (LineIndex >= ExecutingLineBuffer.length()) return true;
 	   if (ExecutingLineBuffer.charAt(LineIndex) == '\n') return true;
@@ -3386,8 +3448,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		double d = 0;
 		try { d = Double.parseDouble(num);}									// have java parse it into a double
 		catch (Exception e) {
-			RunTimeError("Error: " + e );
-			return false;
+			return RunTimeError(e);
 		}
         GetNumberValue = d;													// Report the value 
 		return true;														// Say we found a number
@@ -3973,8 +4034,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 				try { d1 = Double.parseDouble(StringConstant);}			// have java parse it into a double
 				catch (Exception e) {
-					RunTimeError("Error: " + e );
-					return false;
+					return RunTimeError(e);
 				}
 				theValueStack.push(d1);							// Push number onto value stack
 				break;
@@ -4331,10 +4391,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				LineIndex = SaveLineIndex;					// assume the + operation is numeric
 				flag = false;
 			}else {
-			try {Temp2 = Temp2 + StringConstant;}					// build up the right side string
-			catch (Exception e) {
-				RunTimeError("Error: " + e );
-				   return false;
+				try {Temp2 = Temp2 + StringConstant;}		// build up the right side string
+				catch (Exception e) {
+				   return RunTimeError(e);
 			   }
 			}
 		}
@@ -4609,8 +4668,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		BigDecimal B = BigDecimal.valueOf(0.0);
 		try { B = BigDecimal.valueOf(Math.abs(Fvalue));}
 		catch (Exception e) {
-			RunTimeError("Error: " + e );
-			return false;
+			return RunTimeError(e);
 		}
 		String Vstring =B.toPlainString();											// and convert the big decimal to a string
 
@@ -4796,7 +4854,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 
 		int svn = VarNumber;										// save the array variable table number
-		boolean svt = VarIsNumeric;										// and the array vaiable type
+		boolean svt = VarIsNumeric;										// and the array variable type
 		
 		ArrayList <Integer> dimValues =new ArrayList<Integer>();        // A list to hold the array index values
 		if (ExecutingLineBuffer.charAt(LineIndex)== ']') return false;
@@ -4881,9 +4939,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		}
 		catch (Exception e) {
-			RunTimeError("Error: " + e );
-			   return false;
-		   }
+			return RunTimeError(e);
+		}
 
 	
 		Bundle ArrayEntry = new Bundle();						// Build the array table entry bundle
@@ -6836,6 +6893,22 @@ private boolean doUserFunction(){
 	
 // ***************************** Data I/O Operations ***********************************
 
+	// args: stream to flush, previous exception or null;
+	// return: previous exception if any, else new exception if any, else null 
+	private static IOException flushStream(Flushable stream, IOException ex) {	// flush a stream
+		if (stream != null) { return ex; }
+		try { stream.flush(); return ex; }
+		catch ( IOException e ) { return (ex == null) ? e : ex; }
+	}
+
+	// args: stream to close, previous exception or null
+	// return: previous exception if any, else new exception if any, else null 
+	private static IOException closeStream(Closeable stream, IOException ex) {	// close a stream
+		if (stream != null) { return ex; }
+		try { stream.close(); return ex; }
+		catch ( IOException e ) { return (ex == null) ? e : ex; }
+	}
+
 	private boolean checkReadFile(int FileNumber, ArrayList<?> list){		// Validate input file for read commands
 		// Note: if list is null, list size is not checked - needed for POSITION_GET
 		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
@@ -6941,8 +7014,7 @@ private boolean doUserFunction(){
 					buf = new BufferedReader(new FileReader(file), 8192);
 					if (buf != null) buf.mark((int) file.length());
 				} catch (Exception e) {
-					RunTimeError("Error: " + e);
-					return false;
+					return RunTimeError(e);
 				}
 			} else {													// file does not exist
 				if (Basic.isAPK) {										// if not standard BASIC! then is user APK
@@ -6953,8 +7025,7 @@ private boolean doUserFunction(){
 						InputStreamReader inputreader = new InputStreamReader(inputStream);
 						buf = new BufferedReader(inputreader, 8192);
 					} catch (Exception e) {
-						RunTimeError("Error: " + e);
-						return false;
+						return RunTimeError(e);
 					}
 				} else {												// standard BASIC!
 					NumericVarValues.set(saveValueIndex, (double) -1);	// report file does not exist
@@ -6974,8 +7045,7 @@ private boolean doUserFunction(){
 				try {										// if no file create a new one
 					file.createNewFile();
 				} catch (Exception e) {
-					RunTimeError("Error: " + e);
-					return false;
+					return RunTimeError(e);
 				}
 			}
 			if (!(file.exists() && file.canWrite())) {
@@ -6987,8 +7057,7 @@ private boolean doUserFunction(){
 			try {
 				writer = new FileWriter(file, append);		// open the filewriter for the SD Card
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 
 			FileEntry.putInt("stream", FWlist.size());		// The stream parm indexes
@@ -7028,8 +7097,7 @@ private boolean doUserFunction(){
     		try {
     			buf.close();
     		} catch (Exception e) {
-    			RunTimeError("Error:" + e);
-    			return false;
+    			return RunTimeError(e);
 			}
 		}
 		else if (FileMode == FMW) {								// close file open for write
@@ -7038,8 +7106,7 @@ private boolean doUserFunction(){
 				writer.flush();
 				writer.close();
 			} catch (Exception e) {
-    			RunTimeError("Error:" + e);
-    			return false;
+    			return RunTimeError(e);
 			}
 		} else {
 			RunTimeError("File not opened for read or write");
@@ -7204,8 +7271,7 @@ private boolean doUserFunction(){
 			try {
 				buf.reset();								// Back to start of file
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			eof = false;
 			pnow = 1;
@@ -7215,8 +7281,7 @@ private boolean doUserFunction(){
 			try {											// Read a line
 				data = buf.readLine();
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			if (data == null) {
 				eof = true;									// Hit eof, mark Bundle
@@ -7323,8 +7388,7 @@ private boolean doUserFunction(){
 						bis = new BufferedInputStream(fis, 8192);
 						if (bis != null) bis.mark((int) file.length());
 					} catch (Exception e) {
-						RunTimeError("Error: " + e);
-						return false;
+						return RunTimeError(e);
 					}
 				} else {													// file does not exist
 					if (Basic.isAPK) {										// if not standard BASIC! then is user APK
@@ -7334,8 +7398,7 @@ private boolean doUserFunction(){
 							InputStream inputStream = BasicContext.getResources().openRawResource(resID);
 							bis = new BufferedInputStream(inputStream, 8192);
 						} catch (Exception e) {
-							RunTimeError("Error: " + e);
-							return false;
+							return RunTimeError(e);
 						}
 					} else {												// standard BASIC!
 						NumericVarValues.set(saveValueIndex, (double) -1);	// report file does not exist
@@ -7358,8 +7421,7 @@ private boolean doUserFunction(){
 				try {										// if no file create a new one
 					file.createNewFile();
 				} catch (Exception e) {
-					RunTimeError("Error: " + e);
-					return false;
+					return RunTimeError(e);
 				}
 			}
 			if (!(file.exists() && file.canWrite())) {
@@ -7374,8 +7436,7 @@ private boolean doUserFunction(){
 				dos = new DataOutputStream(fos);
 			}				
 			catch (Exception e) {
-				RunTimeError("Error: " + e );
-				return false;
+				return RunTimeError(e);
 			}
 			
 			FileEntry.putInt("stream", DOSlist.size());		// The stream parm indexes
@@ -7416,8 +7477,7 @@ private boolean doUserFunction(){
 				bis.close();
 			} catch (IOException e) {
 //				Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
-				RunTimeError("Error:" + e);
-				return false;
+				return RunTimeError(e);
 			}
 		} else if (FileMode == FMW) {						// close file open for write
 			DataOutputStream dos = DOSlist.get(FileEntry.getInt("stream"));
@@ -7426,8 +7486,7 @@ private boolean doUserFunction(){
 				dos.close();
 			} catch (IOException e) {
 //				Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
-				RunTimeError("Error:" + e);
-				return false;
+				return RunTimeError(e);
 			}
 		} else {
 			RunTimeError("File not opened for read or write");
@@ -7486,16 +7545,9 @@ private boolean doUserFunction(){
 			RunTimeError("Exception: " + e);
 			return false;
 		} finally {
-			try { bos.flush(); } catch (Exception e) {
-				RunTimeError("Error: " + e );}
-
-			try { bis.close(); } catch (Exception e) {
-				RunTimeError("Error: " + e );}
-
-			try { bos.close(); } catch (Exception e) {
-				RunTimeError("Error: " + e );}
-
-			if (SyntaxError) { return false; }					// if RunTimeError was called
+			try { bos.flush(); } catch (Exception e) { return RunTimeError(e); }
+			try { bis.close(); } catch (Exception e) { return RunTimeError(e); }
+			try { bos.close(); } catch (Exception e) { return RunTimeError(e); }
 		}
 		FileEntry.putInt("position", p);
 		FileEntry.putBoolean("eof", true);
@@ -7522,8 +7574,7 @@ private boolean doUserFunction(){
 			try {
 				data = bis.read();							// Read a byte
 			} catch (Exception e) {
-				RunTimeError("Error: ");
-				return false;
+				return RunTimeError(e);
 			}
 			if (data < 0) {
 				FileEntry.putBoolean("eof", true);			// Hit eof, mark Bundle
@@ -7561,14 +7612,13 @@ private boolean doUserFunction(){
 			try {
 				count = bis.read(byteArray, 0, byteCount);	// Read the bytes
 			}catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			if (count < 0) {
 				FileEntry.putBoolean("eof", true);			// Hit eof, mark Bundle
 			} else {
 				FileEntry.putInt("position", p + count);	// No eof, update position in Bundle
-				buff = new String(byteArray);				// convert bytes to String for user
+				buff = new String(byteArray, 0);			// convert bytes to String for user
 				if (count < byteCount) {
 					buff = buff.substring(0, count);
 				}
@@ -7675,8 +7725,7 @@ private boolean doUserFunction(){
 			try {
 				bis.reset();								// Back to start of file
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			eof = false;
 			pnow = 1;
@@ -7691,8 +7740,7 @@ private boolean doUserFunction(){
 					skipped += (int)bis.skip(Math.min(skip - skipped, avail));
 					data = bis.read();						// Read to check eof
 				} catch (Exception e) {
-					RunTimeError("Error: ");
-					return false;
+					return RunTimeError(e);
 				}
 				if (data >= 0) { ++skipped; }				// If byte was read, count it
 				else { eof = true; break; }					// otherwise mark eof in Bundle
@@ -8015,9 +8063,8 @@ private boolean doUserFunction(){
 		      bis = new BufferedInputStream(fis);
 		  }				
 		  catch (Exception e) {
-				RunTimeError("Error: " + e );
-			  return false;												// as the file table number
-			  }
+			  return RunTimeError(e);
+		  }
 
 	    // Construct a String object from the byte array containing the response
 	    try{
@@ -8029,9 +8076,8 @@ private boolean doUserFunction(){
 		    result = new String(byteArray.toByteArray(),0);
 
 	    } catch (Exception e) {
-			RunTimeError("Error: " + e );
-			   return false;
-		   }
+			return RunTimeError(e);
+		}
 	   
 	    StringVarValues.set(saveVarIndex, result);
 
@@ -8077,10 +8123,8 @@ private boolean doUserFunction(){
 		    
 		    }
 		    catch (Exception e) {
-				RunTimeError("Error: " + e );
-				   return false;
-			   }
-
+				return RunTimeError(e);
+			}
 		   
 		    StringVarValues.set(saveVarIndex, result);
 
@@ -8172,8 +8216,7 @@ private boolean doUserFunction(){
 		  try {startActivity(i);}
 //		  catch ( android.content.ActivityNotFoundException  e){
 		  catch ( Exception  e){
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 		  return true;
 	  }
@@ -8367,9 +8410,8 @@ private boolean doUserFunction(){
 			try {
 				r = SearchString.split(REString);              // split the string
 			}
-				catch (Exception e){
-					RunTimeError("Error: " + e);
-					return false;
+			catch (Exception e){
+				return RunTimeError(e);
 			}
 							
 			int length = r.length;                             // Get the number of strings generated
@@ -8576,8 +8618,7 @@ private boolean doUserFunction(){
 	        	audioTrack.play();											// Play the track
 	        }
 	        catch (Exception e){
-	        	RunTimeError("Error: " + e);
-	        	return false;
+	        	return RunTimeError(e);
 	        }
 	        
 	        int x =0;
@@ -8721,16 +8762,7 @@ private boolean doUserFunction(){
 	  // ************************************************ SQL Package ***************************************	  
 
 	private boolean executeSQL(){									// Get SQL command key word if it is there
-		String temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		for (Command c : SQL_cmd) {									// loop through the command list
-			String name = c.name();
-			if (temp.startsWith(name)) {							// if there is a match
-				LineIndex += name.length();							// move the line index to end of key word
-				return c.run();										// run the function and report back
-			}
-		}
-		RunTimeError("Unknown SQL command");
-		return false;												// no key word found
+		return executeCommand(SQL_cmd, "SQL");
 	}
 
 	private boolean getDbPtrArg() {									// first arg of command is DB Pointer Variable
@@ -8866,8 +8898,7 @@ private boolean doUserFunction(){
 		   try {
 			   db.close();											// Try closing it
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+			   return RunTimeError(e);
 		   }
 		   
 		   NumericVarValues.set(theValueIndex, 0.0);				// Set the pointer to 0 to indicate closed.
@@ -8894,8 +8925,7 @@ private boolean doUserFunction(){
 		   try {													// Now insert the pairs into the named table
 	        db.insertOrThrow(TableName, null, values);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+			   return RunTimeError(e);
 		   }
 
 		   return true;
@@ -8958,8 +8988,7 @@ private boolean doUserFunction(){
 	           cursor = db.query(TableName, Q_Columns, Where, null, null,
 	              null, Order);
 		   } catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+			   return RunTimeError(e);
 		   }
 		   
 		   NumericVarValues.set(SaveValueIndex, (double) Cursors.size()+1); // Save the Cursor index into the var
@@ -8986,8 +9015,7 @@ private boolean doUserFunction(){
 				   try{
 				   result = cursor.getString(index); 			// get the result
 				   } catch (Exception e) {
-						RunTimeError("Error: " + e);
-					   return false;
+						return RunTimeError(e);
 				   }
 				   if (result == null) { result = ""; }
 				   StringVarValues.set(theValueIndex, result);	// set result into var
@@ -9052,8 +9080,7 @@ private boolean doUserFunction(){
 		   db.delete(TableName, Where, null);					// do the deletes
 	   }
 	   catch (Exception e){
-		   RunTimeError("Error: " + e);
-		   return false;
+		   return RunTimeError(e);
 	   }
 
 	   return true;
@@ -9082,8 +9109,7 @@ private boolean doUserFunction(){
 		   try {
 	        db.update(TableName, values, Where, null);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+				return RunTimeError(e);
 		   }
 
     	   return true;
@@ -9128,8 +9154,7 @@ private boolean doUserFunction(){
 		   try{													// Do the query and get the cursor
 	           cursor = db.rawQuery(QueryString, null);
 		   }catch (Exception e) {
-				RunTimeError("Error: " + e);
-			   return false;
+				return RunTimeError(e);
 		   }
 		   
 		   NumericVarValues.set(SaveValueIndex, (double) Cursors.size()+1); // Save the Cursor index into the var
@@ -9154,8 +9179,7 @@ private boolean doUserFunction(){
 		   try {
 		        db.execSQL(CommandString);
 			   }catch (Exception e) {
-					RunTimeError("Error: " + e);
-				   return false;
+					return RunTimeError(e);
 			   }
 		   
     	  return true;
@@ -9194,8 +9218,7 @@ private boolean doUserFunction(){
 		   try {
 		        db.execSQL(CommandString);
 			   }catch (Exception e) {
-					RunTimeError("Error: " + e);
-				   return false;
+					return RunTimeError(e);
 			   }
 		   
     	  
@@ -10448,8 +10471,7 @@ private boolean doUserFunction(){
 			try {
 				inputStream = new FileInputStream(fn);					// Open an input stream from the SDCARD file
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 		} else {														// file does not exist
 			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
@@ -10458,8 +10480,7 @@ private boolean doUserFunction(){
 				try {
 					inputStream = BasicContext.getResources().openRawResource(resID);	// Open an input stream from raw resource
 				} catch (Exception e) {
-					RunTimeError("Error: " + e );
-					return false;
+					return RunTimeError(e);
 				}
 			}															// else standard BASIC!, inputStream is still null
 		}
@@ -10471,8 +10492,7 @@ private boolean doUserFunction(){
 			   inputStream.close();
 		   }           
 		   catch (Exception e) {
-				RunTimeError("Error: " + e );
-			   return false;
+				return RunTimeError(e);
 		   }
 
 		   if (aBitmap == null ){
@@ -10553,8 +10573,7 @@ private boolean doUserFunction(){
 			
 			try {aBitmap = Bitmap.createScaledBitmap(SrcBitMap, Width, Height, parm);}
 			   catch (Exception e){
-				   RunTimeError("Error: " + e);
-				   return false;
+				   return RunTimeError(e);
 			   }
 			   
 			System.gc();   
@@ -10644,8 +10663,7 @@ private boolean doUserFunction(){
 			  aBitmap = Bitmap.createBitmap(SourceBitmap, x, y, width, height);
 		  }
 		  catch (Exception e){
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 
 		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
@@ -10735,8 +10753,7 @@ private boolean doUserFunction(){
 			   aBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
 		   }
 		   catch (Exception e) {
-			   RunTimeError("Error: " + e);
-			   return false;
+			   return RunTimeError(e);
 		   }
 		   
 		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
@@ -11089,8 +11106,7 @@ private boolean doUserFunction(){
 			ostream.close();
 		} 
 		catch (Exception e) {
-			RunTimeError("Error: " + e);
-			return false;
+			return RunTimeError(e);
 		}
 		return true;
 	}
@@ -11459,8 +11475,7 @@ private boolean doUserFunction(){
 				else tCamera = Camera.open(CameraNumber);
 			}
 			catch (Exception e){
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 			
 		    if (tCamera == null){
@@ -11486,8 +11501,7 @@ private boolean doUserFunction(){
 		    try{
 		    	startActivityForResult(cameraIntent, BASIC_GENERAL_INTENT);
 		    } catch (Exception e){
-		    	RunTimeError("Error: " + e);
-		    	return false;
+		    	return RunTimeError(e);
 		    }
 
 			while (!CameraDone) Thread.yield();
@@ -11665,8 +11679,7 @@ private boolean doUserFunction(){
 				}
 				aMP = MediaPlayer.create(BasicContext, theURI);			// Create a new Media Player
 			} catch (Exception e) {
-				RunTimeError("Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
 		} else {														// file does not exist
 			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
@@ -11747,8 +11760,7 @@ private boolean doUserFunction(){
 //		  Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " play " +theMP );
 		  try {theMP.prepare();}
 		  catch (Exception e) {
-//				RunTimeError("Error: " + e );
-//				return false;
+//				return RunTimeError(e);
 		  }
 		  theMP.start();
 		  
@@ -11820,8 +11832,7 @@ private boolean doUserFunction(){
 //		  MediaPlayer.setOnSeekCompleteListener (mSeekListener);
 //	  	 try {Thread.sleep(1000);}catch(InterruptedException e){}
 	  	  try {Run.theMP.stop();}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				return false;
+				return RunTimeError(e);
 	  	  }
 
 	  	  theMP = null;                                                 // Signal MP stopped
@@ -11833,8 +11844,7 @@ private boolean doUserFunction(){
 		  if (!checkEOL()) return false;
 		  if (theMP == null) return true;                               // if theMP is null, Media player has stopped
 	  	  try {Run.theMP.pause();} catch (Exception e) {
-				RunTimeError("Error: " + e );
-				return false;
+				return RunTimeError(e);
 	  	  }
 	  	  theMP = null;                                                 // Signal MP stopped
 		  return true;
@@ -14304,8 +14314,7 @@ private boolean doUserFunction(){
             Dest = Dest.trim();
             
         } catch (Exception e) {
-        	RunTimeError("Error: " + e);
-        	return false;
+        	return RunTimeError(e);
         }
         
 
@@ -14357,8 +14366,7 @@ private boolean doUserFunction(){
             
         } 
         catch (Exception e) {
-        	RunTimeError("Error: " + e);
-        	return false;
+        	return RunTimeError(e);
         }
         
         String Dest = "@@@@";
@@ -14371,8 +14379,7 @@ private boolean doUserFunction(){
             // Encode bytes to UTF 8 to get a string
             Dest = new String(utf8, "UTF8");
         } catch (Exception e) {
-        	RunTimeError("Error: " + e);
-        	return false;
+        	return RunTimeError(e);
         }
 
         if (Dest.equals("@@@@")){
@@ -14386,720 +14393,461 @@ private boolean doUserFunction(){
 	}
 	
 //************************************** Socket Commands  ******************************************
-	
-	private boolean executeSOCKET(){
-		if (!GetSocketKeyWord()){ return false;}
-		switch (KeyWordValue){
-		case client_connect:
-			if (!executeCLIENT_CONNECT())return false;
-			break;
-		case client_read_line:
-			if (!executeCLIENT_READ_LINE()) return false;
-			break;
-		case client_putbytes:
-			if (!executeCLIENT_WRITE_LINE(true)) return false;
-			break;
-		case client_write_line:
-			if (!executeCLIENT_WRITE_LINE(false)) return false;
-			break;
-		case server_create:
-			if (!executeSERVER_CREATE()) return false;
-			break;
-		case server_accept:
-			if (!executeSERVER_ACCEPT()) return false;
-			break;
-		case server_read_line:
-			if (!executeSERVER_READ_LINE()) return false;
-			break;
-		case server_putbytes:
-			if (!executeSERVER_WRITE_LINE(true)) return false;
-			break;
-		case server_write_line:
-			if (!executeSERVER_WRITE_LINE(false)) return false;
-			break;
-		case server_close:
-			if (!executeSERVER_CLOSE()) return false;
-			break;
-		case client_close:
-			if (!executeCLIENT_CLOSE()) return false;
-			break;
-		case myip:
-			if (!executeMYIP()) return false;
-			break;
-		case client_read_ready:
-			if (!executeCLIENT_READ_READY()) return false;
-			break;
-		case server_read_ready:
-			if (!executeSERVER_READ_READY()) return false;
-			break;
-		case server_disconnect:
-			if (!executeSERVER_DISCONNECT()) return false;
-			break;
-		case server_client_ip:
-			if (!executeSERVER_CLIENT_IP()) return false;
-			break;
-		case client_server_ip:
-			if (!executeCLIENT_SERVER_IP()) return false;
-			break;
-		case client_getfile:
-			if (!executeCLIENT_GETFILE()) return false;
-			break;
-		case server_putfile:
-			if (!executeSERVER_PUTFILE()) return false;
-			break;
-		case client_putfile:
-			if (!executeCLIENT_PUTFILE()) return false;
-			break;
-			
-		default:
+
+	private boolean executeSOCKET(){								// Get Socket command key word if it is there
+		return executeCommand(Socket_cmd, "Socket");
+	}
+
+	private boolean executeSocketServer(){							// Get Socket Server command key word if it is there
+		return executeCommand(SocketServer_cmd, "Socket Server");
+	}
+
+	private boolean executeSocketClient(){							// Get Socket Client command key word if it is there
+		return executeCommand(SocketClient_cmd, "Socket Client");
+	}
+
+	private boolean isServerSocketConnected() {
+		return isServerSocketConnected("No current connection");
+	}
+
+	private boolean isServerSocketConnected(String msgNullSocket) {
+		if (theServerSocket == null){
+			RunTimeError(msgNullSocket);
+			return false;
+		}
+		if (!theServerSocket.isConnected()){
+			RunTimeError("Server Connection Disrupted");
+			return false;
 		}
 		return true;
 	}
-	
-	private  boolean GetSocketKeyWord(){						// Get a Basic key word if it is there
-		// is the current line index at a key word?
-		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		int i = 0;
-		for (i = 0; i<Socket_KW.length; ++i){				// loop through the key word list
-			if (Temp.startsWith(Socket_KW[i])){    			// if there is a match
-				KeyWordValue = i;							// set the key word number
-				LineIndex = LineIndex + Socket_KW[i].length(); // move the line index to end of key word
-				return true;								// and report back
-				}
-		}
-		KeyWordValue = list_none;						// no key word found
-		return false;										// report fail
 
-	}
-	
-	private boolean executeCLIENT_CONNECT(){
-		
-		if (!evalStringExpression()) return false;
-		String SocketClientsServerAdr = StringConstant;
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int SocketClientsServerPort  = (int) (double)EvalNumericExpressionValue;
-		
-        try{
-        	theClientSocket = new Socket(SocketClientsServerAdr, SocketClientsServerPort);
-        	ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
-        	ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
-        	}catch (Exception e) {
-    			RunTimeError("Error: " + e );
-        		theClientSocket = null;
-        		return false;
-        	}
-		
-		return true;
-	}
-	
-	private boolean executeCLIENT_READ_READY(){
-		
+	private boolean isClientSocketConnected() {
 		if (theClientSocket == null){
 			RunTimeError("Client Socket Not Opened");
 			return false;
 		}
-		
-		double ready = 0 ;
-		
-		try{
-		if (ClientBufferedReader.ready()) ready = 1;
-			} catch (IOException e) {
-				RunTimeError( e.toString());
-				theClientSocket = null;
-				return false;
-			}
-    	
-		if (!getNVar()) return false;
-		
-		NumericVarValues.set(theValueIndex, ready);
-		
-		return true;
-	}
-	
-	private boolean executeCLIENT_READ_LINE(){
-
-		if (theClientSocket == null){
-			RunTimeError("Client Socket Not Opened");
-			return false;
-		}
-		
 		if (!theClientSocket.isConnected()){
 			RunTimeError("Client Connection Disrupted");
 			return false;
 		}
-		
-		String line = null;
-		
-		try{
-			line = ClientBufferedReader.readLine();
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theClientSocket = null;
-				return false;
-    	}
-    	
-    	if (line == null){
-    		line = "NULL";
-    	}
-    	
-		if (!getSVar()) return false;
-		StringVarValues.set(theValueIndex, line);
-    	
 		return true;
 	}
-	
-	private boolean executeCLIENT_WRITE_LINE(boolean byteMode){
-		if (theClientSocket == null){
-			RunTimeError("Client Socket Not Opened");
-			return false;
-		}
-		
-		if (!theClientSocket.isConnected()){
-			RunTimeError("Client Connection Disrupted");
-			return false;
-		}
-		
-		if (!evalStringExpression()) return false;
-		
-		if (byteMode){
-			try {
-				OutputStream os = theClientSocket.getOutputStream();
-				for (int k=0; k<StringConstant.length(); ++k){
-					byte bb = (byte)StringConstant.charAt(k);
-					os.write(bb);
-				}
-			}
-			catch(Exception e){}
-			return true;
-		}
-		
-		ClientPrintWriter.println(StringConstant);
-		return true;
-	}
-	
-	private boolean executeCLIENT_SERVER_IP(){
-		
-		if (theClientSocket == null){
-			RunTimeError("Client Socket Not Opened");
-			return false;
-		}
-		
-		if (!theClientSocket.isConnected()){
-			RunTimeError("Client Connection Disrupted");
-			return false;
-		}
-		
-		InetAddress ia = theClientSocket.getInetAddress();
-		String sia = ia.toString();
-		 
-		if (!getSVar()) return false;
-		StringVarValues.set(theValueIndex, sia);
 
-
-		return true;
-	}
-	
-	
 	private boolean executeSERVER_CREATE(){
-		try{
-			
-			if (!evalNumericExpression()) return false;							// Get the List pointer
-			int SocketServersServerPort  = (int) (double)EvalNumericExpressionValue;
+		
+		if (!evalNumericExpression()) return false;							// Get the List pointer
+		if (!checkEOL()) return false;
 
+		int SocketServersServerPort = EvalNumericExpressionValue.intValue();
+		try {
 			newSS = new ServerSocket(SocketServersServerPort);
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
 
-				theClientSocket = null;
-				return false;
-			}
-			
 		return true;
 	}
-	
+
 	private boolean executeSERVER_ACCEPT(){
 		
 		if (newSS == null) {
 			RunTimeError("Server not created");
 			return false;
 		}
-		try{
-			
-			theServerSocket = newSS.accept();
-        	ServerBufferedReader = new BufferedReader(new InputStreamReader(theServerSocket.getInputStream()));
-        	ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
+		boolean block = true;			// Default if no "wait" parameter is to block. This preserves
+										// behavior from before v01.73, when the parameter was added.
+		if (evalNumericExpression()) {										// Optional "wait" parameter
+			block = (EvalNumericExpressionValue != 0.0);
+		}
+		if (!checkEOL()) return false;
+		if ((theServerSocket != null) && theServerSocket.isConnected()) return true;
 
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theClientSocket = null;
-				return false;
-			}
-			
-		
+		serverSocketState = STATE_LISTENING;
+		serverSocketConnectThread = new SocketConnectThread();
+		serverSocketConnectThread.start();
+		if (block) {
+			while (serverSocketState == STATE_LISTENING) { Thread.yield(); }
+			if (serverSocketState != STATE_CONNECTED) { return false; }
+		}
 		return true;
 	}
-	
-	private boolean executeSERVER_READ_READY(){
-		if (theServerSocket == null){
-			RunTimeError("No current client accepted");
-			return false;
-		}
-		
-		double ready = 0 ;
-		
-		try{
-		if (ServerBufferedReader.ready()) ready = 1;
-			} catch (IOException e) {
-				RunTimeError( e.toString());
-				theServerSocket = null;
-				return false;
+
+	private class SocketConnectThread extends Thread {
+		public void run() {
+			try {
+				theServerSocket = newSS.accept();
+				ServerBufferedReader = new BufferedReader(new InputStreamReader(theServerSocket.getInputStream()));
+				ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
+				serverSocketState = STATE_CONNECTED;
+			} catch (Exception e) {
+				RunTimeError(e);
+				serverSocketState = STATE_NONE;
+			} finally {
+				serverSocketConnectThread = null;							// null global reference to itself
 			}
-    	
+		}
+	}
+
+	private boolean executeCLIENT_CONNECT(){
+
+		if (!getStringArg()) return false;									// get the server address
+		String SocketClientsServerAdr = StringConstant;
+		
+		if (!isNext(',')) return false;										// move to the port number
+		if (!evalNumericExpression()) return false;							// get the port number
+		int SocketClientsServerPort = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+		
+		try {
+			theClientSocket = new Socket(SocketClientsServerAdr, SocketClientsServerPort);
+			ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
+			ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
+			clientSocketState = STATE_CONNECTED;
+		} catch (Exception e) {
+			clientSocketState = STATE_NONE;
+			return RunTimeError(e);
+		}
+
+		return true;
+	}
+
+	private boolean executeSERVER_STATUS() {
+
 		if (!getNVar()) return false;
-		
-		NumericVarValues.set(theValueIndex, ready);
-		
+		if (!checkEOL()) return false;
+
+		double status = (newSS == null)                         ? STATE_NOT_ENABLED
+					  : (serverSocketState == STATE_LISTENING)  ? STATE_LISTENING
+					  : (theServerSocket == null)               ? STATE_NONE
+					  : theServerSocket.isConnected()           ? STATE_CONNECTED
+					  :                                           STATE_NONE;
+		NumericVarValues.set(theValueIndex, status);
 		return true;
 	}
 
-	
-	private boolean executeSERVER_READ_LINE(){
-		if (theServerSocket == null){
-			RunTimeError("No current connection");
-			return false;
-		}
+	private boolean executeCLIENT_STATUS() {
+
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+
+		double status = (theClientSocket == null)               ? STATE_NONE
+					  : theClientSocket.isConnected()           ? STATE_CONNECTED
+					  :                                           STATE_NONE;
+		NumericVarValues.set(theValueIndex, status);
+		return true;
+	}
+
+	private boolean executeSERVER_CLIENT_IP(){
+		if (!isServerSocketConnected("Server not connected to a client")) return false;
+		return socketIP(theServerSocket);
+	}
+
+	private boolean executeCLIENT_SERVER_IP(){
+		if (!isClientSocketConnected()) return false;
+		return socketIP(theClientSocket);
+	}
+
+	private boolean socketIP(Socket socket){
 		
 		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
 
-		
-		if (!theServerSocket.isConnected()){
-			StringVarValues.set(theValueIndex, "Server Connection Disrupted");		
-			return true;
-		}
+		InetAddress ia = socket.getInetAddress();
+		String sia = ia.toString();
 
-		String line = null;
-		
-		try{
-			line = ServerBufferedReader.readLine();
-		}
-			catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theServerSocket = null;
-				return false;
-    	}
-    	
-    	if (line == null){
-    		line = "NULL";
-    	}
-    	
-		StringVarValues.set(theValueIndex, line);
-
+		StringVarValues.set(theValueIndex, sia);
 		return true;
 	}
-	
-	private boolean executeSERVER_WRITE_LINE(boolean byteMode){
-		if (theServerSocket == null){
-			RunTimeError("No current connection");
-			return false;
+
+	private boolean executeSERVER_READ_READY(){
+		if (!isServerSocketConnected("No current client accepted")) return false;
+		return socketReadReady(ServerBufferedReader);
+	}
+
+	private boolean executeCLIENT_READ_READY(){
+		if (!isClientSocketConnected()) return false;
+		return socketReadReady(ClientBufferedReader);
+	}
+
+	private boolean socketReadReady(BufferedReader reader){
+
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+
+		double ready = 0 ;
+		try {
+			if (reader.ready()) { ready = 1; }
+		} catch (IOException e) {
+			return RunTimeError(e);
+		}
+
+		NumericVarValues.set(theValueIndex, ready);
+		return true;
+	}
+
+	private boolean executeSERVER_READ_LINE(){
+		if (!isServerSocketConnected()) return false;
+		return socketReadLine(ServerBufferedReader);
+	}
+
+	private boolean executeCLIENT_READ_LINE(){
+		if (!isClientSocketConnected()) return false;
+		return socketReadLine(ClientBufferedReader);
+	}
+
+	private boolean socketReadLine(BufferedReader reader){
+
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+		
+		String line = null;
+		try {
+			line = reader.readLine();
+		} catch (Exception e) {
+			return RunTimeError(e);
 		}
 		
-		if (!theServerSocket.isConnected()){
-			RunTimeError("Server Connection Disrupted");
-			return false;
+		if (line == null){
+			line = "NULL";
 		}
-		
-		if (!evalStringExpression()) return false;
-		
+
+		StringVarValues.set(theValueIndex, line);
+		return true;
+	}
+
+	private boolean executeSERVER_WRITE_LINE(){
+		if (!isServerSocketConnected()) return false;
+		return socketWrite(theServerSocket, ServerPrintWriter, false);
+	}
+
+	private boolean executeCLIENT_WRITE_LINE(){
+		if (!isClientSocketConnected()) return false;
+		return socketWrite(theClientSocket, ClientPrintWriter, false);
+	}
+
+	private boolean executeSERVER_WRITE_BYTES(){
+		if (!isServerSocketConnected()) return false;
+		return socketWrite(theServerSocket, ServerPrintWriter, true);
+	}
+
+	private boolean executeCLIENT_WRITE_BYTES(){
+		if (!isClientSocketConnected()) return false;
+		return socketWrite(theClientSocket, ClientPrintWriter, true);
+	}
+
+	private boolean socketWrite(Socket socket, PrintWriter writer, boolean byteMode){
+
+		if (!getStringArg()) return false;
+		if (!checkEOL()) return false;
+
+		String err = null;
 		if (byteMode){
+			OutputStream os = null;
 			try {
-				OutputStream os = theServerSocket.getOutputStream();
+				os = socket.getOutputStream();
 				for (int k=0; k<StringConstant.length(); ++k){
 					byte bb = (byte)StringConstant.charAt(k);
 					os.write(bb);
 				}
+			} catch (Exception e) {
+				err = "Error: " + e;
+			} finally {
+				IOException ex = flushStream(os, null);
+				ex = closeStream(os, ex);
+				if (ex != null && err != null) {
+					err = "Error: " + ex;
+				}
 			}
-			catch(Exception e){}
-			return true;
+		} else {
+			writer.println(StringConstant);
+			if (writer.checkError()) {
+				err = "Error writing to socket";
+			}
 		}
-		
-		ServerPrintWriter.println(StringConstant);
+		if (err != null) {
+			RunTimeError(err);
+			return false;
+		}
 		return true;
 	}
-	
+
 	private boolean executeSERVER_PUTFILE(){
-
-		if (theServerSocket == null){
-			RunTimeError("No current connection");
-			return false;
-		}
-		
-		if (!theServerSocket.isConnected()){
-			RunTimeError("Server Connection Disrupted");
-			return false;
-		}
-		
-		if (FileTable.size() == 0){
-			RunTimeError("No files opened");
-			return false;
-		}
-		
-		if (!getVar()){return false;}						// First parm is the filenumber vaiable
-		if (!VarIsNumeric){return false;}
-		double d = NumericVarValues.get(theValueIndex);
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
-		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		BufferedInputStream bis = null;
-		boolean closed;
-
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMR){						// Verify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
-
-		eof = FileEntry.getBoolean("eof");
-		bis = BISlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-				
-		if (eof){											//Check not EOF
-			RunTimeError("Attempt to read beyond the EOF at:");
-			return false;
-		}
-		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
-		}
-
-    	DataOutputStream dos ;
-	    ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*16);
-
-        try {
-			OutputStream os = theServerSocket.getOutputStream();
-		    dos = new DataOutputStream(os);
-        	
-        	int current = 0;
-		    
-		    while((current = bis.read()) != -1){
-		    	long ts = SystemClock.elapsedRealtime();
-		    	byteArray.append((byte)current);
-		    	if (byteArray.isFull()){
-		    		byte[] b = byteArray.toByteArray();
-		    		dos.write(b, 0, 1024*16);
-		    		byteArray.clear();
-		    	}
-		    	long te = SystemClock.elapsedRealtime();          // If rate is slower than 1kb/sec
-		    	if (te - ts > 16000){							  // terminate transmission
-			    	dos.flush();
-			    	dos.close();
-	        		bis.close();
-	        		FileEntry.putBoolean("eof", true);
-	        		FileEntry.putBoolean("closed", true);
-	        		FileTable.set(FileNumber, FileEntry);
-	        		executeSERVER_DISCONNECT();
-	        		RunTimeError("Data transmission time out.");
-	        		return false;
-		    	}
-
-		    }
-		    int count = byteArray.length();
-		    byte[] b = byteArray.toByteArray();
-		    dos.write(b, 0, count);
-		    	dos.flush();
-		    	dos.close();
-        		bis.close();
-        		FileEntry.putBoolean("eof", true);
-        		FileEntry.putBoolean("closed", true);
-        		FileTable.set(FileNumber, FileEntry);
-         }
-    	 catch (Exception e) {
-    		 RunTimeError("Error: " + e);
-    		return false;
-    		}
-		return true;
+		if (!isServerSocketConnected()) return false;
+		return socketPutFile(theServerSocket);
 	}
-	
+
 	private boolean executeCLIENT_PUTFILE(){
+		if (!isClientSocketConnected()) return false;
+		return socketPutFile(theClientSocket);
+	}
 
-		if (theClientSocket == null){
-			RunTimeError("No current connection");
-			return false;
-		}
-		
-		if (!theClientSocket.isConnected()){
-			RunTimeError("Client Connection Disrupted");
-			return false;
-		}
-		
-		if (FileTable.size() == 0){
-			RunTimeError("No files opened");
-			return false;
-		}
-		
-		if (!getVar()){return false;}						// First parm is the filenumber vaiable
-		if (!VarIsNumeric){return false;}
-		double d = NumericVarValues.get(theValueIndex);
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
-		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		BufferedInputStream bis = null;
-		boolean closed;
+	private boolean executeSERVER_GETFILE(){
+		if (!isServerSocketConnected()) return false;
+		return socketGetFile(theServerSocket);
+	}
 
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMR){						// Verify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
+	private boolean executeCLIENT_GETFILE(){
+		if (!isClientSocketConnected()) return false;
+		return socketGetFile(theClientSocket);
+	}
 
-		eof = FileEntry.getBoolean("eof");
-		bis = BISlist.get(FileEntry.getInt("stream"));
-		closed = FileEntry.getBoolean("closed");
-				
-		if (eof){											//Check not EOF
+	private boolean socketPutFile(Socket socket) {
+
+		if (!evalNumericExpression()) { return false; }						// Parm is the filenumber variable
+		if (!checkEOL()) { return false; }
+
+		int FileNumber = NumericVarValues.get(theValueIndex).intValue();
+		if (!checkReadFile(FileNumber, BISlist)) { return false; }			// Check runtime errors
+
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkReadByteAttributes(FileEntry)) { return false; }			// Check runtime errors
+
+		boolean eof = FileEntry.getBoolean("eof");
+		if (eof) {															// Check not EOF
 			RunTimeError("Attempt to read beyond the EOF at:");
 			return false;
 		}
 		
-		if (closed){											//Check not Closed
-			RunTimeError("File is closed");
-			return false;
+		BufferedInputStream bis = BISlist.get(FileEntry.getInt("stream"));
+		int bufferSize = 1024*16;
+		try {
+			OutputStream os = socket.getOutputStream();
+			DataOutputStream dos = new DataOutputStream(os);
+
+			// Set buffer size to 16K bytes, timeout to 16 sec, time out if rate is slower than 1kb/sec
+			if (!streamCopy(bis, dos, bufferSize, (long)bufferSize)) {		// Copy from file to socket
+				RunTimeError("Data transmission time out.");				// Timeout
+				executeSERVER_DISCONNECT();
+				return false;
+			}
+		} catch (Exception e) {
+			return RunTimeError(e);
 		}
-
-    	DataOutputStream dos ;
-	    ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*16);
-
-        try {
-			OutputStream os = theClientSocket.getOutputStream();
-		    dos = new DataOutputStream(os);
-        	
-        	int current = 0;
-		    
-		    while((current = bis.read()) != -1){
-		    	long ts = SystemClock.elapsedRealtime();
-		    	byteArray.append((byte)current);
-		    	if (byteArray.isFull()){
-		    		byte[] b = byteArray.toByteArray();
-		    		dos.write(b, 0, 1024*16);
-		    		byteArray.clear();
-		    	}
-		    	long te = SystemClock.elapsedRealtime();          // If rate is slower than 1kb/sec
-		    	if (te - ts > 16000){							  // terminate transmission
-			    	dos.flush();
-			    	dos.close();
-	        		bis.close();
-	        		FileEntry.putBoolean("eof", true);
-	        		FileEntry.putBoolean("closed", true);
-	        		FileTable.set(FileNumber, FileEntry);
-	        		executeSERVER_DISCONNECT();
-	        		RunTimeError("Data transmission time out.");
-	        		return false;
-		    	}
-
-		    }
-		    int count = byteArray.length();
-		    byte[] b = byteArray.toByteArray();
-		    dos.write(b, 0, count);
-		    	dos.flush();
-		    	dos.close();
-        		bis.close();
-        		FileEntry.putBoolean("eof", true);
-        		FileEntry.putBoolean("closed", true);
-        		FileTable.set(FileNumber, FileEntry);
-         }
-    	 catch (Exception e) {
-    		 RunTimeError("Error: " + e);
-    		return false;
-    		}
-		return true;
+		FileEntry.putBoolean("eof", true);
+		FileEntry.putBoolean("closed", true);
+		return true;														// Success
 	}
-	
-	
-	private boolean executeCLIENT_GETFILE(){
 
-		if (theClientSocket == null){
-			RunTimeError("Client Socket Not Opened");
-			return false;
-		}
-		
-		if (!theClientSocket.isConnected()){
-			RunTimeError("Client Connection Disrupted");
-			return false;
-		}
-		
-		if (!getVar()){return false;}						// First parm is the filenumber vaiable
-		if (!VarIsNumeric){return false;}
-		double d = NumericVarValues.get(theValueIndex);
-		int FileNumber =  (int) d;
-		if (FileNumber <0 ){
-			RunTimeError("Read file did not exist");
-			return false;
-		}
-		if (FileNumber >= FileTable.size()){				// Make sure it is a real file table number
-			RunTimeError("Invalid File Number at");
-			return false;
-		}
+	private boolean socketGetFile(Socket socket) {
 
-		if (!checkEOL()) return false;
-		
-		int FileMode;							//     Variables for the bundle
-		boolean eof;
-		DataOutputStream dos = null;
+		if (!evalNumericExpression()) { return false; }						// Parm is the filenumber variable
+		if (!checkEOL()) { return false; }
 
-		if (FileNumber >= FileTable.size()){
-			RunTimeError("Invalid File Number at");
-			return false;
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkWriteFile(FileNumber, DOSlist)) { return false; }			// Check runtime errors
+
+		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
+		if (!checkWriteByteAttributes(FileEntry)) { return false; }			// Check runtime errors
+
+		DataOutputStream dos = DOSlist.get(FileEntry.getInt("stream"));
+		int bufferSize = 1024*512;
+		try {
+			InputStream is = socket.getInputStream();
+			BufferedInputStream bis = new BufferedInputStream(is);
+			streamCopy(bis, dos, bufferSize, 0L);							// Copy from socket to file
+
+		} catch (Exception e) {
+			return RunTimeError(e);
 		}
-		
-		Bundle FileEntry = new Bundle();		// Get the bundle 
-		FileEntry = FileTable.get(FileNumber);
-		FileMode = FileEntry.getInt("mode");
-		if (FileMode != FMW){						// Verify open for read
-			RunTimeError("File not opened for read at");
-			return false;
-		}
-		dos = DOSlist.get(FileEntry.getInt("stream"));
-
-		BufferedInputStream bis = null;
-		
-	    ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*512);
-
-        try {
-    		dos = DOSlist.get(FileEntry.getInt("stream"));
-    		InputStream is = theClientSocket.getInputStream();
-    		bis = new BufferedInputStream(is);
-        	int current = 0;
-		    
-		    while((current = bis.read()) != -1){
-		    	byteArray.append((byte)current);
-		    	if (byteArray.isFull()){
-		    		byte[] b = byteArray.toByteArray();
-		    		dos.write(b, 0, 1024*512);
-		    		byteArray.clear();
-		    	}
-		    }
-		    int count = byteArray.length();
-		    byte[] b = byteArray.toByteArray();
-		    dos.write(b, 0, count);
-		    	dos.flush();
-		    	dos.close();
-        		bis.close();
-        		FileEntry.putBoolean("eof", true);
-        		FileEntry.putBoolean("closed", true);
-        		FileTable.set(FileNumber, FileEntry);
-         }
-        catch (Exception e) {
-			RunTimeError("Error: " + e );
-			   return false;
-		   }
-
-		
-	
-		return true;
+		FileEntry.putBoolean("eof", true);
+		FileEntry.putBoolean("closed", true);
+		return true;														// Success
 	}
-	
-	
+
+	private static boolean streamCopy(BufferedInputStream bis, DataOutputStream dos, int bufferSize,
+										long timeoutTime)		// time in ms, 0 means no timeout check
+										throws IOException {
+		IOException ex = null;
+		ByteArrayBuffer byteArray = new ByteArrayBuffer(bufferSize);
+		int current = 0;
+		boolean timeout = false;
+		long ts = SystemClock.elapsedRealtime();
+		try {
+			while (!timeout && ((current = bis.read()) != -1)) {			// Read the input stream
+				byteArray.append((byte)current);
+				if (byteArray.isFull()) {
+					dos.write(byteArray.toByteArray(), 0, bufferSize);		// Write the output stream
+					byteArray.clear();
+
+					if (timeoutTime != 0) {							// If caller wants timeout checked
+						long te = SystemClock.elapsedRealtime();	// If rate is too slow
+						timeout = (te - ts > 16000); 				// terminate transmission
+						ts = te;									// reset the start time
+					}
+				}
+			}
+			int count = byteArray.length();
+			if (count > 0) {										// If there is anything in the buffer
+				dos.write(byteArray.toByteArray(), 0, count);		// write it to the output stream
+			}
+			dos.flush();											// flush the output stream
+			return !timeout;
+
+		} catch (IOException e) {
+			ex = e;
+			return false;		// doesn't return
+		} finally {
+			ex = closeStream(dos, ex);								// close the streams
+			ex = closeStream(bis, ex);
+			if (ex != null) { throw ex; }
+		}
+	}
+
 	private boolean executeSERVER_DISCONNECT(){
+		if (!checkEOL()) return false;
 		if (theServerSocket == null) return true;
 
-		try{
+		try {
 			theServerSocket.close();
 			
-			} catch (Exception e) {
-				RunTimeError( e.toString());
-				theServerSocket = null;
-				return false;
-			}
-		theServerSocket = null;
+		} catch (Exception e) {
+			return RunTimeError(e);
+		} finally {
+			ServerPrintWriter = null;
+			ServerBufferedReader = null;
+			theServerSocket = null;
+			serverSocketState = STATE_NONE;
+		}
 
 		return true;
 	}
-	
+
 	private boolean executeSERVER_CLOSE(){
-		try{
-			if (theServerSocket != null) theServerSocket.close();
+		if (!checkEOL()) return false;
+		if (theServerSocket != null) executeSERVER_DISCONNECT();
+
+		try {
 			if (newSS != null) newSS.close();
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theServerSocket = null;
-				return false;
-			}
-		theServerSocket = null;
-		newSS = null;
+		} catch (Exception e) {
+			return RunTimeError(e);
+		} finally {
+			newSS = null;
+		}
 		return true;
 	}
-	
+
 	private boolean executeCLIENT_CLOSE(){
+		if (!checkEOL()) return false;
 		if (theClientSocket == null) return true;
-		try{
+
+		try {
 			theClientSocket.close();
-			}catch (Exception e) {
-				RunTimeError("Error: " + e );
-				theClientSocket = null;
-				return false;
-			}
+		} catch (Exception e) {
+			return RunTimeError(e);
+		} finally {
+			ClientPrintWriter = null;
+			ClientBufferedReader = null;
 			theClientSocket = null;
+			clientSocketState = STATE_NONE;
+		}
 		return true;
 	}
-	
-	private boolean executeSERVER_CLIENT_IP(){
-		
-		if (theServerSocket == null){
-			RunTimeError("Server not connected to a client");
-			return false;
-		}
-		
-		if (!theServerSocket.isConnected()){
-			RunTimeError("Server Connection Disrupted");
-			return false;
-		}
-		
-		InetAddress ia = theServerSocket.getInetAddress();
-		String sia = ia.toString();
-		 
-		if (!getSVar()) return false;
-		StringVarValues.set(theValueIndex, sia);
-		return true;
-	}
-	
+
 	private boolean executeMYIP(){
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+
 		String IP = "";
 		try {
 			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
@@ -15107,19 +14855,16 @@ private boolean doUserFunction(){
 				for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
 					InetAddress inetAddress = enumIpAddr.nextElement();
 					if (!(inetAddress. isLoopbackAddress() || inetAddress. isLinkLocalAddress ())) {
-							IP = inetAddress.getHostAddress().toString();
-//							IP = inetAddress.getHostAddress().toString();
-							if (!getSVar()) return false;
-							StringVarValues.set(theValueIndex, IP);
-							return true;
-						}
+						IP = inetAddress.getHostAddress().toString();
+						break;
 					}
 				}
-			} catch (Exception e) {
-				RunTimeError("Error: " + e );
-				return false;
 			}
-			
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
+		
+		StringVarValues.set(theValueIndex, IP);
 		return true;
 	}
 	
@@ -15306,7 +15051,7 @@ private boolean doUserFunction(){
 					return status;
 					}
 			} catch(Exception e) {
-				RunTimeError( "Error: " + e);
+				RunTimeError(e);
 			}
 
 			return false;
@@ -15318,7 +15063,7 @@ private boolean doUserFunction(){
 		        String workingDir = mFTPClient.printWorkingDirectory();
 		        return workingDir;
 		    } catch(Exception e) {
-		        RunTimeError( "Error: " + e);
+		        RunTimeError(e);
 		    }
 		    return null;
 		}
@@ -15332,10 +15077,8 @@ private boolean doUserFunction(){
 			        FTPdir = null;
 			        return true;
 			    } catch (Exception e) {
-			        RunTimeError("Error: " + e);
+			        return RunTimeError(e);
 			    }
-
-			    return false;
 		}
 		
 		private boolean executeFTP_DIR(){
@@ -15365,8 +15108,7 @@ private boolean doUserFunction(){
 			            theStringList.add(name);
 			        }
 			    } catch(Exception e) {
-			        RunTimeError("Error: " + e);
-			        return false;
+			        return RunTimeError(e);
 			    }
 			
 			return true;
@@ -15388,8 +15130,7 @@ private boolean doUserFunction(){
 		        	return false;
 		        }
 		    } catch(Exception e) {
-		        RunTimeError("Error: " + e);
-		        return false;
+		        return RunTimeError(e);
 		    }
 		    FTPdir = directory_path;
 
@@ -15428,11 +15169,8 @@ private boolean doUserFunction(){
 
 		        return status;
 		    } catch (Exception e) {
-		        RunTimeError( "Error: " + e);
-		        return false;
+		        return RunTimeError(e);
 		    }
-
-//		    return status;
 		}
 		
 		private boolean executeFTP_PUT(){
@@ -15470,11 +15208,8 @@ private boolean doUserFunction(){
 				srcFileStream.close();
 				return status;
 			} catch (Exception e) {
-				RunTimeError( "Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
-
-//			return status;
 		}	
 		
 		public boolean executeFTP_CMD(){
@@ -15505,13 +15240,10 @@ private boolean doUserFunction(){
 				int l = response.length;
 				for (int i = 0; i < l; ++i)
 					PrintShow(response[i]);
+				return true;
 			} catch (Exception e) {
-				RunTimeError( "Error: " + e);
-				return false;
+				return RunTimeError(e);
 			}
-			
-			return true;
-			
 		}
 		
 		private boolean executeFTP_DELETE(){
@@ -15775,7 +15507,7 @@ private boolean doUserFunction(){
 		        }
 		    }
 		    
-		    public final Handler mHandler = new Handler() {
+		    public final Handler mHandler = new Handler() {		// Currently used only for Bluetooth messages
 		        @Override
 		        public void handleMessage(Message msg) {
 		            switch (msg.what) {
@@ -16144,9 +15876,8 @@ private boolean doUserFunction(){
         	try {
         		file.createNewFile();
         		}catch (Exception e) {
-        			RunTimeError("Error: " + e );
-        			return false;
-        			}
+        			return RunTimeError(e);
+        		}
         	if (!file.exists() || !file.canWrite()){
         		RunTimeError("Problem opening " + theFileName);
 	    		return false;
@@ -16163,8 +15894,7 @@ private boolean doUserFunction(){
 				writer.flush();
 				writer.close();
         		}catch (Exception e) {
-        			RunTimeError("Error: " + e );
-        				return false;
+        			return RunTimeError(e);
         		}
 //        	Log.d(LOGTAG, "executeCONSOLE_DUMP: file " + theFileName + " written");
 		
@@ -16581,8 +16311,7 @@ private boolean doUserFunction(){
 		  try {
 			  sm.sendTextMessage(number, null, msg, null, null);
 		  } catch (Exception e) {
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 		  
 		  return true;
@@ -16649,8 +16378,7 @@ private boolean doUserFunction(){
 		  try {
 			  startActivityForResult(callIntent, BASIC_GENERAL_INTENT);  
 		  } catch (Exception e){
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 		  return true;
 	  }
@@ -16732,8 +16460,7 @@ private boolean doUserFunction(){
 		  try {
 			  startActivityForResult(intent, BASIC_GENERAL_INTENT);
 		  }catch (Exception e){
-			  RunTimeError("Error: " + e);
-			  return false;
+			  return RunTimeError(e);
 		  }
 		  
 		  return true;
