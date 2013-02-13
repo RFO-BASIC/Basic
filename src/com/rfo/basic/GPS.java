@@ -88,11 +88,6 @@ public class GPS extends Activity implements LocationListener{
 	        Provider = location.getProvider();
 	        Time = location.getTime();
 		}
-		else {
-			Run.GPSrunning = true;
-			super.onCreate(savedInstanceState);
-			return;
-		}
 		
 		// This is the location listener
 		
