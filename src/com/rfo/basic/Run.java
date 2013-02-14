@@ -56,16 +56,13 @@ import java.io.Flushable;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.io.BufferedReader;
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.math.BigDecimal;
 
 import java.util.ArrayList;
@@ -85,13 +82,10 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.net.UnknownHostException;
 
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -759,8 +753,7 @@ public class Run extends ListActivity {
     public static String PrintLine = "";				// Hold the Print line currently being built
     public static String textPrintLine = "";			// Hold the TextPrint line currently being built
     public static boolean textPrintLineReady = false;   // Signals a text print line is ready to write to file
-    public static String btPrintLine = "";				// Hold the Blue Tooth line currently being built
-    public static boolean btPrintLineReady = false;    // Signals a blue tooth print line is ready to write to file
+    public static boolean PrintLineReady = false;   	// Signals a line is ready to print or write
     
     public static InputMethodManager IMM;
 	public static ArrayList<String> LabelNames;         // A list of all the label names found in the program
@@ -1623,10 +1616,9 @@ public class Background extends AsyncTask<String, String, String>{
         	       	
         	Stop = true;		// If Stop is not already set, set it so that menu code can display the right thing
         	PrintLine = "";     // Clear the Print Line buffer
+        	PrintLineReady = false;
         	textPrintLine = "";
         	textPrintLineReady = false;
-        	btPrintLine = "";
-        	btPrintLineReady = false;
         	
         	OnBackKeyLine = 0;
         	
@@ -2093,8 +2085,7 @@ private void InitVars(){
    IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
 
    PrintLine = "";					// Hold the Print line currently being built
-   btPrintLine = "";					// Hold the Text Print line currently being built
-   btPrintLineReady = false;          // Signals the text print is ready to write to file
+    PrintLineReady = false;			// Signals a line is ready to print or write
     
 	LabelNames = new ArrayList<String>() ;         // A list of all the label names found in the program
 	LabelValues = new ArrayList<Integer>() ;       // The line numbers associated with Label Names
@@ -2327,9 +2318,6 @@ public void cleanUp(){
 	}
 
 	if (serverSocketConnectThread != null) {
-		serverSocketConnectThread.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
-			public void uncaughtException(Thread thread, Throwable ex) { }	// Silence is golden
-		});
 		serverSocketConnectThread.interrupt();
 		serverSocketConnectThread = null;
 	}
@@ -14481,11 +14469,18 @@ private boolean doUserFunction(){
 				ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
 				serverSocketState = STATE_CONNECTED;
 			} catch (Exception e) {
-				RunTimeError(e);
 				serverSocketState = STATE_NONE;
 			} finally {
 				serverSocketConnectThread = null;							// null global reference to itself
 			}
+		}
+
+		@Override
+		public void interrupt() {
+			if (serverSocketState == STATE_LISTENING) {						// in case SERVER_DISCONNECT interrupts thread
+				serverSocketState = STATE_NONE;								// change state or SERVER_STATUS will report LISTENING
+			}
+			super.interrupt();
 		}
 	}
 
@@ -14796,8 +14791,13 @@ private boolean doUserFunction(){
 
 	private boolean executeSERVER_DISCONNECT(){
 		if (!checkEOL()) return false;
-		if (theServerSocket == null) return true;
 
+		if (serverSocketConnectThread != null) {
+			serverSocketConnectThread.interrupt();
+			serverSocketConnectThread = null;
+		}
+
+		if (theServerSocket == null) return true;
 		try {
 			theServerSocket.close();
 			
@@ -15417,8 +15417,8 @@ private boolean doUserFunction(){
 
 		private synchronized boolean execute_BT_status() {
 			if (!getNVar() || !checkEOL()) { return false; }
-			int state = (mBluetoothAdapter == null) ? BluetoothChatService.STATE_NOT_ENABLED :
-						(mChatService == null)      ? BluetoothChatService.STATE_NONE        : bt_state;
+			int state = (mBluetoothAdapter == null) ? STATE_NOT_ENABLED :
+						(mChatService == null)      ? STATE_NONE        : bt_state;
 			NumericVarValues.set(theValueIndex, (double) state);
 			return true;
 		}
@@ -15440,7 +15440,7 @@ private boolean doUserFunction(){
 
 		      bt_enabled = mBluetoothAdapter.isEnabled() ? 1 : 0;				// Is BT enabled?
 		      if (bt_enabled == 0) {
-		        bt_state = BluetoothChatService.STATE_NOT_ENABLED;				// Enable BT
+		        bt_state = STATE_NOT_ENABLED;									// Enable BT
 		        if (GRopen) {
 		        	GR.doEnableBT = true;
           		  	GR.drawView.postInvalidate();									// Start GR drawing.
@@ -15457,7 +15457,7 @@ private boolean doUserFunction(){
 	            }
 	          }
 	            
-	            bt_state = BluetoothChatService.STATE_NONE;
+	            bt_state = STATE_NONE;
 	            btConnectDevice = null;
             	mOutStringBuffer = new StringBuffer("");
             	BT_Read_Buffer = new ArrayList<String>();
@@ -15610,7 +15610,7 @@ private boolean doUserFunction(){
 		    }
 		    
 		    private boolean execute_BT_device_name(){
-		        if (bt_state != BluetoothChatService.STATE_CONNECTED) {
+		        if (bt_state != STATE_CONNECTED) {
 		            RunTimeError("Bluetooth not connected");
 		            return false;
 		        }
@@ -15621,26 +15621,19 @@ private boolean doUserFunction(){
 		    }
 		    
 		    private boolean execute_BT_write(){
-		        if (bt_state != BluetoothChatService.STATE_CONNECTED) {
+		        if (bt_state != STATE_CONNECTED) {
 		            RunTimeError("Bluetooth not connected");
-		            return true;                                // Deliberatly not making error fatal
+		            return true;                                // Deliberately not making error fatal
 		        }
 		        
-				if (!BT_PRINT(true)) return false;				// build up the text line
-				if (!btPrintLineReady) return true;				// If not ready to print, wait
-				
-				btPrintLineReady = false;						// Reset the signal
-				StringConstant = btPrintLine + "\n";			// Copy the line to StringConstant for writing
-				btPrintLine = "";								// clear the text print line
-		        
+				if (!buildPrintLine("", "\n")) return false;	// build up the text line in StringConstant
 
 		        // Check that there's actually something to send
 		        if (StringConstant.length() > 0) {
 		            // Get the message bytes and tell the BluetoothChatService to write
 		        	byte[] send = new byte[StringConstant.length()];
 					for (int k=0; k<StringConstant.length(); ++k){
-						byte bb = (byte)StringConstant.charAt(k);
-						send[k] = bb;
+						send[k] = (byte)StringConstant.charAt(k);
 					}
 
 		            mChatService.write(send);
@@ -15649,50 +15642,60 @@ private boolean doUserFunction(){
 
 		    	return true;
 		    }
-		    
-			private  boolean BT_PRINT(boolean doPrint){
-				boolean WasSemicolon = false;
-				do {									// do each field in the print statement
-					int LI = LineIndex;
-					if (evalNumericExpression()){
-						btPrintLine = btPrintLine + Double.toString(EvalNumericExpressionValue);	// convert to string
-						WasSemicolon = false;
-					}else{
-						if (evalStringExpression()){
-							btPrintLine = btPrintLine + StringConstant;										// field is string
-						WasSemicolon = false;
-					}else{
-						if (VarIsFunction){SyntaxError(); return false;}
-					}
-					if (LI == LineIndex) return false;
-					}
-					char c = ExecutingLineBuffer.charAt(LineIndex);
 
-			        if (c == '\n'){							// Done processing the line
-							if (!WasSemicolon){				// if not ended in semi-colon
-								if (doPrint){
-									btPrintLineReady = true;
-								}
+		    // Convert the fields of a print command into a String for printing.
+		    // The line param can hold an existing String to add the new String to.
+		    // If the line ends with a semicolon set PrintLineReady false,
+		    // else add the newline param to the String and set PrintLineReady true.
+		    // If the String is valid, put it in StringConstant and return true,
+		    // else return false to signal a syntax error.
+			private boolean buildPrintLine(String line, String newline){
+				StringBuilder printLine = new StringBuilder((line == null) ? "" : line);
+				boolean WasSemicolon = false;
+				do {										// do each field in the print statement
+					int LI = LineIndex;
+					if (evalNumericExpression()) {
+						printLine.append(EvalNumericExpressionValue);	// convert to string
+						WasSemicolon = false;
+					} else {
+						if (evalStringExpression()) {
+							printLine.append(StringConstant);			// field is string
+							WasSemicolon = false;
+						} else {
+							if (VarIsFunction) { return false; }
+							if (LI == LineIndex) {						// if no more fields, append newline
+								if (!checkEOL()) { return false; }		// unless there is junk on the line
 							}
-							return true;
+						}
 					}
-					
-					if (c == ','){							// if the separator is a comma
-						btPrintLine = btPrintLine + ", ";		// add comma + blank to the line
+
+					char c = ExecutingLineBuffer.charAt(LineIndex);
+					if (c == ',') {							// if the separator is a comma
+						printLine.append(", ");				// add comma + blank to the line
 						++LineIndex;
-					}else if ( c== ';'){					// if separator is semi-colon
-						++LineIndex;						// don't add anything to output
+					} else if (c == ';') {					// if separator is semicolon
+															// don't add anything to output
 						WasSemicolon = true;				// and signal we had a semicolon
-						if (ExecutingLineBuffer.charAt(LineIndex) == '\n'){return true;} // if now eol, return without outputting
+						c = ExecutingLineBuffer.charAt(++LineIndex);	// is next char eol?
+					}
+
+					if (c == '\n') {						// Done processing the line
+						if (!WasSemicolon) {				// if not ended in semicolon
+							printLine.append(newline);		// add newline character(s)
+						}
+						break;
 					}
 				} while (true);								// Exit loop happens internal to loop
 				
+				PrintLineReady = !WasSemicolon;
+				StringConstant = printLine.toString();
+				return true;
 			}
 		    
 		    private boolean execute_BT_read_ready(){
 		    	if (!getNVar() || !checkEOL()) return false;
 		    	double d = 0;
-		    	if (bt_state == BluetoothChatService.STATE_CONNECTED) {
+		    	if (bt_state == STATE_CONNECTED) {
 		    		synchronized (this){
 		    		d = (double)BT_Read_Buffer.size();
 		    		}
@@ -15712,13 +15715,13 @@ private boolean doUserFunction(){
 		    
 		    private boolean execute_BT_read_bytes(){
 		    	
-		        if (bt_state != BluetoothChatService.STATE_CONNECTED) {
+		        if (bt_state != STATE_CONNECTED) {
 		            RunTimeError("Bluetooth not connected");
 		            return false;
 		        }
 		        
 		        String msg = "";
-		        if (bt_state == BluetoothChatService.STATE_CONNECTED) {
+		        if (bt_state == STATE_CONNECTED) {
 		        	synchronized (this){
 		        		int index = BT_Read_Buffer.size();
 		        		if (index > 0 ){

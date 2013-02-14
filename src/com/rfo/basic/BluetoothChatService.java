@@ -21,6 +21,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.UUID;
 
 import android.bluetooth.BluetoothAdapter;
@@ -33,7 +34,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import com.rfo.basic.*;
+
+import static com.rfo.basic.Run.STATE_NOT_ENABLED;
+import static com.rfo.basic.Run.STATE_NONE;         // we're doing nothing
+import static com.rfo.basic.Run.STATE_LISTENING;    // now listening for incoming connections
+import static com.rfo.basic.Run.STATE_CONNECTING;   // now initiating an outgoing connection
+import static com.rfo.basic.Run.STATE_CONNECTED;    // now connected to a remote device
+
 
 /**
  * This class does all the work for setting up and managing Bluetooth
@@ -64,14 +71,6 @@ public class BluetoothChatService {
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
     private int mState;
-
-    // Constants that indicate the current connection state
-    public static final int STATE_NOT_ENABLED = -1;
-    public static final int STATE_NONE = 0;       // we're doing nothing
-    public static final int STATE_LISTEN = 1;     // now listening for incoming connections
-    public static final int STATE_CONNECTING = 2; // now initiating an outgoing connection
-    public static final int STATE_CONNECTED = 3;  // now connected to a remote device
-
     
     /**
      * Constructor. Prepares a new BluetoothChat session.
@@ -85,7 +84,7 @@ public class BluetoothChatService {
     }
 
     /**
-     * Set the current state of the chat connection
+     * Set the current state of the Bluetooth connection and tell the UI
      * @param state  An integer defining the current connection state
      */
     private synchronized void setState(int state) {
@@ -116,7 +115,7 @@ public class BluetoothChatService {
         if (mConnectedThread != null) 
         	{mConnectedThread.cancel(); mConnectedThread = null;}
 
-        setState(STATE_LISTEN);
+        setState(STATE_LISTENING);
 
         // Start the thread to listen on a BluetoothServerSocket
         if (mSecureAcceptThread == null) {
@@ -334,7 +333,7 @@ public class BluetoothChatService {
                 if (socket != null) {
                     synchronized (BluetoothChatService.this) {
                         switch (mState) {
-                        case STATE_LISTEN:
+                        case STATE_LISTENING:
                         case STATE_CONNECTING:
                             // Situation normal. Start the connected thread.
                             connected(socket, socket.getRemoteDevice(),
@@ -497,14 +496,15 @@ public class BluetoothChatService {
             	try {
                     // Read from the InputStream
                     bytes = mmDataIS.read(buffer);
-
-                    // Send the obtained bytes to the UI Activity
-                    mHandler.obtainMessage(Run.MESSAGE_READ, bytes, -1, buffer)
-                            .sendToTarget();
                 } catch (Exception e) {
                     Log.e(TAG, "disconnected", e);
                     connectionLost();
                     break;
+                }
+                // Send a copy of the obtained bytes to the UI Activity
+                if (bytes > 0) {
+                    mHandler.obtainMessage(Run.MESSAGE_READ, bytes, -1, Arrays.copyOf(buffer, bytes))
+                            .sendToTarget();
                 }
             }
         }
@@ -516,7 +516,9 @@ public class BluetoothChatService {
         public void write(byte[] buffer) {
             try {
 //                mmOutStream.write(buffer);
-                mmDataOS.write(buffer);
+                synchronized (mmDataOS) {			// prevent overlapping writes
+                    mmDataOS.write(buffer);
+                }
 
                 // Share the sent message back to the UI Activity
 //                mHandler.obtainMessage(Run.MESSAGE_WRITE, -1, -1, buffer)

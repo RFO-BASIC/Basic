@@ -72,7 +72,11 @@ newConnection:
 ! Connect to the next Client
 ! and print the Client IP
 PRINT "Waiting for client connect"
-SOCKET.SERVER.CONNECT
+SOCKET.SERVER.CONNECT 0
+DO
+ SOCKET.SERVER.STATUS st
+UNTIL st = 3
+
 SOCKET.SERVER.CLIENT.IP ip$
 PRINT "Connected to ";ip$
 
