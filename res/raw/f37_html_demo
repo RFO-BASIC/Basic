@@ -10,7 +10,7 @@ HTML.OPEN
 
 ! Load the file, htmlDemo1.html
 
-HTML.LOAD.URL "file:///sdcard/rfo-basic/data/htmlDemo1.html"
+HTML.LOAD.URL "htmlDemo1.html"
 
 !The user now sees the html
 
