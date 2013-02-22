@@ -752,7 +752,6 @@ public class Run extends ListActivity {
     public static boolean DisplayStopped = false;
     public static String PrintLine = "";				// Hold the Print line currently being built
     public static String textPrintLine = "";			// Hold the TextPrint line currently being built
-    public static boolean textPrintLineReady = false;   // Signals a text print line is ready to write to file
     public static boolean PrintLineReady = false;   	// Signals a line is ready to print or write
     
     public static InputMethodManager IMM;
@@ -1618,7 +1617,6 @@ public class Background extends AsyncTask<String, String, String>{
         	PrintLine = "";     // Clear the Print Line buffer
         	PrintLineReady = false;
         	textPrintLine = "";
-        	textPrintLineReady = false;
         	
         	OnBackKeyLine = 0;
         	
@@ -2802,7 +2800,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	    Stop = true;
 	        		return true;
 	        	case BKWprint:
-	        		if (!executePRINT(true)){SyntaxError();return false;}
+	        		if (!executePRINT()){SyntaxError();return false;}
 	        		break;
 	        	case BKWinput:
 	        		if (!executeINPUT()){SyntaxError();return false;}
@@ -5003,49 +5001,67 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return true;									 // index combination
 		
 	}
-		
-	private  boolean executePRINT(boolean doPrint){
-		boolean WasSemicolon = false;
-		do {									// do each field in the print statement
-			int LI = LineIndex;
-			if (evalNumericExpression()){
-				PrintLine = PrintLine + Double.toString(EvalNumericExpressionValue);	// convert to string
-				WasSemicolon = false;
-			}else{
-				if (evalStringExpression()){
-					PrintLine = PrintLine + StringConstant;								// field is string
-				WasSemicolon = false;
-			}else{
-				if (VarIsFunction){SyntaxError(); return false;}
-			}
-			if (LI == LineIndex) return false;
-			}
-			char c = ExecutingLineBuffer.charAt(LineIndex);
 
-	        if (c == '\n'){							// Done processing the line
-					if (!WasSemicolon){				// if not ended in semi-colon
-						if (doPrint){
-							PrintShow(PrintLine);	// then output the line
-							PrintLine = "";
-						}
+	private boolean executePRINT(){
+		if (!buildPrintLine(PrintLine, "")) return false;	// build up the print line in StringConstant
+		if (!PrintLineReady) {							// flag set by buildPrintLine
+			PrintLine = StringConstant;					// not ready to print; hold line
+			return true;								// and wait for next Print command
+		}
+		PrintLine = "";									// clear the accumulated print line
+		PrintShow(StringConstant);						// then output the line
+		return true;
+	}
+
+	// Convert the fields of a print command into a String for printing.
+	// The line param can hold an existing String to add the new String to.
+	// If the line ends with a semicolon set PrintLineReady false,
+	// else add the newline param to the String and set PrintLineReady true.
+	// If the String is valid, put it in StringConstant and return true,
+	// else return false to signal a syntax error.
+	private boolean buildPrintLine(String line, String newline){
+		StringBuilder printLine = new StringBuilder((line == null) ? "" : line);
+		boolean WasSemicolon = false;
+		do {										// do each field in the print statement
+			int LI = LineIndex;
+			if (evalNumericExpression()) {
+				printLine.append(EvalNumericExpressionValue);	// convert to string
+				WasSemicolon = false;
+			} else {
+				if (evalStringExpression()) {
+					printLine.append(StringConstant);			// field is string
+					WasSemicolon = false;
+				} else {
+					if (VarIsFunction) { return false; }
+					if (LI == LineIndex) {						// if no more fields, append newline
+						if (!checkEOL()) { return false; }		// unless there is junk on the line
 					}
-					return true;
+				}
 			}
-			
-			if (c == ','){							// if the separator is a comma
-				PrintLine = PrintLine + ", ";		// add comma + blank to the line
+
+			char c = ExecutingLineBuffer.charAt(LineIndex);
+			if (c == ',') {							// if the separator is a comma
+				printLine.append(", ");				// add comma + blank to the line
 				++LineIndex;
-			}else if ( c== ';'){					// if separator is semi-colon
-				++LineIndex;						// don't add anything to output
+			} else if (c == ';') {					// if separator is semicolon
+													// don't add anything to output
 				WasSemicolon = true;				// and signal we had a semicolon
-				if (ExecutingLineBuffer.charAt(LineIndex) == '\n'){return true;} // if now eol, return without outputting
+				c = ExecutingLineBuffer.charAt(++LineIndex);	// is next char eol?
+			}
+
+			if (c == '\n') {						// Done processing the line
+				if (!WasSemicolon) {				// if not ended in semicolon
+					printLine.append(newline);		// add newline character(s)
+				}
+				break;
 			}
 		} while (true);								// Exit loop happens internal to loop
 		
-		
-		
+		PrintLineReady = !WasSemicolon;
+		StringConstant = printLine.toString();
+		return true;
 	}
-	
+
 	private boolean executeGOTO() {
 		
 		int maxStack = 50000 ;						// 50,000 should be enough
@@ -5724,7 +5740,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private boolean executeDEBUG_PRINT() {
-		if (Debug) executePRINT(true);
+		if (Debug) executePRINT();
 		return true;
 	}
 	
@@ -7146,12 +7162,12 @@ private boolean doUserFunction(){
 
 		if (!isNext(',')) { return false; }				// Set up to parse the stuff to print
 
-		if (!TextPRINT(true)) return false;				// build up the text line
-		if (!textPrintLineReady) return true;			// If not ready to print, wait
-		
-		textPrintLineReady = false;						// Reset the signal
-		StringConstant = textPrintLine;					// Copy the line to StringConstant for writing
-		textPrintLine = "";								// clear the text print line
+		if (!buildPrintLine(textPrintLine, "\r\n")) return false;	// build up the text line in StringConstant
+		if (!PrintLineReady) {							// flag set by buildPrintLine
+			textPrintLine = StringConstant;				// not ready to print; hold line
+			return true;								// and wait for next Text.Writeln command
+		}
+		textPrintLine = "";								// clear the accumulated text print line
 
 		if (!checkWriteFile(FileNumber, FWlist)) { return false; }			// Check runtime errors
 		Bundle FileEntry = FileTable.get(FileNumber);						// Get the bundle
@@ -7160,7 +7176,6 @@ private boolean doUserFunction(){
 		FileWriter writer = FWlist.get(FileEntry.getInt("stream"));
 		try {
 			writer.write(StringConstant);				// Oh, and write the line
-			writer.write("\r\n");
 		} catch (IOException e) {
 			RunTimeError("I/O error at");
 			return false;
@@ -7171,49 +7186,7 @@ private boolean doUserFunction(){
 
 		return true;
 	}
-		
-		private  boolean TextPRINT(boolean doPrint){
-			boolean WasSemicolon = false;
-			do {									// do each field in the print statement
-				int LI = LineIndex;
-				if (evalNumericExpression()){
-					textPrintLine = textPrintLine + Double.toString(EvalNumericExpressionValue);	// convert to string
-					WasSemicolon = false;
-				}else{
-					if (evalStringExpression()){
-						textPrintLine = textPrintLine + StringConstant;								// field is string
-					WasSemicolon = false;
-				}else{
-					if (VarIsFunction){SyntaxError(); return false;}
-				}
-				if (LI == LineIndex) return false;
-				}
-				char c = ExecutingLineBuffer.charAt(LineIndex);
 
-		        if (c == '\n'){							// Done processing the line
-						if (!WasSemicolon){				// if not ended in semi-colon
-							if (doPrint){
-								textPrintLineReady = true;
-							}
-						}
-						return true;
-				}
-				
-				if (c == ','){							// if the separator is a comma
-					textPrintLine = textPrintLine + ", ";		// add comma + blank to the line
-					++LineIndex;
-				}else if ( c== ';'){					// if separator is semi-colon
-					++LineIndex;						// don't add anything to output
-					WasSemicolon = true;				// and signal we had a semicolon
-					if (ExecutingLineBuffer.charAt(LineIndex) == '\n'){return true;} // if now eol, return without outputting
-				}
-			} while (true);								// Exit loop happens internal to loop
-			
-			
-			
-		}
-
-		
 		private boolean executeTEXT_INPUT(){
 			if (!getVar()) return false;
 			if (VarIsNumeric) return false;
@@ -15637,61 +15610,10 @@ private boolean doUserFunction(){
 					}
 
 		            mChatService.write(send);
-
 		        }
-
 		    	return true;
 		    }
 
-		    // Convert the fields of a print command into a String for printing.
-		    // The line param can hold an existing String to add the new String to.
-		    // If the line ends with a semicolon set PrintLineReady false,
-		    // else add the newline param to the String and set PrintLineReady true.
-		    // If the String is valid, put it in StringConstant and return true,
-		    // else return false to signal a syntax error.
-			private boolean buildPrintLine(String line, String newline){
-				StringBuilder printLine = new StringBuilder((line == null) ? "" : line);
-				boolean WasSemicolon = false;
-				do {										// do each field in the print statement
-					int LI = LineIndex;
-					if (evalNumericExpression()) {
-						printLine.append(EvalNumericExpressionValue);	// convert to string
-						WasSemicolon = false;
-					} else {
-						if (evalStringExpression()) {
-							printLine.append(StringConstant);			// field is string
-							WasSemicolon = false;
-						} else {
-							if (VarIsFunction) { return false; }
-							if (LI == LineIndex) {						// if no more fields, append newline
-								if (!checkEOL()) { return false; }		// unless there is junk on the line
-							}
-						}
-					}
-
-					char c = ExecutingLineBuffer.charAt(LineIndex);
-					if (c == ',') {							// if the separator is a comma
-						printLine.append(", ");				// add comma + blank to the line
-						++LineIndex;
-					} else if (c == ';') {					// if separator is semicolon
-															// don't add anything to output
-						WasSemicolon = true;				// and signal we had a semicolon
-						c = ExecutingLineBuffer.charAt(++LineIndex);	// is next char eol?
-					}
-
-					if (c == '\n') {						// Done processing the line
-						if (!WasSemicolon) {				// if not ended in semicolon
-							printLine.append(newline);		// add newline character(s)
-						}
-						break;
-					}
-				} while (true);								// Exit loop happens internal to loop
-				
-				PrintLineReady = !WasSemicolon;
-				StringConstant = printLine.toString();
-				return true;
-			}
-		    
 		    private boolean execute_BT_read_ready(){
 		    	if (!getNVar() || !checkEOL()) return false;
 		    	double d = 0;
