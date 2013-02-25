@@ -39,17 +39,16 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import com.rfo.basic.R;
-import java.util.concurrent.locks.*;
 
 
 public class Format extends ListActivity {
 
     private static Background theBackground;					// Background task ID
-    private static ArrayAdapter AA;
+    private static ArrayAdapter<String> AA;
     private static ListView lv ;							    // The output screen list view
     private static ArrayList<String> output;					// The output screen text lines
     private static String restoreText;
+    public static boolean blockQuote = false;
 
 
 	@Override
@@ -91,15 +90,13 @@ public class Format extends ListActivity {
     	private String formattedText;			   // The formatted text
         private final String SPACES = " ";	  	   // Spaces for indenting
         private int indentLevel = 0;
-        private Boolean blockQuote = false;
-        private Boolean xblockQuote = false;
-        private Boolean wasCase = false;
+        private boolean wasCase = false;
         private Stack<Integer> swStack = new Stack<Integer>();
-        private Boolean skipIndent = false;
 
         @Override
         protected  String doInBackground(String...str) {
 			String Temp = "";
+			blockQuote = false;
 			for (int charCount=0; charCount < originalText.length(); ++charCount) {      // get each line
 				if (originalText.charAt(charCount) == '\n') {							 // and and process it
 					ProcessLine(Temp);							                     
@@ -143,241 +140,30 @@ public class Format extends ListActivity {
         }
 
         private void ProcessLine(String theLine) {							// Process one line
-			// theLine = FixLineCollect(theLine);
-        	String aLine = ProcessKeyWords(theLine);						// Do the key words
-         	formattedText = formattedText + ProcessIndents(aLine) + "\n";	// And then do the indents
+        	int blanks = CountBlanks(theLine, 0);
+        	if (!isBlockQuote(theLine, blanks)) {
+        		String aLine = ProcessKeyWords(theLine, blanks);			// Do the key words
+        		theLine = ProcessIndents(aLine);							// And then do the indents
+        	}
+        	formattedText += theLine + '\n';
          	publishProgress(".");											// Show one dot for each line processed
-		}
-
-        private String FixLineCollect(String line) {
-			char tc = line.charAt(0);
-			for (int i=0;i < line.length();++i) {
-				char c = line.charAt(i);
-				if (c == '"') {
-					do{
-						// skip quotes
-						++i;
-						if (i >= line.length()) { line = line + '"';} else {c = line.charAt(i);}	
-					}while(i < line.length() & c != '"');
-				}
-				if (tc == ' ' && c == '_' && line.charAt(i + 1) != 0) {
-					line = line.substring(0, i) + "{+nl}" + line.substring(i + 2);
-
-				} else {
-					line = line + "{+nl}";
-				}
-				tc = c;
-			}
-			return line;
-		}
-
-        private String ProcessKeyWords(String actualLine) {					// Find and capitalize the key words.
-
-        	if (actualLine.equals("")) return actualLine;					// Skip empty line
-
-        	String lcLine = actualLine.toLowerCase();						// Count the blanks at the start of the lne
-        	int blanks = 0;
-        	for (blanks = 0; blanks < lcLine.length(); ++blanks) {
-        		char c = lcLine.charAt(blanks);
-        		if (c != ' ') 
-        			if (c != '\t')
-        				break;
-        	}
-
-        	if (blanks == lcLine.length()) return actualLine;				// If the line is all blanks, return
-
-        	if (lcLine.startsWith("!!", blanks)) {							// Skip block comments
-        		if (xblockQuote) 
-        			xblockQuote = false;
-        		else 
-        			xblockQuote = true;
-        		return actualLine;
-        	}
-
-        	if (xblockQuote) return actualLine;
-
-        	if (lcLine.startsWith("!", blanks)) return actualLine;			// If a comment line, done
-
-        	actualLine = StartOfLineKW(lcLine, actualLine, blanks);
-
-        	for (int i = 0; i < Run.MathFunctions.length; ++i) {										// Process math functions
-        		actualLine = TestAndReplaceAll(Run.MathFunctions[i], lcLine, actualLine);
-        	}
-
-        	for (int i = 0; i < Run.StringFunctions.length; ++i) {									// Process String Functions
-        		actualLine = TestAndReplaceAll(Run.StringFunctions[i], lcLine, actualLine);
-        	}
-
-        	return actualLine;			// Done, return results
-
         }
-
-        private String StartOfLineKW(String lcLine, String actualLine, int blanks) {
-        	String kw = "";
-        	for (int i = 0; i < Run.BasicKeyWords.length; ++i) {				// If the line starts with a key word
-        		kw = Run.BasicKeyWords[i];
-        		if (!kw.equals(" ")) {
-        			int k = lcLine.indexOf(kw, blanks);
-        			if (k >= 0 && k == blanks) {
-        				String xkw = actualLine.substring(blanks, blanks + kw.length());
-        				if (xkw.equals("inkey$")) xkw = "inkey";
-        				actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase());      // Capitalize it
-        				break;
-        			}
-        		}
-			}
-
-			if (kw.equals("if")) {													// Process IF statement
-				actualLine = TestAndReplaceFirst("then", lcLine, actualLine);
-				actualLine = TestAndReplaceFirst("else", lcLine, actualLine);
-			}
-
-			if (kw.equals("for")) {													// Process FOR statement
-				actualLine = TestAndReplaceFirst("to", lcLine, actualLine);
-				actualLine = TestAndReplaceFirst("step", lcLine, actualLine);
-			}
-
-			if (kw.endsWith(".")) {														//Process mulitipart commands.
-				int start = blanks + kw.length();
-				if (kw.equals("sql."))
-    				actualLine = ExpandedKeyWord(Run.SQL_kw, lcLine, actualLine, start);
-				else if (kw.equals("gr."))
-					actualLine = ExpandedKeyWord(Run.GR_kw, lcLine, actualLine, start);
-				else if (kw.equals("audio."))
-					actualLine = ExpandedKeyWord(Run.Audio_KW, lcLine, actualLine, start);
-				else if (kw.equals("sensors."))
-					actualLine = ExpandedKeyWord(Run.Sensors_KW, lcLine, actualLine, start);
-				else if (kw.equals("gps."))
-					actualLine = ExpandedKeyWord(Run.GPS_KW, lcLine, actualLine, start);
-				else if (kw.equals("array."))
-					actualLine = ExpandedKeyWord(Run.Array_KW, lcLine, actualLine, start);
-				else if (kw.equals("list."))
-					actualLine = ExpandedKeyWord(Run.List_KW, lcLine, actualLine, start);
-				else if (kw.equals("bundle."))
-					actualLine = ExpandedKeyWord(Run.Bundle_KW, lcLine, actualLine, start);
-				else if (kw.equals("socket."))
-					actualLine = ExpandedKeyWord(Run.Socket_KW, lcLine, actualLine, start);
-				else if (kw.equals("debug."))
-					actualLine = ExpandedKeyWord(Run.Debug_KW, lcLine, actualLine, start);
-				else if (kw.equals("stack."))
-						actualLine = ExpandedKeyWord(Run.Stack_KW, lcLine, actualLine, start);
-				else if (kw.equals("ftp."))
-					actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
-				else if (kw.equals("bt."))
-					actualLine = ExpandedKeyWord(Run.bt_KW, lcLine, actualLine, start);
-				else if (kw.equals("ftp."))
-					actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
-				else if (kw.equals("su."))
-					actualLine = ExpandedKeyWord(Run.su_KW, lcLine, actualLine, start);
-				else if (kw.equals("soundpool."))
-					actualLine = ExpandedKeyWord(Run.sp_KW, lcLine, actualLine, start);
-				else if (kw.equals("html."))
-					actualLine = ExpandedKeyWord(Run.html_KW, lcLine, actualLine, start);
-    		}
-        	return actualLine;
-        }
-
-        private String ExpandedKeyWord(String[] words, String lcLine, String actualLine, int start) {  // The stuff after xxx.
-        	for (int i = 0; i < words.length; ++i) {
-				if (lcLine.startsWith(words[i], start)) {
-         			String xkw = actualLine.substring(start, start + words[i].length());
-        			actualLine = actualLine.replaceFirst(xkw, words[i].toUpperCase());
-				}
-        	}
-        	return actualLine;
-        }
-
-        private String TestAndReplaceFirst(String kw, String lcLine, String actualLine) {			//Find and replace first occurrence
-    		int k = lcLine.indexOf(kw);
-    		if (k >= 0) {
-    			String xkw = actualLine.substring(k, k + kw.length());
-    			actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase());
-
-    			int blanks = k + 4;
-    			if (kw.equals("then") || kw.equals("else")) {							// Special case THEN and ELSE
-    	        	for (blanks = blanks; blanks < lcLine.length(); ++blanks) {
-    	        		char c = lcLine.charAt(blanks);
-    	        		if (c != ' ') 
-    	        			if (c != '\t')
-    	        				break;
-    	        	}
-    				actualLine = StartOfLineKW(lcLine, actualLine, blanks);
-    			}
-     		}
-    		return actualLine;
-
-        }
-
-        private String TestAndReplaceAll(String kw, String lcLine, String actualLine) {				// Find and replace all occurrences
-        	int start = 0;
-        	while (start < lcLine.length()) {
-        		int k = lcLine.indexOf(kw, start);
-        		if (k > 0) {
-        			char c = lcLine.charAt(k - 1);
-        			if (c == '_' || c == '@' || c == '#' || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
-        				start = k + kw.length();
-        			} else {
-        				String xkw = actualLine.substring(k, k + kw.length());
-        				actualLine = actualLine.replace(xkw, kw.toUpperCase());
-        				start = k + kw.length();
-        			}
-        		} else start = lcLine.length() + 1 ;
-        	}
-    		return actualLine;
-
-        }
-
+        
         private String ProcessIndents(String aLine) {							// Do the indenting
         	String temp = "";													// temp will contain the indent spaces
+        	
+        	aLine = aLine.trim();       									// Remove trailing and leading blanks
+        	if (aLine.equals("")) return aLine;								// Skip blank or empty line
 
-        	if (aLine.startsWith("!!")) {										// Skip over block quotes
-        		if (blockQuote) blockQuote = false;
-        		else blockQuote = true;
-        		return aLine;
-        	}
-
-        	if (blockQuote) return aLine;
-
-			if (aLine.contains(" _")) {
-				if (skipIndent == false) {
-					
-					// make sure " _" is not in quotes
-					for(int i= 0;i< aLine.length();++i){
-						char c = aLine.charAt(i);
-						if (c == '"') {
-							do{
-								++i;
-								if (i >= aLine.length()) aLine +='"';
-								c = aLine.charAt(i);
-							}while(c !='"' && i < aLine.length());
-						}
-						if(c == ' ' && aLine.charAt(i+1)=='_'){
-							// if not in quotes skip indenting
-							skipIndent = true;
-						}
-					}
-				} else {
-					return aLine;
-				}
-			} else {
-				if (skipIndent == true) {
-					skipIndent = false;
-			    	return aLine;
-				}
-			}
-
-			aLine = aLine.trim();       // Remove blanks
-        	String xLine = aLine.toLowerCase();							// Convert to lower case
+        	String xLine = aLine.toLowerCase();								// Convert to lower case
         	String theLine = "";
         	for (int i = 0; i < xLine.length(); ++i) {						// remove all blanks and tabs
         		char c = xLine.charAt(i);
         		if (c != ' ') 
         			if (c != '\t') theLine = theLine + c;
         	}
-        	if (theLine.equals("")) return aLine;
 
-
-        	Boolean processed = false;
+        	boolean processed = false;
 
         	if (theLine.startsWith("elseif") ||						// Indenting is determined by start of line key words
         		theLine.startsWith("else") ||
@@ -485,11 +271,169 @@ public class Format extends ListActivity {
         	return temp;
         }
 
+    } // end class Background
 
+
+    // ************************** Process Key Words Stuff ********************
+
+    //********************  Code for formatting a line **************************************
+
+    private static int CountBlanks(String aLine, int start) {	// Count spaces and tabs from current position
+    	int current;
+    	for (current = start; current < aLine.length(); ++current) {
+    		char c = aLine.charAt(current);
+    		if ((c != ' ') && (c != '\t')) break;
+    	}
+    	return current - start;
+    }
+
+    private static boolean isBlockQuote(String aLine, int blanks) {	// Track start and end of block quotes
+    	if (aLine.startsWith("!!", blanks)) {
+    		blockQuote = !blockQuote;
+    		return true;
+    	}
+    	return blockQuote;
+    }
+
+    public static String ProcessKeyWords(String actualLine) {	// Find and capitalize the key words
+    	int blanks = CountBlanks(actualLine, 0);				// First skip leading blanks
+    	return ProcessKeyWords(actualLine, blanks);
+    }
+
+    private static synchronized String ProcessKeyWords(String actualLine, int blanks) {
+    															// Find and capitalize the key words,
+    															// leading blanks already counted
+    	if (actualLine.equals("")) return actualLine;					// Skip empty line
+    	if (blanks == actualLine.length()) return actualLine;			// Skip blank line
+    	if (actualLine.startsWith("!", blanks)) return actualLine;		// Skip comment line
+
+    	String lcLine = actualLine.toLowerCase();						// Convert to lower case
+
+    	actualLine = StartOfLineKW(lcLine, actualLine, blanks);
+
+    	for (int i = 0; i < Run.MathFunctions.length; ++i) {										// Process math functions
+    		actualLine = TestAndReplaceAll(Run.MathFunctions[i], lcLine, actualLine);
+    	}
+
+    	for (int i = 0; i < Run.StringFunctions.length; ++i) {									// Process String Functions
+    		actualLine = TestAndReplaceAll(Run.StringFunctions[i], lcLine, actualLine);
+    	}
+
+    	return actualLine;			// Done, return results
 
     }
 
+    private static String StartOfLineKW(String lcLine, String actualLine, int blanks) {
+    	String kw = "";
+    	for (int i = 0; i < Run.BasicKeyWords.length; ++i) {				// If the line starts with a key word
+    		kw = Run.BasicKeyWords[i];
+    		if (!kw.equals(" ")) {
+    			int k = lcLine.indexOf(kw, blanks);
+    			if (k >= 0 && k == blanks) {
+    				String xkw = actualLine.substring(blanks, blanks + kw.length());
+    				if (xkw.equals("inkey$")) xkw = "inkey";
+    				actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase());      // Capitalize it
+    				break;
+    			}
+    		}
+		}
 
+		if (kw.equals("if")) {													// Process IF statement
+			actualLine = TestAndReplaceFirst("then", lcLine, actualLine);
+			actualLine = TestAndReplaceFirst("else", lcLine, actualLine);
+		}
 
+		if (kw.equals("for")) {													// Process FOR statement
+			actualLine = TestAndReplaceFirst("to", lcLine, actualLine);
+			actualLine = TestAndReplaceFirst("step", lcLine, actualLine);
+		}
+
+		if (kw.endsWith(".")) {														//Process mulitipart commands.
+			int start = blanks + kw.length();
+			if (kw.equals("sql."))
+				actualLine = ExpandedKeyWord(Run.SQL_kw, lcLine, actualLine, start);
+			else if (kw.equals("gr."))
+				actualLine = ExpandedKeyWord(Run.GR_kw, lcLine, actualLine, start);
+			else if (kw.equals("audio."))
+				actualLine = ExpandedKeyWord(Run.Audio_KW, lcLine, actualLine, start);
+			else if (kw.equals("sensors."))
+				actualLine = ExpandedKeyWord(Run.Sensors_KW, lcLine, actualLine, start);
+			else if (kw.equals("gps."))
+				actualLine = ExpandedKeyWord(Run.GPS_KW, lcLine, actualLine, start);
+			else if (kw.equals("array."))
+				actualLine = ExpandedKeyWord(Run.Array_KW, lcLine, actualLine, start);
+			else if (kw.equals("list."))
+				actualLine = ExpandedKeyWord(Run.List_KW, lcLine, actualLine, start);
+			else if (kw.equals("bundle."))
+				actualLine = ExpandedKeyWord(Run.Bundle_KW, lcLine, actualLine, start);
+			else if (kw.equals("socket."))
+				actualLine = ExpandedKeyWord(Run.Socket_KW, lcLine, actualLine, start);
+			else if (kw.equals("debug."))
+				actualLine = ExpandedKeyWord(Run.Debug_KW, lcLine, actualLine, start);
+			else if (kw.equals("stack."))
+					actualLine = ExpandedKeyWord(Run.Stack_KW, lcLine, actualLine, start);
+			else if (kw.equals("ftp."))
+				actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
+			else if (kw.equals("bt."))
+				actualLine = ExpandedKeyWord(Run.bt_KW, lcLine, actualLine, start);
+			else if (kw.equals("ftp."))
+				actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
+			else if (kw.equals("su."))
+				actualLine = ExpandedKeyWord(Run.su_KW, lcLine, actualLine, start);
+			else if (kw.equals("soundpool."))
+				actualLine = ExpandedKeyWord(Run.sp_KW, lcLine, actualLine, start);
+			else if (kw.equals("html."))
+				actualLine = ExpandedKeyWord(Run.html_KW, lcLine, actualLine, start);
+			else if (kw.equals("timer."))
+				actualLine = ExpandedKeyWord(Run.Timer_KW, lcLine, actualLine, start);
+		}
+    	return actualLine;
+    }
+
+    private static String ExpandedKeyWord(String[] words, String lcLine, String actualLine, int start) {  // The stuff after xxx.
+    	for (int i = 0; i < words.length; ++i) {
+			if (lcLine.startsWith(words[i], start)) {
+     			String xkw = actualLine.substring(start, start + words[i].length());
+    			actualLine = actualLine.replaceFirst(xkw, words[i].toUpperCase());
+			}
+    	}
+    	return actualLine;
+    }
+
+    private static String TestAndReplaceFirst(String kw, String lcLine, String actualLine) {			//Find and replace first occurrence
+		int k = lcLine.indexOf(kw);
+		if (k >= 0) {
+			int kl = kw.length();
+			String xkw = actualLine.substring(k, k + kl);
+			actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase());
+
+			if (kw.equals("then") || kw.equals("else")) {							// Special case THEN and ELSE
+				int start = k + kl + CountBlanks(lcLine, kl);						// Skip keyword and blanks
+				actualLine = StartOfLineKW(lcLine, actualLine, start);
+			}
+ 		}
+		return actualLine;
+
+    }
+
+    private static String TestAndReplaceAll(String kw, String lcLine, String actualLine) {				// Find and replace all occurrences
+		int kl = kw.length();
+    	int start = 0;
+    	while (start < lcLine.length()) {
+    		int k = lcLine.indexOf(kw, start);
+    		if (k > 0) {
+    			char c = lcLine.charAt(k - 1);						// is keyword string embedded in a variable name?
+    			if (c == '_' || c == '@' || c == '#' || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+    				start = k + kl;									// not a keyword, skip it
+    			} else {
+    				String xkw = actualLine.substring(k, k + kl);	// replace keyword string with upper case copy
+    				actualLine = actualLine.replace(xkw, kw.toUpperCase());
+    				start = k + kl;
+    			}
+    		} else start = lcLine.length() + 1 ;
+    	}
+		return actualLine;
+
+    }
 
 }

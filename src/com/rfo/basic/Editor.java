@@ -27,53 +27,33 @@
 
 package com.rfo.basic;
 
-import com.rfo.basic.R;
-import com.rfo.basic.Basic;
-import 	android.content.pm.ActivityInfo;
+import java.io.File;
+import java.io.FileWriter;
 
-import android.app.AlertDialog;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.TypedArray;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
-import android.os.SystemClock;
-import android.text.Editable;
-import android.util.AttributeSet;
-import android.util.Log;
-import android.view.*;
-import android.view.View.BaseSavedState;
-import android.view.View.OnKeyListener;
-import android.view.animation.AnimationUtils;
-import android.view.animation.Interpolator;
-import android.view.inputmethod.InputMethodManager;
-import 	android.view.GestureDetector.SimpleOnGestureListener;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.ScrollView;
-import android.widget.Scroller;
-import android.widget.Toast;
-import android.os.Environment;
-
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.File;
-import java.io.IOException;
-
-import 	android.graphics.Canvas;
+import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.hardware.SensorManager;
-import 	android.graphics.Typeface;
-
-import java.util.ArrayList;
+import android.graphics.Typeface;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Environment;
+import android.util.AttributeSet;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.VelocityTracker;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.Scroller;
+import android.widget.Toast;
 
 
 public class Editor extends Activity {
@@ -365,7 +345,7 @@ public class Editor extends Activity {
 
             if (fText.endsWith("#")) {												// If formatting of line was wanted
             	String theLine = fText.substring(lineStart, fText.length() - 1);		// go format the line
-            	String newLine = ProcessKeyWords(theLine);
+            	String newLine = Format.ProcessKeyWords(theLine);
             	String aLine = fText.substring(0, lineStart);
             	fText = aLine + newLine;
             }
@@ -1040,151 +1020,6 @@ public class Editor extends Activity {
 
     	
     }
-
-
-    // ************************** Process Key Words Stuff ********************
-
-    //********************  Code for formatting a line **************************************
-
-    private String ProcessKeyWords(String actualLine) {					// Find and capitalize the key words.
-
-    	if (actualLine.equals("")) return actualLine;					// Skip empty line
-
-    	String lcLine = actualLine.toLowerCase();						// Count the blanks at the start of the lne
-    	int blanks = 0;
-    	for (blanks = 0; blanks < lcLine.length(); ++blanks) {
-    		char c = lcLine.charAt(blanks);
-    		if (c != ' ') 
-    			if (c != '\t')
-    				break;
-    	}
-
-    	if (blanks == lcLine.length()) return actualLine;				// If the line is all blanks, return
-
-    	if (lcLine.startsWith("!", blanks)) return actualLine;			// If a comment line, done
-
-    	actualLine = StartOfLineKW(lcLine, actualLine, blanks);
-
-    	for (int i = 0; i < Run.MathFunctions.length; ++i) {										// Process math functions
-    		actualLine = TestAndReplaceAll(Run.MathFunctions[i], lcLine, actualLine);
-    	}
-
-    	for (int i = 0; i < Run.StringFunctions.length; ++i) {									// Process String Functions
-    		actualLine = TestAndReplaceAll(Run.StringFunctions[i], lcLine, actualLine);
-    	}
-
-    	return actualLine;			// Done, return results
-
-    }
-
-    private String StartOfLineKW(String lcLine, String actualLine, int blanks) {
-    	String kw = "";
-    	for (int i = 0; i < Run.BasicKeyWords.length; ++i) {				// If the line starts with a key word
-			kw = Run.BasicKeyWords[i];
-			if (!kw.equals(" ")) {
-				int k = lcLine.indexOf(kw, blanks);
-				if (k >= 0 && k == blanks) {
-					String xkw = actualLine.substring(blanks, blanks + kw.length());
-					if (xkw.equals("inkey$")) xkw = "inkey";
-					actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase());      // Capitalize it
-					break;
-				}
-			}
-		}
-
-		if (kw.equals("if")) {													// Process IF statement
-			actualLine = TestAndReplaceFirst("then", lcLine, actualLine);
-			actualLine = TestAndReplaceFirst("else", lcLine, actualLine);
-		}
-
-		if (kw.equals("for")) {													// Process FOR statement
-			actualLine = TestAndReplaceFirst("to", lcLine, actualLine);
-			actualLine = TestAndReplaceFirst("step", lcLine, actualLine);
-		}
-
-		if (kw.endsWith(".")) {														//Process mulitipart commands.
-			int start = blanks + kw.length();
-			if (kw.equals("sql."))
-				actualLine = ExpandedKeyWord(Run.SQL_kw, lcLine, actualLine, start);
-			else if (kw.equals("gr."))
-				actualLine = ExpandedKeyWord(Run.GR_kw, lcLine, actualLine, start);
-			else if (kw.equals("audio."))
-				actualLine = ExpandedKeyWord(Run.Audio_KW, lcLine, actualLine, start);
-			else if (kw.equals("sensors."))
-				actualLine = ExpandedKeyWord(Run.Sensors_KW, lcLine, actualLine, start);
-			else if (kw.equals("gps."))
-				actualLine = ExpandedKeyWord(Run.GPS_KW, lcLine, actualLine, start);
-			else if (kw.equals("array."))
-				actualLine = ExpandedKeyWord(Run.Array_KW, lcLine, actualLine, start);
-			else if (kw.equals("list."))
-				actualLine = ExpandedKeyWord(Run.List_KW, lcLine, actualLine, start);
-			else if (kw.equals("bundle."))
-				actualLine = ExpandedKeyWord(Run.Bundle_KW, lcLine, actualLine, start);
-			else if (kw.equals("socket."))
-				actualLine = ExpandedKeyWord(Run.Socket_KW, lcLine, actualLine, start);
-			else if (kw.equals("debug."))
-				actualLine = ExpandedKeyWord(Run.Debug_KW, lcLine, actualLine, start);
-			else if (kw.equals("ftp."))
-				actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
-			else if (kw.equals("bt."))
-				actualLine = ExpandedKeyWord(Run.bt_KW, lcLine, actualLine, start);
-			else if (kw.equals("ftp."))
-				actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
-			else if (kw.equals("su."))
-				actualLine = ExpandedKeyWord(Run.su_KW, lcLine, actualLine, start);
-			else if (kw.equals("soundpool."))
-				actualLine = ExpandedKeyWord(Run.sp_KW, lcLine, actualLine, start);
-			else if (kw.equals("html."))
-				actualLine = ExpandedKeyWord(Run.html_KW, lcLine, actualLine, start);
-		}
-    	return actualLine;
-    }
-
-    private String ExpandedKeyWord(String[] words, String lcLine, String actualLine, int start) {  // The stuff after xxx.
-    	for (int i = 0; i < words.length; ++i) {
-			if (lcLine.startsWith(words[i], start)) {
-     			String xkw = actualLine.substring(start, start + words[i].length());
-    			actualLine = actualLine.replaceFirst(xkw, words[i].toUpperCase());
-			}
-    	}
-    	return actualLine;
-    }
-
-    private String TestAndReplaceFirst(String kw, String lcLine, String actualLine) {			//Find and replace first occurrence
-		int k = lcLine.indexOf(kw);
-		if (k >= 0) {
-			String xkw = actualLine.substring(k, k + kw.length());
-			actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase());
-
-			int blanks = k + 4;
-			if (kw.equals("then") || kw.equals("else")) {							// Special case THEN and ELSE
-	        	for (blanks = blanks; blanks < lcLine.length(); ++blanks) {
-	        		char c = lcLine.charAt(blanks);
-	        		if (c != ' ') 
-	        			if (c != '\t')
-	        				break;
-	        	}
-				actualLine = StartOfLineKW(lcLine, actualLine, blanks);
-			}
- 		}
-		return actualLine;
-
-    }
-
-    private String TestAndReplaceAll(String kw, String lcLine, String actualLine) {				// Find and replace all occurrences
-    	int start = 0;
-    	while (start < lcLine.length()) {
-    		int k = lcLine.indexOf(kw, start);
-    		if (k >= 0) {
-    			String xkw = actualLine.substring(k, k + kw.length());
-    			actualLine = actualLine.replace(xkw, kw.toUpperCase());
-    			start = k + kw.length();
-    		} else start = lcLine.length() + 1 ;
-    	}
-		return actualLine;
-
-    }
-
 
 }
     

@@ -281,7 +281,7 @@ public class Run extends ListActivity {
     	"html.", "run", "@@@", "back.resume",
     	"notify", "swap", "sms.rcv.init",
     	"sms.rcv.next", "stt.listen", "stt.results",
-    	"timer.set", "timer.clear", "timer.resume",
+    	"timer.", " ", " ",							// moved three "timer" commands to Timer_cmd
     	"time", "key.resume", "menukey.resume",
     	"onmenukey","ontimer", "onkeypress",			// For Format
     	"ongrtouch", "onbtreadready",						// For Format
@@ -329,7 +329,7 @@ public class Run extends ListActivity {
     public static final int BKWrename = 29;
     public static final int BKWdelete = 30;
     public static final int BKWsql = 31;
-    public static final int BKWmull1 = 32;             // Time moved to after Timer
+    public static final int BKWnull1 = 32;             // Time moved to after Timer
     public static final int BKWgr = 33;
     public static final int BKWpause = 34;
     public static final int BKWbrowse = 35;
@@ -421,9 +421,9 @@ public class Run extends ListActivity {
     public static final int BKWsms_rcv_next = 121;
     public static final int BKWstt_listen = 122;
     public static final int BKWstt_results = 123;
-    public static final int BKWtimer_set = 124;
-    public static final int BKWtimer_clear = 125;
-    public static final int BKWtimer_resume = 126;
+    public static final int BKWtimer = 124;
+    public static final int BKWnull2 = 125;						// Timer commands moved to Timer_cmd
+    public static final int BKWnull3 = 126;
     public static final int BKWtime = 127;
     public static final int BKWonkey_resume = 128;
     public static final int BKWmenukey_resume = 129;
@@ -1483,7 +1483,17 @@ public class Run extends ListActivity {
     public static boolean sttDone;
     
     // ******************** Timer Variables *******************************
-    
+
+	public static final String Timer_KW[] = {
+		"set", "clear", "resume"
+	};
+
+	private final Command[] Timer_cmd = new Command[] {		// Map Timer command key words to their execution functions
+		new Command("set")              { public boolean run() { return executeTIMER_SET(); } },
+		new Command("clear")            { public boolean run() { return executeTIMER_CLEAR(); } },
+		new Command("resume")           { public boolean run() { return executeTIMER_RESUME(); } }
+	};
+
     public static int OnTimerLine;
     public static Timer theTimer;
     public static boolean timerExpired;
@@ -3171,14 +3181,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	case BKWstt_results:
 	        		if (!executeSTT_RESULTS())   {SyntaxError(); return false;}
 	        		break;
-	        	case BKWtimer_set:
-	        		if (!executeTIMER_SET())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWtimer_clear:
-	        		if (!executeTIMER_CLEAR())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWtimer_resume:
-	        		if (!executeTIMER_RESUME())   {SyntaxError(); return false;}
+	        	case BKWtimer:
+	        		if (!executeTIMER())   {SyntaxError(); return false;}
 	        		break;
 	        	case BKWonkey_resume:
 	        		if (!executeONKEY_RESUME())   {SyntaxError(); return false;}
@@ -16794,6 +16798,10 @@ private boolean doUserFunction(){
 	    
 	  // ******************************* Timer commands ***************************************
 	    
+	private boolean executeTIMER(){											// Get Timer command key word if it is there
+		return executeCommand(Timer_cmd, "Timer");
+	}
+
 	   private boolean executeTIMER_SET(){
 		   if (theTimer != null) {
 			   RunTimeError("Previous Timer Not Cleared");
@@ -16812,6 +16820,8 @@ private boolean doUserFunction(){
 			   RunTimeError("Interval Must Be >= 100");
 			   return false;
 		   }
+		   
+		   if (!checkEOL()) return false;
 		   
 		   TimerTask tt = new TimerTask() {
 			    public void run() {
@@ -16841,6 +16851,8 @@ private boolean doUserFunction(){
 
 	    
 	   private boolean executeTIMER_CLEAR(){
+		   if (!checkEOL()) return false;
+		   
 		   if (theTimer != null) {
 			   theTimer.cancel();
 			   theTimer = null;
