@@ -10398,7 +10398,7 @@ private boolean doUserFunction(){
 
 		// if there is no dot extension, returns original string
 
-		int idx = input.replaceAll("\\", "/").lastIndexOf("/");
+		int idx = input.lastIndexOf("/");
 		return idx >= 0 ? input.substring(idx + 1).toLowerCase().replace(".", "_") : input.toLowerCase().replace(".", "_"); // Convert to lower case, convert all '.' to '_'
 	}
 
