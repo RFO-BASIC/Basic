@@ -75,6 +75,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.Stack;
+import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -281,7 +282,7 @@ public class Run extends ListActivity {
     	"html.", "run", "@@@", "back.resume",
     	"notify", "swap", "sms.rcv.init",
     	"sms.rcv.next", "stt.listen", "stt.results",
-    	"timer.", " ", " ",							// moved three "timer" commands to Timer_cmd
+    	"timer.", "timezone.", " ",				// moved three "timer" commands to Timer_cmd
     	"time", "key.resume", "menukey.resume",
     	"onmenukey","ontimer", "onkeypress",			// For Format
     	"ongrtouch", "onbtreadready",						// For Format
@@ -422,8 +423,8 @@ public class Run extends ListActivity {
     public static final int BKWstt_listen = 122;
     public static final int BKWstt_results = 123;
     public static final int BKWtimer = 124;
-    public static final int BKWnull2 = 125;						// Timer commands moved to Timer_cmd
-    public static final int BKWnull3 = 126;
+    public static final int BKWtimezone = 125;
+    public static final int BKWnull2 = 126;             // Timer commands moved to Timer_cmd
     public static final int BKWtime = 127;
     public static final int BKWonkey_resume = 128;
     public static final int BKWmenukey_resume = 129;
@@ -469,7 +470,7 @@ public class Run extends ListActivity {
     	"randomize(", "background(",
     	"atan(", "cbrt(", "cosh(", "hypot(",
     	"sinh(", "pow(", "log10(",
-    	"ucode("
+    	"ucode(", "time("
     };
     
     public static final int MFsin = 0;			// Enumerated name for the Match Functions
@@ -515,6 +516,7 @@ public class Run extends ListActivity {
     public static final int MFpow = 40;
     public static final int MFlog10 = 41;
     public static final int MFucode = 42;
+    public static final int MFtime = 43;
 
     public static  int MFNumber = 0;				// Will contain a math function's enumerated name value
     
@@ -1498,7 +1500,21 @@ public class Run extends ListActivity {
     public static Timer theTimer;
     public static boolean timerExpired;
     public static boolean timerStarting;
+
+    // ******************** TimeZone Variables *******************************
     
+    public static final String TimeZone_KW[] = {
+    	"set", "get", "list"
+    };
+
+	private final Command[] TimeZone_cmd = new Command[] {		// Map TimeZone command key words to their execution functions
+		new Command("set")              { public boolean run() { return executeTIMEZONE_SET(); } },
+		new Command("get")              { public boolean run() { return executeTIMEZONE_GET(); } },
+		new Command("list")             { public boolean run() { return executeTIMEZONE_LIST(); } }
+    };
+
+    public String theTimeZone = "";
+
     //********************** Phone RCV variables *************************
     
 	public static int phoneState = 0;
@@ -2281,6 +2297,8 @@ private void InitVars(){
      OnTimerLine = 0;
      theTimer = null;
      timerExpired = false;
+     
+     theTimeZone = "";
      
 	 phoneState = 0;
 	 phoneNumber = "";
@@ -3184,6 +3202,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	case BKWtimer:
 	        		if (!executeTIMER())   {SyntaxError(); return false;}
 	        		break;
+	        	case BKWtimezone:
+	        		if (!executeTIMEZONE())   {SyntaxError(); return false;}
+	        		break;
 	        	case BKWonkey_resume:
 	        		if (!executeONKEY_RESUME())   {SyntaxError(); return false;}
 	        		break;
@@ -3277,6 +3298,16 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			&& !SEisLE							// Okay if not logical expression
 			&& (StringConstant != null));		//      and not null
 		// Leaves evaluation result in StringConstant
+	}
+
+	private boolean getArgAsNum() {			// Get and validate
+		if (!evalNumericExpression()) {			// a numeric expression
+			if (getStringArg()) {				//  or string that evaluates to a number
+				try { EvalNumericExpressionValue = Double.valueOf(StringConstant); }
+				catch (NumberFormatException e) { return false; }
+			}
+		}
+		return true;							// return value in EvalNumericExpressionValue
 	}
 
    private  boolean GetKeyWord(){						// Get a Basic key word if it is there
@@ -4169,10 +4200,18 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				break;
 			
 			case MFclock:
-				long time = SystemClock.elapsedRealtime();
-				theValueStack.push((double) time);
+				theValueStack.push((double) SystemClock.elapsedRealtime());
 				break;
 			
+			case MFtime:
+				if (ExecutingLineBuffer.charAt(LineIndex)== ')') {	// If no args, use current time
+					theValueStack.push((double) System.currentTimeMillis());
+				} else {											// Otherwise, get user-supplied time
+					Time time = theTimeZone.equals("") ? new Time() : new Time(theTimeZone);
+					if (!parseTimeArgs(time)) { return false; }
+					theValueStack.push((double) time.toMillis(true));
+				}
+				break;
 			
 			case MFcollision:
 				if (!evalNumericExpression()){return false;}	// Get the first object number
@@ -4652,7 +4691,25 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return isNext(')');										// Function must end with ')'
 
 	}
-	
+
+	private boolean parseTimeArgs(Time time) {						// Convert time parameters to Time object fields
+		int year, month, day, hour, minute, second;					// Requires six parameters,
+		if (!getArgAsNum()) return false;							// either numeric or string containing a number
+		year = EvalNumericExpressionValue.intValue();				// Year$
+		if (!isNext(',') || !getArgAsNum()) return false;
+		month = EvalNumericExpressionValue.intValue() - 1;			// Month$ (convert to 0-index)
+		if (!isNext(',') || !getArgAsNum()) return false;
+		day = EvalNumericExpressionValue.intValue();				// Day$
+		if (!isNext(',') || !getArgAsNum()) return false;
+		hour = EvalNumericExpressionValue.intValue();				// Hour$
+		if (!isNext(',') || !getArgAsNum()) return false;
+		minute = EvalNumericExpressionValue.intValue();				// Minute$
+		if (!isNext(',') || !getArgAsNum()) return false;
+		second = EvalNumericExpressionValue.intValue();				// Second$
+		time.set(second, minute, hour, day, month, year);
+		return true;
+	}
+
 	private  boolean Format(String Fstring, double Fvalue){			// Format a number for output
 																					// Do the heart of the FORMAT$ function
 		BigDecimal B = BigDecimal.valueOf(0.0);
@@ -8097,60 +8154,74 @@ private boolean doUserFunction(){
 	  }
 
 	  
-	// ************************************** Miscellaneous Non-core commands **************************
+	// ************************************** Time and TimeZone commands **************************
 	
-	private boolean executeTIME(){
-		
-		Time time = new Time();
-		time.setToNow ();
-		String zone = time.getCurrentTimezone ();
-		String theTime = time.format("%Y%m%dT%H%M%S");
-		String year = theTime.substring(0, 4);
-		String month = theTime.substring(4, 6);
-		String day = theTime.substring(6, 8);
-		String hour = theTime.substring(9, 11);
-		String minute = theTime.substring(11, 13);
-		String second = theTime.substring(13, 15);
-		
-		   if (!getVar())return false;										// year
-		   if (VarIsNumeric)return false;						
-		   StringVarValues.set(theValueIndex, year);
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-			
-		   if (!getVar())return false;										// month
-		   if (VarIsNumeric)return false;						
-		   StringVarValues.set(theValueIndex, month);
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-			
-		   if (!getVar())return false;										// day
-		   if (VarIsNumeric)return false;						
-		   StringVarValues.set(theValueIndex, day);
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-			
-		   if (!getVar())return false;										// hour
-		   if (VarIsNumeric)return false;						
-		   StringVarValues.set(theValueIndex, hour);
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-			
-		   if (!getVar())return false;										// minute
-		   if (VarIsNumeric)return false;						
-		   StringVarValues.set(theValueIndex, minute);
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-			
-		   if (!getVar())return false;										// second
-		   if (VarIsNumeric)return false;						
-		   StringVarValues.set(theValueIndex, second);
-		   
-			if (!checkEOL()) return false;
-		
+	private boolean executeTIME(){								// Get the date and time
+		Time time = theTimeZone.equals("") ? new Time() : new Time(theTimeZone); // If user has set a time zone, use it
+		if (evalNumericExpression()) {							// If there is a numeric argument it is a time in ms
+			if (!isNext(',')) { return checkEOL(); }			// Done if no other arguments
+			time.set(EvalNumericExpressionValue.longValue());	// Use the time argument
+		} else {
+			time.setToNow();									// No arg, or first arg is not numeric: time is now
+		}
+		String theTime[] = time.format("%Y:%m:%d:%H:%M:%S").split(":");
+		int i = 0;
+		do {													// String vars for time components
+																// Commas hold places for up to six svars.
+			if (getSVar()) { StringVarValues.set(theValueIndex, theTime[i]); } // If svar, use it; if nothing, skip to next comma.
+		} while ((++i < 6) && isNext(','));						// Anything else will get caught by checkEOL
+		if (isNext(',') && getNVar()) {							// Another comma holds a place for an optional nvar
+			double weekDay = time.weekDay + 1;					// for day of week: 1 is Sunday
+			NumericVarValues.set(theValueIndex, weekDay);
+		}
+		if (isNext(',') && getNVar()) {							// Another comma holds a place for an optional nvar
+																// For Daylight Saving Time flag
+			NumericVarValues.set(theValueIndex, Math.signum((double) time.isDst)); // 1 yes, 0 no, -1 unknown
+		}
+		return checkEOL();
+	}
+
+	private boolean executeTIMEZONE(){										// Get TimeZone command key word if it is there
+		return executeCommand(TimeZone_cmd, "TimeZone");
+	}
+
+	private boolean executeTIMEZONE_SET() {									// Set a global Time Zone string for TIME and TIME(
+		String zone = Time.getCurrentTimezone();							// default to local time zone
+		if (getStringArg()) {
+			TimeZone tz = TimeZone.getTimeZone(StringConstant);				// if arg, use it as TimeZone ID
+			zone = tz.getID();												// read back ID, "GMT" if user-string invalid
+		}
+		if (!checkEOL()) { return false; }
+		theTimeZone = zone;
 		return true;
 	}
-		
+
+	private boolean executeTIMEZONE_GET() {									// Get the time zone setting
+		if (!(getSVar() && checkEOL())) { return false; }
+		String zone = theTimeZone;
+		if (zone.equals("")) {
+			zone = Time.getCurrentTimezone();								// If user never set a time zone, use local
+		}
+		StringVarValues.set(theValueIndex, zone);
+		return true;
+	}
+
+	private boolean executeTIMEZONE_LIST() {								// Get a list of all valid time zone strings
+		if (!(getNVar() && checkEOL())) { return false; }
+
+		int theIndex = createNewList(list_is_string);						// Create a new empty string list
+		if (theIndex < 0) { return false; }									// Create failed
+		NumericVarValues.set(theValueIndex, (double) theIndex);				// Return the list pointer
+
+		ArrayList<String> theList = theLists.get(theIndex);
+		for (String zone : TimeZone.getAvailableIDs()) {					// Get all the zones the system knows 
+			theList.add(zone);												// Put them in the list
+		}
+		return true;
+	}
+
+	// ************************************** Miscellaneous Non-core commands **************************
+
 	  private boolean executePAUSE(){
 			 if (!evalNumericExpression())return false;							// Get pause duration value
 		     double d = EvalNumericExpressionValue;
@@ -12924,21 +12995,28 @@ private boolean doUserFunction(){
 		   int SaveValueIndex = theValueIndex;
 	
 		if (!checkEOL()) { return false; }
-		   
-	 int theIndex = theLists.size();
-	 if ( type == list_is_string){										// Create a string list
-		 theLists.add(new ArrayList <String>());
-	 }
-	 else if ( type == list_is_numeric){								// Create a numeric list
-		 theLists.add(new ArrayList <Double>());
-	 }
-	 
-	   theListsType.add(type);											// add the type
-	   NumericVarValues.set(SaveValueIndex, (double) theIndex);   		// Return the list pointer    
-		
+
+		int theIndex = createNewList(type);								// Try to create list
+		if (theIndex < 0) { return false; }								// Create failed
+
+		NumericVarValues.set(SaveValueIndex, (double) theIndex);		// Return the list pointer
 		return true;
 	}
-		
+
+	private int createNewList(int type) {						// Put a new ArrayList in global theLists
+																// Put its type in global theListsType 
+		int index = theLists.size();
+		if (type == list_is_string) {									// Create a string list
+			theLists.add(new ArrayList <String>());
+		} else if (type == list_is_numeric) {							// Create a numeric list
+			theLists.add(new ArrayList <Double>());
+		} else {
+			return -1;													// Unknown type, don't create anything
+		}
+		theListsType.add(type);											// Add the type
+		return index;
+	}
+
 	private boolean execute_LIST_ADDARRAY(){
 		if (!evalNumericExpression()) return false;					// Get the destination list pointer
 		int destListIndex = (int) (double)EvalNumericExpressionValue;

@@ -386,6 +386,8 @@ public class Format extends ListActivity {
 				actualLine = ExpandedKeyWord(Run.html_KW, lcLine, actualLine, start);
 			else if (kw.equals("timer."))
 				actualLine = ExpandedKeyWord(Run.Timer_KW, lcLine, actualLine, start);
+			else if (kw.equals("timezone."))
+				actualLine = ExpandedKeyWord(Run.TimeZone_KW, lcLine, actualLine, start);
 		}
     	return actualLine;
     }
@@ -417,23 +419,37 @@ public class Format extends ListActivity {
     }
 
     private static String TestAndReplaceAll(String kw, String lcLine, String actualLine) {				// Find and replace all occurrences
-		int kl = kw.length();
-    	int start = 0;
-    	while (start < lcLine.length()) {
-    		int k = lcLine.indexOf(kw, start);
-    		if (k > 0) {
-    			char c = lcLine.charAt(k - 1);						// is keyword string embedded in a variable name?
-    			if (c == '_' || c == '@' || c == '#' || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
-    				start = k + kl;									// not a keyword, skip it
-    			} else {
-    				String xkw = actualLine.substring(k, k + kl);	// replace keyword string with upper case copy
-    				actualLine = actualLine.replace(xkw, kw.toUpperCase());
-    				start = k + kl;
-    			}
-    		} else start = lcLine.length() + 1 ;
-    	}
-		return actualLine;
+		int k = lcLine.indexOf(kw, 0);								// Find instance of keyword
+		if (k < 0) { return actualLine; }							// No instances of this keyword - quick exit
 
+		StringBuilder sb = new StringBuilder(actualLine);
+		String KW = kw.toUpperCase();								// Upper-case version of keyword
+		int kl = kw.length();
+		int limit = lcLine.length() - (kl - 1);						// Another keyword won't fit after limit
+		int start = 0;
+		do {
+			int q1 = lcLine.indexOf("\"", start);
+			while (q1 >= 0 && q1 < k) {								// Is this instance in a quoted string?
+				int q2 = lcLine.indexOf("\"", q1 + 1);
+				if (q2 < 0) { return sb.toString(); }				// Unterminated string, give up
+				if (k < q2) { k = lcLine.indexOf(kw, q2 + 1); }		// This instance is in quotes, find next
+				q1 = lcLine.indexOf("\"", q2 + 1);
+			}
+			if (k < 0) break;										// Last instance is in quotes
+
+			char c = (k > 0) ? lcLine.charAt(k - 1) : '\0';			// Is keyword string embedded in a variable name?
+			if (c == '_' || c == '@' || c == '#' || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+				start = k + kl;										// Not a keyword, skip it
+			} else {
+				sb.replace(k, k + kl, KW);
+				start = k + kl;
+			}
+
+			if (start > limit) { break; }							// No more instances of this keyword
+			k = lcLine.indexOf(kw, start);							// Find next instance of keyword
+		} while (k >= 0);
+
+		return sb.toString();
     }
 
 }
