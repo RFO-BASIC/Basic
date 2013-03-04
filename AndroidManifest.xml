@@ -29,8 +29,8 @@ This file is part of BASIC! for Android
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       	  package="com.rfo.basic"
-      	  android:versionCode= "1730"
-      	  android:versionName="1.73"
+      	  android:versionCode= "17301"
+      	  android:versionName="1.73.01"
       	  >
     	  
       	  
