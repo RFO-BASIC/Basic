@@ -85,6 +85,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -926,7 +929,7 @@ public class Run extends ListActivity {
     	 "bitmap.drawinto.end", "bitmap.draw",
     	 "get.bmpixel", "get.value", "set.antialias",
     	 "get.textbounds", "text.typeface", "ongrtouch.resume",
-    	 "camera.select"
+    	 "camera.select", "getdl"
     
     };
 
@@ -993,6 +996,7 @@ public class Run extends ListActivity {
     public static final int gr_text_typeface = 60;
     public static final int gr_ontouch_resume = 61;
     public static final int gr_camera_select = 62;
+    public static final int gr_getdl = 63;
     
     public static final int gr_none = 98;
     
@@ -3264,16 +3268,16 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 
 	}
 		
-   private void RunTimeError(String msg){
+   private boolean RunTimeError(String msg){
 	   Show(msg);
 	   Show(ExecutingLineBuffer);
 	   SyntaxError = true;
 	   errorMsg = msg + "\nLine: " + ExecutingLineBuffer;
+	   return false;						// Always return false as convenience for caller
    }
 
    private boolean RunTimeError(Exception e) {
-	   RunTimeError("Error: " + e);
-	   return false;
+	   return RunTimeError("Error: " + e);
    }
 
    private boolean checkEOL(){
@@ -3326,7 +3330,6 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 	
     private boolean getNVar(){							// Get Var and assure that it is numeric
-
     	int i = LineIndex;
     	if (!getVar()) return false;
     	if (VarIsNumeric) return true;
@@ -3341,6 +3344,35 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
     	LineIndex = i;
     	return false;
     }
+
+	private boolean getArrayVar(){						// Get Var and assure that it an array
+		int i = LineIndex;
+		if (!getVar()) return false;
+		if (VarIsArray) return true;
+
+		LineIndex = i;
+		return RunTimeError("Array variable expected");	// Not an array var
+	}
+
+	private boolean getArrayVarForWrite() {				// get the array var name as a new, undimensioned array
+		doingDim = true;
+		if (!getArrayVar()) { doingDim = false; return false; }
+		doingDim = false;
+		if (!VarIsNew) {								// if array was previously dimensioned
+			return RunTimeError("Array must not be DIMed");
+		}
+		return (isNext(']') || RunTimeError("Expected '[]'")); // Array must not have dimensions or indices
+	}
+
+	private boolean getArrayVarForRead() {				// get the array var name as a previously-dimensioned array
+		SkipArrayValues = true;
+		if (!getArrayVar()) { SkipArrayValues = false; return false; }
+		SkipArrayValues = false;
+		if (VarIsNew) {									// if array was not previously dimensioned
+			return RunTimeError("Array not DIMed");
+		}
+		return (isNext(']') || RunTimeError("Expected '[]'")); // Array must not have dimensions or indices
+	}
 
 	private   boolean  getVar(){							// Get a variable if there is one
 
@@ -4889,16 +4921,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if (ExecutingLineBuffer.charAt(LineIndex)== ','){++LineIndex;}  // Multiple Arrays can be DIMed in one DIM Statement
 																		// seperated by commas
 		doingDim = true;
-		if (!getVar()){													// Get the array name var
-			SyntaxError();
-			return false;
-		}
+		if (!getArrayVar()) { doingDim = false; return false; }			// Get the array name var
 		doingDim = false;
-		
-		if (!VarIsArray){												//if there was no [ char, error
-			SyntaxError();
-			return false;
-		}
 
 		int svn = VarNumber;										// save the array variable table number
 		boolean svt = VarIsNumeric;										// and the array variable type
@@ -4923,13 +4947,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private boolean executeUNDIM(){
 		unDiming = true;
-		if (!getVar()){													// Get the array name var
-			SyntaxError();
-			return false;
-		}
+		boolean unDimed = getArrayVar();
 		unDiming = false;
 
-		return true;
+		return unDimed;
 	}
 
 	private   boolean BuildBasicArray(int VarNumber, boolean IsNumeric, ArrayList<Integer> DimList){		//Part of DIM
@@ -7968,79 +7989,62 @@ private boolean doUserFunction(){
 		return true;
 	}
 
-	
 	private boolean executeDIR(){
-	  	ArrayList <String> FL1 = new ArrayList<String>();
-	  	ArrayList <String> DL1 = new ArrayList<String>();
+		if (!getStringArg()) { return false; }						// get the path
+		String filePath = StringConstant;
 
-		if (!getStringArg()) { return false; }						//get the path
+		if (!isNext(',')) { return false; }							// parse the ,D$[]
+		if (!getArrayVarForWrite()) { return false; }
+		if (VarIsNumeric) {											// Insure that it is a string array
+			RunTimeError("Not string array");
+			return false;
+		}
+		if (!checkEOL()) { return false; }							// line must end with ']'
 
-	  	String FL[] = null;
-	 
-		  File lbDir = new File(Basic.filePath + "/data/"  + StringConstant);
-			  		
-		  if (!lbDir.exists() || lbDir == null){									// did we get a dir?
-			  RunTimeError(StringConstant + " is invalid path");
-			  return false;
-		  }
-          
-		  FL = lbDir.list();									// get the list of files in the dir
-		  String F[] = {" "};
-		  if (FL == null){
-			  FL = F;
-		  }
-		  int FLlength = FL.length;
-		  
-		  int m = FL.length;
-//		  DL1.add("..");												// put  the ".." to the top of the list
-		  
-		  // Go through the file list and mark directory entries with (d)
-		  
-		  for (int i=0; i<m; ++i){
-			  String s = FL[i];
-			  File test = new File(lbDir.getAbsoluteFile() + "/" + s);  // If files is a directory, add "(d)"
-			  if (test.isDirectory()){
-				  s = s + "(d)";
-				  DL1.add(s);											// and add to display list
-			  } else {
-				  FL1.add(s);											// else add name without the (d)
-			  	}
-		  	}
-		  
-		  Collections.sort(DL1);										// Sort the directory list
-		  Collections.sort(FL1);                                        // Sort the file list
-		  for (int i=0; i<FL1.size(); ++i){									// copy the file list to end of dir list
-			  DL1.add(FL1.get(i));
-		  	}
-		  FL1 = DL1;
+		File lbDir = new File(Basic.filePath + "/data/" + filePath);
 
-		  														// parse the ,D[]
-		  if (!isNext(',')) { return false; }
-		  doingDim = true;
-		  if (!getVar()) { doingDim = false; return false; }
-		  doingDim = false;
-		  if (VarIsNumeric || !VarIsArray) { return false; }
-		  if (!VarIsNew) {
-			  RunTimeError("DIR array must not be DIMed");
-			  return false;
-		  }
-		  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
-		  
-		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
-		  
-		  if (FLlength == 0) dimValues.add(1);              // make at least one element if dir is empty
-		  													// If dir is empty, the one element will be an
-		  													// empty string
-		  else dimValues.add(FLlength);
-		  
-		  BuildBasicArray(VarNumber, false, dimValues);
-		  
-		  for (int i = 0; i<FLlength; ++i){								// stuff the array
-			  String s = FL1.get(i);
-			  StringVarValues.set(ArrayValueStart, s);
-			  ++ArrayValueStart;
-		  }
-		  
+		if (!lbDir.exists()) {										// did we get a dir?
+			RunTimeError(filePath + " is invalid path");
+			return false;
+		}
+
+		ArrayList <String> FL1 = new ArrayList<String>();
+		ArrayList <String> DL1 = new ArrayList<String>();
+
+//		DL1.add("..");												// put  the ".." to the top of the list
+
+		String FL[] = lbDir.list();									// get the list of files in the dir
+		if (FL == null) {											// if not a dir
+			DL1.add(" ");											// make list with one element
+		} else {
+											// Go through the file list and mark directory entries with (d)
+			String absPath = lbDir.getAbsolutePath() + '/';
+			for (String s : FL) {
+				File test = new File(absPath + s);
+				if (test.isDirectory()) {							// If file is a directory, add "(d)"
+					DL1.add(s + "(d)");								// and add to display list
+				} else {
+					FL1.add(s);										// else add name without the (d)
+				}
+			}
+			Collections.sort(DL1);									// Sort the directory list
+			Collections.sort(FL1);									// Sort the file list
+			DL1.addAll(FL1);										// copy the file list to end of dir list
+		}
+		int DLlength = DL1.size();
+
+		ArrayList <Integer> dimValues = new ArrayList<Integer>();	// Build the D$[]
+
+		if (DLlength == 0) { DLlength = 1; }				// make at least one element if dir is empty
+															// it will be an empty string
+		dimValues.add(DLlength);
+		if (!BuildBasicArray(VarNumber, false, dimValues)) { return false; }
+
+		int i = ArrayValueStart;
+		for (String s : DL1) {										// stuff the array
+			StringVarValues.set(i++, s);
+		}
+
 		return true;
 	}
 	
@@ -8580,7 +8584,9 @@ private boolean doUserFunction(){
 	    	dnumSamples = Math.ceil(dnumSamples);
 	    	int numSamples = (int) dnumSamples;
 	    	double sample[] = new double[numSamples];
-	    	byte generatedSnd[] = new byte[2 * numSamples];
+	    	ByteBuffer generatedSnd = ByteBuffer.allocate(2 * numSamples);
+	    	generatedSnd.order(ByteOrder.LITTLE_ENDIAN);
+	    	ShortBuffer shortView = generatedSnd.asShortBuffer();
 	    	
 	    	boolean flagMinBuff = true;							// Optionally skip checking min buffer size
 	    	if (isNext(',')) {
@@ -8607,50 +8613,35 @@ private boolean doUserFunction(){
 	        }
 
 	        // convert to 16 bit pcm sound array
-	        // assumes the sample buffer is normalized.
-	        // convert to 16 bit pcm sound array
 	        // assumes the sample buffer is normalised.
-	        int idx = 0;
 	        int i = 0 ;
 	        
 	        int ramp = numSamples / 20 ;									// Amplitude ramp as a percent of sample count
 	       
 	        
-	        for (i = 0; i< ramp; ++i) {										// Ramp amplitude up (to avoid clicks)
-	        	double dVal = sample[i];
-	        																// Ramp up to maximum
-	            final short val = (short) ((dVal * 32767 * i/ramp));
-	            															// in 16 bit wav PCM, first byte is the low order byte
-	            generatedSnd[idx++] = (byte) (val & 0x00ff);
-	            generatedSnd[idx++] = (byte) ((val & 0xff00) >>> 8);
+	        for (i = 0; i< ramp; ++i) {										// Ramp amplitude up to max (to avoid clicks)
+	            short val = (short) (sample[i] * 32767 * i/ramp);
+	            shortView.put(val);
 	        }
 
 	        
-	        for (i = i; i< numSamples - ramp; ++i) {						// Max amplitude for most of the samples
-	        	double dVal = sample[i];
-	        																// scale to maximum amplitude
-	            final short val = (short) ((dVal * 32767));
-	            															// in 16 bit wav PCM, first byte is the low order byte
-	            generatedSnd[idx++] = (byte) (val & 0x00ff);
-	            generatedSnd[idx++] = (byte) ((val & 0xff00) >>> 8);
+	        for ( ; i< numSamples - ramp; ++i) {							// Max amplitude for most of the samples
+	            short val = (short) (sample[i] * 32767);					// scale to maximum amplitude
+	            shortView.put(val);
 	        }
 	        
-	        for (i = i; i< numSamples; ++i) {								// Ramp amplitude down
-	        	double dVal = sample[i];
-	        																// Ramp down to zero
-	            final short val = (short) ((dVal * 32767 * (numSamples-i)/ramp ));
-	            															// in 16 bit wav PCM, first byte is the low order byte
-	            generatedSnd[idx++] = (byte) (val & 0x00ff);
-	            generatedSnd[idx++] = (byte) ((val & 0xff00) >>> 8);
+	        for ( ; i< numSamples; ++i) {									// Ramp amplitude down to 0
+	            short val = (short) (sample[i] * 32767 * (numSamples-i)/ramp);
+	            shortView.put(val);
 	        }
 	        
 	        AudioTrack audioTrack = null;									// Get audio track
 	        try {
 	        	audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
 	        			sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
-	        			AudioFormat.ENCODING_PCM_16BIT, (int)numSamples*2,
+	        			AudioFormat.ENCODING_PCM_16BIT, numSamples*2,
 	        			AudioTrack.MODE_STATIC);
-	        	audioTrack.write(generatedSnd, 0, generatedSnd.length);		// Load the track
+	        	audioTrack.write(generatedSnd.array(), 0, numSamples*2);			// Load the track
 	        	audioTrack.play();											// Play the track
 	        }
 	        catch (Exception e){
@@ -8668,6 +8659,7 @@ private boolean doUserFunction(){
 	        if (audioTrack != null) audioTrack.release();			// Track play done. Release track.
 	        
 	        audioTrack = null;										// Release storage
+	        shortView = null;
 	        generatedSnd = null;
 	        sample = null;
 	        System.gc();
@@ -9388,6 +9380,9 @@ private boolean doUserFunction(){
    	    	  	case gr_scale:
    	    	  		if (!execute_gr_scale()){return false;}
    	    	  		break;
+   	    	  	case gr_getdl:
+   	    	  		if (!execute_gr_getdl()){return false;}
+   	    	  		break;
    	    	  	case gr_newdl:
    	    	  		if (!execute_gr_newdl()){return false;}
    	    	  		break;
@@ -9566,25 +9561,44 @@ private boolean doUserFunction(){
 
 //    	StopDisplay = false;										// Tell GR it can start displaying again
 	  }
-	  
+
+	private boolean execute_gr_getdl(){
+
+		if (!getArrayVarForWrite()) return false;					// Get the array variable
+		if (!VarIsNumeric) {										// Insure that it is a numeric array
+			return RunTimeError("Array not numeric");
+		}
+		if (!checkEOL()) { return false; }							// line must end with ']'
+
+		double[] list = new double[RealDisplayList.size() + 1];
+		int count = 0;
+		for (Integer I : RealDisplayList) {
+			int idx = I.intValue();									// Object index
+			if ((idx != 0) &&										// If not index of null object...
+				(DisplayList.get(idx).getInt("hide") == 0)) {		// ... and object not hidden...
+				list[count++] = idx;								// ... put index in the new list
+			}
+		}
+
+		ArrayList <Integer> dimValues = new ArrayList<Integer>();	// create BASIC! array
+		if (count == 0) { count = 1; }								// if no objects, make a list with
+																	// one entry that indexes the null object
+		dimValues.add(count);
+		if (!BuildBasicArray(VarNumber, false, dimValues)) return false;
+
+		for (int i = 0, j = ArrayValueStart; i < count; ++i, ++j) {	// stuff the array
+			NumericVarValues.set(j, list[i]);
+		}
+		return true;
+	}
+
 	  private boolean execute_gr_newdl(){
 		  
-		  doingDim = false;									// Get the array variable
-		  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-		  if (!getVar()) { SkipArrayValues = false; return false; }
-		  SkipArrayValues = false;
-		  doingDim = false;
-		  
-		  if (!VarIsArray) { return false; }    			// Insure that it is an array
-		  if (!VarIsNumeric){								// and that it is a numeric array
-			  RunTimeError("Array not numeric");
-			  return false;
+		  if (!getArrayVarForRead()) return false;					// Get the array variable
+		  if (!VarIsNumeric){										// Insure that it is a numeric array
+			  return RunTimeError("Array not numeric");
 		  }
-		  if (VarIsNew){									// and that it has been DIMed
-			  RunTimeError("Array not DIMed");
-			  return false;
-		  }
-		  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
+		  if (!checkEOL()) { return false; }						// line must end with ']'
 
 		  
 			Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
@@ -9599,8 +9613,7 @@ private boolean doUserFunction(){
 				double d = NumericVarValues.get(base+i);
 				int id = (int) d;
 				if (id < 0 || id >= DisplayList.size()){
-					RunTimeError("Invalid Object Number");
-					return false;
+					return RunTimeError("Invalid Object Number");
 				}
 				RealDisplayList.add(id);
 			}
@@ -13633,7 +13646,6 @@ private boolean doUserFunction(){
 			SyntaxError();
 			return false;
 		}
-
 		int svn = VarNumber;										// save the array variable table number
 		
 		ArrayList <Integer> dimValues =new ArrayList<Integer>();        // A list to hold the array index values
