@@ -781,16 +781,15 @@ public class Run extends ListActivity {
     public static String StringConstant = "";			// Storage for a string constant
     public static int theValueIndex;				// The index into the value table for the current var
 	public static int ArrayValueStart = 0;				// Value index for newly created array 
-	
-	public static boolean VarIsFunction = false;		// Flag set by getVar() when var is a user function
-	public static boolean DoingDef = false;
-	public static ArrayList<Bundle> FunctionTable;      // A bundle is created for each defined function
-	public static Bundle ufBundle;						// Bundle set by isUserFunction and used by doUserFunction
-    public static Stack<Bundle> FunctionStack;			// Stack contains the currently executing functions
-    public static int VarSearchStart;					// Used to limit search for var names to executing function vars
-    public static boolean fnRTN = false;				// Set true by fn.rtn. Cause RunLoop() to return
-    public static int scOpValue;						// An instance variable that needs to be saved when executing function
-												
+
+	private boolean VarIsFunction = false;				// Flag set by getVar() when var is a user function
+	private boolean DoingDef = false;
+	private ArrayList<Bundle> FunctionTable;      		// A bundle is created for each defined function
+	private Bundle ufBundle;							// Bundle set by isUserFunction and used by doUserFunction
+	private Stack<Bundle> FunctionStack;				// Stack contains the currently executing functions
+	private int VarSearchStart;							// Used to limit search for var names to executing function vars
+	private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
+	private int scOpValue;								// An instance variable that needs to be saved when executing function
 
     public static boolean doingDim = false;				// Signal to get Var that un dimed array var is ok
     public static boolean unDiming = false;             // Signal to get Var that an array is being undimed
@@ -3304,12 +3303,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		// Leaves evaluation result in StringConstant
 	}
 
-	private boolean getArgAsNum() {			// Get and validate
-		if (!evalNumericExpression()) {			// a numeric expression
-			if (getStringArg()) {				//  or string that evaluates to a number
-				try { EvalNumericExpressionValue = Double.valueOf(StringConstant); }
-				catch (NumberFormatException e) { return false; }
-			}
+	private boolean getArgAsNum() {			// Get and validate a numeric expression
+		if (!evalNumericExpression()) {		// or string that evaluates to a number
+			if (SyntaxError || !getStringArg()) { return false; }
+			try { EvalNumericExpressionValue = Double.valueOf(StringConstant); }
+			catch (NumberFormatException e) { return false; }
 		}
 		return true;							// return value in EvalNumericExpressionValue
 	}
@@ -3358,20 +3356,14 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		doingDim = true;
 		if (!getArrayVar()) { doingDim = false; return false; }
 		doingDim = false;
-		if (!VarIsNew) {								// if array was previously dimensioned
-			return RunTimeError("Array must not be DIMed");
-		}
-		return (isNext(']') || RunTimeError("Expected '[]'")); // Array must not have dimensions or indices
+		return (VarIsNew || RunTimeError("Array must not be DIMed"));
 	}
 
 	private boolean getArrayVarForRead() {				// get the array var name as a previously-dimensioned array
 		SkipArrayValues = true;
 		if (!getArrayVar()) { SkipArrayValues = false; return false; }
 		SkipArrayValues = false;
-		if (VarIsNew) {									// if array was not previously dimensioned
-			return RunTimeError("Array not DIMed");
-		}
-		return (isNext(']') || RunTimeError("Expected '[]'")); // Array must not have dimensions or indices
+		return (!VarIsNew || RunTimeError("Array not DIMed"));
 	}
 
 	private   boolean  getVar(){							// Get a variable if there is one
@@ -5868,19 +5860,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 
 		  private boolean executeDUMP_ARRAY(){
 			  if (!Debug) return true;
-			  
-			  doingDim = false;									// Get the array variable
-			  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-			  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
-			  SkipArrayValues = false;
-			  doingDim = false;
-			  
-			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-			  if (VarIsNew){									// and that it has been DIMed
-				  RunTimeError("Array not DIMed");
-				  return false;
-			  }
-			  
+
+			  if (!getArrayVarForRead()) { return false; }
+
 			  PrintShow("Dumping Array " + VarNames.get(VarNumber) + "]");
 			  
 				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
@@ -6086,20 +6068,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			}
 			private boolean executeDEBUG_SHOW_ARRAY(){
 			  if (!Debug) return true;
-				doingDim = false;									// Get the array variable
-			  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-			  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
-			  SkipArrayValues = false;
-			  doingDim = false;
-			  
-			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-			  if (!VarIsNumeric){								// and that it is a numeric array
-				  RunTimeError("Array not numeric");
-			  }
-			  if (VarIsNew){									// and that it has been DIMed
-				  RunTimeError("Array not DIMed");
-				  return false;
-			  }
+
+			  if (!getArrayVarForRead()) { return false; }
+
 				WatchedArray = VarNumber;
 				DialogSelector(2);
 				executeDEBUG_SHOW();
@@ -6982,7 +6953,7 @@ private boolean doUserFunction(){
 	// args: stream to flush, previous exception or null;
 	// return: previous exception if any, else new exception if any, else null 
 	private static IOException flushStream(Flushable stream, IOException ex) {	// flush a stream
-		if (stream != null) { return ex; }
+		if (stream == null) { return ex; }
 		try { stream.flush(); return ex; }
 		catch ( IOException e ) { return (ex == null) ? e : ex; }
 	}
@@ -6990,7 +6961,7 @@ private boolean doUserFunction(){
 	// args: stream to close, previous exception or null
 	// return: previous exception if any, else new exception if any, else null 
 	private static IOException closeStream(Closeable stream, IOException ex) {	// close a stream
-		if (stream != null) { return ex; }
+		if (stream == null) { return ex; }
 		try { stream.close(); return ex; }
 		catch ( IOException e ) { return (ex == null) ? e : ex; }
 	}
@@ -7995,17 +7966,14 @@ private boolean doUserFunction(){
 
 		if (!isNext(',')) { return false; }							// parse the ,D$[]
 		if (!getArrayVarForWrite()) { return false; }
-		if (VarIsNumeric) {											// Insure that it is a string array
-			RunTimeError("Not string array");
-			return false;
-		}
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (VarIsNumeric) { return RunTimeError("Not string array"); } // Insure that it is a string array
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		File lbDir = new File(Basic.filePath + "/data/" + filePath);
 
 		if (!lbDir.exists()) {										// did we get a dir?
-			RunTimeError(filePath + " is invalid path");
-			return false;
+			return RunTimeError(filePath + " is invalid path");
 		}
 
 		ArrayList <String> FL1 = new ArrayList<String>();
@@ -9565,9 +9533,8 @@ private boolean doUserFunction(){
 	private boolean execute_gr_getdl(){
 
 		if (!getArrayVarForWrite()) return false;					// Get the array variable
-		if (!VarIsNumeric) {										// Insure that it is a numeric array
-			return RunTimeError("Array not numeric");
-		}
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		double[] list = new double[RealDisplayList.size() + 1];
@@ -9595,9 +9562,8 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_newdl(){
 		  
 		  if (!getArrayVarForRead()) return false;					// Get the array variable
-		  if (!VarIsNumeric){										// Insure that it is a numeric array
-			  return RunTimeError("Array not numeric");
-		  }
+		  if (!isNext(']')) { return RunTimeError("Expected '[]'"); } // Array must not have any indices
+		  if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
 		  if (!checkEOL()) { return false; }						// line must end with ']'
 
 		  
