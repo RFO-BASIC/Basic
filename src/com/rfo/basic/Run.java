@@ -5041,7 +5041,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			RunTimeError(
 					"Indices count(" +
 					indicies.size()+
-					") not same a dimension count ("+
+					") not same as dimension count ("+
 					dims.size()+
 					") at:");
 			return false;
@@ -5887,7 +5887,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  if (!Debug) return true;
 			  
 				if (!evalNumericExpression()) return false;					// Get the list pointer
-				int listIndex = (int) (double)EvalNumericExpressionValue;
+				int listIndex = EvalNumericExpressionValue.intValue();
 				if (listIndex < 1 || listIndex >= theLists.size()){
 					RunTimeError("Invalid List Pointer");
 					return false;
@@ -5935,7 +5935,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  if (!Debug) return true;
 			  
 				if (!evalNumericExpression()) return false;							// Get the Stack pointer
-				int stackIndex = (int) (double)EvalNumericExpressionValue;
+				int stackIndex = EvalNumericExpressionValue.intValue();
 				if (stackIndex < 1 || stackIndex >= theStacks.size()){
 					RunTimeError("Invalid Stack Pointer");
 					return false;
@@ -5990,7 +5990,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  if (!Debug) return true;
 			  
 				if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-				int bundleIndex = (int) (double)EvalNumericExpressionValue;
+				int bundleIndex = EvalNumericExpressionValue.intValue();
 				if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
 					RunTimeError("Invalid Bundle Pointer");
 					return false;
@@ -6080,10 +6080,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if (!Debug) return true;
 			  
 				if (!evalNumericExpression()) return false;					// Get the list pointer
-				int listIndex = (int) (double)EvalNumericExpressionValue;
+				int listIndex = EvalNumericExpressionValue.intValue();
 				if (listIndex < 1 || listIndex >= theLists.size()){
-					RunTimeError("Invalid List Pointer");
-					return false;
+					return RunTimeError("Invalid List Pointer");
 				}
 				WatchedList = listIndex;
 				DialogSelector(3);
@@ -6094,10 +6093,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if (!Debug) return true;
 			  
 				if (!evalNumericExpression()) return false;							// Get the Stack pointer
-				int stackIndex = (int) (double)EvalNumericExpressionValue;
+				int stackIndex = EvalNumericExpressionValue.intValue();
 				if (stackIndex < 1 || stackIndex >= theStacks.size()){
-					RunTimeError("Invalid Stack Pointer");
-					return false;
+					return RunTimeError("Invalid Stack Pointer");
 				}
 				WatchedStack = stackIndex;
 				DialogSelector(4);
@@ -6108,10 +6106,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if (!Debug) return true;
 			  
 				if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-				int bundleIndex = (int) (double)EvalNumericExpressionValue;
+				int bundleIndex = EvalNumericExpressionValue.intValue();
 				if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-					RunTimeError("Invalid Bundle Pointer");
-					return false;
+					return RunTimeError("Invalid Bundle Pointer");
 				}
 				WatchedBundle = bundleIndex;
 				DialogSelector(5);
@@ -6588,13 +6585,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		private boolean  executeFN_DEF(){									// Define Function
 		
 		DoingDef = true;
-		if (!getVar()){SyntaxError();return false;}      				// Get the function name
+		if (!getVar()) { DoingDef = false; return false; }			// Get the function name
 		DoingDef = false;
-		if (!VarIsFunction) {SyntaxError();return false;}               // Make sure it is a function
-		if (!VarIsNew){
-			RunTimeError("Function previoulsy defined at:");
-			return false;
-		}
+		if (!VarIsFunction) { return false; }						// Make sure it is a function
+		if (!VarIsNew) { return RunTimeError("Function previously defined at:"); }
 		
 		int fVarNumber = VarNumber;                                  // Save the VarNumber of the function name
 		boolean fType = VarIsNumeric;
@@ -6608,32 +6602,21 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		ArrayList<Integer> fVarType = new ArrayList<Integer>();      // List of parameter types
 		ArrayList<Integer> fVarArray = new ArrayList<Integer>();     // A list of indicating if parm is array
 
-		char c;
-		int i;
-
-		if (ExecutingLineBuffer.charAt(LineIndex)==')')
-			{++LineIndex;} else
-			
+		if (!isNext(')')) {
 			do{															// Get each of the parameter names
 				doingDim = true;
-				if (!getVar()){SyntaxError();return false;}
+				if (!getVar()) { return false; }
 				doingDim = false;
 				if (VarIsArray){										// Process array
-					if (ExecutingLineBuffer.charAt(LineIndex)!=']')return false;
-					++LineIndex;
+					if (!isNext(']')) { return RunTimeError("Expected '[]'"); } // Array must not have any indices
 					fVarArray.add(1);      // 1 Indicates var is array
 				} else fVarArray.add(0);   // 0 Indicates var is not an array
 						
 				fVarName.add(VarNames.get(VarNumber));					// Save the name
-				if (VarIsNumeric) i=1; else i=0;
-				fVarType.add(i);										// Save the type
-				c = ExecutingLineBuffer.charAt(LineIndex);
-				++LineIndex;
-			} while (c == ',');
-//			if (c != ')') return false;
-//			if (! checkEOL()) return false;
-
-			
+				fVarType.add(VarIsNumeric ? 1 : 0);						// Save the type
+			} while (isNext(','));
+			if ( !(isNext(')') && checkEOL()) ) { return false; }
+		}
 		
 		Bundle b = new Bundle();									// Build the bundle for the FunctionTable
 		b.putInt("line", ExecutingLineIndex);                       // Line number of fn.def
@@ -8017,115 +8000,92 @@ private boolean doUserFunction(){
 	}
 	
 	private boolean executeGRABFILE(){
-		if (!getVar()){return false;}		                           // First parm is string var				
-		if (VarIsNumeric){return false;}
+		if (!getSVar()) { return false; }							// First parm is string var
 		int saveVarIndex = theValueIndex;
-		
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} 
-		++LineIndex;
 
-		if (!evalStringExpression()){return false;}                    // Second parm is the filename               
-	    if (SEisLE) return false;
-	    String theFileName = StringConstant;
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }						// Second parm is the filename
+		String theFileName = StringConstant;
 		if (!checkEOL()) return false;
 
-	    
-	    String result = null;
-
-     	String state = Environment.getExternalStorageState();   // Make sure the SD is mounted
-	    if (!Environment.MEDIA_MOUNTED.equals(state)) {
-	    	RunTimeError("SDCRD not available.");
-        	return false;
-        	}
-		  
-		File file = null;
-        String  FullFileName = null;
-		FullFileName = Basic.filePath + "/data";
-
-        if (Basic.DataPath.length() != 0){ 
-			FullFileName = FullFileName + Basic.DataPath + "/" + theFileName;  // Add the filename to the base path
-        }else{
-			FullFileName = FullFileName + "/" + theFileName;
-        }
-
-		  file = new File(FullFileName);
-		  BufferedInputStream bis;
-	
-		  try{                                      // Open the reader for the SD Card
-			  FileInputStream fis = new FileInputStream(file);
-//		      dis = new DataInputStream(fis);
-		      bis = new BufferedInputStream(fis);
-		  }				
-		  catch (Exception e) {
-			  return RunTimeError(e);
-		  }
-
-	    // Construct a String object from the byte array containing the response
-	    try{
-		    ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*8);
-		    int current = 0;
-		    while((current = bis.read()) != -1){
-		    byteArray.append((byte)current);
-		    }
-		    result = new String(byteArray.toByteArray(),0);
-
-	    } catch (Exception e) {
-			return RunTimeError(e);
+		String state = Environment.getExternalStorageState();		// Make sure the SD is mounted
+		if (!Environment.MEDIA_MOUNTED.equals(state)) {
+			return RunTimeError("SDCRD not available.");
 		}
-	   
-	    StringVarValues.set(saveVarIndex, result);
+
+		String FullFileName = Basic.filePath + "/data"				// Add the filename to the base path
+							+ Basic.DataPath + "/" + theFileName;
+		File file = new File(FullFileName);
+
+		BufferedInputStream bis = null;
+		ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*8);
+		IOException ex = null;
+		try {														// Open the reader for the SD Card
+			FileInputStream fis = new FileInputStream(file);
+			bis = new BufferedInputStream(fis);
+
+			int current = 0;
+			while ((current = bis.read()) != -1) {
+				byteArray.append((byte) current);
+			}
+		} catch (IOException e) {
+			ex = e;
+		} finally {
+			ex = closeStream(bis, ex);
+			if (ex != null) { return RunTimeError(ex); }
+		}
+
+		// Construct a String object from the byte array containing the response
+		String result = new String(byteArray.toByteArray(), 0);
+		StringVarValues.set(saveVarIndex, result);
 
 		return true;
 	}
-	
-	  private boolean executeGRABURL(){
-		  
-			if (!getVar()){return false;}		                           // First parm is string var				
-			if (VarIsNumeric){return false;}
-			int saveVarIndex = theValueIndex;
-			
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return false;} 
-			++LineIndex;
 
-			if (!evalStringExpression()){return false;}                    // Second parm is the url               
-		    if (SEisLE) return false;
-			if (!checkEOL()) return false;
+	private boolean executeGRABURL(){
+		if (!getSVar()) { return false; }							// First parm is string var
+		int saveVarIndex = theValueIndex;
 
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }						// Second parm is the url
+		if (!checkEOL()) return false;
 
-		    
-		    String result = null;
+		URL url = null;
+		try {
+			// This assumes that you have a URL from which the response will come
+			url = new URL(StringConstant);
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
 
-		    try {
-		    // This assumes that you have a URL from which the response will come
-		    URL url = new URL(StringConstant);
+		BufferedInputStream bis = null;
+		ByteArrayBuffer byteArray = new ByteArrayBuffer(50);
+		IOException ex = null;
+		try {
+			// Open a connection to the URL and obtain a buffered input stream
+			URLConnection connection = url.openConnection();
+			InputStream inputStream = connection.getInputStream();
+			bis = new BufferedInputStream(inputStream);
 
-		    // Open a connection to the URL and obtain a buffered input stream
-		    URLConnection connection = url.openConnection();
-		    InputStream inputStream = connection.getInputStream();
-		    
-		    BufferedInputStream bufferedInput = new BufferedInputStream(inputStream);
-
-		    // Read the response into a byte array
-		    ByteArrayBuffer byteArray = new ByteArrayBuffer(50);
-		    int current = 0;
-		    while((current = bufferedInput.read()) != -1){
-		    byteArray.append((byte)current);
-		    }
-
-		    // Construct a String object from the byte array containing the response
-		    result = new String(byteArray.toByteArray());
-		    
-		    }
-		    catch (Exception e) {
-				return RunTimeError(e);
+			// Read the response into a byte array
+			int current = 0;
+			while ((current = bis.read()) != -1) {
+				byteArray.append((byte) current);
 			}
-		   
-		    StringVarValues.set(saveVarIndex, result);
+		} catch (IOException e) {
+			ex = e;
+		} finally {
+			ex = closeStream(bis, ex);
+			if (ex != null) { return RunTimeError(ex); }
+		}
 
-		  return true;
-	  }
+		// Construct a String object from the byte array containing the response
+		String result = new String(byteArray.toByteArray());
+		StringVarValues.set(saveVarIndex, result);
 
-	  
+		return true;
+	}
+
 	// ************************************** Time and TimeZone commands **************************
 	
 	private boolean executeTIME(){								// Get the date and time
@@ -8232,8 +8192,7 @@ private boolean doUserFunction(){
 	  
 	  private boolean executeINKEY(){
 		  
-		  if (!getVar()) return false;						// get the var to put the key value into
-		  if (VarIsNumeric) return false;					
+		  if (!getSVar()) return false;						// get the var to put the key value into
 		  if (!checkEOL()) return false;
 		  if (InChar.size() > 0){
 			  StringVarValues.set(theValueIndex, InChar.get(0));
@@ -8289,101 +8248,72 @@ private boolean doUserFunction(){
 		  PrintShow("@@5");										// Signal UI task
 		  return true;
 	  }
-	  
-	  public boolean executeSELECT(){
 
-		  if (!getVar()) return false;						// get the var to put the key value into
-		  if (!VarIsNumeric) return false;					
-		  int SaveValueIndex = theValueIndex;
-		  
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;}
-		  ++LineIndex;
-		  
-		  int saveLineIndex = LineIndex;
-		  SkipArrayValues = true;
+	public boolean executeSELECT(){
 
-		  if (evalNumericExpression()){
-			    SkipArrayValues = false;
-				int listIndex = (int) (double)EvalNumericExpressionValue;
-				if (listIndex < 1 || listIndex >= theLists.size()){
-					RunTimeError("Invalid List Pointer");
-					return false;
-				}
-				if (theListsType.get(listIndex) != list_is_string){
-					RunTimeError("Not a string list");
-					return false;
-				}
-				SelectList = theLists.get(listIndex);
-				
-		  }else{
-			  LineIndex = saveLineIndex;
-			  doingDim = false;									// Get the array variable
-			  SkipArrayValues = true;
-			  if (!getVar()){
-				  SyntaxError(); 
-				  SkipArrayValues = false; 
-				  return false;
-			  	}
-			  SkipArrayValues = false;
-			  doingDim = false;
-			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-			  if (VarIsNumeric) return false;
-			  if (VarIsNew){									// and that it has been DIMed
-				  RunTimeError("Array not DIMed");
-				  return false;
-			  }
-		  
-			  if (ExecutingLineBuffer.charAt(LineIndex)!=']'){SyntaxError(); return false;}
-			  ++LineIndex;
+		if (!getNVar()) return false;								// get the var to put the key value into
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		  
-			  Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-			  ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));   
-			  int length = ArrayEntry.getInt("length");               // get the array length
-			  int base = ArrayEntry.getInt("base");                   // and the start of values in the value space
-			
-			  SelectList = new ArrayList<String>();    // Create a list to copy array values into
-				
-			  for (int i =0; i<length; ++i){                          // Copy the array values into that list
-				  SelectList.add(StringVarValues.get(base+i));
-			  }
-			
-		  }
-			
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;}
-			++LineIndex;
+		int saveLineIndex = LineIndex;
+		SkipArrayValues = true;
+		boolean isArrayVar = getVar() && VarIsArray && isNext(']');
+		SkipArrayValues = false;
+		if (SyntaxError) return false;
 
-			if (!evalStringExpression()) return false;
-			if (SEisLE) return false;
-//			if (!checkEOL()) return false;
+		if (isArrayVar) {
+			if (VarIsNumeric) { return RunTimeError("Not string array"); }
 
-			
-			SelectMessage = StringConstant ;
-			if (SelectMessage == null ) SelectMessage = "";
-			
-			SelectedItem = 0;
-			ItemSelected = false;
-			SelectLongClick = false;
-			
-		    startActivityForResult(new Intent(this, Select.class), BASIC_GENERAL_INTENT);
+			Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
+			int length = ArrayEntry.getInt("length");				// get the array length
+			int base = ArrayEntry.getInt("base");					// and the start of values in the value space
 
-			
-		    while (!ItemSelected) Thread.yield();				    // Wait for signal from Selected.java thread
-		    
-		    NumericVarValues.set(SaveValueIndex, (double) SelectedItem); // Put the item selected into the var
-		    
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){return checkEOL();} // If no comma then not long press var
-			++LineIndex;
-			
-			if (!getNVar()) return false;									// Get the long press var
-			double isLongPress = 0;											// Get the actual value
-			if (SelectLongClick) isLongPress = 1;
-			NumericVarValues.set(theValueIndex, (double) isLongPress);		// Set the return value	
+			SelectList = new ArrayList<String>();					// Create a list to copy array values into
 
-		  
-			return checkEOL();
-	  }
-	  
+			for (int i = 0; i < length; ++i) { 						// Copy the array values into that list
+				SelectList.add(StringVarValues.get(base+i));
+			}
+		} else {
+			LineIndex = saveLineIndex;
+			if (!evalNumericExpression()) return false;
+
+			int listIndex = EvalNumericExpressionValue.intValue();
+			if (listIndex < 1 || listIndex >= theLists.size()){
+				return RunTimeError("Invalid List Pointer");
+			}
+			if (theListsType.get(listIndex) != list_is_string){
+				return RunTimeError("Not a string list");
+			}
+			SelectList = theLists.get(listIndex);
+		}
+
+		if ( !(isNext(',') && getStringArg()) ) return false;
+		SelectMessage = StringConstant;
+
+		int isLongClickValueIndex = -1;
+		if (isNext(',')) {											// If no comma then not long press var
+			if (!getNVar()) return false;							// Get the long press var
+			isLongClickValueIndex = theValueIndex;
+		}
+		if (!checkEOL()) return false;
+		
+		SelectedItem = 0;
+		ItemSelected = false;
+		SelectLongClick = false;
+		
+		startActivityForResult(new Intent(this, Select.class), BASIC_GENERAL_INTENT);
+		while (!ItemSelected) Thread.yield();						// Wait for signal from Selected.java thread
+		
+		NumericVarValues.set(SaveValueIndex, (double) SelectedItem); // Put the item selected into the var
+		
+		if (isLongClickValueIndex != -1) {
+			double isLongPress = SelectLongClick ? 1 : 0;			// Get the actual value
+			NumericVarValues.set(theValueIndex, isLongPress);		// Set the return value
+		}
+
+		return true;
+	}
+
 	  private boolean executeSPLIT(){
 		  
 		  doingDim = true;                                       // Get the result array variable
