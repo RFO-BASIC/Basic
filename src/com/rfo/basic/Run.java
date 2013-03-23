@@ -79,6 +79,7 @@ import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.regex.PatternSyntaxException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
@@ -630,7 +631,7 @@ public class Run extends ListActivity {
     	"str$(", "upper$(", "lower$(",
     	"format$(", "chr$(", "version$(",
     	"replace$(", "hex$(", "oct$(",
-    	"bin$(", "geterror$("
+    	"bin$(", "geterror$(", "word$("
     };
     public static  int SFNumber = 0;					// Will hold enumerated string function name value
     
@@ -648,6 +649,7 @@ public class Run extends ListActivity {
     public static final int SFoct= 11;
     public static final int SFbin =12;
     public static final int SFgeterror =13;
+    public static final int SFword =14;
     
     // *****************************   Various execution control variables *********************
     
@@ -4529,8 +4531,12 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		LineIndex = LI;
 																// Try String Functions
-		if (!getStringFunction()){; return false;}
+		if (!getStringFunction()) { return false; }
+		if (!doStringFunction()) { SyntaxError();  return false; }
+		return true;
+	}
 
+	private boolean doStringFunction() {
 		double d = 0;
 		double d1 = 0;
 		int e = 0;
@@ -4628,6 +4634,25 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if (e>=StringConstant.length()){e=StringConstant.length()-1;}
 				e = StringConstant.length() - e;
 				StringConstant = StringConstant.substring(e, StringConstant.length());
+				return true;
+
+			case SFword:
+				if (!getStringArg()) { return false; }			// String to split
+				String SearchString = StringConstant;
+
+				if (!isNext(',')) { return false; }
+				if (!evalNumericExpression()) { return false; }	// Which word to return
+				int wordIndex = EvalNumericExpressionValue.intValue();
+
+				String r[] = doSplit(SearchString);				// Get regex arg, if any, and split the string.
+				if (!isNext(')')) { return false; }				// Function must end with ')'
+
+				int length = r.length;							// Get the number of strings generated
+				if (length == 0) { return false; }				// error in doSplit()
+
+				wordIndex--;									// Convert to 0-based index
+				if (r[0].length() == 0) { wordIndex++; }		// Special case: first character was a delimiter
+				StringConstant = ((wordIndex < 0) || (wordIndex >= length)) ? "" : r[wordIndex];
 				return true;
 
 			case SFstr:																			// STR$
@@ -5112,6 +5137,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 					}
 				}
 			}
+			if (SyntaxError) { return false; }
 
 			char c = ExecutingLineBuffer.charAt(LineIndex);
 			if (c == ',') {							// if the separator is a comma
@@ -8308,57 +8334,29 @@ private boolean doUserFunction(){
 		
 		if (isLongClickValueIndex != -1) {
 			double isLongPress = SelectLongClick ? 1 : 0;			// Get the actual value
-			NumericVarValues.set(theValueIndex, isLongPress);		// Set the return value
+			NumericVarValues.set(isLongClickValueIndex, isLongPress); // Set the return value
 		}
 
 		return true;
 	}
 
-	  private boolean executeSPLIT(){
-		  
-		  doingDim = true;                                       // Get the result array variable
-		  if (!getVar()){SyntaxError(); return false;}           
-		  doingDim = false;
-		  if (VarIsNumeric){SyntaxError(); return false;} 
-		  if (!VarIsArray){SyntaxError(); return false;}
-		  if (!VarIsNew){
-			  RunTimeError("SPLIT array must not be DIMed");
-			  return false;
-		  }
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=']'){SyntaxError(); return false;}
-		  int SaveArrayVarNumber = VarNumber;
-			++LineIndex;
-		  
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
-			++LineIndex;
-			
-			if (!evalStringExpression()) return false;    // Get the string to split
-			if (SEisLE) return false;
-			String SearchString = StringConstant ;
+	private boolean executeSPLIT(){
 
-			if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;}
-			++LineIndex;
-			
-			if (!evalStringExpression()) return false;    // Get the regular expression string
-			if (SEisLE) return false;
-			String REString = StringConstant ;
-			if (!checkEOL()) return false;
-			
-			String r[] = new String[1];
-			try {
-				r = SearchString.split(REString);              // split the string
-			}
-			catch (Exception e){
-				return RunTimeError(e);
-			}
-							
-			int length = r.length;                             // Get the number of strings generated
-			
-			if (length == 0){
-				RunTimeError(REString + " is invalid argument at");
-				return false;
-			}
-			
+		if (!getArrayVarForWrite()) { return false; }				// Get the result array variable
+		if (VarIsNumeric) { return RunTimeError("Not string array"); } // Insure that it is a string array
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		int SaveArrayVarNumber = VarNumber;
+
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }						// Get the string to split
+		String SearchString = StringConstant;
+
+		String r[] = doSplit(SearchString);							// Get regex arg, if any, and split the string.
+		if (!checkEOL()) { return false; }
+
+		int length = r.length;										// Get the number of strings generated
+		if (length == 0) { return false; }							// error in doSplit()
+
 			ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Set that number as the dimension of the array
 			dimValues.add(length);
 		  
@@ -8370,9 +8368,27 @@ private boolean doUserFunction(){
 		  }
 
 		  return true;
-	  }
-	  
-	  
+	}
+
+	private String[] doSplit(String SearchString) {					// Split a string
+		String r[] = new String[0];									// If error, return zero-length string
+		String REString = null;
+		if (isNext(',')) {											// If user command supplied a regex
+			if (!getStringArg()) { return r; }						// get it
+			REString = StringConstant;
+		} else {
+			REString = "\\s+";										// Otherwise split on whitespace
+		}
+		try {
+			r = SearchString.split(REString);
+		} catch (PatternSyntaxException pse) {
+			RunTimeError(REString + " is invalid argument at");
+		} catch (Exception e) {
+			RunTimeError(e);
+		}
+		return r;
+	}
+
 	  private boolean executeKBSHOW(){
 		  if (!checkEOL()) return false;
 			Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " KBSHOW  " + kbShown );
@@ -15910,7 +15926,8 @@ private boolean doUserFunction(){
 	  private boolean execute_SP_open(){
 		  
 		  if (!evalNumericExpression()) return false;
-		  int SP_max = (int) (double) EvalNumericExpressionValue;
+		  if (!checkEOL()) return false;
+		  int SP_max = EvalNumericExpressionValue.intValue();
 		  if (SP_max <=0 ){
 			  RunTimeError("Stream count must be > 0");
 			  return false;			  
@@ -15951,58 +15968,35 @@ private boolean doUserFunction(){
 		  if (!getNVar()) return false;                        			// Stream return variable
 		  int savedIndex = theValueIndex;
 
-			char c = ExecutingLineBuffer.charAt(LineIndex);				// Sound ID						
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Sound ID
 			if (!evalNumericExpression()) return false;
 			int soundID = (int)(double) EvalNumericExpressionValue;
 			
-			c = ExecutingLineBuffer.charAt(LineIndex);					// Left Volume					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Left Volume
 			if (!evalNumericExpression()) return false;
-			float leftVolume = (float)(double) EvalNumericExpressionValue;
+			float leftVolume = EvalNumericExpressionValue.floatValue();
 			
-			c = ExecutingLineBuffer.charAt(LineIndex);					// Right Volume					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Right Volume
 			if (!evalNumericExpression()) return false;
-			float rightVolume = (float)(double) EvalNumericExpressionValue;
+			float rightVolume = EvalNumericExpressionValue.floatValue();
 			
-			c = ExecutingLineBuffer.charAt(LineIndex);					// Priority					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Priority
 			if (!evalNumericExpression()) return false;
-			int priority = (int)(double) EvalNumericExpressionValue;
+			int priority = EvalNumericExpressionValue.intValue();
 
-			c = ExecutingLineBuffer.charAt(LineIndex);					// Loop					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Loop
 			if (!evalNumericExpression()) return false;
-			int loop = (int)(double) EvalNumericExpressionValue;
+			int loop = EvalNumericExpressionValue.intValue();
 			
-			c = ExecutingLineBuffer.charAt(LineIndex);					// Rate					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Rate
 			if (!evalNumericExpression()) return false;
-			float rate = (float)(double) EvalNumericExpressionValue;
+			float rate = EvalNumericExpressionValue.floatValue();
+			if (!checkEOL()) return false;
 			
-			if (leftVolume < 0){
+			if (leftVolume < 0 || leftVolume >= 1.0){
 				RunTimeError("Left volume out of range");
 				return false;
 			}
-			
-			if (leftVolume >= 1.0 ){
-				RunTimeError("Left volume out of range");
-				return false;
-			}
-
 
 			if (rightVolume < 0 || rightVolume >= 1.0){
 				RunTimeError("Right volume out of range");
@@ -16029,7 +16023,8 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_SP_stop(){
 			if (!evalNumericExpression()) return false;
-			int streamID = (int)(double) EvalNumericExpressionValue;
+			if (!checkEOL()) return false;
+			int streamID = EvalNumericExpressionValue.intValue();
 			theSoundPool.stop(streamID);
 
 		  return true;
@@ -16037,7 +16032,8 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_SP_unload(){
 			if (!evalNumericExpression()) return false;
-			int soundID = (int)(double) EvalNumericExpressionValue;
+			if (!checkEOL()) return false;
+			int soundID = EvalNumericExpressionValue.intValue();
 			theSoundPool.unload(soundID);
 
 		  return true;
@@ -16046,7 +16042,8 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_SP_pause(){
 			if (!evalNumericExpression()) return false;
-			int streamID = (int)(double) EvalNumericExpressionValue;
+			if (!checkEOL()) return false;
+			int streamID = EvalNumericExpressionValue.intValue();
 			if (streamID == 0 ) theSoundPool.autoPause();
 			else theSoundPool.pause(streamID);
 		  return true;
@@ -16054,7 +16051,8 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_SP_resume(){
 			if (!evalNumericExpression()) return false;
-			int streamID = (int)(double) EvalNumericExpressionValue;
+			if (!checkEOL()) return false;
+			int streamID = EvalNumericExpressionValue.intValue();
 			if (streamID == 0 ) theSoundPool.autoResume();
 			else theSoundPool.resume(streamID);
 
@@ -16062,6 +16060,7 @@ private boolean doUserFunction(){
 	  }
 	  
 	  private boolean execute_SP_release(){
+		  if (!checkEOL()) return false;
 		  theSoundPool.release();
 		  theSoundPool = null;
 		  return true;
@@ -16070,36 +16069,23 @@ private boolean doUserFunction(){
 	  private boolean execute_SP_setvolume(){
 		  
 			if (!evalNumericExpression()) return false;
-			int streamID = (int)(double) EvalNumericExpressionValue;
+			int streamID = EvalNumericExpressionValue.intValue();
 			
-			char c = ExecutingLineBuffer.charAt(LineIndex);					// Left Volume					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Left Volume
 			if (!evalNumericExpression()) return false;
-			float leftVolume = (float)(double) EvalNumericExpressionValue;
+			float leftVolume = EvalNumericExpressionValue.floatValue();
 			
-			c = ExecutingLineBuffer.charAt(LineIndex);					// Right Volume					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Right Volume
 			if (!evalNumericExpression()) return false;
-			float rightVolume = (float)(double) EvalNumericExpressionValue;
+			float rightVolume = EvalNumericExpressionValue.floatValue();
+			if (!checkEOL()) return false;
 			
-			if (leftVolume < 0){
-				RunTimeError("Left volume out of range");
-				return false;
+			if (leftVolume < 0 || leftVolume >= 1.0 ){
+				return RunTimeError("Left volume out of range");
 			}
-			
-			if (leftVolume >= 1.0 ){
-				RunTimeError("Left volume out of range");
-				return false;
-			}
-
 
 			if (rightVolume < 0 || rightVolume >= 1.0){
-				RunTimeError("Right volume out of range");
-				return false;
+				return RunTimeError("Right volume out of range");
 			}
 
 			theSoundPool.setVolume(streamID, leftVolume, rightVolume);
@@ -16110,14 +16096,12 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_SP_setpriority(){
 			if (!evalNumericExpression()) return false;
-			int streamID = (int)(double) EvalNumericExpressionValue;
+			int streamID = EvalNumericExpressionValue.intValue();
 			
-			char c = ExecutingLineBuffer.charAt(LineIndex);					// Left Volume					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Priority
 			if (!evalNumericExpression()) return false;
-			int priority = (int)(double) EvalNumericExpressionValue;
+			int priority = EvalNumericExpressionValue.intValue();
+			if (!checkEOL()) return false;
 			
 			if (priority < 0 ){
 				RunTimeError("Priority less than zero");
@@ -16131,14 +16115,12 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_SP_setloop(){
 			if (!evalNumericExpression()) return false;
-			int streamID = (int)(double) EvalNumericExpressionValue;
+			int streamID = EvalNumericExpressionValue.intValue();
 			
-			char c = ExecutingLineBuffer.charAt(LineIndex);					// Loop value					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Loop value
 			if (!evalNumericExpression()) return false;
-			int loop = (int)(double) EvalNumericExpressionValue;
+			int loop = EvalNumericExpressionValue.intValue();
+			if (!checkEOL()) return false;
 			
 			theSoundPool.setLoop(streamID, loop);
 
@@ -16148,16 +16130,14 @@ private boolean doUserFunction(){
 
 	  private boolean execute_SP_setrate(){
 			if (!evalNumericExpression()) return false;
-			int streamID = (int)(double) EvalNumericExpressionValue;
+			int streamID = EvalNumericExpressionValue.intValue();
 			
-			char c = ExecutingLineBuffer.charAt(LineIndex);					// Loop value					
-			if ( c != ',') return false;
-			++LineIndex;
- 
+			if (!isNext(',')) return false;								// Rate
 			if (!evalNumericExpression()) return false;
-			float rate = (float)(double) EvalNumericExpressionValue;
+			float rate = EvalNumericExpressionValue.floatValue();
+			if (!checkEOL()) return false;
 			
-			if (rate < 0.5 || rate > 1.8  ){
+			if (rate < 0.5 || rate > 1.8){
 				RunTimeError("Rate out of range");
 				return false;
 			}
@@ -16171,6 +16151,7 @@ private boolean doUserFunction(){
 	  private boolean execute_my_phone_number(){
 		  
 		  if (!getSVar()) return false;
+		  if (!checkEOL()) return false;
 		  
 		  TelephonyManager mTelephonyMgr;
 	        mTelephonyMgr = (TelephonyManager)
