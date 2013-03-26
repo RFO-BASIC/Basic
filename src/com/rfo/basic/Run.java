@@ -680,7 +680,6 @@ public class Run extends ListActivity {
     public static Stack<Bundle> ForNextStack;			// Stack used for For/Next
     public static Stack<Integer> WhileStack;			// Stack used for While/Repeat
     public static Stack<Integer> DoStack;				// Stack used for Do/Until
-    public static Bundle s= new Bundle();				// A generic bundle
     
     public static Stack <Integer> IfElseStack;			// Stack for IF-ELSE-ENDIF operations
     public static final Integer IEskip1 = 1;			// Skip statements until ELSE, ELSEIF or ENDIF
@@ -719,36 +718,36 @@ public class Run extends ListActivity {
     private boolean ProgressPending = false;
 	
 	// debugger dialog and ui thread vars
-	  public boolean WaitForResume = false ; 
-	  public boolean DebuggerStep = false;
-  	public boolean DebuggerHalt = false;
-		public boolean WaitForSwap = false;
-		public boolean WaitForSelect = false;
-		public boolean dbSwap = false;
-		public boolean dbSelect = false;
-	  public AlertDialog.Builder DebugDialog;
-	  public AlertDialog theDebugDialog;
-		public AlertDialog.Builder DebugSwapDialog;
-		public AlertDialog theDebugSwapDialog;
-		public AlertDialog.Builder DebugSelectDialog;
-	  public AlertDialog theDebugSelectDialog;
-  	public boolean dbDialogScalars;
-	  public boolean dbDialogArray;
-	  public boolean dbDialogList;
-	  public boolean dbDialogStack;
-	  public boolean dbDialogBundle;
-	  public boolean dbDialogWatch;
-	  public boolean dbDialogProgram;
-	  public boolean dbDialogConsole;
-	  public String dbConsoleHistory;
-  	public String dbConsoleExecute;
-	  public int dbConsoleELBI;
-  	public static ArrayList <Integer> WatchVarIndex;
-  	public static ArrayList <String> Watch_VarNames;
-	  public static int WatchedArray;
-	  public static int WatchedList;
-	  public static int WatchedStack;
-	  public static int WatchedBundle;
+	private boolean WaitForResume = false ; 
+	private boolean DebuggerStep = false;
+	private boolean DebuggerHalt = false;
+	private boolean WaitForSwap = false;
+	private boolean WaitForSelect = false;
+	private boolean dbSwap = false;
+	private boolean dbSelect = false;
+	private AlertDialog.Builder DebugDialog;
+	private AlertDialog theDebugDialog;
+	private AlertDialog.Builder DebugSwapDialog;
+	private AlertDialog theDebugSwapDialog;
+	private AlertDialog.Builder DebugSelectDialog;
+	private AlertDialog theDebugSelectDialog;
+	private boolean dbDialogScalars;
+	private boolean dbDialogArray;
+	private boolean dbDialogList;
+	private boolean dbDialogStack;
+	private boolean dbDialogBundle;
+	private boolean dbDialogWatch;
+	private boolean dbDialogProgram;
+	private boolean dbDialogConsole;
+	private String dbConsoleHistory;
+	private String dbConsoleExecute;
+	private int dbConsoleELBI;
+	private ArrayList <Integer> WatchVarIndex;
+	private ArrayList <String> Watch_VarNames;
+	private int WatchedArray;
+	private int WatchedList;
+	private int WatchedStack;
+	private int WatchedBundle;
 	// end debugger ui vars
     
     public static boolean GrStop = false;						// Signal from GR that it has died
@@ -757,32 +756,31 @@ public class Run extends ListActivity {
     public static boolean RunPaused = false;                    // Used to control the media player
     public static boolean StopDisplay = false;
     public static boolean DisplayStopped = false;
-    public static String PrintLine = "";				// Hold the Print line currently being built
-    public static String textPrintLine = "";			// Hold the TextPrint line currently being built
-    public static boolean PrintLineReady = false;   	// Signals a line is ready to print or write
+	private String PrintLine = "";						// Hold the Print line currently being built
+	private String textPrintLine = "";					// Hold the TextPrint line currently being built
+	private boolean PrintLineReady = false;				// Signals a line is ready to print or write
     
     public static InputMethodManager IMM;
-	public static ArrayList<String> LabelNames;         // A list of all the label names found in the program
-	public static ArrayList<Integer> LabelValues;       // The line numbers associated with Label Names
+	private ArrayList<String> LabelNames;				// A list of all the label names found in the program
+	private ArrayList<Integer> LabelValues;				// The line numbers associated with Label Names
 
-    
-    public static ArrayList<String> VarNames ;			// Each entry has the variable name string
-    public static ArrayList<Integer> VarIndex;			// Each entry is an index into
+	private ArrayList<String> VarNames ;				// Each entry has the variable name string
+	private ArrayList<Integer> VarIndex;				// Each entry is an index into
     													// NumberVarValues or
     													// StringVarValues or
     													// ArrayTable or
     													// FunctionTable
-    public static int VarNumber = 0;				// An index for both VarNames and NVarValue
-    public static ArrayList<Double> NumericVarValues;   // if a Var is a number, the VarIndex is an
-    													// index into this list. The values of numeric
-    													// array elements are also kept here
-    public static ArrayList<String> StringVarValues;    // if a Var is a string, the VarIndex is an
+	private int VarNumber = 0;							// An index for both VarNames and NVarValue
+	public static ArrayList<Double> NumericVarValues;	// if a Var is a number, the VarIndex is an
+														// index into this list. The values of numeric
+														// array elements are also kept here
+	private ArrayList<String> StringVarValues;			// if a Var is a string, the VarIndex is an
     													// index into this list. The values of string
     													// array elements are also kept here
-    public static ArrayList<Bundle> ArrayTable;			//Each DIMed array has an entry in this table
-    public static String StringConstant = "";			// Storage for a string constant
-    public static int theValueIndex;				// The index into the value table for the current var
-	public static int ArrayValueStart = 0;				// Value index for newly created array 
+	private ArrayList<Bundle> ArrayTable;				//Each DIMed array has an entry in this table
+	private String StringConstant = "";					// Storage for a string constant
+	private int theValueIndex;							// The index into the value table for the current var
+	private int ArrayValueStart = 0;					// Value index for newly created array 
 
 	private boolean VarIsFunction = false;				// Flag set by getVar() when var is a user function
 	private boolean DoingDef = false;
@@ -793,13 +791,13 @@ public class Run extends ListActivity {
 	private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
 	private int scOpValue;								// An instance variable that needs to be saved when executing function
 
-    public static boolean doingDim = false;				// Signal to get Var that un dimed array var is ok
-    public static boolean unDiming = false;             // Signal to get Var that an array is being undimed
-    public static boolean SkipArrayValues = false;      // Set true for some array.xxx commands
-    public static boolean FindingLabels = false;		// Signal to get var to report var is label if it is
-    public static boolean VarIsNew = true;				// Signal from get var that this var is new
-    public static boolean VarIsNumeric = true;			// if false, Var is string
-    public static boolean VarIsArray = false;			// if true, Var is an Array
+	private boolean doingDim = false;					// Signal to get Var that un dimed array var is ok
+	private boolean unDiming = false;					// Signal to get Var that an array is being undimed
+	private boolean SkipArrayValues = false;			// Set true for some array.xxx commands
+	private boolean FindingLabels = false;				// Signal to get var to report var is label if it is
+	private boolean VarIsNew = true;					// Signal from get var that this var is new
+	private boolean VarIsNumeric = true;				// if false, Var is string
+	private boolean VarIsArray = false;					// if true, Var is an Array
     													// if the Var is any array, the VarIndex it
     													// and index into ArrayTable
     
@@ -2043,7 +2041,6 @@ private void InitVars(){
     ForNextStack = new	Stack<Bundle>();		// Stack used for For/Next
     WhileStack = new Stack<Integer>() ;			// Stack used for While/Repeat
     DoStack = new Stack<Integer>();				// Stack used for Do/Until
-    s= new Bundle();							// A generic bundle
     
     IfElseStack = new Stack <Integer>() ;			// Stack for IF-ELSE-ENDIF operations
     GetNumberValue = (double)0;				// Return value from GetNumber()
@@ -3279,6 +3276,16 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 
    private boolean RunTimeError(Exception e) {
 	   return RunTimeError("Error: " + e);
+   }
+
+   private boolean nextLine() {				// Move to beginning of next line
+	   if (++ExecutingLineIndex < Basic.lines.size()) {	// if not at end of program
+		   ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
+		   LineIndex = 0;
+		   return true;
+	   }
+	   --ExecutingLineIndex;				// No next line
+	   return false;
    }
 
    private boolean checkEOL(){
@@ -5018,7 +5025,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			}
 		}else{												//Initialize String Array Values
 			ArrayValueStart = StringVarValues.size();		//All string var values kept in StringVarValues
-			for (int i=0; i < TotalElements; ++i){	//
+			for (int i=0; i < TotalElements; ++i){
 				StringVarValues.add("");					// Strings inited to empty
 			}
 		}
@@ -5038,7 +5045,31 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		return true;
 	}// end BuildBasicArray
-			
+
+	private boolean BuildBasicArray(int VarNumber, boolean IsNumeric, int length){	// Build 1D array
+		ArrayList <Integer> dimValues = new ArrayList<Integer>();		// list of dimensions
+		dimValues.add(length);											// only one dimension
+		return (BuildBasicArray(VarNumber, IsNumeric, dimValues));		// go build an array of the proper size
+	}
+
+	private boolean ListToBasicNumericArray(int VarNumber, Iterable <Double> Values, int length) {
+		if (!BuildBasicArray(VarNumber, true, length)) return false;	// go build an array of the proper size and type
+		int i = ArrayValueStart;
+		for (Double d : Values) {										// stuff the array
+			NumericVarValues.set(i++, d);
+		}
+		return true;
+	}
+
+	private boolean ListToBasicStringArray(int VarNumber, Iterable <String> Values, int length) {
+		if (!BuildBasicArray(VarNumber, false, length)) return false;	// go build an array of the proper size and type
+		int i = ArrayValueStart;
+		for (String s : Values) {										// stuff the array
+			StringVarValues.set(i++, s);
+		}
+		return true;
+	}
+
 	private  boolean GetArrayValue(int theVarNumber) {			//Get the value of an array element given it's index values
 
 													// Get the index into the numeric or string
@@ -5057,8 +5088,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		++LineIndex;
 		
-		Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-		ArrayEntry = ArrayTable.get(VarIndex.get(theVarNumber));
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(theVarNumber)); // Get the array table bundle for this array
 		ArrayList<Integer> dims = ArrayEntry.getIntegerArrayList("dims");
 		ArrayList<Integer> sizes = ArrayEntry.getIntegerArrayList("sizes");
 
@@ -5891,8 +5921,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 
 			  PrintShow("Dumping Array " + VarNames.get(VarNumber) + "]");
 			  
-				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-				ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
+				Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
 				int length = ArrayEntry.getInt("length");				// get the array length
 				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
 				
@@ -6472,9 +6501,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	private ArrayList<String> doArray(){
 			  ArrayList<String> msg=new ArrayList<String>();
 			  msg.add("Dumping Array " + VarNames.get(WatchedArray) + "]");
-			  
-				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-				ArrayEntry = ArrayTable.get(VarIndex.get(WatchedArray));
+
+				Bundle ArrayEntry = ArrayTable.get(VarIndex.get(WatchedArray)); // Get the array table bundle for this array
 				int length = ArrayEntry.getInt("length");				// get the array length
 				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
 				
@@ -7974,7 +8002,7 @@ private boolean doUserFunction(){
 		String filePath = StringConstant;
 
 		if (!isNext(',')) { return false; }							// parse the ,D$[]
-		if (!getArrayVarForWrite()) { return false; }
+		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
 		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		if (VarIsNumeric) { return RunTimeError("Not string array"); } // Insure that it is a string array
 		if (!checkEOL()) { return false; }							// line must end with ']'
@@ -8009,20 +8037,9 @@ private boolean doUserFunction(){
 			DL1.addAll(FL1);										// copy the file list to end of dir list
 		}
 		int DLlength = DL1.size();
-
-		ArrayList <Integer> dimValues = new ArrayList<Integer>();	// Build the D$[]
-
 		if (DLlength == 0) { DLlength = 1; }				// make at least one element if dir is empty
 															// it will be an empty string
-		dimValues.add(DLlength);
-		if (!BuildBasicArray(VarNumber, false, dimValues)) { return false; }
-
-		int i = ArrayValueStart;
-		for (String s : DL1) {										// stuff the array
-			StringVarValues.set(i++, s);
-		}
-
-		return true;
+		return ListToBasicStringArray(VarNumber, DL1, DLlength);	// Copy the list to a BASIC! array
 	}
 	
 	private boolean executeGRABFILE(){
@@ -8581,51 +8598,32 @@ private boolean doUserFunction(){
 
 	        return true;
 	  }
-	  
-	  private boolean executeVIBRATE(){
 
-			doingDim = false;									// Get the array variable
-			  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-			  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
-			  SkipArrayValues = false;
-			  doingDim = false;
-			  
-			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-			  if (!VarIsNumeric){								// and that it is a numeric array
-				  RunTimeError("Array not numeric");
-				  return false;
-			  }
-			  if (VarIsNew){									// and that it has been DIMed
-				  RunTimeError("Array not DIMed");
-				  return false;
-			  }
-			  
-				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-				ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
-				int length = ArrayEntry.getInt("length");				// get the array length
-				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
-				
-				long Pattern[];
-				Pattern = new long[length];								// Pattern array
-				
-				for (int i = 0; i<length; ++i){							// Copy user array into pattern
-					double d = NumericVarValues.get(base+i);
-					Pattern[i] = (long) d;
-				}
-				if (ExecutingLineBuffer.charAt(LineIndex) != ']')return false; // Get the repeat value 
-				++LineIndex;
-				
-				if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false; // Get the repeat value 
-				++LineIndex;
-				
-				if(!evalNumericExpression()) return false;
-				double d = EvalNumericExpressionValue;
-				if (!checkEOL()) return false;
-				
-				if (d>0) myVib.cancel(); else myVib.vibrate( Pattern, (int) d) ; // Do the vibrate
-				
-			return true;
+	private boolean executeVIBRATE(){
+
+		if (!getArrayVarForRead()) return false;					// Get the array variable
+		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
+
+		if (!isNext(',')) return false;								// Get the repeat value
+		if(!evalNumericExpression()) return false;
+		int repeat = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+
+		int length = ArrayEntry.getInt("length");					// get the array length
+		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
+		
+		long Pattern[] = new long[length];							// Pattern array
+		for (int i = 0; i<length; ++i){								// Copy user array into pattern
+			Pattern[i] = NumericVarValues.get(base+i).longValue();
 		}
+
+		if (repeat > 0) myVib.cancel();
+		else myVib.vibrate(Pattern, repeat);						// Do the vibrate
+
+		return true;
+	}
 
 	  private boolean executeDEVICE(){
 		  
@@ -9512,9 +9510,7 @@ private boolean doUserFunction(){
 		  if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
 		  if (!checkEOL()) { return false; }						// line must end with ']'
 
-		  
-			Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-			ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
+			Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
 			int length = ArrayEntry.getInt("length");				// get the array length
 			int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
 
@@ -10876,80 +10872,58 @@ private boolean doUserFunction(){
 		  try {Thread.sleep(100);}catch(InterruptedException e){}
 		  return true;
 	  }
-	  
-	  private boolean execute_gr_set_pixels(){		  
-		  	Bundle aBundle = new Bundle();
-	  		aBundle.putInt("type", GR.dsetPixels);
-	  		aBundle.putInt("hide", 0);
 
-	  		if (!getVar())return false;							// Graphic Object Variable
-	  		if (!VarIsNumeric)return false;						// 
-	  		int SaveValueIndex = theValueIndex;
-	  		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-	  		++LineIndex;
+	private boolean execute_gr_set_pixels(){
 
-			  doingDim = false;									// Get the array variable
-			  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-			  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
-			  SkipArrayValues = false;
-			  doingDim = false;
-			  
-			  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-			  if (!VarIsNumeric){								// and that it is a numeric array
-				  RunTimeError("Array not numeric");
-				  return false;
-			  }
-			  if (VarIsNew){									// and that it has been DIMed
-				  RunTimeError("Array not DIMed");
-				  return false;
-			  }
-			  
-				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-				ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
-				int length = ArrayEntry.getInt("length");				// get the array length
-				if ((length % 2) != 0){
-					RunTimeError("Not an even number of elements in pixel array");
-					return false;
-				}
-				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
-		  
-/*				int pixelBase = PixelPoints.size();
-				for (int i = 0; i < length; ++i){
-					double d = NumericVarValues.get(base+i);
-					PixelPoints.add((float) d);
-				}
-*/				
-				aBundle.putInt("pbase", base);
-				aBundle.putInt("plength", length);
-			
-				int x = 0;
-				int y = 0;
-				if (ExecutingLineBuffer.charAt(LineIndex) != ']')return false;
-				++LineIndex;
-		  		if (ExecutingLineBuffer.charAt(LineIndex) == ','){
-		  			++LineIndex;
+		if (!getNVar()) return false;							// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
 
-		  			if (!evalNumericExpression()) return false;
-		  			x = (int) (double) EvalNumericExpressionValue;
-		  			if (ExecutingLineBuffer.charAt(LineIndex) != ',') return false;
-		  			++LineIndex;
-		  			if (!evalNumericExpression()) return false;
-		  			y =  (int) (double) EvalNumericExpressionValue;
-		  		}
-		  		
-		  		aBundle.putInt("x", x);
-		  		aBundle.putInt("y", y);
-		  		
-				int p = PaintList.size();								// Set the most current paint as the paint
-				aBundle.putInt("paint", p-1);							// paint for these pixels
-				NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
+		if (!isNext(',')) return false;
+		if (!getArrayVarForRead())  return false;				// Get the array variable
+		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); }
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
 
-				DisplayListAdd(aBundle);				// Add the line to the display list
+		int x = 0;
+		int y = 0;
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			x = EvalNumericExpressionValue.intValue();
+			if (!isNext(',')) return false;
+			if (!evalNumericExpression()) return false;
+			y = EvalNumericExpressionValue.intValue();
+		}
+		if (!checkEOL()) return false;
 
-				
-		  return true;
-	  }
-	  
+		int length = ArrayEntry.getInt("length");				// get the array length
+		if ((length % 2) != 0){
+			return RunTimeError("Not an even number of elements in pixel array");
+		}
+		int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
+	
+/*		int pixelBase = PixelPoints.size();
+		for (int i = 0; i < length; ++i){
+			double d = NumericVarValues.get(base+i);
+			PixelPoints.add((float) d);
+		}
+*/		
+		Bundle aBundle = new Bundle();
+		aBundle.putInt("type", GR.dsetPixels);
+		aBundle.putInt("hide", 0);
+		aBundle.putInt("pbase", base);
+		aBundle.putInt("plength", length);
+		aBundle.putInt("x", x);
+		aBundle.putInt("y", y);
+
+		int p = PaintList.size();								// Set the most current paint as the paint
+		aBundle.putInt("paint", p-1);							// paint for these pixels
+
+		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
+		DisplayListAdd(aBundle);								// Add the line to the display list
+
+		return true;
+	}
+
 	  private boolean execute_gr_get_bmpixel(){
 		  if (!evalNumericExpression()) return false;
 		  int SourceBitmapIndex = (int) (double) EvalNumericExpressionValue;
@@ -12000,7 +11974,7 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_sensors_list(){
 		  
-		  if (SensorsClass != null){                 // If SensorsClass is null ....
+		  if (SensorsClass != null){                 // If SensorsClass is not null ....
 			  RunTimeError("Sensors already opened");
 			  return false;
 		  }
@@ -12023,16 +11997,10 @@ private boolean doUserFunction(){
 	      /* Puts the list of sensors into an unDIMed array
 	       * The first element of the array will be the length of the array
 	       */
-	      
-		  doingDim = true;
-		  if (!getVar()) { doingDim = false; return false; }
-		  doingDim = false;
-		  if (VarIsNumeric || !VarIsArray) { return false; }
-		  if (!VarIsNew) {
-			  RunTimeError("DIR array must not be DIMed");
-			  return false;
-		  }
-		  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
+		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
+		if (VarIsNumeric) { return RunTimeError("Not string array"); }
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
 		  dimValues.add(SClength);                                 // Set the array dimension
@@ -12459,50 +12427,31 @@ private boolean doUserFunction(){
 		return false;										// report fail
 
 	}
-	
+
 	private boolean execute_array_length(){
-		
-		   if (!getVar())return false;							// Length Variable
-		   if (!VarIsNumeric)return false;
-		   int SaveValueIndex = theValueIndex;
-		   if (!isNext(',')) { return false; }
 
-			  doingDim = false;									// Get the array variable
-			  SkipArrayValues = true;
-			  if (!getVar()) { SkipArrayValues = false; return false; }
-			  SkipArrayValues = false;
-			  doingDim = false;
-			  if (!VarIsArray) { return false; }			    // Insure that it is an array
-			  if (VarIsNew) {									// and that it has been DIMed
-				  RunTimeError("Array not DIMed");
-				  return false;
-			  }
-			  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
-			  
-				Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-				ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
-				int length = ArrayEntry.getInt("length");               // Get the length from the bundle
+		if (!getNVar()) { return false; }							// Length Variable
+		int SaveValueIndex = theValueIndex;
 
-		   NumericVarValues.set(SaveValueIndex, (double) length);       // Set the length into the var value
+		if (!isNext(',')) { return false; }
+		if (!getArrayVarForRead()) { return false; }				// Get the array variable
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!checkEOL()) { return false; }							// line must end with ']'
+
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
+		int length = ArrayEntry.getInt("length");					// Get the length from the bundle
+
+		NumericVarValues.set(SaveValueIndex, (double) length);		// Set the length into the var value
 
 		return true;
 	}
-		
+
 	private boolean execute_array_load(){
-		
-		  doingDim = true;                                      // get the array var name as a new array
-		  if (!getVar()){SyntaxError(); return false;}
-		  doingDim = false;
-		  if (!VarIsArray){SyntaxError(); return false;}        // if var is not any array...
-		  if (!VarIsNew){
-			  RunTimeError("Array must not be previously DIMed");
-			  return false;
-		  }
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=']'){SyntaxError(); return false;} // Array must not have any indicies
-		  ++LineIndex;
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} // Comma before the list
-		  ++LineIndex;
-		  
+
+		if (!getArrayVarForWrite()) { return false; }			// get the array var name as a new array
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!isNext(',')) { return false; }						// Comma before the list
+
 		  if (VarIsNumeric){									// If the array is numeric
 			  if (!LoadNumericArray(VarNumber)) return false;   // load numeric array
 		  }else{
@@ -12516,91 +12465,54 @@ private boolean doUserFunction(){
 	private boolean LoadNumericArray(int theVarNumber){
 		
 		ArrayList <Double> Values = new ArrayList<Double>();    // Create a list for the numeric values
-		char c;
 		
-		do{                                                     // loop through the list
+		while (true) {											// loop through the list
 			if (!evalNumericExpression()) return false;         // values may be expressions
 			Values.add(EvalNumericExpressionValue);
-			
-			c = ExecutingLineBuffer.charAt(LineIndex);          // get the next character
-			if (c=='~'){             							// if it is a line continue character
-        		if (ExecutingLineIndex+1 >= Basic.lines.size()) return false; // If we are not at the end of program
-				++ExecutingLineIndex;										  // Get the next program line
-        		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);    // Next program line
-        		LineIndex = 0 ;                                               // reset LineIndex to zero
-        		c = ',';                                                      // pretend we had a comma
-			}else ++LineIndex;          // If not line continue character, increment to next character
-			
-		}while (c == ',');              // Continue looping while there are comma separators
-		
-		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
-		  int ValuesSize = Values.size();
-		  dimValues.add(ValuesSize);                                 // Set the array dimension
-		  if (!BuildBasicArray(theVarNumber, true, dimValues)) return false;            // Go build an array of the proper size
-		  
-		  for (int i = 0; i<ValuesSize; ++i){						// stuff the array with the values list
-			  NumericVarValues.set(ArrayValueStart, Values.get(i));
-			  ++ArrayValueStart;
-		  }
-		
-		return true;
-		
+
+			if (LineIndex >= ExecutingLineBuffer.length()) return false;
+			char c = ExecutingLineBuffer.charAt(LineIndex);		// get the next character
+			if (c == ',') {										// if it is a comma
+				++LineIndex;									// skip it and continue looping
+			} else if (c == '~') {            					// if it is a line continue character
+				if (!nextLine()) return false;					// get next line if there is one
+			} else break;										// else no more values in the list
+		}
+		if (!checkEOL()) return false;
+
+		return ListToBasicNumericArray(theVarNumber, Values, Values.size()); // Copy the list to a BASIC! array
 	}
-	
+
 	private boolean LoadStringArray(int theVarNumber){
 		
 		ArrayList <String> Values = new ArrayList<String>();    // Create a list for the numeric values
-		char c;
 		
-		do{                                                     // loop through the list
-			if (!evalStringExpression()) return false;          // values may be expressions
-			if (SEisLE) return false;							// can not be Logical Expression
+		while (true) {											// loop through the list
+			if (!getStringArg()) return false;          		// values may be expressions
 			Values.add(StringConstant);
-			if (LineIndex >= ExecutingLineBuffer.length()) return false;
-			
-			c = ExecutingLineBuffer.charAt(LineIndex);       	// get the next character
-			if (c=='~'){										// if it is a line continue char
-        		if (ExecutingLineIndex+1 >= Basic.lines.size()) return false;  // if not at end of program
-				++ExecutingLineIndex;										   // get next line
-        		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);     // Next program line
-        		LineIndex = 0 ;												   // Reset LineIndex
-        		c = ',';													   // pretend the char was a comma
-			}else ++LineIndex;
-			
-		}while (c == ',');   // Loop while there are comma separators
-		
-		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
-		  int ValuesSize = Values.size();
-		  dimValues.add(ValuesSize);                                 // Set the array dimension
-		  if (!BuildBasicArray(theVarNumber, false, dimValues)) return false;           // Go build an array of the proper size
-		  
-		  for (int i = 0; i<ValuesSize; ++i){						 // stuff the array
-			  StringVarValues.set(ArrayValueStart, Values.get(i));
-			  ++ArrayValueStart;
-		  }
 
-		return true;
-		
+			if (LineIndex >= ExecutingLineBuffer.length()) return false;
+			char c = ExecutingLineBuffer.charAt(LineIndex);		// get the next character
+			if (c == ',') {										// if it is a comma
+				++LineIndex;									// skip it and continue looping
+			} else if (c == '~') {            					// if it is a line continue character
+				if (!nextLine()) return false;					// get next line if there is one
+			} else break;										// else no more values in the list
+		}
+		if (!checkEOL()) return false;
+
+		return ListToBasicStringArray(theVarNumber, Values, Values.size());	// Copy the list to a BASIC! array
 	}
 
-	
 	private boolean execute_array_collection(){
-		
+
 		// This method implements several array commands
-		
-		  doingDim = false;									// Get the array variable
-		  SkipArrayValues = true;
-		  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
-		  SkipArrayValues = false;
-		  doingDim = false;
-		  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-		  if (VarIsNew){									// and that it has been DIMed
-			  RunTimeError("Array not DIMed");
-			  return false;
-		  }
-		  
-			Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-			ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));   
+
+		if (!getArrayVarForRead()) { return false; }				// Get the array variable
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!checkEOL()) { return false; }							// line must end with ']'
+
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array   
 			int length = ArrayEntry.getInt("length");               // get the array length
 			int base = ArrayEntry.getInt("base");                   // and the start of values in the value space
 			
@@ -12642,32 +12554,17 @@ private boolean doUserFunction(){
 	
 	
 	private boolean execute_array_sum(){
-		
-		   if (!getVar())return false;							// The value return variable
-		   if (!VarIsNumeric)return false;						// These commands only for numeric arrays
-		   int SaveValueIndex = theValueIndex;
-		   if (!isNext(',')) { return false; }
 
-		
-		  doingDim = false;									// Get the array variable
-		  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-		  if (!getVar()) { SkipArrayValues = doingDim = false; return false; }
-		  SkipArrayValues = false;
-		  doingDim = false;
-		  
-		  if (!VarIsArray) { return false; }			    // Insure that it is an array
-		  if (!VarIsNumeric) {								// and that it is a numeric array
-			  RunTimeError("Array not numeric");
-			  return false;
-		  }
-		  if (VarIsNew) {									// and that it has been DIMed
-			  RunTimeError("Array not DIMed");
-			  return false;
-		  }
-		  if (!isNext(']') || !checkEOL()) { return false; }		// line must end with ']'
-		  
-			Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-			ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
+		if (!getNVar()) { return false; }							// The value return variable
+		int SaveValueIndex = theValueIndex;
+
+		if (!isNext(',')) { return false; }
+		if (!getArrayVarForRead()) { return false; }				// Get the array variable
+		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); }
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!checkEOL()) { return false; }							// line must end with ']'
+
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
 			int length = ArrayEntry.getInt("length");				// get the array length
 			int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
 			
@@ -12708,124 +12605,86 @@ private boolean doUserFunction(){
 	private boolean execute_array_copy(){
 															// **** Source Array ****
 		
-		  doingDim = false;									// Get the array variable
-		  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-		  if (!getVar()) { SkipArrayValues = false; return false; }
-		  SkipArrayValues = false;
-		  doingDim = false;
-		  
-		  if (!VarIsArray) { return false; }			    // Insure that it is an array
-		  boolean SourceArrayNumeric = VarIsNumeric;
-		  if (VarIsNew){									// and that it has been DIMed
-			  RunTimeError("Sourece Array not DIMed");
-			  return false;
-		  }
-		  
-		  Bundle SourceArray = new Bundle();						// Get the array table bundle for this array	
-		  SourceArray = ArrayTable.get(VarIndex.get(VarNumber));
-		  int SourceLength = SourceArray.getInt("length");			// get the array length
-		  int SourceBase = SourceArray.getInt("base");				// and the start of the array in the variable space
-		  
-		  int SourceStartIndex = 0;										// Get the Source Array Index
-		  int usl = SourceLength;
-		  if (!isNext(']')) {
-			  
-			  if (!evalNumericExpression()) return false;
-			  SourceStartIndex = (int) (double)EvalNumericExpressionValue;
-			  SourceStartIndex = SourceStartIndex - 1;
-			  if (SourceStartIndex <0) SourceStartIndex = 0;
-			  if (SourceStartIndex >= SourceLength){
-				  RunTimeError("Source array start > length");
-				  return false;
-			  }
-			  
-			  if (isNext(',')) {
-				  if (!evalNumericExpression()) return false;
-				  usl = (int) (double)EvalNumericExpressionValue;
-			  }
-			  if (!isNext(']')) { return false; }
-		  }
-		  
-		  if (SourceStartIndex + usl >  SourceLength) usl = SourceLength - SourceStartIndex;
-		  int SourceCopyLimit = SourceStartIndex + usl;
-		  
-		  if (!isNext(',')) { return false; }
-		  													    	// *** Destination Array ***
-		  
-		  doingDim = true;                                    	    // get the array var name as a new array
-		  if (!getVar()) { doingDim = false; return false; }
-		  doingDim = false;
-		  if (!VarIsArray){return false;}       	    			// if var is not any array...
-		  if (!VarIsNew){
-			  RunTimeError("Destination array previously DIMed");
-			  return false;
-		  }
-			  int DestVarNumber = VarNumber;
-		  
-		  if (SourceArrayNumeric != VarIsNumeric) {					// Insure both arrays are same type
-			  RunTimeError("Arrays not of same type");
-			  return false;
-		  }
-			  
-		  int Extras = 0;											// Get the extras parameter
-		  if (!isNext(']')) {
-			  if (!evalNumericExpression()) { return false; }
-			  if (!isNext(']')) { return false; }
-			  Extras = EvalNumericExpressionValue.intValue();
-		  }
-			  
-		  if (!checkEOL()) { return false; }
-			  
-		  ArrayList <String> StringSourceArray = new ArrayList <String>();     // Prepare the array lists
-		  ArrayList <Double> NumericSourceArray = new ArrayList <Double>();
-	
-		  int ValuesSize = 0;	  
-		  if (SourceArrayNumeric){												// Do numeric array
-			  if (Extras < 0) {													// if Extras < 0, add to front
-				  for (int k = 0; k < -Extras; ++k){
-					  NumericSourceArray.add(0.0);
-				  }
-			  }
-			  for (int i=SourceStartIndex ; i < SourceCopyLimit; ++i){								// Copy the source array values
-				  NumericSourceArray.add( NumericVarValues.get(SourceBase+i));
-			  }
-			  if (Extras > 0) {													// if Extras > 0, add to back
-				  for (int k = 0; k < Extras; ++k){
-					  NumericSourceArray.add(0.0);
-				  }
-			  }
-			  ValuesSize = NumericSourceArray.size();							// Get the final size
-			  
-		  }else{																// Do String array
-			  if (Extras < 0) {													// if Extras < 0, add to front
-				  for (int k = 0; k < -Extras; ++k){
-					  StringSourceArray.add("");
-				  }
-			  }
-			  for (int i=SourceStartIndex ; i < SourceCopyLimit; ++i){								// Copy the source array values
-				  StringSourceArray.add( StringVarValues.get(SourceBase+i));
-			  }
-			  if (Extras > 0) {													// if Extras > 0, add to back
-				  for (int k = 0; k < Extras; ++k){
-					  StringSourceArray.add("");
-				  }
-			  }
-			  ValuesSize = StringSourceArray.size();							// Get the final size
-		  }
-		  
-		  
-		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  		// Build the D[]
-		  dimValues.add(ValuesSize);                                 		// Set the array dimension
-		  if (!BuildBasicArray(DestVarNumber, SourceArrayNumeric, dimValues)) return false;    // Go build an array of the proper size
+		doingDim = false;											// Get the array variable
+		SkipArrayValues = true;										// Tells getVar not to look at the indices
+		if (!getVar()) { SkipArrayValues = false; return false; }
+		SkipArrayValues = false;
+		doingDim = false;
 
-		  for (int i = 0; i<ValuesSize; ++i){						// stuff the array with the values list
-			  if (SourceArrayNumeric)
-				  NumericVarValues.set(ArrayValueStart, NumericSourceArray.get(i));
-			  else
-				  StringVarValues.set(ArrayValueStart, StringSourceArray.get(i));
-			  ++ArrayValueStart;
-		  }
+		if (!VarIsArray) { return RunTimeError("Source not array"); }
+		if (VarIsNew) { return RunTimeError("Source array not DIMed"); }
+		boolean SourceArrayNumeric = VarIsNumeric;
 
+		Bundle SourceArray = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
+		int SourceLength = SourceArray.getInt("length");			// get the array length
+		int SourceBase = SourceArray.getInt("base");				// and the start of the array in the variable space
+		int SourceCopyLimit = SourceBase + SourceLength;
+
+		if (!isNext(']')) {
+			if (!evalNumericExpression()) return false;				// get user's source start index
+			int usi = EvalNumericExpressionValue.intValue();
+			if (usi > 1) { SourceBase += usi - 1; }					// convert to 0-based index
+
+			if (isNext(',')) {
+				if (!evalNumericExpression()) return false;			// get user's length to copy
+				SourceLength = EvalNumericExpressionValue.intValue();
+				if (SourceLength < 0) { return RunTimeError("Length must be positive"); }
+			}
+			if (!isNext(']')) { return false; }
+
+			if (SourceBase + SourceLength > SourceCopyLimit) {
+				SourceLength = SourceCopyLimit - SourceBase;		// don't go past end of source array
+			} else {
+				SourceCopyLimit = SourceBase + SourceLength;		// range may not include end of array
+			}
+			if (SourceBase >= SourceCopyLimit) {
+				return RunTimeError("Source array start > length");
+			}
+		}
+		if (!isNext(',')) { return false; }
+															// *** Destination Array ***
+
+		doingDim = true;											// get the array var name as a new array
+		if (!getVar()) { doingDim = false; return false; }
+		doingDim = false;
+		if (!VarIsArray) { return RunTimeError("Destination not array"); }
+		if (!VarIsNew) { return RunTimeError("Destination array previously DIMed"); }
+
+		if (SourceArrayNumeric != VarIsNumeric) { return RunTimeError("Arrays not of same type"); }
+		int DestVarNumber = VarNumber;
+
+		int Extras = 0;												// Get the extras parameter
+		if (!isNext(']')) {
+			if (!evalNumericExpression()) { return false; }
+			if (!isNext(']')) { return false; }
+			Extras = EvalNumericExpressionValue.intValue();
+		}
+		if (!checkEOL()) { return false; }
+
+		int totalLength = SourceLength + Math.abs(Extras);			// Go build an array of the proper size and type
+		if (!BuildBasicArray(DestVarNumber, SourceArrayNumeric, totalLength)) { return false; }
+
+		if (SourceArrayNumeric) {									// Do numeric array
+			  for (int i = Extras; i < 0; ++i) {					// if Extras < 0, add to front
+				  NumericVarValues.set(ArrayValueStart++, 0.0);
+			  }
+			  for (int i = SourceBase; i < SourceCopyLimit; ++i) {	// Copy the source array values
+				  NumericVarValues.set(ArrayValueStart++, NumericVarValues.get(i));
+			  }
+			  for (int i = 0; i < Extras; ++i) {					// if Extras > 0, add to back
+				  NumericVarValues.set(ArrayValueStart++, 0.0);
+			  }
+		  } else {													// Do String array
+			  for (int i = Extras; i < 0; ++i) {					// if Extras < 0, add to front
+				  StringVarValues.set(ArrayValueStart++, "");
+			  }
+			  for (int i = SourceBase; i < SourceCopyLimit; ++i) {	// Copy the source array values
+				  StringVarValues.set(ArrayValueStart++, StringVarValues.get(i));
+			  }
+			  for (int i = 0; i < Extras; ++i) {					// if Extras > 0, add to back
+				  StringVarValues.set(ArrayValueStart++, "");
+			  }
+		  }
 		return true;
 	}
 	
