@@ -16328,15 +16328,11 @@ private boolean doUserFunction(){
           String urlString = StringConstant;
           String protocolName = urlString.substring(0,4);
           if (!protocolName.equals("http") && !protocolName.equals("java") && !protocolName.equals("file")) {
-            String fn = Basic.filePath + "/data/" + urlString;
-            File file = new File(fn);
-            if (file.exists()) {
-                urlString = "file://" + Basic.filePath + "/data/" + urlString;
-            } else {
-                if (Basic.isAPK) {                              // if not standard BASIC! then is user APK
-                    urlString = "file:///android_asset/" + urlString;       // try to load the file from the assets resource
-                }
-            }
+              if (Basic.isAPK) {                              // if not standard BASIC! then is user APK
+                  urlString = "file:///android_asset/" + urlString;       // try to load the file from the assets resource
+              } else {
+                  urlString = "file://" + Basic.filePath + "/data/" + urlString;       // try to load the file from the rfo-bsaic/data folder
+              }
           }
 //        Web.aWebView.webLoadUrl(urlString);
           PrintShow("@@CLU" + urlString);
