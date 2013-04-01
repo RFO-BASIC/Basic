@@ -12450,22 +12450,23 @@ private boolean doUserFunction(){
 
 		if (!getArrayVarForWrite()) { return false; }			// get the array var name as a new array
 		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		int theVarNumber = VarNumber;
 		if (!isNext(',')) { return false; }						// Comma before the list
 
-		  if (VarIsNumeric){									// If the array is numeric
-			  if (!LoadNumericArray(VarNumber)) return false;   // load numeric array
-		  }else{
-			  if (!LoadStringArray(VarNumber)) return false;    // else load string array
-		  }
-		  
-		  return true;
-
+		if (VarIsNumeric) {										// If the array is numeric
+			ArrayList<Double> Values = new ArrayList<Double>();	// Create a list for the numeric values
+			if (!LoadNumericList(Values)) return false;		// load numeric list
+			if (!checkEOL()) return false;
+			return ListToBasicNumericArray(theVarNumber, Values, Values.size());// Copy the list to a BASIC! array
+		} else {
+			ArrayList<String> Values = new ArrayList<String>();	// Create a list for the numeric values
+			if (!LoadStringList(Values)) return false;			// load string list
+			if (!checkEOL()) return false;
+			return ListToBasicStringArray(theVarNumber, Values, Values.size());	// Copy the list to a BASIC! array
+		}
 	}
 	
-	private boolean LoadNumericArray(int theVarNumber){
-		
-		ArrayList <Double> Values = new ArrayList<Double>();    // Create a list for the numeric values
-		
+	private boolean LoadNumericList(ArrayList <Double> Values){
 		while (true) {											// loop through the list
 			if (!evalNumericExpression()) return false;         // values may be expressions
 			Values.add(EvalNumericExpressionValue);
@@ -12478,15 +12479,10 @@ private boolean doUserFunction(){
 				if (!nextLine()) return false;					// get next line if there is one
 			} else break;										// else no more values in the list
 		}
-		if (!checkEOL()) return false;
-
-		return ListToBasicNumericArray(theVarNumber, Values, Values.size()); // Copy the list to a BASIC! array
+		return true;
 	}
 
-	private boolean LoadStringArray(int theVarNumber){
-		
-		ArrayList <String> Values = new ArrayList<String>();    // Create a list for the numeric values
-		
+	private boolean LoadStringList(ArrayList <String> Values){
 		while (true) {											// loop through the list
 			if (!getStringArg()) return false;          		// values may be expressions
 			Values.add(StringConstant);
@@ -12499,9 +12495,7 @@ private boolean doUserFunction(){
 				if (!nextLine()) return false;					// get next line if there is one
 			} else break;										// else no more values in the list
 		}
-		if (!checkEOL()) return false;
-
-		return ListToBasicStringArray(theVarNumber, Values, Values.size());	// Copy the list to a BASIC! array
+		return true;
 	}
 
 	private boolean execute_array_collection(){
@@ -12803,165 +12797,83 @@ private boolean doUserFunction(){
 
 	private boolean execute_LIST_ADDARRAY(){
 		if (!evalNumericExpression()) return false;					// Get the destination list pointer
-		int destListIndex = (int) (double)EvalNumericExpressionValue;
+		int destListIndex = EvalNumericExpressionValue.intValue();
 		if (destListIndex < 1 || destListIndex >= theLists.size()){
-			RunTimeError("Invalid Destination List Pointer");
-			return false;
+			return RunTimeError("Invalid Destination List Pointer");
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
-		  doingDim = false;									// Get the array variable
-		  SkipArrayValues = true;                           // Tells getVar not to look at the indicies 
-		  if (!getVar()){SyntaxError(); SkipArrayValues = false; return false;}
-		  SkipArrayValues = false;
-		  doingDim = false;
-		  
-		  if (!VarIsArray){SyntaxError(); return false;}    // Insure that it is an array
-		  if (VarIsNew){									// and that it has been DIMed
-			  RunTimeError("Array not DIMed");
-			  return false;
-		  }
-		  
-			Bundle ArrayEntry = new Bundle();						// Get the array table bundle for this array	
-			ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));
-			int size = ArrayEntry.getInt("length");				    // get the array length
-			int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
+		if (!isNext(',')) return false;
+		if (!getArrayVarForRead()) return false;					// Get the array variable
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!checkEOL()) return false;
 
+		boolean isListNumeric = (theListsType.get(destListIndex) == list_is_numeric);
+		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
 
-			switch (theListsType.get(destListIndex))						// Get this lists type
-			{
-			case list_is_string:										// String
-				if (VarIsNumeric) {
-					RunTimeError("Type mismatch");
-					return false;
-				}
-				ArrayList<String> thisDestStringList = theLists.get(destListIndex);  	// Get the destination list
-				
-				for (int i = 0; i < size; ++i ){							// Copy source to destination
-					thisDestStringList.add(StringVarValues.get(base+i));
-				}
-				break;
-				
-			case list_is_numeric:												// Number
-				if (!VarIsNumeric) {
-					RunTimeError("Type mismatch");
-					return false;
-				}
-				ArrayList<Double> thisDestNumericList = theLists.get(destListIndex);  	// Get the destination list
-				for (int i = 0; i < size; ++i ){							// Copy source to destination
-					thisDestNumericList.add(NumericVarValues.get(base+i));
-				}
-				break;
-				
-			default:
-				RunTimeError("Internal problem. Notify developer");
-				return false;
-		
-			}
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
+		int size = ArrayEntry.getInt("length");						// get the array length
+		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
 
-
-		
+		ArrayList destList = theLists.get(destListIndex);
+		ArrayList sourceList = (isListNumeric) ? NumericVarValues : StringVarValues;
+		for (int i = 0; i < size; ++i ){							// Copy array to list
+			destList.add(sourceList.get(base + i));
+		}
 		return true;
 	}
 	
 	private boolean execute_LIST_ADDLIST(){
 		if (!evalNumericExpression()) return false;					// Get the destination list pointer
-		int destListIndex = (int) (double)EvalNumericExpressionValue;
+		int destListIndex = EvalNumericExpressionValue.intValue();
 		if (destListIndex < 1 || destListIndex >= theLists.size()){
-			RunTimeError("Invalid Destination List Pointer");
-			return false;
+			return RunTimeError("Invalid Destination List Pointer");
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;
 		if (!evalNumericExpression()) return false;					// Get the source list pointer
-		int sourceListIndex = (int) (double)EvalNumericExpressionValue;
+		int sourceListIndex = EvalNumericExpressionValue.intValue();
 		if (sourceListIndex < 1 || sourceListIndex >= theLists.size()){
-			RunTimeError("Invalid Source List Pointer");
-			return false;
+			return RunTimeError("Invalid Source List Pointer");
 		}
-		int size = 0;
-		switch (theListsType.get(destListIndex))						// Get this lists type
-		{
-		case list_is_string:										// String
-			if (theListsType.get(sourceListIndex) != list_is_string) {
-				RunTimeError("Type mismatch");
-				return false;
-			}
-			ArrayList<String> thisDestStringList = theLists.get(destListIndex);  	// Get the destination list
-			ArrayList<String> thisSourceStringList = theLists.get(sourceListIndex); // Get the source list
-			size = thisSourceStringList.size();
-			for (int i = 0; i < size; ++i ){							// Copy source to destination
-				thisDestStringList.add(thisSourceStringList.get(i));
-			}
-			break;
-			
-		case list_is_numeric:												// Number
-			if (theListsType.get(sourceListIndex) == list_is_string) {
-				RunTimeError("Type mismatch");
-				return false;
-			}
-			ArrayList<Double> thisDestNumericList = theLists.get(destListIndex);  	// Get the destination list
-			ArrayList<Double> thisSourceNumericList = theLists.get(sourceListIndex);// Get the source list
-			size = thisSourceNumericList.size();
-			for (int i = 0; i < size; ++i ){							// Copy source to destination
-				thisDestNumericList.add(thisSourceNumericList.get(i));
-			}
-			break;
-			
-		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
-		}
-		
-		
-		
+		if (!checkEOL()) return false;
+
+		boolean isDestNumeric = (theListsType.get(destListIndex) == list_is_numeric);
+		boolean isSourceNumeric = (theListsType.get(sourceListIndex) == list_is_numeric);
+		if (isDestNumeric != isSourceNumeric) { return RunTimeError("Type mismatch"); }
+
+		theLists.get(destListIndex).addAll(theLists.get(sourceListIndex));
 		return true;
 	}
 	
 	private boolean execute_LIST_SEARCH(){
 		
 		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;										// move to the value
+
 		int found = -1;
 		int savedVarIndex = 0;
-		
+		int start = 0;
+
 		switch (theListsType.get(listIndex))
 		{
 		case list_is_string:											 // String type list
 			ArrayList<String> SValues = theLists.get(listIndex);		 // Get the string list
-			if (!evalStringExpression()) return false;         			 // values may be expressions
-			if (SEisLE) return false;									 // can not be Logical Expression
+			if (!getStringArg()) return false;							 // values may be expressions
 			String sfind = StringConstant;
 			
-			c = ExecutingLineBuffer.charAt(LineIndex);					 // move to the result var
-			if ( c != ',') return false;
-			++LineIndex;
+			if (!isNext(',')) return false;								 // move to the result var
 			if (!getNVar()) return false;
 			savedVarIndex = theValueIndex;
-			
-			c = ExecutingLineBuffer.charAt(LineIndex);					 // move to the start index
-			
-			int start = 0;
-			if ( c == ',') {
-				++LineIndex;
+
+			if (isNext(',')) {											// move to the start index
 				if (!evalNumericExpression()) return false;
-				start = (int)(double) EvalNumericExpressionValue;
+				start = EvalNumericExpressionValue.intValue();
+				if (--start < 0) { start = 0; }						// convert to zero-based index
 			}
-			
-			if (start>0) start = --start;
+			if (!checkEOL()) return false;
 			
 			for (int i = start; i < SValues.size(); ++i){			// Search the list for a match
 				if (sfind.equals(SValues.get(i))){
@@ -12977,22 +12889,16 @@ private boolean doUserFunction(){
 			if (!evalNumericExpression()) return false;             // values may be expressions
 			double nfind = EvalNumericExpressionValue;
 
-			c = ExecutingLineBuffer.charAt(LineIndex);					 // move to the result var
-			if ( c != ',') return false;
-			++LineIndex;
+			if (!isNext(',')) return false;								// move to the result var
 			if (!getNVar()) return false;
 			savedVarIndex = theValueIndex;
-			
-			c = ExecutingLineBuffer.charAt(LineIndex);					 // move to the start index
 
-			start = 0;
-			if ( c == ',') {
-				++LineIndex;
+			if (isNext(',')) {											// move to the start index
 				if (!evalNumericExpression()) return false;
-				start = (int)(double) EvalNumericExpressionValue;
+				start = EvalNumericExpressionValue.intValue();
+				if (--start < 0) { start = 0; }						// convert to zero-based index
 			}
-			
-			if (start>0) start = --start;
+			if (!checkEOL()) return false;
 			
 			for (int i = start; i < NValues.size(); ++i){           // Search the list for a match
 				if (nfind == (NValues.get(i))){
@@ -13009,91 +12915,45 @@ private boolean doUserFunction(){
 		
 		++found;// Found is ones based
 
-		NumericVarValues.set(savedVarIndex, (Double) (double) found);
+		NumericVarValues.set(savedVarIndex, (double) found);
 		return true;
 	}
 	
 	private boolean execute_LIST_ADD(){
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		if (!evalNumericExpression()) return false;					// Get the List pointer
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-		
-		switch (theListsType.get(listIndex))
-		{
-		case list_is_string:												// String type list
-			ArrayList<String> SValues = theLists.get(listIndex);		// Get the string list
-			do{                                                     // loop through the list
-				if (!evalStringExpression()) return false;          // values may be expressions
-				if (SEisLE) return false;							// can not be Logical Expression
-				SValues.add(StringConstant);
-				
-				c = ExecutingLineBuffer.charAt(LineIndex);       	// get the next character
-				if (c=='~'){										// if it is a line continue char
-	        		if (ExecutingLineIndex+1 >= Basic.lines.size()) return false;  // if not at end of program
-					++ExecutingLineIndex;										   // get next line
-	        		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);     // Next program line
-	        		LineIndex = 0 ;												   // Reset LineIndex
-	        		c = ',';													   // pretend the char was a comma
-				}else ++LineIndex;
-				
-			}while (c == ',');   // Loop while there are comma separators
-			break;
-			
-		case list_is_numeric:
-			
-			ArrayList<Double> NValues = theLists.get(listIndex);	// Get the numeric list
-			do{                                                     // loop through the list
-				if (!evalNumericExpression()) return false;         // values may be expressions
-				NValues.add(EvalNumericExpressionValue);
-				
-				c = ExecutingLineBuffer.charAt(LineIndex);          // get the next character
-				if (c=='~'){             							// if it is a line continue character
-	        		if (ExecutingLineIndex+1 >= Basic.lines.size()) return false; // If we are not at the end of program
-					++ExecutingLineIndex;										  // Get the next program line
-	        		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);    // Next program line
-	        		LineIndex = 0 ;                                               // reset LineIndex to zero
-	        		c = ',';                                                      // pretend we had a comma
-				}else ++LineIndex;          // If not line continue character, increment to next character
-				
-			}while (c == ',');              // Continue looping while there are comma separators
-			
+		if (!isNext(',')) return false;								// move to the result value
 
-			break;
-			
-		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
+		boolean isListNumeric = (theListsType.get(listIndex) == list_is_numeric);
+		if (isListNumeric) {
+			ArrayList<Double> Values = theLists.get(listIndex);		// Get the numeric list
+			if (!LoadNumericList(Values)) return false;				// load numeric list
+		} else {
+			ArrayList<String> Values = theLists.get(listIndex);		// Get the string list
+			if (!LoadStringList(Values)) return false;				// load string list
 		}
-		return true;
+		return checkEOL();
 	}
 	
 	private boolean execute_LIST_SET(){
 		if (!evalNumericExpression()) return false;					// Get the list pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;
+
 		if (!evalNumericExpression()) return false;					// Get the index to get
-		int getIndex = (int)(double) EvalNumericExpressionValue;
+		int getIndex = EvalNumericExpressionValue.intValue();
 		--getIndex;													// Ones based for Basic user
 
-		c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
-		
+		if (!isNext(',')) return false;
+
 		switch (theListsType.get(listIndex))						// Get this lists type
 		{
 		case list_is_string:										// String
@@ -13101,6 +12961,7 @@ private boolean doUserFunction(){
 				RunTimeError("Type mismatch");
 				return false;
 			}
+			if (!checkEOL()) return false;
 			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
 			if (getIndex < 0 || getIndex >= thisStringList.size()){		
 				RunTimeError("Index out of bounds");
@@ -13114,6 +12975,7 @@ private boolean doUserFunction(){
 				RunTimeError("Type mismatch");
 				return false;
 			}
+			if (!checkEOL()) return false;
 			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
 			if (getIndex < 0 || getIndex >= thisNumericList.size()){
 				RunTimeError("Index out of bounds");
@@ -13134,32 +12996,28 @@ private boolean doUserFunction(){
 	private boolean execute_LIST_GET(){
 		
 		if (!evalNumericExpression()) return false;					// Get the list pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;
+
 		if (!evalNumericExpression()) return false;					// Get the index to get
-		int getIndex = (int)(double) EvalNumericExpressionValue;
+		int getIndex = EvalNumericExpressionValue.intValue();
 		--getIndex;													// Ones based for Basic user
 
-		c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;
 		if (!getVar()) return false;								// Get the return value variable
-		
-		switch (theListsType.get(listIndex))						// Get this lists type
+		if (!checkEOL()) return false;
+
+		int listType = theListsType.get(listIndex);					// Get this lists type
+		boolean isListNumeric = (listType == list_is_numeric);
+		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
+
+		switch (listType)
 		{
 		case list_is_string:										// String
-			if (VarIsNumeric) {
-				RunTimeError("Type mismatch");
-				return false;
-			}
 			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
 			if (getIndex < 0 || getIndex >= thisStringList.size()){		
 				RunTimeError("Index out of bounds");
@@ -13170,10 +13028,6 @@ private boolean doUserFunction(){
 			break;
 			
 		case list_is_numeric:												// Number
-			if (!VarIsNumeric) {
-				RunTimeError("Type mismatch");
-				return false;
-			}
 			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
 			if (getIndex < 0 || getIndex >= thisNumericList.size()){
 				RunTimeError("Index out of bounds");
@@ -13194,16 +13048,14 @@ private boolean doUserFunction(){
 	
 	private boolean execute_LIST_GETTYPE(){
 		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;
 		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
 		
 		switch (theListsType.get(listIndex))						// Get this lists type
 		{
@@ -13226,102 +13078,62 @@ private boolean doUserFunction(){
 	
 	private boolean execute_LIST_CLEAR(){
 		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		switch (theListsType.get(listIndex))						// Get this lists type
-		{
-		case list_is_string:										// String
-			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
-			thisStringList.clear();
-			break;
-			
-		case list_is_numeric:												// Number
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
-			thisNumericList.clear();
-			break;
-			
-		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
-		}
+		if (!checkEOL()) return false;
+		theLists.get(listIndex).clear();
 		return true;
 	}
 	
 	private boolean execute_LIST_REMOVE(){
 		if (!evalNumericExpression()) return false;					// Get the list pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;
 		if (!evalNumericExpression()) return false;					// Get the index to remove
-		int getIndex = (int)(double) EvalNumericExpressionValue;
+		if (!checkEOL()) return false;
+		int getIndex = EvalNumericExpressionValue.intValue();
 		--getIndex;													// Ones based for Basic user
 
-		switch (theListsType.get(listIndex))						// Get this lists type
-		{
-		case list_is_string:											 // String
-			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
-			if (getIndex < 0 || getIndex >= thisStringList.size()){		
-				RunTimeError("Index out of bounds");
-				return false;
-			}
-			thisStringList.remove(getIndex);
-			break;
-			
-		case list_is_numeric:												// Number
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
-			if (getIndex < 0 || getIndex >= thisNumericList.size()){
-				RunTimeError("Index out of bounds");
-				return false;
-			}
-			thisNumericList.remove(getIndex);
-			break;
-			
-		default:
-			RunTimeError("Internal problem. Notify developer");
+		ArrayList theList = theLists.get(listIndex);				// Get the  list
+		if (getIndex < 0 || getIndex >= theList.size()) {		
+			RunTimeError("Index out of bounds");
 			return false;
-	
 		}
-		
+		theList.remove(getIndex);
 		return true;
 	}
 
 	private boolean execute_LIST_INSERT(){
 		
 		if (!evalNumericExpression()) return false;					// Get the list pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;
 		if (!evalNumericExpression()) return false;					// Get the index insert at
-		int getIndex = (int)(double) EvalNumericExpressionValue;
+		int getIndex = EvalNumericExpressionValue.intValue();
 		--getIndex;													// Ones based for Basic user
 
-		c = ExecutingLineBuffer.charAt(LineIndex);
-		if ( c != ',') return false;
-		++LineIndex;
+		if (!isNext(',')) return false;
 
 		switch (theListsType.get(listIndex))						// Get this lists type
 		{
 		case list_is_string:											 // String
-			if (!evalStringExpression()) {
+			if (!getStringArg()) {
 				RunTimeError("Type mismatch");
 				return false;
 			}
+			if (!checkEOL()) return false;
+
 			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
 			if (getIndex < 0 || getIndex >= thisStringList.size()){		
 				RunTimeError("Index out of bounds");
@@ -13335,6 +13147,8 @@ private boolean doUserFunction(){
 				RunTimeError("Type mismatch");
 				return false;
 			}
+			if (!checkEOL()) return false;
+
 			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
 			if (getIndex < 0 || getIndex >= thisNumericList.size()){
 				RunTimeError("Index out of bounds");
@@ -13354,37 +13168,16 @@ private boolean doUserFunction(){
 
 	private boolean execute_LIST_SIZE(){
 		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the return var
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		if (!isNext(',')) return false;										// move to the return var
 		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
 		
-		int size = 0;
-		
-		switch (theListsType.get(listIndex))						// Get this lists type
-		{
-		case list_is_string:										// String
-			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
-			size = thisStringList.size();
-			break;
-			
-		case list_is_numeric:												// Number
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
-			size = thisNumericList.size();
-			break;
-			
-		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
-		}
-		
+		int size = theLists.get(listIndex).size();
 		NumericVarValues.set(theValueIndex, (double) size);
 		
 		return true;
@@ -13397,79 +13190,28 @@ private boolean doUserFunction(){
 
 	private boolean execute_LIST_TOARRAY(){
 		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = (int) (double)EvalNumericExpressionValue;
+		int listIndex = EvalNumericExpressionValue.intValue();
 		if (listIndex < 1 || listIndex >= theLists.size()){
 			RunTimeError("Invalid List Pointer");
 			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the array var
-		if ( c != ',') return false;
-		++LineIndex;
-		
-		doingDim = true;
-		if (!getVar()){													// Get the array name var
-			SyntaxError();
-			return false;
-		}
-		doingDim = false;
-		
-		if (!VarIsArray){												//if there was no [ char, error
-			SyntaxError();
-			return false;
-		}
+		if (!isNext(',')) return false;										// move to the array var
+		if (!getArrayVarForWrite()) return false;							// Get the array name var
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!checkEOL()) return false;
 		int svn = VarNumber;										// save the array variable table number
-		
-		ArrayList <Integer> dimValues =new ArrayList<Integer>();        // A list to hold the array index values
 
-		int size = 0;
-		switch (theListsType.get(listIndex))						// Get this lists type
-		{
-		case list_is_string:										// String
-			if (VarIsNumeric) {
-				RunTimeError("Type mismatch");
-				return false;
-			}
-			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
-			size = thisStringList.size();
-			if (size == 0) {
-				RunTimeError("The list is empty");
-				return false;
-			}
-			dimValues.add(size);
-			if (!BuildBasicArray( svn , false, dimValues)){return false;}
-			for (int i = 0; i < size; ++i){
-				StringVarValues.set(ArrayValueStart+i, thisStringList.get(i));
-			}
+		int listType = theListsType.get(listIndex);						// Get this lists type
+		boolean isListNumeric = (listType == list_is_numeric);
+		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
 
-			break;
-			
-		case list_is_numeric:												// Number
-			if (!VarIsNumeric) {
-				RunTimeError("Type mismatch");
-				return false;
-			}
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
-			size = thisNumericList.size();
-			if (size == 0) {
-				RunTimeError("The list is empty");
-				return false;
-			}
-			dimValues.add(size);
-			if (!BuildBasicArray( svn , true, dimValues)){return false;}
-			for (int i = 0; i < size; ++i){
-				NumericVarValues.set(ArrayValueStart+i, thisNumericList.get(i));
-			}
-			
-			break;
-			
-		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
+		if (isListNumeric) {
+			ArrayList<Double> Values = theLists.get(listIndex);			// Get the numeric list
+			return ListToBasicNumericArray(svn, Values, Values.size());	// Copy the list to a BASIC! array
+		} else {
+			ArrayList<String> Values = theLists.get(listIndex);			// Get the string list
+			return ListToBasicStringArray(svn, Values, Values.size());	// Copy the list to a BASIC! array
 		}
-
-		
-		return true;
 	}
 	
 // ***************************************Bundle Commands *******************************************
