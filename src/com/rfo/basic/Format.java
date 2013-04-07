@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010, 2011, 2012 Paul Laughton
+ Copyright (C) 2010 - 2013 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -351,9 +351,11 @@ public class Format extends ListActivity {
 		if (kw.endsWith(".")) {														//Process mulitipart commands.
 			int start = blanks + kw.length();
 			if (kw.equals("sql."))
-				actualLine = ExpandedKeyWord(Run.SQL_kw, lcLine, actualLine, start);
+				actualLine = ExpandedKeyWord(Run.SQL_KW, lcLine, actualLine, start);
 			else if (kw.equals("gr."))
-				actualLine = ExpandedKeyWord(Run.GR_kw, lcLine, actualLine, start);
+				actualLine = ExpandedKeyWord(Run.GR_KW, lcLine, actualLine, start);
+			else if (kw.equals("console."))
+				actualLine = ExpandedKeyWord(Run.Console_KW, lcLine, actualLine, start);
 			else if (kw.equals("audio."))
 				actualLine = ExpandedKeyWord(Run.Audio_KW, lcLine, actualLine, start);
 			else if (kw.equals("sensors."))
@@ -380,6 +382,8 @@ public class Format extends ListActivity {
 				actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
 			else if (kw.equals("su."))
 				actualLine = ExpandedKeyWord(Run.su_KW, lcLine, actualLine, start);
+			else if (kw.equals("system."))
+				actualLine = ExpandedKeyWord(Run.System_KW, lcLine, actualLine, start);
 			else if (kw.equals("soundpool."))
 				actualLine = ExpandedKeyWord(Run.sp_KW, lcLine, actualLine, start);
 			else if (kw.equals("html."))

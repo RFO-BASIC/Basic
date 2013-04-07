@@ -5,7 +5,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -272,11 +272,11 @@ public class Run extends ListActivity {
     	"file.root", "file.exists", "grabfile",
     	"wakelock", "tone", "list.", "bundle.",
     	"stack.", "socket.", "http.post", "device",     
-    	"debug.", "console.save",
+    	"debug.", "console.",
     	"tts.init","tts.speak","tts.local",
-    	"ftp.","console.front","bt.",
-    	"call", "su.", "console.line.new",
-    	"console.line.char", "tget",
+    	"ftp."," ","bt.",
+    	"call", "su.", "system.",
+    	" ", "tget",
     	"f_n.break", "w_r.break", "d_u.break",
     	"text.position.get", "text.position.set",
     	"byte.position.get", "byte.position.set",
@@ -286,8 +286,8 @@ public class Run extends ListActivity {
     	"html.", "run", "@@@", "back.resume",
     	"notify", "swap", "sms.rcv.init",
     	"sms.rcv.next", "stt.listen", "stt.results",
-    	"timer.", "timezone.", " ",				// moved three "timer" commands to Timer_cmd
-    	"time", "key.resume", "menukey.resume",
+    	"timer.", "timezone.", "time",				// moved three "timer" commands to Timer_cmd
+    	" ", "key.resume", "menukey.resume",
     	"onmenukey","ontimer", "onkeypress",			// For Format
     	"ongrtouch", "onbtreadready",						// For Format
     	"home", "background.resume","onbackground",
@@ -334,7 +334,7 @@ public class Run extends ListActivity {
     public static final int BKWrename = 29;
     public static final int BKWdelete = 30;
     public static final int BKWsql = 31;
-    public static final int BKWnull1 = 32;             // Time moved to after Timer
+    public static final int BKWnull32 = 32;             // Time moved to after Timer
     public static final int BKWgr = 33;
     public static final int BKWpause = 34;
     public static final int BKWbrowse = 35;
@@ -389,17 +389,17 @@ public class Run extends ListActivity {
     public static final int BKWhttp_post = 84;
     public static final int BKWdevice = 85;
     public static final int BKWdebug = 86;
-    public static final int BKWconsole_dump = 87;
+    public static final int BKWconsole = 87;
     public static final int BKWtts_init = 88;
     public static final int BKWtts_speak = 89;
     public static final int BKWtts_local = 90;
     public static final int BKWftp = 91;
-    public static final int BKWconsole_front = 92;
+    public static final int BKWnull92 = 92;
     public static final int BKWbt = 93;
     public static final int BKWcall = 94;
     public static final int BKWsu = 95;
-    public static final int BKWconsole_line_new = 96;
-    public static final int BKWconsole_line_char = 97;
+    public static final int BKWsystem = 96;
+    public static final int BKWnull97 = 97;
     public static final int BKWtget = 98;
     public static final int BKWf_n_break = 99;
     public static final int BKWw_r_break = 100;
@@ -428,8 +428,8 @@ public class Run extends ListActivity {
     public static final int BKWstt_results = 123;
     public static final int BKWtimer = 124;
     public static final int BKWtimezone = 125;
-    public static final int BKWnull2 = 126;             // Timer commands moved to Timer_cmd
-    public static final int BKWtime = 127;
+    public static final int BKWtime = 126;             // Timer commands moved to Timer_cmd
+    public static final int BKWnull127 = 127;
     public static final int BKWonkey_resume = 128;
     public static final int BKWmenukey_resume = 129;
     
@@ -463,9 +463,9 @@ public class Run extends ListActivity {
     	"sqr(", "abs(", "rnd(",
     	"val(", "len(", "acos(",
     	"asin(", "atan2(", "ceil(",
-    	"floor(", "mod(","log(",
+    	"floor(", "mod(", "log(",
     	"round(", "toradians(", "todegrees(",
-    	" ", "exp(",										// EQUALS function deleted
+    	"time(", "exp(",
     	"is_in(", "clock(", 
     	"bor(", "band(", "bxor(",
     	"gr_collision(",
@@ -474,7 +474,7 @@ public class Run extends ListActivity {
     	"randomize(", "background(",
     	"atan(", "cbrt(", "cosh(", "hypot(",
     	"sinh(", "pow(", "log10(",
-    	"ucode(", "time("
+    	"ucode("
     };
     
     public static final int MFsin = 0;			// Enumerated name for the Match Functions
@@ -495,7 +495,7 @@ public class Run extends ListActivity {
     public static final int MFround = 15;
     public static final int MFtoradians = 16;
     public static final int MFtodegrees = 17;
-    public static final int MFnull1 = 18;
+    public static final int MFtime = 18;
     public static final int MFexp = 19;
     public static final int MFis_in = 20;
     public static final int MFclock = 21;
@@ -520,7 +520,6 @@ public class Run extends ListActivity {
     public static final int MFpow = 40;
     public static final int MFlog10 = 41;
     public static final int MFucode = 42;
-    public static final int MFtime = 43;
 
     public static  int MFNumber = 0;				// Will contain a math function's enumerated name value
     
@@ -825,8 +824,24 @@ public class Run extends ListActivity {
     public static ArrayList<FileWriter> FWlist;			// A list of file writers
     public static ArrayList<DataOutputStream> DOSlist;			// A list of file writers
     public static ArrayList<BufferedInputStream> BISlist;			// A list of file writers
-    
-    
+
+    //  ******************  Console Command variables ********************************
+
+    public static final String Console_KW[] = {			// Console commands
+    	"front", "save", "title", "line.new", "line.char"
+    };
+
+	private final Command[] Console_cmd = new Command[] {	// Map console command key words to their execution functions
+		new Command("front")            { public boolean run() { return executeCONSOLE_FRONT(); } },
+		new Command("save")             { public boolean run() { return executeCONSOLE_DUMP(); } },
+		new Command("title")            { public boolean run() { return executeCONSOLE_TITLE(); } },
+		new Command("line.new")         { public boolean run() { return executeCONSOLE_LINE_NEW(); } },
+		new Command("line.char")        { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
+	};
+
+    private String ConsoleTitle = null;					// null means use default string resource
+    private boolean updateConsoleTitle = false;
+
     //  ******************  Popup Command variables ********************************
     
     public static String ToastMsg;
@@ -844,7 +859,7 @@ public class Run extends ListActivity {
     
     // *********************  SQL Variables  **************************************
     
-    public static final String SQL_kw[] = {				// SQL Commands
+    public static final String SQL_KW[] = {				// SQL Commands
     	"open", "close", "insert",
     	"query.length", "query.position", "query",
     	"next", "delete", "update", "exec",
@@ -907,7 +922,7 @@ public class Run extends ListActivity {
     public static Canvas drawintoCanvas = null;
 
     
-    public static final String GR_kw[] = {
+    public static final String GR_KW[] = {
     	"open", "render", "color", "line", "rect",
     	"arc", "circle", "oval", "cls", "hide",
     	 "show", "touch2", "text.draw", "text.size",
@@ -1397,26 +1412,29 @@ public class Run extends ListActivity {
     public static final int bt_readready_resume = 11;
     public static final int bt_disconnect = 12;
     
-/**************************************  Superuser **********************************************/
+/**************************************  Superuser and System  ***************************/
 
     public static final String su_KW[] = {
     	"open", "write", "read.ready",
     	"read.line", "close"
     	
     };
-    
-    public static final int su_open = 0;
-    public static final int su_write = 1;
-    public static final int su_read_ready = 2;
-    public static final int su_read_line = 3;
-    public static final int su_close = 4;
-    
-    
-    DataOutputStream SUoutputStream;
-    DataInputStream SUinputStream;
-    Process SUprocess;
-    public ArrayList <String> SU_ReadBuffer;
-    SUReader theSUReader = null;
+    public static final String[] System_KW = su_KW;
+
+	private final Command[] SU_cmd = new Command[] {	// Map SU/System command key words to their execution functions
+		new Command("open")             { public boolean run() { return execute_SU_open(); } },
+		new Command("write")            { public boolean run() { return execute_SU_write(); } },
+		new Command("read.ready")       { public boolean run() { return execute_SU_read_ready(); } },
+		new Command("read.line")        { public boolean run() { return execute_SU_read_line(); } },
+		new Command("close")            { public boolean run() { return execute_SU_close(); } }
+	};
+
+    private boolean isSU = true;						// set true for SU commands, false for System commands
+    private DataOutputStream SUoutputStream;
+    private DataInputStream SUinputStream;
+    private Process SUprocess;
+    private ArrayList <String> SU_ReadBuffer;
+    private SUReader theSUReader = null;
     
 /***************************************  SOUND POOL  ************************************/
     
@@ -1740,8 +1758,13 @@ public class Background extends AsyncTask<String, String, String>{
         		if (bgStateChange && OnBGLine != 0) {
         				bgStateChange = doInterrupt(OnBGLine);
         			
+        		} else
+
+        		if (updateConsoleTitle) {
+        				updateConsoleTitle = false;
+        				publishProgress("@@7");						// tell Activity to update its title
         		}
-       		
+
         		for (int i=0; i<TempOutputIndex; ++i){				// if new output lines, the send them
         			publishProgress(TempOutput[i]);					// to UI task
         			}
@@ -1871,7 +1894,9 @@ public class Background extends AsyncTask<String, String, String>{
         			output.clear();
         		}else if (str[i].startsWith("@@6")){            // Done with background task
         			cancel(true);
-        		}else if (str[i].startsWith("@@7")){			// NOT CURRENTLY USED
+        		}else if (str[i].startsWith("@@7")){			// Set the console title
+        			if (ConsoleTitle != null) setTitle(ConsoleTitle);
+        			else setTitle(getResources().getString(R.string.run_name));
         		}else if (str[i].startsWith("@@8")){			// NOT CURRENTLY USED
         		}else if (str[i].startsWith("@@9")){			// from checkpointProgress
         			ProgressPending = false;					// progress is published, done waiting
@@ -2153,6 +2178,10 @@ private void InitVars(){
     BISlist = new ArrayList<BufferedInputStream> () ;			// A list of file writers
     
     clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+
+    ConsoleTitle = null;							// null means use default string resource
+    updateConsoleTitle = false;
+
     //  ******************  Popup Command variables ********************************
     
     ToastMsg = "";
@@ -2519,9 +2548,7 @@ public boolean onTouchEvent(MotionEvent event){
    super.onCreateOptionsMenu(menu);
    MenuInflater inflater = getMenuInflater();
    inflater.inflate(R.menu.run, menu);
-   Menu theMenu = menu;
-   MenuItem item;
-   item = menu.getItem(1);
+   MenuItem item = menu.getItem(1);
    item.setEnabled(false);
    return true;
 }
@@ -2540,14 +2567,18 @@ public boolean onPrepareOptionsMenu(Menu menu) {   // Executed when Menu key is 
     return true;
 }
 
+public static void MenuStop() {
+	Show("Stopped by user.");							// Tell user and then
+	Stop = true;										// signal main loop to stop
+	OnBackKeyLine = 0;
+}
+
 @Override
 public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is selected
    switch (item.getItemId()) {
 
    case R.id.stop:										// User wants to stop execution
-	   Show("Stopped by user.");						// Tell user and then
-	   Stop = true;										// signal main loop to stop
-	   OnBackKeyLine = 0;
+      MenuStop();
       return true;
 
    case R.id.editor:									// User pressed Editor
@@ -3090,8 +3121,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	case BKWdebug:
 	        		if (!executeDEBUG()){SyntaxError(); return false;}
 	        		break;
-	        	case BKWconsole_dump:
-	        		if (!executeCONSOLE_DUMP()){SyntaxError(); return false;}
+	        	case BKWconsole:
+	        		if (!executeCONSOLE()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWtts_init:
 	        		if (!executeTTS_INIT()){SyntaxError(); return false;}
@@ -3105,9 +3136,6 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	case BKWftp:
 	        		if (!executeFTP()){SyntaxError(); return false;}
 	        		break;
-	        	case BKWconsole_front:
-	        		if (!executeCONSOLE_FRONT()){SyntaxError(); return false;}
-	        		break;
 	        	case BKWbt:
 	        		if (!executeBT()) {SyntaxError(); return false;}
 	        		break;
@@ -3115,13 +3143,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		if (!executeCALL()) {SyntaxError(); return false;}
 	        		break;
 	        	case BKWsu:
-	        		if (!executeSU()) {SyntaxError(); return false;}
+	        		if (!executeSU(true)) {SyntaxError(); return false;}
 	        		break;
-	        	case BKWconsole_line_new:
-	        		if (!executeCONSOLE_LINE_NEW()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWconsole_line_char:
-	        		if (!executeCONSOLE_LINE_CHAR()) {SyntaxError(); return false;}
+	        	case BKWsystem:
+	        		if (!executeSU(false)) {SyntaxError(); return false;}
 	        		break;
 	        	case BKWtget:
 	        		if (!executeTGET()) {SyntaxError(); return false;}
@@ -3288,9 +3313,13 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	   return false;
    }
 
+   private boolean isEOL(){
+	   return (LineIndex >= ExecutingLineBuffer.length()) ||
+			  (ExecutingLineBuffer.charAt(LineIndex) == '\n');
+   }
+
    private boolean checkEOL(){
-	   if (LineIndex >= ExecutingLineBuffer.length()) return true;
-	   if (ExecutingLineBuffer.charAt(LineIndex) == '\n') return true;
+	   if (isEOL()) return true;
 	   String ec = ExecutingLineBuffer.substring(LineIndex);
 	   RunTimeError("Extraneous characters in line: " + ec);
 	   return false;
@@ -6273,7 +6302,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		debugView.setVerticalScrollBarEnabled(true);
 		debugView.setAdapter(dbListAdapter);
 		
-	  DebugDialog.setTitle("Basic! Debugger");
+	  DebugDialog.setTitle("BASIC! Debugger");
 		
 		DebugDialog.setOnCancelListener(new 
 		DialogInterface.OnCancelListener(){
@@ -7281,16 +7310,23 @@ private boolean doUserFunction(){
 			if (!getVar()) return false;
 			if (VarIsNumeric) return false;
 			int saveValueIndex = theValueIndex;
-			
+
+			String title = null;
 			TextInputString = "";
-			if (isNext(',')) { 
-				if (!evalStringExpression()) return false;
+			if (isNext(',')) {
+				if (!getStringArg()) return false;
 			    TextInputString = StringConstant;
+			    if (isNext(',')) {
+			    	if (!getStringArg()) return false;
+			    	title = StringConstant;
+			    }
 			}
 			if (!checkEOL()) return false;
 			
+			Intent intent = new Intent(this, TextInput.class);
+			if (title != null) intent.putExtra("title", title);
 			HaveTextInput = false;
-		    startActivityForResult(new Intent(this, TextInput.class), BASIC_GENERAL_INTENT);
+		    startActivityForResult(intent, BASIC_GENERAL_INTENT);
 		    while (!HaveTextInput) Thread.yield();
 		    
 		    StringVarValues.set(saveValueIndex, TextInputString);
@@ -7370,17 +7406,23 @@ private boolean doUserFunction(){
 	private boolean executeTGET(){
 			if (!getSVar()) return false;
 			int saveValueIndex = theValueIndex;
-			
-			TextInputString = "";
+
 			if (!isNext(',')) { return false; }
-			
-			if (!evalStringExpression()) return false;
+			if (!getStringArg()) return false;
 			TextInputString = StringConstant;
 			String Prompt = StringConstant;
+
+			String title = null;
+		    if (isNext(',')) {
+		    	if (!getStringArg()) return false;
+		    	title = StringConstant;
+		    }
 			if (!checkEOL()) return false;
-			
+
+			Intent intent = new Intent(this, TGet.class);
+			if (title != null) intent.putExtra("title", title);
 			HaveTextInput = false;
-		    startActivityForResult(new Intent(this, TGet.class), BASIC_GENERAL_INTENT);
+		    startActivityForResult(intent, BASIC_GENERAL_INTENT);
 		    while (!HaveTextInput) Thread.yield();
 		    Show(Prompt + TextInputString);
 		    
@@ -8374,17 +8416,7 @@ private boolean doUserFunction(){
 		int length = r.length;										// Get the number of strings generated
 		if (length == 0) { return false; }							// error in doSplit()
 
-			ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Set that number as the dimension of the array
-			dimValues.add(length);
-		  
-		  BuildBasicArray(SaveArrayVarNumber, false, dimValues);   // Now go build the an array of the specified size
-		  
-		  for (int i = 0; i<length; ++i){						  // now stuff the array
-			  StringVarValues.set(ArrayValueStart, r[i]);
-			  ++ArrayValueStart;
-		  }
-
-		  return true;
+		return ListToBasicStringArray(SaveArrayVarNumber, Arrays.asList(r), length);
 	}
 
 	private String[] doSplit(String SearchString) {					// Split a string
@@ -9386,10 +9418,10 @@ private boolean doUserFunction(){
 															// is the current line index at a key word?
 		  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
 		  int i = 0;
-		  for (i = 0; i<GR_kw.length; ++i){					// loop through the key word list
-			  if (Temp.startsWith(GR_kw[i])){    				// if there is a match
+		  for (i = 0; i<GR_KW.length; ++i){					// loop through the key word list
+			  if (Temp.startsWith(GR_KW[i])){    				// if there is a match
 				  KeyWordValue = i;								// set the key word number
-				  LineIndex = LineIndex + GR_kw[i].length(); 	// move the line index to end of key word
+				  LineIndex = LineIndex + GR_KW[i].length(); 	// move the line index to end of key word
 				  return true;									// and report back
 			  }
 		  }
@@ -11980,7 +12012,11 @@ private boolean doUserFunction(){
 			  RunTimeError("Sensors already opened");
 			  return false;
 		  }
-		  
+		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
+		if (VarIsNumeric) { return RunTimeError("Not string array"); }
+		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!checkEOL()) { return false; }							// line must end with ']'
+		int theVarNumber = VarNumber;
 		  
 		  GetSensorList = true;                        // Tells SensorsActivity class the we want the list
      	  SensorCensus = new ArrayList<String>();      // Create a new list for the list
@@ -11996,27 +12032,8 @@ private boolean doUserFunction(){
 	    	  return false;
 	      }
 	      
-	      /* Puts the list of sensors into an unDIMed array
-	       * The first element of the array will be the length of the array
-	       */
-		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
-		if (VarIsNumeric) { return RunTimeError("Not string array"); }
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
-		if (!checkEOL()) { return false; }							// line must end with ']'
-
-		  ArrayList <Integer> dimValues = new ArrayList<Integer>();  // Build the D[]
-		  dimValues.add(SClength);                                 // Set the array dimension
-		  BuildBasicArray(VarNumber, false, dimValues);              // Go build an array of the proper size
-
-		  
-		  for (int i = 0; i<SClength; ++i){								// stuff the array
-			  String s = SensorCensus.get(i).toString();
-			  StringVarValues.set(ArrayValueStart, s);
-			  ++ArrayValueStart;
-		  }
-
-
-		  return true;
+	      /* Puts the list of sensors into an unDIMed array */
+		return ListToBasicStringArray(theVarNumber, SensorCensus, SClength);
 	  }
 	  
 	  private boolean execute_sensors_open(){
@@ -15275,61 +15292,37 @@ private boolean doUserFunction(){
 		    	return true;
 		    }
 
-//    ***********************************  Superuser ***************************
-		    
-		    public boolean executeSU(){
-				if (!GetSUKeyWord()){ return false;}
-				if (SUprocess == null && KeyWordValue != su_open){
-					RunTimeError("Superuser not opened");
-					return false;
-				}
+//    ***********************************  Superuser and System ***************************
 
-				switch (KeyWordValue){
-				case su_open:
-					
-					if (!execute_SU_open()) return false;
-					break;
-				case su_close:
-					if (!execute_SU_close()) return false;
-					break;
-				case su_read_ready:
-					if (!execute_SU_read_ready()) return false;
-					break;
-				case su_read_line:
-					if (!execute_SU_read_line()) return false;
-					break;
-				case su_write:
-					if (!execute_SU_write()) return false;
-					break;
-						
-				default:
-
+	private boolean executeSU(boolean isSU) {	// SU command (isSU true) or system comand (isSU false)
+		String line = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
+		for (Command c : SU_cmd) {								// loop through the command list
+			String name = c.name();
+			if (line.startsWith(name)) {						// if there is a match
+				LineIndex += name.length();						// move the line index to end of key word
+				if (SUprocess == null) {
+					if (name.equals("open")) this.isSU = isSU;
+					else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
 				}
-				return true;
+				return c.run();									// run the function and report back
 			}
-			
-			  private  boolean GetSUKeyWord(){						// Get a Basic key word if it is there
-					// is the current line index at a key word?
-				  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-				  int i = 0;
-				  for (i = 0; i<su_KW.length; ++i){		// loop through the key word list
-					  if (Temp.startsWith(su_KW[i])){    // if there is a match
-						  KeyWordValue = i;						// set the key word number
-						  LineIndex = LineIndex + su_KW[i].length(); // move the line index to end of key word
-						  return true;							// and report back
-					  }
-				  }
-				  KeyWordValue = 99;							// no key word found
-				  return false;									// report fail
+		}
+		RunTimeError("Unknown " + (isSU ? "SU" : "System") + " command");
+		return false;											// no key word found
+	}
 
-			  		}
-		    
 		    private boolean execute_SU_open(){
+		    	if (!checkEOL()) return false;
+		    	if (SUprocess != null) return true;
 		    	SU_ReadBuffer = new ArrayList<String>();    		// Initialize buffer
 		    	
 		    	try
 		        {
-		            SUprocess = Runtime.getRuntime().exec("su");						// Request Superuser
+		            if (isSU) SUprocess = Runtime.getRuntime().exec("su");				// Request Superuser
+		            else {
+		            	File dir = new File(Basic.filePath);
+		            	SUprocess = Runtime.getRuntime().exec("sh", null, dir);			// Open ordinary shell
+		            }
 		            SUoutputStream = new DataOutputStream(SUprocess.getOutputStream()); // Open the output stream
 		            SUinputStream = new DataInputStream(SUprocess.getInputStream());    // Open the input stream
 		        }
@@ -15397,6 +15390,21 @@ private boolean doUserFunction(){
 		    }
 		    
 /****************************************** CONSOLE Commands  ************************************/
+
+	private boolean executeCONSOLE() {							// Get Console command key word if it is there
+		return executeCommand(Console_cmd, "Console");
+	}
+
+	private boolean executeCONSOLE_TITLE() {					// Set the console title string
+		if (isEOL()) {
+			ConsoleTitle = null;								// Use default
+		} else {
+			if (!getStringArg() || !checkEOL()) return false;	// Get new title
+			ConsoleTitle = StringConstant;
+		}
+		updateConsoleTitle = true;
+		return true;
+	}
 
 	private boolean executeCONSOLE_DUMP(){
 		

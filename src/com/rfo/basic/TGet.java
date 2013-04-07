@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -29,63 +29,81 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 import android.app.Activity;
-import android.content.Context;
-import android.graphics.Paint;
-import android.graphics.Rect;
+import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Scroller;
-import android.widget.TextView;
-
-import com.rfo.basic.R;
-
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.VelocityTracker;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.View.OnKeyListener;
-import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 
 
 public class TGet extends Activity {
-    private Button finishedButton;			// The buttons
     private EditText theTextView;		//The EditText TextView
     private int PromptIndex;
     private static String theText;
-    
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event)  {
-    	// if BACK key restore original text
+    	// if BACK key cancel user input
         if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-        	Run.Stop = true;
-//        	theTextView.getText().toString();
-        	finish();
-        	return true;
+
+        	if (Run.OnBackKeyLine != 0) {					// Tell program runner it happened
+        		Run.BackKeyHit = true;
+        	} else {
+        		Run.Stop = true;
         	}
+
+        	Run.TextInputString = "";						// Tell TGet command it happened
+        	Run.HaveTextInput = true;
+
+        	finish();										// End TGet Activity
+        	return true;
+        }
         return super.onKeyUp(keyCode, event);
 
     }
-    
 
-    
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {			// Called when the menu key is pressed.
+		super.onCreateOptionsMenu(menu);
+		getMenuInflater().inflate(R.menu.run, menu);		// Same menu as Run...
+		menu.removeItem(R.id.editor);						// ... except no "Editor" item
+		return true;
+	}
+
+	@Override
+	public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is selected
+		switch (item.getItemId()) {
+
+		case R.id.stop:										// User wants to stop execution
+			Run.MenuStop();									// Tell program runner (and user) it happened
+
+			Run.TextInputString = "";						// Tell TGet command it happened
+			Run.HaveTextInput = true;
+
+			finish();										// End TGet Activity
+		}
+		return true;
+	}
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
        super.onCreate(savedInstanceState);
 
        this.setContentView(R.layout.tget);  // Layouts xmls exist for both landscape or portrait modes
+
+       Intent intent = getIntent();
+       String title = intent.getStringExtra("title");
+       if (title != null) setTitle(title);
        
-//       this.finishedButton = (Button) findViewById(R.id.finished_button);		 // The buttons
-       
-       this.theTextView = (EditText) findViewById(R.id.the_text);		// The text display area
-       
-       TextView txtInput = (TextView)findViewById(R.id.the_text);
+       theTextView = (EditText) findViewById(R.id.the_text);		// The text display area
        
        theText = "";
        for (int i = 0; i < Run.output.size(); ++ i){
@@ -115,47 +133,32 @@ public class TGet extends Activity {
        
        theTextView.setTextSize(1, Settings.getFont(this));
        
-       txtInput.addTextChangedListener(inputTextWatcher);
+       theTextView.addTextChangedListener(inputTextWatcher);
       
 
-       txtInput.setOnKeyListener(new View.OnKeyListener() {
+       theTextView.setOnKeyListener(new OnKeyListener() {
            public boolean onKey(View v, int keyCode, KeyEvent event) {
    	        // If the event is a key-down event on the "enter" button
    	        if ((event.getAction() == KeyEvent.ACTION_DOWN) &&
    	            (keyCode == KeyEvent.KEYCODE_ENTER)) {
-   	        	String s = theTextView.getText().toString();
-   	        	Run.TextInputString = "";
-   	        	int n = PromptIndex;
-   	        	if (PromptIndex < s.length())
-   	        		Run.TextInputString = s.substring(PromptIndex);
-   	        	Run.HaveTextInput = true;
-   	        	finish();
+   	        	handleEOL();
    	        	return true;
    	        }
            return false;
            }
        });
        
-//       final EditText edittext = (EditText) findViewById(R.id.the_text);
-       
-/*       theTextView.setOnKeyListener(new OnKeyListener() {
-    	    public boolean onKey(View v, int keyCode, KeyEvent event) {
-    	        // If the event is a key-down event on the "enter" button
-    	        if ((event.getAction() == KeyEvent.ACTION_DOWN) &&
-    	            (keyCode == KeyEvent.KEYCODE_ENTER)) {
-    	        	String s = theTextView.getText().toString();
-    	        	Run.TextInputString = "";
-    	        	int n = PromptIndex;
-    	        	if (PromptIndex < s.length())
-    	        		Run.TextInputString = s.substring(PromptIndex);
-    	        	Run.HaveTextInput = true;
-    	        	finish();
-    	          return true;
-    	        }
-    	        return false;
-    	    }
-       });*/
-       
+    }
+
+    private synchronized void handleEOL() {
+    	Log.d("TGet","handleEOL");
+    	if (Run.HaveTextInput) return;							// Don't run twice for same event 
+       	String s = theTextView.getText().toString();
+       	Run.TextInputString = "";
+       	if (PromptIndex < s.length())
+       		Run.TextInputString = s.substring(PromptIndex);
+       	Run.HaveTextInput = true;
+       	finish();
     }
 
        private TextWatcher inputTextWatcher = new TextWatcher() {
@@ -169,14 +172,7 @@ public class TGet extends Activity {
     	    	if (before>0) return;
     	    	char c = s.charAt(start);
    	    		if (c=='\n') {
-    	        	String s1 = theTextView.getText().toString();
-    	        	Run.TextInputString = "";
-    	        	int n = PromptIndex;
-    	        	if (PromptIndex < s1.length())
-    	        		Run.TextInputString = s1.substring(PromptIndex);
-    	        	Run.HaveTextInput = true;
-    	        	finish();
-
+   	    			handleEOL();
     	    	}
     	    }
     	};

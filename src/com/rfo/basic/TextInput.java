@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -29,15 +29,14 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import com.rfo.basic.R;
-
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.EditText;
 
 
 public class TextInput extends Activity {
@@ -62,7 +61,11 @@ public class TextInput extends Activity {
        super.onCreate(savedInstanceState);
 
        this.setContentView(R.layout.text_input);  // Layouts xmls exist for both landscape or portrait modes
-       
+
+       Intent intent = getIntent();
+       String title = intent.getStringExtra("title");
+       if (title != null) setTitle(title);
+
        this.finishedButton = (Button) findViewById(R.id.finished_button);		 // The buttons
        
        this.theTextView = (EditText) findViewById(R.id.the_text);		// The text display area
