@@ -5052,7 +5052,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return (BuildBasicArray(VarNumber, IsNumeric, dimValues));		// go build an array of the proper size
 	}
 
-	private boolean ListToBasicNumericArray(int VarNumber, Iterable <Double> Values, int length) {
+	private boolean ListToBasicNumericArray(int VarNumber, List <Double> Values, int length) {
 		if (!BuildBasicArray(VarNumber, true, length)) return false;	// go build an array of the proper size and type
 		int i = ArrayValueStart;
 		for (Double d : Values) {										// stuff the array
@@ -5061,7 +5061,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return true;
 	}
 
-	private boolean ListToBasicStringArray(int VarNumber, Iterable <String> Values, int length) {
+	private boolean ListToBasicStringArray(int VarNumber, List <String> Values, int length) {
 		if (!BuildBasicArray(VarNumber, false, length)) return false;	// go build an array of the proper size and type
 		int i = ArrayValueStart;
 		for (String s : Values) {										// stuff the array
@@ -9476,29 +9476,31 @@ private boolean doUserFunction(){
 
 	private boolean execute_gr_getdl(){
 
-		if (!getArrayVarForWrite()) return false;					// Get the array variable
+		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
 		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
+		int arrayVarNumber = VarNumber;
+		boolean keepHiddenObjects = false;
+		if (isNext(',')) {											// Optional "hidden" flag
+			if (!evalNumericExpression()) { return false; }
+			keepHiddenObjects = (EvalNumericExpressionValue != 0.0);
+		}
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		double[] list = new double[RealDisplayList.size() + 1];
 		int count = 0;
-		for (Integer I : RealDisplayList) {
-			int idx = I.intValue();									// Object index
-			if ((idx != 0) &&										// If not index of null object...
-				(DisplayList.get(idx).getInt("hide") == 0)) {		// ... and object not hidden...
-				list[count++] = idx;								// ... put index in the new list
-			}
+		for (int idx : RealDisplayList) {							// For each object index
+			boolean include = ((idx != 0) &&						// If not index of null object...
+				(keepHiddenObjects ||								// ... and either keeping all objects...
+					(DisplayList.get(idx).getInt("hide") == 0)));	// ... or object is not hidden...
+			if (include) { list[count++] = idx; }					// ... then put index in the new list
 		}
-
-		ArrayList <Integer> dimValues = new ArrayList<Integer>();	// create BASIC! array
 		if (count == 0) { count = 1; }								// if no objects, make a list with
 																	// one entry that indexes the null object
-		dimValues.add(count);
-		if (!BuildBasicArray(VarNumber, false, dimValues)) return false;
 
+		if (!BuildBasicArray(arrayVarNumber, true, count)) { return false; } // build the array
 		for (int i = 0, j = ArrayValueStart; i < count; ++i, ++j) {	// stuff the array
-			NumericVarValues.set(j, list[i]);
+			NumericVarValues.set(j, list[i]);						// count may be < list.length
 		}
 		return true;
 	}
