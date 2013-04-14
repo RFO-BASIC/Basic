@@ -7311,13 +7311,18 @@ private boolean doUserFunction(){
 			if (VarIsNumeric) return false;
 			int saveValueIndex = theValueIndex;
 
-			String title = null;
 			TextInputString = "";
-			if (isNext(',')) {
-				if (!getStringArg()) return false;
-			    TextInputString = StringConstant;
-			    if (isNext(',')) {
-			    	if (!getStringArg()) return false;
+			String title = null;
+			if (isNext(',')) {													// Check for optional parameter(s)
+				boolean isComma = isNext(',');									// Look for second comma, two commas together
+																				// mean initial text is skipped, use empty string
+				if (!isComma) {
+					if (!getStringArg()) return false;							// One comma so far; get initial input text
+					TextInputString = StringConstant;
+					isComma = isNext(',');										// Look again for second comma
+				}
+			    if (isComma) {
+			    	if (!getStringArg()) return false;							// Second comma; get title
 			    	title = StringConstant;
 			    }
 			}
