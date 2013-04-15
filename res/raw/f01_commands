@@ -3,20 +3,20 @@
  Press an alpha key to scroll to commands that start with that letter. (Does not work on all devices.)
  Tap a command's line. The command will be loaded into the clip board. It can then be pasted into the Editor.
 *
-! - Single Line Comment, 39
-!! - Block Comment, 39
+! - Single Line Comment, 40
+!! - Block Comment, 40
 #, 21
 # - Format Line, 21
-% - Middle of Line Comment, 39
+% - Middle of Line Comment, 40
 ABS(<nexp>), 43
 ACOS(<nexp>), 45
-Array.average <Average_nvar>, Array[], 30
-Array.copy SourceArray[{<start>{,<length>}], DestinationArray[{{-}<extras>}, 30
+Array.average <Average_nvar>, Array[], 31
+Array.copy SourceArray[{<start>{,<length>}], DestinationArray[{{-}<extras>}, 31
 Array.delete Array[], 31
 Array.length <Length_nvar>, Array[], 31
 Array.load Array[], <nexp>{,<nexp>..,<nexp>}, 31
-Array.max <Max_nvar> Array[], 31
-Array.min <Min_nvar>, Array[], 31
+Array.max <Max_nvar> Array[], 32
+Array.min <Min_nvar>, Array[], 32
 Array.reverse  Array[] | Array$[], 32
 Array.shuffle  Array[] | Array$[], 32
 Array.sort  Array[] | Array$[, 32
@@ -26,395 +26,408 @@ Array.variance <v_nvar>, Array[], 32
 ASCII(<sexp>), 46
 ASIN(<nexp>), 45
 ATAN(<nexp>), 45
-ATAN2 (<nexp_x>, <nexp_y>), 44
-Audio.isdone <lvar>, 113
-Audio.length <length_nvar>, <aft_nexp>, 113
-Audio.load  <aft_nvar>, <filename_sexp>, 111
-Audio.loop, 112
-Audio.pause, 112
-Audio.play <aft_nexp>, 112
-Audio.position.current  <nvar>, 113
-Audio.position.seek <nexp>, 113
-Audio.record.start <fn_svar>, 113
-Audio.record.stop, 113
-Audio.release <aft_nexp>, 113
-Audio.stop, 112
-Audio.volume <left_nexp>, <right_nexp>, 112
+ATAN2 (<nexp_x>, <nexp_y>), 45
+Audio.isdone <lvar>, 115
+Audio.length <length_nvar>, <aft_nexp>, 115
+Audio.load  <aft_nvar>, <filename_sexp>, 114
+Audio.loop, 114
+Audio.pause, 114
+Audio.play <aft_nexp>, 114
+Audio.position.current  <nvar>, 115
+Audio.position.seek <nexp>, 115
+Audio.record.start <fn_svar>, 115
+Audio.record.stop, 115
+Audio.release <aft_nexp>, 115
+Audio.stop, 114
+Audio.volume <left_nexp>, <right_nexp>, 114
 Back.resume, 57
 Background(), 47
-Background.Resume, 90
-BAND(<nexp1>, <nexp2>), 42
-BIN$(<nexp>), 48
-BIN(<sexp>), 45
-BOR(<nexp1>, <nexp2>), 42
-Browse <url_sexp>, 81
-Bt.close, 79
-Bt.connect {0|1}, 79
-Bt.device.name <svar>, 81
-Bt.disconnect, 79
-Bt.onReadReady.Resume, 80
-Bt.open {0|1}, 79
-Bt.read.bytes <svar>, 80
-Bt.read.ready <nvar>, 80
-Bt.reconnect, 79
-Bt.set.uuid <sexp>, 81
-Bt.status <nvar>, 80
-Bt.write <sexp>|<nexp> {,|;} . . . . <sexp>|<nexp>{,|;}, 80
-Bundle.clear <pointer_nexp>, 37
-Bundle.contain  <pointer_nexp>, <key_sexp> , <contains_nvar>, 37
-Bundle.create <pointer_nvar>, 36
+Background.Resume, 92
+BAND(<nexp1>, <nexp2>), 43
+BIN$(<nexp>), 49
+BIN(<sexp>), 46
+BOR(<nexp1>, <nexp2>), 43
+Browse <url_sexp>, 82
+Bt.close, 80
+Bt.connect {0|1}, 80
+Bt.device.name <svar>, 82
+Bt.disconnect, 80
+Bt.onReadReady.Resume, 81
+Bt.open {0|1}, 80
+Bt.read.bytes <svar>, 81
+Bt.read.ready <nvar>, 81
+Bt.reconnect, 80
+Bt.set.uuid <sexp>, 82
+Bt.status <nvar>, 81
+Bt.write <sexp>|<nexp> {,|;} . . . . <sexp>|<nexp>{,|;}, 81
+Bundle.clear <pointer_nexp>, 38
+Bundle.contain  <pointer_nexp>, <key_sexp> , <contains_nvar>, 38
+Bundle.create <pointer_nvar>, 37
 Bundle.get <pointer_nexp>, <key_sexp>, <nvar>|<svar>, 37
 Bundle.keys <pointer_nexp>, <list_nvar>, 37
-Bundle.put <pointer_nexp>, <key_sexp>, <value_nexp>|<value_sexp>, 36
-Bundle.type <pointer_nexp>, <key_sexp>, <type_svar>, 37
+Bundle.put <pointer_nexp>, <key_sexp>, <value_nexp>|<value_sexp>, 37
+Bundle.type <pointer_nexp>, <key_sexp>, <type_svar>, 38
 Bundles, 36
 BXOR(<nexp1>, <nexp2>), 43
-Byte.close <File_table_nvar>, 69
-Byte.copy  <File_table_nvar>,<output_file_svar>, 70
-Byte.open {r|w|a}, <File_table_nvar>, <Path_sexp>, 68
-Byte.position.get  <File_table_nvar>, <position_nexp>, 69
+Byte.close <File_table_nvar>, 70
+Byte.copy  <File_table_nvar>,<output_file_svar>, 71
+Byte.open {r|w|a}, <File_table_nvar>, <Path_sexp>, 69
+Byte.position.get  <File_table_nvar>, <position_nexp>, 70
 Byte.position.set  <File_table_nvar>, <position_nexp>, 70
-Byte.read.buffer  <File_table_nvar>, <count_nexp>, <buffer_svar>, 69
-Byte.read.byte <File_table_nvar>, <byte_nvar>, 69
-Byte.write.buffer <File_table_nvar>, <sexp>, 69
-Byte.write.byte <File_table_nvar>, <byte_nexp>|<sexp>, 69
-Call <user_defined_function>, 51
+Byte.read.buffer  <File_table_nvar>, <count_nexp>, <buffer_svar>, 70
+Byte.read.byte <File_table_nvar>, <byte_nvar>, 70
+Byte.write.buffer <File_table_nvar>, <sexp>, 70
+Byte.write.byte <File_table_nvar>, <byte_nexp>|<sexp>, 70
+Call <user_defined_function>, 52
 CBRT(<nexp>), 43
-CEIL(<nexp>), 43
-CHR$ (<nexp>), 47
-Clipboard.get <svar>, 81
-Clipboard.put <sexp>, 82
-Clock(), 45
-CLS, 61
-Console.save <filename_sexp>, 62
-ConsoleTouch.Resume, 56
+CEIL(<nexp>), 44
+CHR$ (<nexp>), 48
+Clipboard.get <svar>, 82
+Clipboard.put <sexp>, 83
+Clock(), 47
+CLS, 62
+Console.save <filename_sexp>, 63
+Console.Title { <title_sexp>}, 62
+ConsoleTouch.Resume, 57
 COS(<nexp>), 44
-COSH(<nexp>), 44
-D_u.break, 53
-Data Structures, 32
-Debug.dump.array Array[], 59
-Debug.dump.bundle  <bundlePtr_nexp>, 59
-Debug.dump.list  <listPtr_nexp>, 59
+COSH(<nexp>), 45
+D_u.break, 54
+Data Structures, 33
+Debug.dump.array Array[], 60
+Debug.dump.bundle  <bundlePtr_nexp>, 60
+Debug.dump.list  <listPtr_nexp>, 60
 Debug.dump.scalars, 59
-Debug.dump.stack  <stackPtr_nexp>, 59
+Debug.dump.stack  <stackPtr_nexp>, 60
 Debug.echo.off, 59
-Debug.echo.on, 58
-Debug.off, 58
-Debug.on, 58
+Debug.echo.on, 59
+Debug.off, 59
+Debug.on, 59
 Debug.print, 59
-Debug.show, 61
-Debug.show.array Array[], 59
+Debug.show, 62
+Debug.show.array Array[], 60
 Debug.show.bundle  <bundlePtr_nexp>, 60
-Debug.show.list  <listPtr_nexp>, 60
+Debug.show.list  <listPtr_nexp>, 61
 Debug.show.program, 61
-Debug.show.scalars, 59
-Debug.show.stack  <stackPtr_nexp>, 60
+Debug.show.scalars, 60
+Debug.show.stack  <stackPtr_nexp>, 61
 Debug.show.watch, 61
-Debug.watch var, var, …, var, 60
-Decrypt  <pw_sexp>, <encrypted_svar>, <decrypted_svar>, 82
-Device <svar>, 85
+Debug.watch var, var, …, var, 61
+Decrypt  <pw_sexp>, <encrypted_svar>, <decrypted_svar>, 83
+Device <svar>, 86
 Dim Array[<nexp>. . . ,<nexp>], 30
-Do - Until<lexp>, 53
-Echo.off, 82
-Echo.on, 82
-Email.send <recipient_sxep>, <subject_sexp>, <body_sexp>, 89
-Encrypt <pw_sexp>, <source_sexp>, <encrypted_svar>, 82
-End, 57
+Do - Until<lexp>, 54
+Echo.off, 83
+Echo.on, 83
+Email.send <recipient_sxep>, <subject_sexp>, <body_sexp>, 91
+Encrypt <pw_sexp>, <source_sexp>, <encrypted_svar>, 83
+End, 58
 Ends_with ( <Look_for_sexp>, <look_in_sexp>), 46
-Exit, 57
+Exit, 58
 EXP(<nexp>), 44
-F_n.break, 52
-File.Delete <Boolean_nvar>, <Path_sexp>, 65
-File.Dir <Path_sexp>, Array[], 65
-File.Exists <Boolean_nvar>, <Path_sexp>, 65
-File.Mkdir <Path_sexp>, 65
+F_n.break, 53
+File.Delete <Boolean_nvar>, <Path_sexp>, 66
+File.Dir <Path_sexp>, Array[], 66
+File.Exists <Boolean_nvar>, <Path_sexp>, 66
+File.Mkdir <Path_sexp>, 66
 File.Rename <Old_Path_sexp>, <New_Path_sexp>, 66
-File.root <svar>, 66
-File.Size <size_nvar>, <Path_sexp>, 66
-FLOOR(<nexp>), 43
-Fn.def  name|name$( {nvar}|{svar}|Array[]|Array$[], ….. {nvar}|{svar}|Array[]|Array$[]), 50
-Fn.end, 51
-Fn.rtn <sexp>|<nexp>, 51
+File.root <svar>, 67
+File.Size <size_nvar>, <Path_sexp>, 67
+FLOOR(<nexp>), 44
+Fn.def  name|name$( {nvar}|{svar}|Array[]|Array$[], ….. {nvar}|{svar}|Array[]|Array$[]), 51
+Fn.end, 52
+Fn.rtn <sexp>|<nexp>, 52
 For - To - Step - Next, 52
-FORMAT$(<Pattern_sexp>,  <nexp>  ), 48
-Ftp.cd <new_directory_sexp>, 77
-Ftp.Close, 77
-Ftp.delete <filename_sexp>, 78
-Ftp.dir <list_navar>, 77
-Ftp.get <source_sexp>, <destination_sexp>, 77
-Ftp.mkdir <directory_sexp>, 78
-Ftp.open <url_sexp>, <port_nexp>, <user_sexp>, <pw_sexp>, 77
-Ftp.put <source_sexp>, <destination_sexp>, 77
-Ftp.rename <old_filename_sexp>, <new_filename_sexp>, 78
-Ftp.rmdir <directory_sexp>, 78
-getError$(), 47
-GoSub<label>, Return, 53
-GoTo <label>, 54
-Gps.accuracy <nvar>, 116
-Gps.altitude <nvar>, 116
-Gps.bearing <nvar>, 116
-Gps.close, 116
-Gps.latitude <nvar>, 116
-Gps.longitude <nvar>, 116
-Gps.open, 116
-Gps.provider <svar>, 116
-Gps.speed <nvar>, 116
-Gps.time <nvar>, 116
-Gr.arc <Object_number_nvar>, left, top, right, bottom, start_angle, sweep_angle, fill_mode, 99
-Gr.bitmap.create <bitmap_ptr_nvar>, width, height, 103
-Gr.bitmap.crop <new_bitmap_object_nvar>, <source_bitmap_object_nexp>, <x_nexp>, <y_nexp>, <width_nexp>, <height_nexp>, 104
-Gr.bitmap.delete <bitmap_ptr_nvar>, 104
-Gr.bitmap.draw <object_ptr_nvar>, <bitmap_ptr_nvar>, x , y, 105
-Gr.bitmap.drawinto.end, 105
-Gr.bitmap.drawinto.start <bitmap_ptr_nvar>, 105
-gr.bitmap.load bitmap_ptr, File_name$, 103
-Gr.bitmap.save <bitmap_ptr_nvar>, <filename_sexp>{, <quality_nexp>}, 105
-Gr.bitmap.scale <new_bitmap_ptr_nvar>, <bitmap_ptr_nvar>, width, height {, <smoothing_lvar> }, 104
-Gr.bitmap.size <bitmap_ptr_nvar>, width, height, 104
-Gr.bounded.touch touched, left, top, right, bottom, 101
-Gr.bounded.touch2 touched, left, top, right, bottom, 101
-Gr.brightness <nexp>, 98
-Gr.camera.autoshoot <bm_ptr_nvar>{, <flash_ mode_nexp>}, 107
-Gr.camera.manualShoot <bm_ptr_nvar>{, <flash_ mode_nexp>}, 107
-Gr.camera.select 1|2, 106
-Gr.camera.shoot <bm_ptr_nvar>, 107
-Gr.circle <Object_number_nvar>, x, y, radius, 99
-Gr.clip <object__ptr_nvar>,  <left_nexp>,<top_nexp>,  <right_nexp>,  <bottom_nexp>{,<RO_nexp>}, 110
-Gr.close, 98
-Gr.cls, 97
-Gr.color alpha, red, green, blue, style, 95
-Gr.front  flag, 98
-Gr.get.bmpixel <bitmap_ptr_nvar>, x, y, alpha, red, green, blue, 105
-Gr.get.pixel x, y, alpha, red, green, blue, 108
-Gr.get.position <object_ptr_nvar>,  x, y, 108
-Gr.get.textbounds <sexp>, left, top, right, bottom, 102
-Gr.get.value <object_ptr_nvar>, tag$, value, 108
-Gr.get.value Text_Object_number, “text”, theText$, 108
-Gr.hide Object_number, 100
-Gr.line <Object_number_nvar>, x1, y1, x2, y2, 98
-Gr.modify <object_ptr_nvar>, parameter_name$, {value|value$}, 108
-Gr.NewDL Array[], 111
-Gr.onGRTouch.Resume, 102
-Gr.open alpha, red, green, blue {, ShowStatusBar {, Orientation}}, 95
-Gr.orientation <nexp>, 96
-Gr.oval <Object_number_nvar>, left, top, right, bottom, 99
-Gr.paint.get <object_ptr_nvar>, 109
-Gr.poly <Object_number_nvar>, List_pointer {,x,y}, 100
-Gr.rect <Object_number_nvar>, left, top, right, bottom, 98
-Gr.render, 97
-Gr.rotate.end {<obj_nvar>}, 106
-Gr.rotate.start angle, x, y{,<obj_nvar>}, 105
-Gr.save <filename_sexp> {,<quality_nexp>}, 108
-Gr.scale x_factor, y_factor, 97
-Gr.screen width, height{, density }, 97
-Gr.screen.to.bitmap <bm_ptr_nvar>, 107
-Gr.set.AntiAlias <lexp>, 96
-Gr.set.pixels <Object_number_nvar>, Pixels[] {,x,y}, 99
-Gr.set.stroke <nexp>, 96
-Gr.show Object_number, 100
-Gr.StatusBar.Show  <nexp>, 96
-Gr.text.align type, 102
-Gr.text.bold <lexp>, 103
-Gr.text.draw <Object_number_nvar>, <x_nexp>, <y_nexp>, <text_object_sexp>, 103
-Gr.text.size <nexp>, 102
-Gr.text.skew <nexp>, 103
-Gr.text.strike <lexp>, 103
-Gr.text.typeface <nexp>, 102
-Gr.text.underline <lexp>, 103
-Gr.text.width <nvar>, <sexp>, 102
-Gr.touch touched, x, y, 101
-Gr.touch2 touched, x, y, 101
-Gr_collision ( <object_1_nvar>, <object_2_nvar>), 46, 109
-GrabFile <result_svar>,<path_sexp>, 68
-GrabURL <result_svar>,<url_sexp>, 68
-Graburl ip$, “http://automation.whatismyip.com/n09230945.asp”, 75
-Headset <state_nvar>, <type_svar>, <mic_nvar>, 89
-HEX$(<nexp>), 48
+FORMAT$(<Pattern_sexp>,  <nexp>  ), 49
+Ftp.cd <new_directory_sexp>, 78
+Ftp.Close, 78
+Ftp.delete <filename_sexp>, 79
+Ftp.dir <list_navar>, 78
+Ftp.get <source_sexp>, <destination_sexp>, 78
+Ftp.mkdir <directory_sexp>, 79
+Ftp.open <url_sexp>, <port_nexp>, <user_sexp>, <pw_sexp>, 78
+Ftp.put <source_sexp>, <destination_sexp>, 78
+Ftp.rename <old_filename_sexp>, <new_filename_sexp>, 79
+Ftp.rmdir <directory_sexp>, 79
+GETERROR$(), 48
+GoSub<label>, Return, 54
+GoTo <label>, 55
+Gps.accuracy <nvar>, 118
+Gps.altitude <nvar>, 118
+Gps.bearing <nvar>, 118
+Gps.close, 118
+Gps.latitude <nvar>, 118
+Gps.longitude <nvar>, 118
+Gps.open, 118
+Gps.provider <svar>, 118
+Gps.speed <nvar>, 118
+Gps.time <nvar>, 118
+Gr.arc <Object_number_nvar>, left, top, right, bottom, start_angle, sweep_angle, fill_mode, 101
+Gr.bitmap.create <bitmap_ptr_nvar>, width, height, 105
+Gr.bitmap.crop <new_bitmap_object_nvar>, <source_bitmap_object_nexp>, <x_nexp>, <y_nexp>, <width_nexp>, <height_nexp>, 106
+Gr.bitmap.delete <bitmap_ptr_nvar>, 106
+Gr.bitmap.draw <object_ptr_nvar>, <bitmap_ptr_nvar>, x , y, 107
+Gr.bitmap.drawinto.end, 107
+Gr.bitmap.drawinto.start <bitmap_ptr_nvar>, 107
+gr.bitmap.load bitmap_ptr, File_name$, 106
+Gr.bitmap.save <bitmap_ptr_nvar>, <filename_sexp>{, <quality_nexp>}, 107
+Gr.bitmap.scale <new_bitmap_ptr_nvar>, <bitmap_ptr_nvar>, width, height {, <smoothing_lvar> }, 106
+Gr.bitmap.size <bitmap_ptr_nvar>, width, height, 106
+Gr.bounded.touch touched, left, top, right, bottom, 103
+Gr.bounded.touch2 touched, left, top, right, bottom, 104
+Gr.brightness <nexp>, 100
+Gr.camera.autoshoot <bm_ptr_nvar>{, <flash_ mode_nexp>}, 109
+Gr.camera.manualShoot <bm_ptr_nvar>{, <flash_ mode_nexp>}, 110
+Gr.camera.select 1|2, 109
+Gr.camera.shoot <bm_ptr_nvar>, 109
+Gr.circle <Object_number_nvar>, x, y, radius, 101
+Gr.clip <object__ptr_nvar>,  <left_nexp>,<top_nexp>,  <right_nexp>,  <bottom_nexp>{,<RO_nexp>}, 112
+Gr.close, 100
+Gr.cls, 100
+Gr.color alpha, red, green, blue, style, 98
+Gr.front  flag, 100
+Gr.get.bmpixel <bitmap_ptr_nvar>, x, y, alpha, red, green, blue, 107
+Gr.get.pixel x, y, alpha, red, green, blue, 110
+Gr.get.position <object_ptr_nvar>,  x, y, 110
+Gr.get.textbounds <sexp>, left, top, right, bottom, 104
+Gr.get.value <object_ptr_nvar>, tag$, value, 110
+Gr.get.value Text_Object_number, “text”, theText$, 110
+GR.GetDL <dl_array[]> {, <keep_all_objects_lexp> }, 113
+Gr.hide Object_number, 102
+Gr.line <Object_number_nvar>, x1, y1, x2, y2, 100
+Gr.modify <object_ptr_nvar>, parameter_name$, {value|value$}, 110
+Gr.NewDL <dl_array[]>, 113
+Gr.onGRTouch.Resume, 104
+Gr.open alpha, red, green, blue {, ShowStatusBar {, Orientation}}, 97
+Gr.orientation <nexp>, 98
+Gr.oval <Object_number_nvar>, left, top, right, bottom, 101
+Gr.paint.get <object_ptr_nvar>, 111
+Gr.poly <Object_number_nvar>, List_pointer {,x,y}, 102
+Gr.rect <Object_number_nvar>, left, top, right, bottom, 101
+Gr.render, 99
+Gr.rotate.end {<obj_nvar>}, 108
+Gr.rotate.start angle, x, y{,<obj_nvar>}, 108
+Gr.save <filename_sexp> {,<quality_nexp>}, 110
+Gr.scale x_factor, y_factor, 99
+Gr.screen width, height{, density }, 99
+Gr.screen.to_bitmap <bm_ptr_nvar>, 110
+Gr.set.AntiAlias <lexp>, 98
+Gr.set.pixels <Object_number_nvar>, Pixels[] {,x,y}, 101
+Gr.set.stroke <nexp>, 98
+Gr.show Object_number, 102
+Gr.StatusBar.Show  <nexp>, 99
+Gr.text.align type, 104
+Gr.text.bold <lexp>, 105
+Gr.text.draw <Object_number_nvar>, <x_nexp>, <y_nexp>, <text_object_sexp>, 105
+Gr.text.size <nexp>, 104
+Gr.text.skew <nexp>, 105
+Gr.text.strike <lexp>, 105
+Gr.text.typeface <nexp>, 105
+Gr.text.underline <lexp>, 105
+Gr.text.width <nvar>, <sexp>, 104
+Gr.touch touched, x, y, 103
+Gr.touch2 touched, x, y, 104
+Gr_collision ( <object_1_nvar>, <object_2_nvar>), 46, 112
+GrabFile <result_svar>,<path_sexp>, 69
+GrabURL <result_svar>,<url_sexp>, 69
+Graburl ip$, “http://automation.whatismyip.com/n09230945.asp”, 76
+Headset <state_nvar>, <type_svar>, <mic_nvar>, 91
+HEX$(<nexp>), 49
 HEX(<sexp>), 45
-Home, 90
-Html.clear.cache, 72
+Home, 92
+Html.clear.cache, 73
 Html.clear.history, 73
-Html.close, 72
-Html.get.datalink <data_svar>, 71
-Html.go.back, 72
-Html.go.forward, 72
-Html.load.string <html_sexp>, 71
+Html.close, 73
+Html.get.datalink <data_svar>, 72
+Html.go.back, 73
+Html.go.forward, 73
+Html.load.string <html_sexp>, 72
 Html.load.url <file_sexp>, 71
-Html.open {<Show_status_bar_nexp>}, 70
-Html.post <url _sexp>, <list_nexp>, 71
-Http.post url$, list, result$, 88
+Html.open {<Show_status_bar_nexp>}, 71
+Html.post <url _sexp>, <list_nexp>, 72
+Http.post url$, list, result$, 90
 HYPOT(<nexp_x>, <nexp_y), 44
-If  - Else -Elseif- Endif, 51
-Include FileNamePath, 85
-Inkey$ <svar>, 63
-Input <Prompt_sexp>, <nvar>|<svar>, {<Default_sexp>|<Default_nexp>}, 62
+If  - Else -Elseif- Endif, 52
+Include FileNamePath, 86
+Inkey$ <svar>, 64
+Input <Prompt_sexp>, <nvar>|<svar>, {<Default_sexp>|<Default_nexp>}, 63
 Is_In(<Search_for_sexp>, <Search_in_sexp>{,<start_nexp>}, 46
-Kb.hide, 64
+Kb.hide, 65
 Kb.toggle, 64
-Key.Resume, 57
-LEFT$ (<sexp>, <nexp>), 47
+Key.Resume, 58
+LEFT$ (<sexp>, <nexp>), 48
 LEN(<sexp>), 45
-LET, 41
+LET, 42
 List.add <pointer_nexp>, <nexp>{,<nexp>..,<nexp>}, 34
-List.add.array  <destination_list_pointer_nexp>,Array$[]|Array[], 34
-List.add.list <destination_list_pointer_nexp>, <source_list_pointer_nexp>, 34
-List.clear <pointer_nexp>, 35
+List.add.array  <destination_list_pointer_nexp>,Array$[]|Array[], 35
+List.add.list <destination_list_pointer_nexp>, <source_list_pointer_nexp>, 35
+List.clear <pointer_nexp>, 36
 List.create  <N|S>, <pointer_nvar>, 34
 List.create  N|S, <pointer_nvar>, 34
 List.get <pointer_nexp>,<index_nexp>, <svar>|<nvar>, 35
 List.insert <pointer_nexp>,<index_nexp>, <sexp>|<nexp>, 35
 List.remove <pointer_nexp>,<index_nexp>, 35
-List.replace <pointer_nexp>,<index_nexp>, <sexp>|<nexp>, 34
-List.search <pointer_nexp>, value|value$, <result_nvar>{,<start_nexp>}, 35
-List.size <pointer_nexp>, <nvar>, 35
+List.replace <pointer_nexp>,<index_nexp>, <sexp>|<nexp>, 35
+List.search <pointer_nexp>, value|value$, <result_nvar>{,<start_nexp>}, 36
+List.size <pointer_nexp>, <nvar>, 36
 List.ToArray <pointer_nexp>, Array$[] | Array[], 36
-List.type <pointer_nexp>, <svar>, 35
-Lists, 33
+List.type <pointer_nexp>, <svar>, 36
+Lists, 34
 LOG(<nexp>), 44
 LOG10(<nexp>), 44
-LOWER$(<sexp>), 48
-MenuKey.Resume, 57
-MID$(<sexp>, <start_nexp>, <Count_nexp>}), 47
-MOD(<nexp1>, <nexp2>), 43
-MyPhoneNumber <svar>, 88
-Notify <Title_sexp>,< Subtitle_sexp>,<alert_sexp>,<wait_nexp>, 89
-Numbers, 27
-OCT$(<nexp>, 48
+LOWER$(<sexp>), 49
+MenuKey.Resume, 58
+MID$(<sexp>, <start_nexp>, <Count_nexp>}), 48
+MOD(<nexp1>, <nexp2>), 44
+MyPhoneNumber <svar>, 90
+Notify <Title_sexp>,< Subtitle_sexp>,<alert_sexp>,<wait_nexp>, 91
+Numbers, 28
+OCT$(<nexp>, 49
 OCT(<sexp>), 45
-OnBackGround:, 90
-OnBackKey:, 56
-OnBTReadReady:, 80
-OnConsoleTouch:, 56
+OnBackGround:, 92
+OnBackKey:, 57
+OnBTReadReady:, 81
+OnConsoleTouch:, 57
 OnError:, 56
-OnGRTouch:, 102
-OnKeyPress:, 57
+OnGRTouch:, 104
+OnKeyPress:, 58
 OnMenuKey:, 57
-OnTimer:, 84
-Pause <ticks_nexp>, 85
-Phone.call <sexpr>, 88
-Phone.rcv.init, 88
-Phone.rcv.next  <state_nvar>, <number_svar>, 88
-Pointer, 32
-Popup <message_sexp>, <x_nexp>, <Y_nexp>, <duration_nexp>, 85
+OnTimer:, 85
+Pause <ticks_nexp>, 86
+Phone.call <sexpr>, 90
+Phone.rcv.init, 90
+Phone.rcv.next  <state_nvar>, <number_svar>, 90
+Pointer, 33
+Popup <message_sexp>, <x_nexp>, <Y_nexp>, <duration_nexp>, 86
 POW(<nexp1>, <nexp2>), 44
 Print <sexp>|<nexp> {,|;} . . . . <sexp>|<nexp>{,|;}, 62
 Queues, 39
 RANDOMIZE(<nexp>), 43
-Read.data <number>|<string> {,<number>|<string>…,<number>|<string>}, 57
-Read.from <nexp>, 58
+Read.data <number>|<string> {,<number>|<string>…,<number>|<string>}, 58
+Read.from <nexp>, 59
 Read.next  <svar>|<nvar>{,<svar>|<nvar>… , <svar>|<nvar>}, 58
 REPLACE$( <target_sexp>, <argument_sexp>, <replace_sexp>), 48
 RIGHT$(<sexp>, <nexp>), 48
-RND(), 43
+RND(), 44
 ROUND(<nexp>), 44
-Run, 25
-Run <filename_sexp> {, <data_sexp>}, 54
-Select <selection_nvar>, < Array$[]>|<list_nexp>, <message_sexp> {,<press_nvar>}, 85
-Sensors.close, 118
-Sensors.list list$[], 117
-Sensors.open t1 {t2,...,tn}, 117
-Sensors.read sensor_type, p1, p2, p3, 118
-SHIFT (<value_nexp>, <bits_nexp>), 45
+Run, 26
+Run <filename_sexp> {, <data_sexp>}, 55
+Select <selection_nvar>, < Array$[]>|<list_nexp>, <message_sexp> {,<press_nvar>}, 86
+Sensors.close, 120
+Sensors.list list$[], 119
+Sensors.open t1 {t2,...,tn}, 119
+Sensors.read sensor_type, p1, p2, p3, 120
+SHIFT (<value_nexp>, <bits_nexp>), 46
 SIN(<nexp>), 44
-SINH(<nexp>), 44
-Sms.rcv.init, 89
-Sms.rcv.next <svar>, 89
-Sms.send <number_sexp>, <message_sexp>, 89
-Socket.client.connect <server_ip_sexp>, <port_nexp>, 73
-Socket.client.read.file  <fw_nexp>, 74
-Socket.client.read.line <line_svar>, 74
-Socket.client.read.ready <nvar>, 74
-Socket.client.server.ip <svar>, 74
-Socket.client.status <status_nvar>, 74
-Socket.client.write.bytes <sexp>, 74
-Socket.client.write.file  <fr_nexp>, 74
-Socket.client.write.line <line_sexp>, 74
-Socket.myip  <svar>, 75
-Socket.server.client.ip <nvar>, 76
-Socket.server.close, 76
-Socket.server.connect {<wait_lexp>}, 75
-Socket.server.create <port_nexp>, 75
-Socket.server.disconnect, 76
-Socket.server.read.line <svar>, 75
-Socket.server.read.ready <nvar>, 76
-Socket.server.status <status_nvar>, 75
-Socket.server.write.bytes <sexp>, 76
-Socket.server.write.file  <fr_nexp>, 76
-Socket.server.write.line <sexp>, 76
-Soundpool.load <soundID_nvar>, <file_path_sexp>, 114
-Soundpool.open <MaxStreams_nexp>, 114
-Soundpool.pause <streamID_nexp>, 115
-Soundpool.play streamID(nvar), soundID, right_volume, left_volume, priority, loop, rate, 114
-Soundpool.release, 115
-Soundpool.resume <streamID_nexp>, 115
-Soundpool.setpriority <streamID_nexp>, <priority_nexp>, 115
-Soundpool.setrate <streamID_nexp>, <rate_nexp>, 115
-Soundpool.setvolume <streamID_nexp>, <leftVolume_nexp>, <rightVolume_nexp>, 115
-Soundpool.stop <streamID_nexp>, 115
-Soundpool.unload <soundID_nexp>, 114
-Split <result_Array$[]>, <source_sexp>, <test_sexp>, 86
-Sql.close DB_Pointer, 91
-Sql.delete DB_Pointer, Table_Name$, Where$, 93
-Sql.drop_table DB_Pointer, Table_Name$, 91
-Sql.exec DB_Pointer, Command$, 93
-Sql.insert DB_Pointer, Table_Name$, C1$, V1$, C2$, V2$,...,CN$, VN$, 92
-Sql.new_table DB_Pointer, DB_Name$, Table_Name$, C1$, C2$..,CN$, 91
-Sql.next Done, Cursor, C1V$, C2V$, .., CNV$, 93
-Sql.open DB_Pointer, DB_Name$, 91
-Sql.query Cursor, DB_Pointer, Table_Name$,  Columns$, Where$, Order$, 92
-Sql.query.length <Length_nvar> <Cursor_nvar>, 92
-Sql.query.position <Position_nvar> <Cursor_nvar>, 93
-Sql.raw_query Cursor, DB_Pointer, Query$, 93
-Sql.update DB_Pointer, Table_Name$, C1$, V1$, C2$, V2$,...,CN$, VN$: Where$, 93
+SINH(<nexp>), 45
+Sms.rcv.init, 91
+Sms.rcv.next <svar>, 91
+Sms.send <number_sexp>, <message_sexp>, 91
+Socket.client.connect <server_ip_sexp>, <port_nexp>, 74
+Socket.client.read.file  <fw_nexp>, 75
+Socket.client.read.line <line_svar>, 75
+Socket.client.read.ready <nvar>, 75
+Socket.client.server.ip <svar>, 75
+Socket.client.status <status_nvar>, 75
+Socket.client.write.bytes <sexp>, 75
+Socket.client.write.file  <fr_nexp>, 75
+Socket.client.write.line <line_sexp>, 75
+Socket.myip  <svar>, 76
+Socket.server.client.ip <nvar>, 77
+Socket.server.close, 77
+Socket.server.connect {<wait_lexp>}, 76
+Socket.server.create <port_nexp>, 76
+Socket.server.disconnect, 77
+Socket.server.read.line <svar>, 76
+Socket.server.read.ready <nvar>, 77
+Socket.server.status <status_nvar>, 76
+Socket.server.write.bytes <sexp>, 77
+Socket.server.write.file  <fr_nexp>, 77
+Socket.server.write.line <sexp>, 77
+Soundpool.load <soundID_nvar>, <file_path_sexp>, 116
+Soundpool.open <MaxStreams_nexp>, 116
+Soundpool.pause <streamID_nexp>, 117
+Soundpool.play streamID(nvar), soundID, right_volume, left_volume, priority, loop, rate, 116
+Soundpool.release, 117
+Soundpool.resume <streamID_nexp>, 117
+Soundpool.setpriority <streamID_nexp>, <priority_nexp>, 117
+Soundpool.setrate <streamID_nexp>, <rate_nexp>, 117
+Soundpool.setvolume <streamID_nexp>, <leftVolume_nexp>, <rightVolume_nexp>, 117
+Soundpool.stop <streamID_nexp>, 117
+Soundpool.unload <soundID_nexp>, 116
+Split <result_Array$[]>, <source_sexp> {, <test_sexp>}, 87
+Sql.close DB_Pointer, 93
+Sql.delete DB_Pointer, Table_Name$, Where$, 95
+Sql.drop_table DB_Pointer, Table_Name$, 94
+Sql.exec DB_Pointer, Command$, 95
+Sql.insert DB_Pointer, Table_Name$, C1$, V1$, C2$, V2$,...,CN$, VN$, 94
+Sql.new_table DB_Pointer, DB_Name$, Table_Name$, C1$, C2$..,CN$, 93
+Sql.next Done, Cursor, C1V$, C2V$, .., CNV$, 95
+Sql.open DB_Pointer, DB_Name$, 93
+Sql.query Cursor, DB_Pointer, Table_Name$,  Columns$, Where$, Order$, 94
+Sql.query.length <Length_nvar> <Cursor_nvar>, 95
+Sql.query.position <Position_nvar> <Cursor_nvar>, 95
+Sql.raw_query Cursor, DB_Pointer, Query$, 96
+Sql.update DB_Pointer, Table_Name$, C1$, V1$, C2$, V2$,...,CN$, VN$: Where$, 95
 SQR(<nexp>), 43
 Stack.clear <ptr_nexep>, 39
 Stack.create N|S, <ptr_nvar>, 38
 Stack.IsEmpty <ptr_nexep>, <nvar>, 39
-Stack.peek <ptr_nexep>, <nvar>|<svar>, 38
-Stack.pop <ptr_nexep>, <nvar>|<svar>, 38
-Stack.push <ptr_nexep>, <nexp>|<sexp>, 38
-Stack.type <ptr_nexep>, <svar>, 38
+Stack.peek <ptr_nexep>, <nvar>|<svar>, 39
+Stack.pop <ptr_nexep>, <nvar>|<svar>, 39
+Stack.push <ptr_nexep>, <nexp>|<sexp>, 39
+Stack.type <ptr_nexep>, <svar>, 39
 Stacks, 38
 Starts_with (<Search_for_sexp>, <Search_in_sexp>{,<start_nexp>}, 46
-STR$(<sexp>), 48
+STR$(<sexp>), 49
 Strings, 28
-Stt.listen, 83
-Stt.results <string_list_ptr_nvar>, 83
-Su.close, 118
-Su.open, 118
-Su.read.line <svar>, 118
-Su.read.ready <nvar>, 118
-Su.write <sexp>, 118
-Sw.begin <nexp>|<sexp>, 55
-Sw.break, 55
-Sw.case <numeric_constant>|<string_constant>, 55
+Stt.listen, 84
+Stt.results <string_list_ptr_nvar>, 84
+Su.close, 121
+Su.open, 121
+Su.read.line <svar>, 121
+Su.read.ready <nvar>, 121
+Su.write <sexp>, 121
+Sw.begin <nexp>|<sexp>, 56
+Sw.break, 56
+Sw.case <numeric_constant>|<string_constant>, 56
 Sw.default, 56
 Sw.end, 56
-Swap <nvar_a>|<svar_a>, <nvar_b>, <svar_b>, 81
+Swap <nvar_a>|<svar_a>, <nvar_b>, <svar_b>, 82
+System.close, 120
+System.open, 120
+System.read.line <svar>, 120
+System.read.ready <nvar>, 120
+System.write <sexp>, 120
 TAN(<nexp>), 44
-Text.close <File_table_nvar>, 67
-Text.input <savr>{, <sexp>}, 63
-Text.open {r|w|a}, <File_table_nvar>, <Path_sexp>, 66
-Text.position.get  <File_table_nvar>, <position_nvar>, 67
+Text.close <File_table_nvar>, 68
+Text.input <svar>{, { <text_sexp>} , <title_sexp> }, 64
+Text.open {r|w|a}, <File_table_nvar>, <Path_sexp>, 67
+Text.position.get  <File_table_nvar>, <position_nvar>, 68
 Text.position.set <File_table_nvar>, <position_nexp>, 68
-Text.readln <File_table_nvar>, <Line_svar>, 67
-Text.writeln <File_table_nexp>, <parms same as print>, 67
-TGet <result_svar>, <prompt_sexp>, 63
-Time Year$, Month$, Day$, Hour$, Minute$, Second$, 86
-Timer.Clear, 84
-Timer.Resume, 84
-Timer.set <interval_nexp>, 84
-TODEGREES(<nexp>), 44
-Tone <frequency_nexp>, <duration_nexp>, 86
+Text.readln <File_table_nvar>, <Line_svar>, 68
+Text.writeln <File_table_nexp>, <parms same as print>, 68
+TGet <result_svar>, <prompt_sexp> {,  <title_sexp>}, 64
+Time {<time_nexp>,} Year$, Month$, Day$, Hour$, Minute$, Second$, WeekDay, isDST, 87
+TIME(), 47
+TIME(<year_exp>, <month_exp>, <day_exp>, <hour_exp>, <minute_exp>, <second_exp>), 47
+Timer.Clear, 85
+Timer.Resume, 85
+Timer.set <interval_nexp>, 85
+TimeZone.Get <tz_svar>, 88
+TimeZone.List <tz_list_pointer_nvar>, 88
+TimeZone.Set { <tz_sexp> }, 88
+TODEGREES(<nexp>), 45
+Tone <frequency_nexp>, <duration_nexp>, 89
 TORADIANS(<nexp>), 45
-Tts.init, 82
-Tts.speak <sexp>, 82
+Tts.init, 83
+Tts.speak <sexp>, 83
 UCODE(<sexp>), 46
-UnDim Array[], 30
-UPPER$(<sexp>), 48
+UnDim Array[], 31
+UPPER$(<sexp>), 49
 VAL( <sexp> ), 45
-VERSION$(), 48
-Vibrate <pattern_Array[]>,<nexp>, 87
+VERSION$(), 49
+Vibrate <pattern_Array[]>,<nexp>, 89
 W_r.break, 53
-WakeLock <code_nexp>, 87
-While <lexp> - Repeat, 52
+WakeLock <code_nexp>, 89
+While <lexp> - Repeat, 53
+WORD$(<source_sexp>, <n_nexp> {, <delimiter_sexp>}), 49
