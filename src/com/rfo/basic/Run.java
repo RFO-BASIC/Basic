@@ -3685,9 +3685,12 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			theValueStack.push(EvalNumericExpressionValue);
 		}
 		else if (isNext('(')) {								// Handle possible (
-				if (!evalNumericExpression()){return false;} // if ( then eval expression inside the parens
-				theValueStack.push(EvalNumericExpressionValue);
-				if (!isNext(')')) {return false;}
+			String holdPWK = PossibleKeyWord;
+			PossibleKeyWord = "";
+			if (!evalNumericExpression()){return false;} 	// if ( then eval expression inside the parens
+			theValueStack.push(EvalNumericExpressionValue);
+			PossibleKeyWord = holdPWK;
+			if (!isNext(')')) {return false;}
 		}
 		else {
 			return false;									// nothing left, fail
@@ -4191,17 +4194,20 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	int start = 1;
 				if (isNext(',')) {
 					if (!evalNumericExpression()) return false;
-					d1 = EvalNumericExpressionValue;
-					start = (int) d1;
+					start = EvalNumericExpressionValue.intValue();
 					if (start < 1 ){
 						RunTimeError("Start value must be >= 1");
 						return false;
 					}
 	        	}
-	        	if (start > Search_in.length()) start = Search_in.length();
-	        	start = start - 1;
-	        	int k = Search_in.indexOf( Search_for, start);      // Do the search
-	        	d1 = (double) k+1 ;                         		// Make results one based
+	        	start = start - 1;									// Make start index zero-based
+
+	        	if (start < Search_in.length()) {					// If starting inside the string
+					int k = Search_in.indexOf(Search_for, start);	// Do the search
+					d1 = (double) k+1 ;								// Make results one based
+				} else {
+					d1 = 0.0;										// else "not found"
+				}
 	        	theValueStack.push(d1);                     		// Push result onto stack
 				break;
 			
@@ -4277,10 +4283,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 			case MFcollision:
 				if (!evalNumericExpression()){return false;}	// Get the first object number
-	        	int Object1 = (int)(double)EvalNumericExpressionValue;
+	        	int Object1 = EvalNumericExpressionValue.intValue();
 				if (!isNext(',')) { return false; }
 				if (!evalNumericExpression()){return false;}	// Get the second object number
-	        	int Object2 = (int)(double)EvalNumericExpressionValue;
+	        	int Object2 = EvalNumericExpressionValue.intValue();
 
 				double ff = gr_collide(Object1, Object2);
 				if (ff == -1) return false;							// -1 is run time error
@@ -4333,10 +4339,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			
 			case MFshift:
 				if (!evalNumericExpression()){return false;}	// Get the value to shift
-	        	int xvalue = (int)(double)EvalNumericExpressionValue;
+	        	int xvalue = EvalNumericExpressionValue.intValue();
 				if (!isNext(',')) { return false; }
 				if (!evalNumericExpression()){return false;}	// Get the shift amount and direction
-	        	int bits = (int)(double)EvalNumericExpressionValue;
+	        	int bits = EvalNumericExpressionValue.intValue();
 
 				int result = 0;
 				if (bits < 0){
@@ -4758,17 +4764,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				break;
 			case SFhex:
 				if (!evalNumericExpression()){SyntaxError();return false;}
-				int value = (int) (double) EvalNumericExpressionValue;
+				int value = EvalNumericExpressionValue.intValue();
 				StringConstant = Integer.toHexString(value);
 				break;
 			case SFoct:
 				if (!evalNumericExpression()){SyntaxError();return false;}
-				value = (int) (double) EvalNumericExpressionValue;
+				value = EvalNumericExpressionValue.intValue();
 				StringConstant = Integer.toOctalString(value);
 				break;
 			case SFbin:
 				if (!evalNumericExpression()){SyntaxError();return false;}
-				value = (int) (double) EvalNumericExpressionValue;
+				value = EvalNumericExpressionValue.intValue();
 				StringConstant = Integer.toBinaryString(value);
 				break;
 			default:
@@ -5779,7 +5785,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private boolean executeREAD_FROM(){
 		if (!evalNumericExpression()) return false;
-		int newIndex = (int) (double) EvalNumericExpressionValue;
+		int newIndex = EvalNumericExpressionValue.intValue();
 		--newIndex;
 		if (newIndex < 0 || newIndex >= readData.size()) {
 			RunTimeError("Index out of range");
@@ -8490,7 +8496,7 @@ private boolean doUserFunction(){
 		  
 		  if (!evalNumericExpression())return false;							// Get x
 		  
-		  int code  = (int) (double) EvalNumericExpressionValue;
+		  int code  = EvalNumericExpressionValue.intValue();
 		  
 		  if (theWakeLock != null){
 			  theWakeLock.release();
@@ -8685,7 +8691,7 @@ private boolean doUserFunction(){
 		  ++LineIndex;
 		  
 		   if (!evalNumericExpression())return false;
-		   int theListIndex = (int) (double)EvalNumericExpressionValue;
+		   int theListIndex = EvalNumericExpressionValue.intValue();
 		   if (theListIndex <1 || theListIndex>= theLists.size()){
 			   RunTimeError("Invalid list pointer");
 			   return false;
@@ -9450,7 +9456,7 @@ private boolean doUserFunction(){
 	  public boolean execute_gr_bitmap_drawinto_start(){
 		   if (!evalNumericExpression()) return false;					// 
 		   if (!checkEOL()) return false;
-		   int q = (int) (double) EvalNumericExpressionValue;
+		   int q = EvalNumericExpressionValue.intValue();
 		   if (q<1 | q >= BitmapList.size()){
 			   RunTimeError("Invalid Bitmap Pointer");
 			   return false;			   
@@ -9616,14 +9622,14 @@ private boolean doUserFunction(){
 			   if (ExecutingLineBuffer.charAt(LineIndex) == ','){
 				  ++LineIndex;
 				  if (!evalNumericExpression())return false;
-				  ShowStatusBar = (int)(double) EvalNumericExpressionValue;
+				  ShowStatusBar = EvalNumericExpressionValue.intValue();
 			   }
 			   
 			   GRorientation = 0;
 			   if (ExecutingLineBuffer.charAt(LineIndex) == ','){
 					  ++LineIndex;
 					  if (!evalNumericExpression())return false;
-					  GRorientation = (int)(double) EvalNumericExpressionValue;
+					  GRorientation = EvalNumericExpressionValue.intValue();
 				   }
 
 			   
@@ -9770,7 +9776,7 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_gr_stroke_width(){
 		   if (!evalNumericExpression())return false;								// Get the width
-		   float width = (float) (double) EvalNumericExpressionValue;
+		   float width = EvalNumericExpressionValue.floatValue();
 		   if (width<0){
 			   RunTimeError("Width must be >= 0");
 			   return false;
@@ -10506,7 +10512,7 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_bitmap_delete(){
 		   if (!evalNumericExpression()) return false;					// 
 		   if (!checkEOL()) return false;
-		   int q = (int) (double) EvalNumericExpressionValue;
+		   int q = EvalNumericExpressionValue.intValue();
 		   if (q<1 | q >= BitmapList.size()){
 			   RunTimeError("Invalid Bitmap Pointer");
 			   return false;			   
@@ -10625,7 +10631,7 @@ private boolean doUserFunction(){
 		   ++LineIndex;
 
 		   if (!evalNumericExpression())return false;							// Get source bitmap index
-		   int SourceBitmapIndex = (int) ( double)EvalNumericExpressionValue;
+		   int SourceBitmapIndex = EvalNumericExpressionValue.intValue();
 		   if (SourceBitmapIndex < 0 || SourceBitmapIndex >= BitmapList.size()){
 			   RunTimeError("Invalid Source Bitmap Pointer");
 			   return false;
@@ -10636,22 +10642,22 @@ private boolean doUserFunction(){
 		   ++LineIndex;
 
 		  if (!evalNumericExpression())return false;							// Get x
-		  int x = (int) ( double)EvalNumericExpressionValue;
+		  int x = EvalNumericExpressionValue.intValue();
 		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
 		  ++LineIndex;
 		  
 		  if (!evalNumericExpression())return false;							// Get y
-		  int y = (int) (double) EvalNumericExpressionValue;
+		  int y = EvalNumericExpressionValue.intValue();
 		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
 		  ++LineIndex;
 		  
 		  if (!evalNumericExpression())return false;							// Get width
-		  int width = (int) (double) EvalNumericExpressionValue;
+		  int width = EvalNumericExpressionValue.intValue();
 		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
 		  ++LineIndex;
 
 		  if (!evalNumericExpression())return false;							// Get height
-		  int height = (int) (double) EvalNumericExpressionValue;
+		  int height = EvalNumericExpressionValue.intValue();
 		  if (!checkEOL()) return false;
 		  
 		  
@@ -10728,7 +10734,7 @@ private boolean doUserFunction(){
 		   ++LineIndex;
 
 		   if (!evalNumericExpression()) return false;							// Get the width
-		   int width = (int) (double) EvalNumericExpressionValue;
+		   int width = EvalNumericExpressionValue.intValue();
 		   if (width <= 0 ){
 			   RunTimeError("Width must be >= 0");
 			   return false;
@@ -10737,7 +10743,7 @@ private boolean doUserFunction(){
 		   ++LineIndex;
 
 		   if (!evalNumericExpression()) return false;							// Get the height
-		   int height = (int) (double) EvalNumericExpressionValue;
+		   int height = EvalNumericExpressionValue.intValue();
 		   if (height <= 0 ){
 			   RunTimeError("Height must be >= 0");
 			   return false;
@@ -10873,8 +10879,8 @@ private boolean doUserFunction(){
 
 		  if (!evalNumericExpression())return false; // get the mode (landscape or portrait)							
 			if (!checkEOL()) return false;
-		  double d = EvalNumericExpressionValue;
-		  GR.drawView.SetOrientation((int) (double) d);
+		  int mode = EvalNumericExpressionValue.intValue();
+		  GR.drawView.SetOrientation(mode);
 		  return true;
 	  }
 	  
@@ -10965,7 +10971,7 @@ private boolean doUserFunction(){
 
 	  private boolean execute_gr_get_bmpixel(){
 		  if (!evalNumericExpression()) return false;
-		  int SourceBitmapIndex = (int) (double) EvalNumericExpressionValue;
+		  int SourceBitmapIndex = EvalNumericExpressionValue.intValue();
 		  if (!isNext(',')) { return false; }
 		  
 		   if (SourceBitmapIndex < 0 || SourceBitmapIndex >= BitmapList.size()){
@@ -11094,7 +11100,7 @@ private boolean doUserFunction(){
 			if (isNext(','))											// if there is an optional quality parm
 			{
 				if (!evalNumericExpression())return false;				// evaluate it
-				quality = (int) (double) EvalNumericExpressionValue;
+				quality = EvalNumericExpressionValue.intValue();
 				if (quality < 0 || quality >100){
 					RunTimeError("Quality must be between 0 and 100");
 					return false;
@@ -11209,7 +11215,7 @@ private boolean doUserFunction(){
 			{
 				++LineIndex;
 				if (!evalNumericExpression())return false;				// evaluate it
-				quality = (int) (double) EvalNumericExpressionValue;
+				quality = EvalNumericExpressionValue.intValue();
 				if (quality < 0 || quality >100){
 					RunTimeError("Quality must be between 0 and 100");
 					return false;
@@ -11312,7 +11318,7 @@ private boolean doUserFunction(){
 		   ++LineIndex;
 		   
 		   if (!evalNumericExpression())return false;
-		   int theListIndex = (int) (double)EvalNumericExpressionValue;
+		   int theListIndex = EvalNumericExpressionValue.intValue();
 		   if (theListIndex <1 || theListIndex>= theLists.size()){
 			   RunTimeError("Invalid list pointer");
 			   return false;
@@ -11341,11 +11347,11 @@ private boolean doUserFunction(){
 	  			++LineIndex;
 
 	  			if (!evalNumericExpression()) return false;
-	  			x = (int) (double) EvalNumericExpressionValue;
+	  			x = EvalNumericExpressionValue.intValue();
 	  			if (ExecutingLineBuffer.charAt(LineIndex) != ',') return false;
 	  			++LineIndex;
 	  			if (!evalNumericExpression()) return false;
-	  			y =  (int) (double) EvalNumericExpressionValue;
+	  			y =  EvalNumericExpressionValue.intValue();
 	  		}
 	  		
 	  		aBundle.putInt("x", x);
@@ -11393,7 +11399,7 @@ private boolean doUserFunction(){
 
 		  
 		   if (!evalNumericExpression())return false;						// Get user's choice
-		   int choice = (int) (double)EvalNumericExpressionValue;
+		   int choice = EvalNumericExpressionValue.intValue();
 		   if (choice != BACK && choice != FRONT) {
 			   RunTimeError("Select value must be 1 (Back) or 2 (Front).");
 			   return false;
@@ -11465,7 +11471,7 @@ private boolean doUserFunction(){
 			   if (ExecutingLineBuffer.charAt(LineIndex) == ','){
 				   ++LineIndex;
 				   if (!evalNumericExpression()) return false;
-				   CameraFlashMode = (int) (double)EvalNumericExpressionValue;
+				   CameraFlashMode = EvalNumericExpressionValue.intValue();
 			   }
 
 			CameraBitmap = null;
@@ -11912,7 +11918,7 @@ private boolean doUserFunction(){
 		  if (ExecutingLineBuffer.charAt(LineIndex) == ','){
 			  ++LineIndex;
 			  if (!evalNumericExpression()) return false;
-			  source = (int) (double)EvalNumericExpressionValue;
+			  source = EvalNumericExpressionValue.intValue();
 			  
 		  }
 		  try {
@@ -13308,7 +13314,7 @@ private boolean doUserFunction(){
 	private boolean execute_BUNDLE_PUT(){
 		
 		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = (int) (double)EvalNumericExpressionValue;
+		int bundleIndex = EvalNumericExpressionValue.intValue();
 		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
 			RunTimeError("Invalid Bundle Pointer");
 			return false;
@@ -13344,7 +13350,7 @@ private boolean doUserFunction(){
 	
 	private boolean execute_BUNDLE_GET(){
 		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = (int) (double)EvalNumericExpressionValue;
+		int bundleIndex = EvalNumericExpressionValue.intValue();
 		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
 			RunTimeError("Invalid Bundle Pointer");
 			return false;
@@ -13393,7 +13399,7 @@ private boolean doUserFunction(){
 	
 	private boolean execute_BUNDLE_TYPE(){
 		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = (int) (double)EvalNumericExpressionValue;
+		int bundleIndex = EvalNumericExpressionValue.intValue();
 		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
 			RunTimeError("Invalid Bundle Pointer");
 			return false;
@@ -13431,7 +13437,7 @@ private boolean doUserFunction(){
 	
 	private boolean execute_BUNDLE_KEYSET(){
 		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = (int) (double)EvalNumericExpressionValue;
+		int bundleIndex = EvalNumericExpressionValue.intValue();
 		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
 			RunTimeError("Invalid Bundle Pointer");
 			return false;
@@ -13466,7 +13472,7 @@ private boolean doUserFunction(){
 	
 	private boolean execute_BUNDLE_CLEAR(){
 		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = (int) (double)EvalNumericExpressionValue;
+		int bundleIndex = EvalNumericExpressionValue.intValue();
 		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
 			RunTimeError("Invalid Bundle Pointer");
 			return false;
@@ -13479,7 +13485,7 @@ private boolean doUserFunction(){
 	
 	private boolean execute_BUNDLE_CONTAIN(){
 		   if (!evalNumericExpression()) return false;                  // Get the Bundle pointer
-		   int bundleIndex = (int) (double)EvalNumericExpressionValue;
+		   int bundleIndex = EvalNumericExpressionValue.intValue();
 		   if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
 		      RunTimeError("Invalid Bundle Pointer");
 		      return false;
@@ -13588,7 +13594,7 @@ private boolean doUserFunction(){
 	private boolean execute_STACK_PUSH(){
 
 		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int stackIndex = (int) (double)EvalNumericExpressionValue;
+		int stackIndex = EvalNumericExpressionValue.intValue();
 		if (stackIndex < 1 || stackIndex >= theStacks.size()){
 			RunTimeError("Invalid Stack Pointer");
 			return false;
@@ -13628,7 +13634,7 @@ private boolean doUserFunction(){
 
 	private boolean execute_STACK_POP(){
 		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int stackIndex = (int) (double)EvalNumericExpressionValue;
+		int stackIndex = EvalNumericExpressionValue.intValue();
 		if (stackIndex < 1 || stackIndex >= theStacks.size()){
 			RunTimeError("Invalid Stack Pointer");
 			return false;
@@ -13675,7 +13681,7 @@ private boolean doUserFunction(){
 
 	private boolean execute_STACK_PEEK(){
 		if (!evalNumericExpression()) return false;							// Get the Stack pointer
-		int stackIndex = (int) (double)EvalNumericExpressionValue;
+		int stackIndex = EvalNumericExpressionValue.intValue();
 		if (stackIndex < 1 || stackIndex >= theStacks.size()){
 			RunTimeError("Invalid Stack Pointer");
 			return false;
@@ -13721,7 +13727,7 @@ private boolean doUserFunction(){
 
 	private boolean execute_STACK_TYPE(){
 		if (!evalNumericExpression()) return false;							// Get the Stack pointer
-		int stackIndex = (int) (double)EvalNumericExpressionValue;
+		int stackIndex = EvalNumericExpressionValue.intValue();
 		if (stackIndex < 1 || stackIndex >= theStacks.size()){
 			RunTimeError("Invalid Stack Pointer");
 			return false;
@@ -13754,7 +13760,7 @@ private boolean doUserFunction(){
 
 	private boolean execute_STACK_ISEMPTY(){
 		if (!evalNumericExpression()) return false;							// Get the Stack pointer
-		int stackIndex = (int) (double)EvalNumericExpressionValue;
+		int stackIndex = EvalNumericExpressionValue.intValue();
 		if (stackIndex < 1 || stackIndex >= theStacks.size()){
 			RunTimeError("Invalid Stack Pointer");
 			return false;
@@ -13779,7 +13785,7 @@ private boolean doUserFunction(){
 
 	private boolean execute_STACK_CLEAR(){
 		if (!evalNumericExpression()) return false;							// Get the Stack pointer
-		int stackIndex = (int) (double)EvalNumericExpressionValue;
+		int stackIndex = EvalNumericExpressionValue.intValue();
 		if (stackIndex < 1 || stackIndex >= theStacks.size()){
 			RunTimeError("Invalid Stack Pointer");
 			return false;
@@ -14604,7 +14610,7 @@ private boolean doUserFunction(){
 			++LineIndex;
 			
 			if (!evalNumericExpression()) return false;					// Port
-			int port = (int) (double) EvalNumericExpressionValue;
+			int port = EvalNumericExpressionValue.intValue();
 			
 			c = ExecutingLineBuffer.charAt(LineIndex);						
 			if ( c != ',') return false;
@@ -15586,7 +15592,7 @@ private boolean doUserFunction(){
 
 			if (!isNext(',')) return false;								// Sound ID
 			if (!evalNumericExpression()) return false;
-			int soundID = (int)(double) EvalNumericExpressionValue;
+			int soundID = EvalNumericExpressionValue.intValue();
 			
 			if (!isNext(',')) return false;								// Left Volume
 			if (!evalNumericExpression()) return false;
@@ -16066,7 +16072,7 @@ private boolean doUserFunction(){
 		  
 		  ShowStatusBar = 0;
 		  if (evalNumericExpression()){
-			  ShowStatusBar = (int) (double) EvalNumericExpressionValue;
+			  ShowStatusBar = EvalNumericExpressionValue.intValue();
 		  }
 		  if (!checkEOL()) return false;
 
@@ -16162,7 +16168,7 @@ private boolean doUserFunction(){
 		  ++LineIndex;
 		  
 		   if (!evalNumericExpression())return false;
-		   int theListIndex = (int) (double)EvalNumericExpressionValue;
+		   int theListIndex = EvalNumericExpressionValue.intValue();
 		   if (theListIndex <1 || theListIndex>= theLists.size()){
 			   RunTimeError("Invalid list pointer");
 			   return false;
@@ -16394,7 +16400,7 @@ private boolean doUserFunction(){
 		   
 		   
 		   if (!evalNumericExpression()) return false;
-		   long interval = (int) (double)EvalNumericExpressionValue ;
+		   long interval = EvalNumericExpressionValue.intValue();
 		   if (interval < 100) {
 			   RunTimeError("Interval Must Be >= 100");
 			   return false;
