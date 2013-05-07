@@ -51,6 +51,7 @@ This file is part of BASIC! for Android
      <uses-permission android:name="android.permission.CALL_PHONE" android:required="false"></uses-permission>
      <uses-permission android:name="android.permission.READ_SMS" android:required="false"></uses-permission>
  	 <uses-permission android:name="android.permission.RECEIVE_SMS" android:required="false"></uses-permission>
+     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
  	 
 <!-- <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED">android:required="false"></uses-permission> -->
  	 	      
@@ -102,6 +103,15 @@ This file is part of BASIC! for Android
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                </intent-filter>
+	  <intent-filter android:icon='@drawable/icon' android:label='BASIC! Program'>
+		    <action android:name='android.intent.action.VIEW' />
+		    <category android:name='android.intent.category.DEFAULT' />
+		    <category android:name="android.intent.category.BROWSABLE" />
+		    <data android:scheme="file" />
+		    <data android:mimeType='*/*' />
+		    <data android:pathPattern='.*\\.bas' />
+		    <data android:host="*" />
+	  </intent-filter>
             
         </activity>
         

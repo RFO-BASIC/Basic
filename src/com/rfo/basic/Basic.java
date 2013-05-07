@@ -168,10 +168,13 @@ public class Basic extends ListActivity  {
  */
  
         Intent myIntent = getIntent();
-        final String action = myIntent.getAction();
+        String FileName;
         Bundle b = myIntent.getExtras();
-        if (b != null) {												   // There is a bundle, thus shortcut run.
-        	String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // The tag for the filename parameter
+        if (b != null)	// There is a bundle, thus shortcut run.
+            FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // The tag for the filename parameter
+	else			// Launched with a .bas as argument
+	    FileName = myIntent.getData().getEncodedPath();
+	if (!FileName.equals("")) {
         	Bundle bb = new Bundle();
         	bb.putString("fn", FileName);								  // fn is the tag for the filename parameter
         	Intent intent = new  Intent(Basic.this, AutoRun.class);		  // in the bundle going to AutoRun

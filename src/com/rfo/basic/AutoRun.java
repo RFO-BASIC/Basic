@@ -138,7 +138,7 @@ public class AutoRun extends Activity {
 				aFileName = Basic.filePath + aFileName;
 			else {
 				baseDriveChanged = true;
-				aFileName = " fubar";
+				//aFileName = " fubar";
 			}
 		}
 
