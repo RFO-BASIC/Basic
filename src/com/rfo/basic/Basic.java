@@ -151,16 +151,6 @@ public class Basic extends ListActivity  {
         
         clearProgram();										// Clear the basic program
         
-        boolean samplesLoaded = AreSamplesLoaded();				// Checks to see if the help files have been loaded
-//        samplesLoaded = false;
-
-        if (!samplesLoaded){        							// If sample files not loaded, then load them
-        	runBackgroundLoader();									// Start the background task to load samples and graphics
-        															// and then go to the editor
-        } else 
-        // ************ Samples were already loaded ***************************
-        {
-
 /* If Basic is entered from a launcher shortcut, then there will an Intent with a
  * bundle. The bundle will contain the shortcut launcher program name.
  * 
@@ -168,26 +158,30 @@ public class Basic extends ListActivity  {
  */
  
         Intent myIntent = getIntent();
-        String FileName;
+        String FileName = "";
         Bundle b = myIntent.getExtras();
         if (b != null)	// There is a bundle, thus shortcut run.
             FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // The tag for the filename parameter
-	else			// Launched with a .bas as argument
-	    FileName = myIntent.getData().getEncodedPath();
-	if (!FileName.equals("")) {
+	else	{		// Launched with a .bas as argument?
+	    if (myIntent.getData() != null) FileName = myIntent.getData().getPath();
+	}
+
+	if (! FileName.equals("")) {
         	Bundle bb = new Bundle();
         	bb.putString("fn", FileName);								  // fn is the tag for the filename parameter
         	Intent intent = new  Intent(Basic.this, AutoRun.class);		  // in the bundle going to AutoRun
         	intent.putExtras(bb);
-			DoAutoRun = true;
+		DoAutoRun = true;
         	startActivity( intent );
         	finish();
         } else {															// This is not a launcher short cut 
+		boolean samplesLoaded = AreSamplesLoaded();				// Checks to see if the help files have been loaded
+		if (!samplesLoaded)        							// If sample files not loaded, then load them
+        	    runBackgroundLoader();							// Start the background task to load samples and graphics
         	DoAutoRun = false;
         	startActivity(new Intent(this, Editor.class));					// 	Goto the Editor
         	finish();
-        	}
-        }
+	}
     }
     
     private void createForAPK() {											// Create code for APK
