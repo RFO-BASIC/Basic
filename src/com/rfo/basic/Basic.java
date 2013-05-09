@@ -166,7 +166,7 @@ public class Basic extends ListActivity  {
 	    if (myIntent.getData() != null) FileName = myIntent.getData().getPath();
 	}
 
-	if (! FileName.equals("")) {
+	if ((FileName != null) && ! FileName.equals("")) {
         	Bundle bb = new Bundle();
         	bb.putString("fn", FileName);								  // fn is the tag for the filename parameter
         	Intent intent = new  Intent(Basic.this, AutoRun.class);		  // in the bundle going to AutoRun
@@ -174,13 +174,12 @@ public class Basic extends ListActivity  {
 		DoAutoRun = true;
         	startActivity( intent );
         	finish();
-        } else {															// This is not a launcher short cut 
-		boolean samplesLoaded = AreSamplesLoaded();				// Checks to see if the help files have been loaded
-		if (!samplesLoaded)        							// If sample files not loaded, then load them
-        	    runBackgroundLoader();							// Start the background task to load samples and graphics
+        } else if (AreSamplesLoaded()) {							// This is not a launcher short cut 
         	DoAutoRun = false;
-        	startActivity(new Intent(this, Editor.class));					// 	Goto the Editor
+        	startActivity(new Intent(this, Editor.class));				// 	Goto the Editor
         	finish();
+	} else {											// The sample files have not been loaded
+		runBackgroundLoader();							// Start the background task to load samples and graphics
 	}
     }
     
