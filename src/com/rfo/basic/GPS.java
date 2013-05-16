@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -27,201 +27,99 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-import com.rfo.basic.Run;
-import android.app.Activity;
 import android.content.Context;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
 
 // Implements the GPS Listener. Started by Run
 
+public class GPS implements LocationListener {
 
+	private static final String LOGTAG = "GPS";
 
-public class GPS extends Activity implements LocationListener{
-	
-    private static final String LOGTAG = "GPS";
-    private static final String CLASSTAG = GPS.class.getSimpleName();
- // Log.v(GPS.LOGTAG, " " + GPS.CLASSTAG + "  " );
-	
 	public static boolean GPSoff = true;
 	public static double Altitude;
 	public static double Latitude;
 	public static double Longitude;
 	public static float Bearing;
-	public static float Accuracy ;
+	public static float Accuracy;
 	public static float Speed;
 	public static long Time;
 	public static String Provider = null;
-	public static LocationManager locator;
-	
-	
-	public void onCreate(Bundle savedInstanceState) {
-   	 super.onCreate(savedInstanceState);
 
-		locator = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-		
-		// Start off by getting the last know location.
-		
+	public LocationManager locator;
+
+	public GPS(Context context) {
+		locator = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+
+		// Start off by getting the last known location.
+
 		Location location = null;
 		try {
 			location = locator.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 			if (location == null) {
 				location = locator.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+				if (location == null)	Log.i(LOGTAG, "Unable to get initial location");
+				else					Log.i(LOGTAG, "Initial location from Network Provider");
 			}
+			else						Log.i(LOGTAG, "Initial location from GPS Provider");
+		} catch (IllegalArgumentException e) {
+			Log.d(LOGTAG, "Exception trying to get initial location", e);
 		}
-		catch (IllegalArgumentException e){}
-		
+
 		// Stuff the last known location parameters into the variables.
-		
+
 		if (location != null) {
-	        Altitude = location.getAltitude();
-	        Latitude = location.getLatitude();
-	        Longitude = location.getLongitude();
-	        Bearing = location.getBearing();
-	        Accuracy = location.getAccuracy();
-	        Speed = location.getSpeed();
-	        Provider = location.getProvider();
-	        Time = location.getTime();
+			Altitude = location.getAltitude();
+			Latitude = location.getLatitude();
+			Longitude = location.getLongitude();
+			Bearing = location.getBearing();
+			Accuracy = location.getAccuracy();
+			Speed = location.getSpeed();
+			Provider = location.getProvider();
+			Time = location.getTime();
 		}
-		
+
 		// This is the location listener
-		
+
 		LocationListener mLocationListener = this;
-		
+
 		// Start getting location change reports
-		
-		locator.requestLocationUpdates( LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-		
-		// Signal to Run that GPS is up and running. Since Run and this class run
-		// in separate threads, this signal is required. Run will not proceed
-		// until it see GPSrunning true;
-		
-		Run.GPSrunning = true;
 
-		super.onCreate(savedInstanceState);
+		locator.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
 	}
-	
-    public boolean onKeyUp(int keyCode, KeyEvent event)  {
-//      if ((keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_MENU) && event.getRepeatCount() == 0) {
-        if (keyCode == KeyEvent.KEYCODE_BACK  && event.getRepeatCount() == 0) {
-        	if (Run.OnBackKeyLine != 0){
-        		Run.BackKeyHit = true;
-//            	Run.GRopen = false;
-//            	finish();
-        		return true;
-        	}
 
-//        	Run.GRopen = false;
-        	Run.Stop = true;
-        	finish();
-        	if (Basic.DoAutoRun) {
-//        		android.os.Process.killProcess(Basic.ProcessID) ;
-                android.os.Process.killProcess(android.os.Process.myPid()) ;
-
-        	}
-        	return true;
-        }
- 	   return super.onKeyUp(keyCode, event);
-
-    }
-    
-    public boolean onTouchEvent(MotionEvent event){
-    	super.onTouchEvent(event);
-    	int action = event.getAction();  // Get action type
-
-
-    	for (int i = 0; i < event.getPointerCount(); i++){
-    		if ( i > 1 ) break;
-        	int pid = event.getPointerId(i);
-        	if (pid > 1) break;
-//    		Log.v(GR.LOGTAG, " " + i + ","+pid+"," + action);
-    		Run.TouchX[pid] = (double)event.getX(i);
-    		Run.TouchY[pid] = (double)event.getY(i);
-    		if (action == MotionEvent.ACTION_DOWN ||
-    			action == MotionEvent.ACTION_POINTER_DOWN ||
-    			action == MotionEvent.ACTION_MOVE){
-        		Run.NewTouch[pid] = true;
-        	} else if (action == MotionEvent.ACTION_UP || 
-        		action == MotionEvent.ACTION_POINTER_UP ||
-        		action == 6 ||
-        		action == 262) {
-        		Run.NewTouch[pid] = false;
-        	}
-    	}
-    	
-    	return true;
-    }
-
-
-	
 	public void onLocationChanged(Location location) {
-		
-//  Called when one the GPS parameters has changed
-//  Stuff the GPS values into the parameters.
-		
-	    if (location != null) {
-	        Altitude = location.getAltitude();
-	        Latitude = location.getLatitude();
-	        Longitude = location.getLongitude();
-	        Bearing = location.getBearing();
-	        Accuracy = location.getAccuracy();
-	        Speed = location.getSpeed();
-	        Provider = location.getProvider();
-	        Time = location.getTime();
 
-	        
-	      }
+		// Called when one the GPS parameters has changed
+		// Stuff the GPS values into the parameters.
 
-//  When the Run threads are quitting or the user has closed
-//  GPS, it signals with GPSoff = true.
-//  Stop getting updates and destroy this task with finish()
-	    
-	    if (Run.GPSoff) {
-	    	Run.theGPS = null;
-	    	locator.removeUpdates(this);
-	    	finish();
-	    }
-
+		if (location != null) {
+			Altitude = location.getAltitude();
+			Latitude = location.getLatitude();
+			Longitude = location.getLongitude();
+			Bearing = location.getBearing();
+			Accuracy = location.getAccuracy();
+			Speed = location.getSpeed();
+			Provider = location.getProvider();
+			Time = location.getTime();
+		}
 	}
 
 	public void onProviderDisabled(String provider) {
 	}
-	
+
 	public void onProviderEnabled(String provider) {
 	}
-	
+
 	public void onStatusChanged(String provider, int status, Bundle extras) {
 	}
-	
-    protected void onPause() {
-        super.onPause();
-//        Log.v(GPS.LOGTAG, " " + GPS.CLASSTAG + " On Pause " );
 
-    }
-    
-    protected void onDestroy() {
-        super.onDestroy();
-        Run.theGPS = null;
-//        Log.v(GPS.LOGTAG, " " + GPS.CLASSTAG + " On Destroy " );
-
-    }
-    
-    protected void onResume() {
-        super.onResume();
-//        Log.v(GPS.LOGTAG, " " + GPS.CLASSTAG + " On Resume " );
-
-    }
-
-
-	
-
-
-
-
-	
+	public void stop() {
+		Log.i(LOGTAG, "Unregistering LocationListener");
+		locator.removeUpdates(this);
+	}
 }

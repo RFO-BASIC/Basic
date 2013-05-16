@@ -1087,9 +1087,7 @@ public class Run extends ListActivity {
     public static final int gps_close = 8;
     public static final int gps_time = 9;
     
-    public static Intent theGPS;
-	public static boolean GPSoff = true;
-	public static boolean GPSrunning = false;
+    public GPS theGPS;
 	
 	// ************************* Variables for Array Commands
 	
@@ -1889,7 +1887,8 @@ public class Background extends AsyncTask<String, String, String>{
         		}else if (str[i].startsWith("@@7")){					// Set the console title
         			if (ConsoleTitle != null) setTitle(ConsoleTitle);
         			else setTitle(getResources().getString(R.string.run_name));
-        		}else if (str[i].startsWith("@@8")){					// NOT CURRENTLY USED
+        		}else if (str[i].startsWith("@@8")){					// Start GPS
+        			if (theGPS == null) theGPS = new GPS(Run.this);
         		}else if (str[i].startsWith("@@9")){					// from checkpointProgress
         			ProgressPending = false;							// progress is published, done waiting
         		}else if (str[i].startsWith("@@A")){
@@ -2229,8 +2228,6 @@ private void InitVars(){
     SensorsRunning = false;
 	
     theGPS = null;
-	GPSoff = true;
-	GPSrunning = false;
 	
 	DoAverage = false;
 	DoReverse = false;
@@ -2394,7 +2391,13 @@ public void cleanUp(){
 	GraphicsPaused = false;
 	RunPaused = false;
 	ProgressPending = false;
-	GPSoff = true;
+
+	if (theGPS != null) {
+		Log.d(LOGTAG, "Stopping GPS from cleanUp");
+		theGPS.stop();
+		theGPS = null;
+	}
+
 	if (!DoAutoRun && SyntaxError){
 		Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
 	} else Editor.SyntaxErrorDisplacement = -1;
@@ -2658,7 +2661,12 @@ protected void onDestroy(){
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Destroy  " );
 	  SensorsClass = null;
 	  SensorsStop = true;
-  	  GPSoff = true;
+
+	if (theGPS != null) {
+		Log.d(LOGTAG, "Stopping GPS from onDestroy");
+		theGPS.stop();
+		theGPS = null;
+	}
   	  
 		if (theWakeLock != null){
 			theWakeLock.release();
@@ -12265,36 +12273,23 @@ private boolean doUserFunction(){
 
 	  		}
 	  
-	  public boolean execute_gps_open(){
-			if (!checkEOL()) return false;
-		  if (theGPS != null) return true;    // If already opened.....
-		  
-		  GPSoff = false;                                   // If true, signals GPS thread to stop and go away
-		  GPSrunning = false;								// GPS thread will set to true when it is running
-      	  theGPS = new Intent(this, GPS.class);				// Start the GPS
-	      startActivityForResult(theGPS, BASIC_GENERAL_INTENT);
-	      while (!GPSrunning) Thread.yield();				// Wait for signal from GPS thread
-	      
-		  if (!GRFront){
-			  Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-			  startActivity(Basic.theProgramRunner);
-			  GRFront = false;
-		  }else{
-			  GRclass.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-			  startActivity(GRclass);
-			  GRFront = true;
-		  }
+	public boolean execute_gps_open() {
+		if (!checkEOL()) return false;
+		if (theGPS != null) return true;				// If already opened.....
 
-		  return true;
-		  
-	  }
+		Show("@@8");								// tell Activity to start GPS
+		return true;
+	}
 	  
-	  public boolean execute_gps_close(){
-			if (!checkEOL()) return false;
-		  GPSoff = true;						// Tell GPS thread to commit sepuku
-		  theGPS = null;						// Says that GPS is not opened.
-		  return true;
-	  }
+	public boolean execute_gps_close(){
+		if (!checkEOL()) return false;
+		if (theGPS != null) {
+			Log.d(LOGTAG, "Stopping GPS on command");
+			theGPS.stop();								// Close GPS
+			theGPS = null;
+		}
+		return true;
+	}
 	  
 	  private boolean execute_gps_altitude(){
 		   if (!getVar())return false;							// Sensor Variable

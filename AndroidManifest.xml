@@ -4,7 +4,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -29,10 +29,9 @@ This file is part of BASIC! for Android
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       	  package="com.rfo.basic"
-      	  android:versionCode= "1740"
-      	  android:versionName="1.74"
+      	  android:versionCode= "17401"
+      	  android:versionName="1.74.01"
       	  >
-    	  
       	  
      <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
  	 <uses-permission android:name="android.permission.INTERNET" android:required="false"></uses-permission>
@@ -96,13 +95,12 @@ This file is part of BASIC! for Android
             
             >
             
-                  
-                  
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER" />
                </intent-filter>
-	  <intent-filter android:icon='@drawable/icon' android:label='BASIC! Program'>
+	  <intent-filter>
 		    <action android:name='android.intent.action.VIEW' />
 		    <category android:name='android.intent.category.DEFAULT' />
 		    <data android:scheme="file" />
@@ -253,16 +251,6 @@ This file is part of BASIC! for Android
                   android:label="Notify" >
         </activity>
         
-            
-            
-        
-                <activity android:name="GPS"
-                    android:id = "@+id/gps_screen"
-         		  android:configChanges="keyboardHidden|orientation|screenSize"
-        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
-                  android:label="@string/gps_name" >
-        </activity>
-        
         <activity android:name="DeviceListActivity"
             android:id = "@+id/device_list_screen"
                   android:label="@string/select_device"
@@ -274,10 +262,15 @@ This file is part of BASIC! for Android
                   android:label="@string/select_name" >
         </activity>
         
+        <uses-library android:required="false" android:name="com.sec.android.app.multiwindow" />
+        <meta-data android:name="com.sec.android.support.multiwindow" android:value="true" />
+        <meta-data android:name="com.sec.android.multiwindow.DEFAULT_SIZE_W" android:value="632.0dip" />
+        <meta-data android:name="com.sec.android.multiwindow.DEFAULT_SIZE_H" android:value="598.0dip" />
+        <meta-data android:name="com.sec.android.multiwindow.MINIMUM_SIZE_W" android:value="632.0dip" />
+        <meta-data android:name="com.sec.android.multiwindow.MINIMUM_SIZE_H" android:value="598.0dip" />
         
     </application>
     
       <uses-sdk android:minSdkVersion="7" android:targetSdkVersion ="17" />
-     	     	 	     	 	     	 
     
-</manifest> 
+</manifest>
