@@ -840,7 +840,6 @@ public class Run extends ListActivity {
 	};
 
     private String ConsoleTitle = null;					// null means use default string resource
-    private boolean updateConsoleTitle = false;
 
     //  ******************  Popup Command variables ********************************
     
@@ -1685,7 +1684,6 @@ public class Background extends AsyncTask<String, String, String>{
     	  		  }
 
          	Basic.theRunContext = null;  // Signals that the background task has stopped
-         	publishProgress("@@6");
          	cleanUp();
   		    cancel(true);		// Done with program. Cancel the background task
         	}
@@ -1700,7 +1698,7 @@ public class Background extends AsyncTask<String, String, String>{
         }
         
 // The RunLoop() drives the execution of the program. It is called from doInBackground and
-// from recursively from doUserFunction.
+// recursively from doUserFunction.
         
         public  boolean RunLoop(){
         	boolean flag = true;
@@ -1757,14 +1755,8 @@ public class Background extends AsyncTask<String, String, String>{
 
         		if (bgStateChange && OnBGLine != 0) {
         				bgStateChange = doInterrupt(OnBGLine);
-        			
-        		} else
-
-        		if (updateConsoleTitle) {
-        				updateConsoleTitle = false;
-        				publishProgress("@@7");						// tell Activity to update its title
         		}
-
+       		
         		for (int i=0; i<TempOutputIndex; ++i){				// if new output lines, the send them
         			publishProgress(TempOutput[i]);					// to UI task
         			}
@@ -1856,13 +1848,14 @@ public class Background extends AsyncTask<String, String, String>{
 // The following method is in the UI (foreground) Task part of Run. It gets control when the background
 // task sends it a message in the form of a string. Most of the strings are just text for the output
 // screen. A few are signals. Signals start with "@@"
-        
-        @Override    
-        protected void onProgressUpdate(String... str ) {
-        	
-        	Context context = getApplicationContext();
 
-        	for (int i=0; i<str.length; ++i){							// Check for signals
+	@Override
+	protected void onProgressUpdate(String... str) {
+
+		Context context = getApplicationContext();
+
+		for (int i=0; i<str.length; ++i) {								// Check for signals
+			if (str[i].startsWith("@")) {								// Fast check for possible signal
         		if (str[i].startsWith("@@1")){      					// Input dialog signal
         			doInputDialog();
         			if (InputDialog != null)
@@ -1890,16 +1883,15 @@ public class Background extends AsyncTask<String, String, String>{
     			  toast.setGravity(Gravity.CENTER|Gravity.CENTER, ToastX, ToastY);
     			  toast.show();
         		
-        		}else if (str[i].startsWith("@@5")){            // Clear Screen Signal
+        		}else if (str[i].startsWith("@@5")){					// Clear Screen Signal
         			output.clear();
-        		}else if (str[i].startsWith("@@6")){            // Done with background task
-        			cancel(true);
-        		}else if (str[i].startsWith("@@7")){			// Set the console title
+        		}else if (str[i].startsWith("@@6")){					// NOT CURRENTLY USED
+        		}else if (str[i].startsWith("@@7")){					// Set the console title
         			if (ConsoleTitle != null) setTitle(ConsoleTitle);
         			else setTitle(getResources().getString(R.string.run_name));
-        		}else if (str[i].startsWith("@@8")){			// NOT CURRENTLY USED
-        		}else if (str[i].startsWith("@@9")){			// from checkpointProgress
-        			ProgressPending = false;					// progress is published, done waiting
+        		}else if (str[i].startsWith("@@8")){					// NOT CURRENTLY USED
+        		}else if (str[i].startsWith("@@9")){					// from checkpointProgress
+        			ProgressPending = false;							// progress is published, done waiting
         		}else if (str[i].startsWith("@@A")){
         			output.add("");        			
         		}else if (str[i].startsWith("@@B")){
@@ -1910,29 +1902,27 @@ public class Background extends AsyncTask<String, String, String>{
         			doHTMLCommand(str[i].substring(3));
         		}else if (str[i].startsWith("@@D")){
         			startVoiceRecognitionActivity();
-            }else if (str[i].startsWith("@@E")){      					// Input dialog signal
+        		}else if (str[i].startsWith("@@E")){					// Input dialog signal
         			doDebugDialog();
-        		}else if (str[i].startsWith("@@F")){						// Debug step completed
+        		}else if (str[i].startsWith("@@F")){					// Debug step completed
         			DebuggerStep = false;
-          	  doDebugDialog();
+        			doDebugDialog();
         		}else if (str[i].startsWith("@@G")){					// User canceled dialog with back key or halt
         			output.add("Execution halted");
         		}else if (str[i].startsWith("@@H")){					// Swap dialog called
-							doDebugSwapDialog();
-						}else if (str[i].startsWith("@@I")){					// Select dialog called
-							doDebugSelectDialog();
-						}else if (str[i].startsWith("@@J")){					// Alert dialog var not set called
-						
-        		}else {output.add(str[i]);}				// Not a signal, just write msg to screen.
-
-    	    	setListAdapter(AA);						// show the output
-    	    	lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
-//    	    	Log.d(LOGTAG, "onProgressUpdate: print <" + str[i] + ">");
+        			doDebugSwapDialog();
+        		}else if (str[i].startsWith("@@I")){					// Select dialog called
+        			doDebugSelectDialog();
+        		}else if (str[i].startsWith("@@J")){					// Alert dialog var not set called
         		}
-        	
-	    	
-        }
-        
+			} else {output.add(str[i]);}			// Not a signal, just write msg to screen.
+
+			setListAdapter(AA);						// show the output
+			lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
+//			Log.d(LOGTAG, "onProgressUpdate: print <" + str[i] + ">");
+		} // for each string
+	} // onProgressUpdate()
+
         public void doHTMLCommand(String cmd){			// Executes HTML commands from the UI thread.
         	if (cmd.startsWith("OP") && htmlIntent != null){
   	          startActivityForResult(htmlIntent, BASIC_GENERAL_INTENT);		   
@@ -2180,7 +2170,6 @@ private void InitVars(){
     clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 
     ConsoleTitle = null;							// null means use default string resource
-    updateConsoleTitle = false;
 
     //  ******************  Popup Command variables ********************************
     
@@ -2712,17 +2701,17 @@ private  String getWord(String line, int start, boolean stopOnPossibleKeyword) {
 	if (start >= max || start < 0) { return ""; }
 	int li = start;
 	char c = line.charAt(li);
-	if (c == '_' || c == '@' || c == '#' || (c >= 'a' && c <= 'z')) { // if first character matches
+	if ((c >= 'a' && c <= 'z') || c == '_' || c == '@' || c == '#') { // if first character matches
 		do {														// there's a word
 			if (++li >= max) break; 								// done if no more characters
- 
+
 			if (stopOnPossibleKeyword &&							// caller wants to stop at keyword
 				line.startsWith(PossibleKeyWord, li)) { break; }	// THEN, TO, or STEP
 
 			c = line.charAt(li);									// get next character
 		}
-		while (c == '_' || c == '@' || c == '#' ||					// and check it, stop if not valid
-				(c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'));
+		while ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||	// and check it, stop if not valid
+				c == '_' || c == '@' || c == '#');
 	}
 	return line.substring(start, li);
 }
@@ -3685,11 +3674,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			theValueStack.push(EvalNumericExpressionValue);
 		}
 		else if (isNext('(')) {								// Handle possible (
-			String holdPWK = PossibleKeyWord;
+			String holdPKW = PossibleKeyWord;
 			PossibleKeyWord = "";
 			if (!evalNumericExpression()){return false;} 	// if ( then eval expression inside the parens
 			theValueStack.push(EvalNumericExpressionValue);
-			PossibleKeyWord = holdPWK;
+			PossibleKeyWord = holdPKW;
 			if (!isNext(')')) {return false;}
 		}
 		else {
@@ -15413,7 +15402,7 @@ private boolean doUserFunction(){
 			if (!getStringArg() || !checkEOL()) return false;	// Get new title
 			ConsoleTitle = StringConstant;
 		}
-		updateConsoleTitle = true;
+		Show("@@7");											// Signal UI to update its title
 		return true;
 	}
 
