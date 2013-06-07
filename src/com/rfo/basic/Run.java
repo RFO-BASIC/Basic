@@ -15316,6 +15316,7 @@ private boolean doUserFunction(){
 		            if (isSU) SUprocess = Runtime.getRuntime().exec("su");				// Request Superuser
 		            else {
 		            	File dir = new File(Basic.filePath);
+		            	if (!dir.exists()) { dir.mkdirs(); }
 		            	SUprocess = Runtime.getRuntime().exec("sh", null, dir);			// Open ordinary shell
 		            }
 		            SUoutputStream = new DataOutputStream(SUprocess.getOutputStream()); // Open the output stream
