@@ -6,7 +6,7 @@ Android devices.
 
 This file is part of BASIC! for Android
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
     BASIC! is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,9 +35,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import 	java.io.DataOutputStream;
-import 	java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.DataInputStream;
 
 import android.app.ListActivity;
 import android.util.Log;
@@ -49,9 +50,6 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-
-import java.util.*;
-
 
 
 public class Basic extends ListActivity  {
@@ -79,8 +77,16 @@ public class Basic extends ListActivity  {
 	public static Boolean DoAutoRun = false;
 	public static String filePath = "";
 	public static String basePath = "";
+
     private static final String LOGTAG = "Basic";
     private static final String CLASSTAG = Basic.class.getSimpleName();
+
+    private static final String SOURCE_DIR    = "source";
+    private static final String DATA_DIR      = "data";
+    private static final String DATABASES_DIR = "databases";
+    private static final String SAMPLES_DIR   = "Sample_Programs";
+    private static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
+
     public static ArrayList<String> lines;       //Program lines for execution
     
     public static Boolean Saved ;				// False when program has changed and not saved
@@ -98,12 +104,64 @@ public class Basic extends ListActivity  {
     public static Intent theProgramRunner = null;
     
     
-    public static Background theBackground;					// Background task ID
-    public static ArrayAdapter AA;
-    public static ListView lv ;							    // The output screen list view
-    public static ArrayList<String> output;					// The output screen text lines
+    private Background theBackground;						// Background task ID
+    private ArrayAdapter<String> AA;
+    private ListView lv;							    	// The output screen list view
+    private ArrayList<String> output;						// The output screen text lines
 
-        
+	public static boolean checkSDCARD(char mount) {			// mount is 'w' for writable,
+															// 'r' for either readable or writable 
+		String state = Environment.getExternalStorageState();
+		if (Environment.MEDIA_MOUNTED.equals(state)) { return true; }	// mounted for both read and write
+		if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state) && (mount == 'r')) return true;
+		return false;
+	}
+
+	public static void setFilePaths(String basePath) {		// set both basePath and filePath
+															// public so LauncherShortcuts can use it
+		if (basePath.equals("none"))
+			basePath = Environment.getExternalStorageDirectory().getPath();
+		Basic.basePath = basePath;
+		Basic.filePath = basePath + "/" + AppPath;
+	}
+
+	public static String getBasePath() {
+		return basePath;
+	}
+
+	public static String getFilePath() {
+		return filePath;
+	}
+
+	public static String getFilePath(String subdir, String subPath) {
+		// if (!subPath.startsWith("/"))	uncomment to enable absolute paths
+		{
+			StringBuilder path = new StringBuilder(filePath);
+			if (subdir != null) { path.append('/').append(subdir); }
+			if (subPath != null) { path.append('/').append(subPath); }
+			subPath = path.toString();
+		}
+		return subPath;
+	}
+
+	// Usage note: if subPath is null, function returns "/<basePath>/<AppPath>/source"
+	// but if subPath is "", function returns "/<basePath>/<AppPath>/source/", with "/" appended
+	public static String getSourcePath(String subPath) {
+		return getFilePath(SOURCE_DIR, subPath);
+	}
+
+	public static String getSamplesPath(String subPath) {
+		return getFilePath(SOURCE_SAMPLES_PATH, subPath);
+	}
+
+	public static String getDataPath(String subPath) {
+		return getFilePath(DATA_DIR, subPath);
+	}
+
+	public static String getDataBasePath(String subPath) {
+		return getFilePath(DATABASES_DIR, subPath);
+	}
+
 //  Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " String Var Value =  " + d);
     
     /** Called when the activity is first created. */
@@ -118,20 +176,15 @@ public class Basic extends ListActivity  {
         ProcessID = android.os.Process.myPid();
         BasicContext = getApplicationContext();
         BasicPackage = BasicContext.getPackageName();
-        
-        String test = Settings.getBaseDrive(this);
-        if (test.equals("none")) 
-        	basePath = Environment.getExternalStorageDirectory().getPath();
-        else 
-        	basePath = test;
-        
-        filePath =  basePath + "/" + AppPath;
+
+        String base = Settings.getBaseDrive(this);
+        Basic.setFilePaths(base);
+
         if (isAPK) {
         	createForAPK();
         } else {
         	createForSB();
         }
-        
        
     }
     
@@ -191,7 +244,6 @@ public class Basic extends ListActivity  {
     	AA=new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);  // Establish the output screen
   	  	lv = getListView();
   	  	lv.setTextFilterEnabled(false);
-  	  	lv.setTextFilterEnabled(false);
   	  	lv.setSelection(0);
   	  	
 // In order to show progress in the user interface we have to start a background thread to 
@@ -208,66 +260,34 @@ public class Basic extends ListActivity  {
     public static void InitDirs(){
     	
 // Initializes (creates) the directories used by Basic
-    	
-// Start by making sure the SD Card is available and writable
-    	
-    	boolean mExternalStorageAvailable = false;
-    	boolean mExternalStorageWriteable = false;
-    	String state = Environment.getExternalStorageState();
 
-    	
-    	if (Environment.MEDIA_MOUNTED.equals(state)) {			// Insure that SD is mounted
-    	    // We can read and write the media
-    	    mExternalStorageAvailable = mExternalStorageWriteable = true;
-    	} else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-    	    // We can only read the media
-    	    mExternalStorageAvailable = true;
-    	    mExternalStorageWriteable = false;
-    	} else {
-    	    // Something else is wrong. It may be one of many other states, but all we need
-    	    //  to know is we can neither read nor write
-    	    mExternalStorageAvailable = mExternalStorageWriteable = false;
-    	}   	
- 
-    	boolean CanWrite = mExternalStorageAvailable && mExternalStorageWriteable;
-    	
-// The SD Card is available and can be writen to. 
-    	
-    	if (CanWrite){
-    		String PathA = "";
+		if (checkSDCARD('w')) {									// Insure that SD card is mounted and writable
     		File sdDir;
     		if (!isAPK) {
-    			PathA = filePath + "/source/";  					 // Source directory
-        		sdDir = new File(PathA);
+				sdDir = new File(getSourcePath(null));			// source directory
         		sdDir.mkdirs();
-        		
-        		PathA = filePath + "/source/Sample_Programs";     // help directory
-        		sdDir = new File(PathA);
+
+				sdDir = new File(getSamplesPath(null));			// sample programs directory
         		sdDir.mkdirs();
-        		
-    			PathA = filePath + "/data";            // data directory
-    			sdDir = new File(PathA);
+
+				sdDir = new File(getDataPath(null));			// data directory
     			sdDir.mkdirs();
-    			
-    			PathA = filePath + "/databases";		// databases directory
-    			sdDir = new File(PathA);
+
+				sdDir = new File(getDataBasePath(null));		// databases directory
     			sdDir.mkdirs();
     		}
     		
     		if (isAPK && apkCreateDataDir) {
-    			PathA = filePath + "/data";            // data directory
-    			sdDir = new File(PathA);
+				sdDir = new File(getDataPath(null));			// data directory
     			sdDir.mkdirs();
     		}
     		
     		if (isAPK && apkCreateDataBaseDir) {
-    			PathA = filePath + "/databases";		// databases directory
-    			sdDir = new File(PathA);
+				sdDir = new File(getDataBasePath(null));		// databases directory
     			sdDir.mkdirs();
     		}
     	}
 
-   	
     }
     
     public  static void clearProgram(){
@@ -280,18 +300,17 @@ public class Basic extends ListActivity  {
        															// This value will be used to determine if the program
        															// has changed.
       Saved = true;												// Indicates that the program has been saved.
-    };
+    }
     
     
-    private boolean AreSamplesLoaded(){
-    	String PathA = filePath + "/source/Sample_Programs";
-		File sdDir = new File(PathA);
+    private boolean AreSamplesLoaded(){				// Sample program files have not been loaded
+    												// if the sample programs directory is empty
+    	String samplesPath = getSamplesPath("");	// get path with trailing '/'
+    	File sdDir = new File(samplesPath);
     	sdDir.mkdirs();
-    	String FL[] = null;							// Help files have not been loaded  
-    	FL =sdDir.list();							// if the help directory is empty
-    	if (FL == null) return false;
-    	
-    	if (FL.length != 0 ){						// if the help directory is not empty
+    	String FL[] = sdDir.list();
+
+    	if ((FL != null) && (FL.length != 0)) {		// if the help directory is not empty
     												// then sort the files
     		
     		ArrayList<String> FL1 = new ArrayList<String>(Arrays.asList(FL));
@@ -302,15 +321,15 @@ public class Basic extends ListActivity  {
     			String f3 = f1.substring(8,10);
     			f1 = f2 + "." + f3;
     			f2 = Basic.BasicContext.getString(R.string.version);   // Get the version string
-    			if (f1.equals(f2)) return true;			               // Compare version numbers
+    			if (f1.equals(f2)) { return true; }		               // Compare version numbers
     		}
-    		for (int k = 0 ; k< FL.length; ++k){	// If different, empty the directory
-    			File file = new File(filePath + "/source/Sample_Programs/" + FL[k]);
+    		for (String fileName : FL) {			// If different, empty the directory
+    			File file = new File(samplesPath + fileName);
     			file.delete();
     		}
-    		return false;
     	}
-    	else return false;    }
+    	return false;
+    }
 
 	public static String getRawFileName(String input) {
 		// Converts a file name to an Android internal resource name. 
@@ -411,25 +430,22 @@ public class Basic extends ListActivity  {
     	        	
     	        	// Loads the icons and audio used for the example programs
     	        	// The files are copied form res.raw to the SD Card
-    	        	int resID;
-    	        	String PathA;
-    	        	
-    	        	for (int index = 0; index <=loadFileNames.length; ++index) {
-    	        		if (loadFileNames[index].equals("") )return;
-    	        		String fn = getRawFileName(loadFileNames[index]);
-    	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
-		    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
-		    	        if (loadFileNames[index].endsWith(".db"))
-		    	        	PathA = filePath + "/databases/" + loadFileNames[index];
-		    	        else 
-		    	        	PathA = filePath + "/data/" + loadFileNames[index];
-	        	 		Load1Graphic(inputStream, PathA);
+
+    	        	String dataPath = getDataPath("");				// get paths with trailing '/'
+    	        	String databasesPath = getDataBasePath("");
+
+    	        	for (String fileName : loadFileNames) {
+    	        		if (fileName.equals("")) return;
+
+    	        		String fn = getRawFileName(fileName);
+    	        		int resID = Basic.BasicContext.getResources().getIdentifier(fn, "raw", BasicPackage);
+    	        		InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+    	        		String path = (fileName.endsWith(".db")) ? databasesPath : dataPath;
+    	        		Load1Graphic(inputStream, path + fileName);
     	        	}
-    	        	    	    	
-    	        	                  
-    	        	    }
-    	        	    
-    	        	    private void Load1Graphic(InputStream inputStream, String PathA ){
+    	        }
+
+    	        private void Load1Graphic(InputStream inputStream, String PathA ){
     	        	    	
     	        	// Does the actual loading of one icon or audio file
     	        	    	
@@ -437,10 +453,6 @@ public class Basic extends ListActivity  {
     	        	 		File aFile = new File(PathA);
     	        	 		DataOutputStream dos1 = null;
 
-    	        	    	
-    	        	    	aFile = new File(PathA);
-    	        	  		dos1 = null;
-    	        	  		 
     	        	// Note the I/O methods used here specialized for reading and writing
     	        	// non-text data files; 
     	        	  		
@@ -480,7 +492,7 @@ public class Basic extends ListActivity  {
     	        	// The file, the_list contain the list of files to be loaded.
     	        	// Get that list, and load those files
     	        	
-    	    		SD_ProgramPath = "Sample_Programs";   // This setting will also force LoadFile to so the help directory
+    	    		SD_ProgramPath = SAMPLES_DIR;   // This setting will also force LoadFile to so the help directory
     	    		
     	    // The first thing done is to load the file, the_list. This file contains a list of the files
     	    // to be loaded.
@@ -488,9 +500,8 @@ public class Basic extends ListActivity  {
     	    		// Using this round about method to get the resID for the_list
     	    		// because the the_list will not be there in APKs
     	    		
-    	        	int resID;
 	        		String fn = getRawFileName("the_list");
-	        		resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
+	        		int resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
 	    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
 
     	            InputStreamReader inputreader = new InputStreamReader(inputStream);
@@ -527,13 +538,12 @@ public class Basic extends ListActivity  {
     	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
     	            String line;
 
+    	            SD_ProgramPath = SAMPLES_DIR;
     	            FileWriter writer = null;
-    	    		String PathA = filePath + "/source/Sample_Programs";
-    	    		SD_ProgramPath = "Sample_Programs";
-    	    		
-    	             
-    	             try {
-    	               writer = new FileWriter(PathA +"/" + theFileName + ".bas");   // add .bas to the created file name.
+    	            String path = getSamplesPath(theFileName + ".bas");				// add .bas to the created file name.
+
+    	            try {
+    	               writer = new FileWriter(path);   
     	               while (( line = buffreader.readLine()) != null) {			 // Read and write one line at a time
     	            	   line = line + "\n";
     	            	   writer.write(line);
