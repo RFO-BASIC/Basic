@@ -4,7 +4,7 @@
  BASIC! is an implementation of the Basic programming language for
  Android devices.
 
- Copyright (C) 2010, 2011, 2012 Paul Laughton
+ Copyright (C) 2010 - 2013 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -49,15 +49,11 @@ import android.view.Gravity;
 // is called from a launcher shortcut
 
 public class AutoRun extends Activity {
-	private int lc = 0;
 	boolean FileNotFound = false;
     private static final String LOGTAG = "AutoRun";
     private static final String CLASSTAG = AutoRun.class.getSimpleName();
 //  Log.v(AutoRun.LOGTAG, " " + AutoRun.CLASSTAG + " String Var Value =  " + d);
 
-    private static boolean BlockFlag = false;
-	private static String stemp ="";
-	
 	private AddProgramLine APL ;
 
 	@Override
@@ -94,7 +90,6 @@ public class AutoRun extends Activity {
 
 			Basic.lines = new ArrayList <String>();
 			String Temp = "";
-			BlockFlag = false;
 
 			if (!Basic.DoAutoRun) {
 				String data = b.getString("data");
@@ -130,12 +125,15 @@ public class AutoRun extends Activity {
 
 
 	private void  FileLoader(String aFileName) {							// Loads the selected file
-		
+
+		if (aFileName == null) aFileName = " ";
+
 		boolean baseDriveChanged = false;
-		int z = aFileName.indexOf(Basic.filePath);
+		String filePath = Basic.getFilePath();
+		int z = aFileName.indexOf(filePath);
 		if (z == -1) {
-			if (aFileName.startsWith("/source/"))
-				aFileName = Basic.filePath + aFileName;
+			if (aFileName.startsWith("/source/"))				// Legacy shortcut
+				aFileName = filePath + aFileName;
 			else {
 				baseDriveChanged = true;
 				//aFileName = " fubar";
@@ -144,7 +142,6 @@ public class AutoRun extends Activity {
 
 		BufferedReader buf = null;
 
-		if (aFileName == null) aFileName = " ";
 		File file = new File(aFileName);
 		try {  buf = new BufferedReader(new FileReader(file), 8096);} catch (FileNotFoundException e) {										// FNF should never happen
 //			  Log.e(LoadFile.LOGTAG, e.getMessage(), e);

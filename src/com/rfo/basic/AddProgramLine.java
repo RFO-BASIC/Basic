@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010, 2011 Paul Laughton
+ Copyright (C) 2010 - 2013 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -243,10 +243,8 @@ public class AddProgramLine {
 		String fn = fileName.substring(7);
 		fn = fn.trim();
 
-		File file = null;
-		String FullFileName = Basic.filePath + "/source/" + 					// Base dir 
-		  	fn;													// plus filename
-		file = new File(FullFileName);								// is full path to the file to load
+		String FullFileName = Basic.getSourcePath(fn);			// Base Source dir + filename
+		File file = new File(FullFileName);						// is full path to the file to load
 		BufferedReader buf = null;
 
 		try { buf = new BufferedReader(new FileReader(file), 1024);} catch (FileNotFoundException e) {								// FNF should never happen

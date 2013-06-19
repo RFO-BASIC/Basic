@@ -73,7 +73,7 @@ SW.END
 ! image was captured
 IF bm_ptr = 0
  PRINT "Image not captured"
- GOTO again:
+ GOTO again
 ENDIF
 
 ! If the picture is in

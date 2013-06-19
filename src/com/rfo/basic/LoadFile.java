@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -32,7 +32,6 @@ package com.rfo.basic;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -41,16 +40,8 @@ import java.util.Collections;
 import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Context;
-import android.content.pm.ActivityInfo;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
-
-import com.rfo.basic.R;
-import com.rfo.basic.Run.ColoredTextAdapter;
-
-
-
 
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -72,13 +63,12 @@ public class LoadFile extends ListActivity {
     private static final String LOGTAG = "Load File";
     private static final String CLASSTAG = LoadFile.class.getSimpleName();
 
-    public static ListView lv ;
-    private static ArrayList<String> FL1 = new ArrayList<String>();    // Holds the list of files for load selection
-    private static ArrayList<String> DL1 = new ArrayList<String>();    // Holds the list of directories for load selection
-    private static String ProgramPath = "";							   // Load file directory path
-    private static boolean FileNotFound = false;
+    private Context mContext;
+    private ColoredTextAdapter mAdapter;
+    private String ProgramPath = "";								   // Load file directory path
+    private ArrayList<String> FL1 = new ArrayList<String>();
 
-    public class ColoredTextAdapter extends ArrayAdapter<String> {
+    public static class ColoredTextAdapter extends ArrayAdapter<String> {
         Activity context;
         ArrayList<String> list;
         int textColor;
@@ -127,112 +117,80 @@ public class LoadFile extends ListActivity {
 public void onCreate(Bundle savedInstanceState) {
 	
   super.onCreate(savedInstanceState);
-  setRequestedOrientation(Settings.getSreenOrientation(this));	
+  setRequestedOrientation(Settings.getSreenOrientation(this));
+  mContext = getApplicationContext();
 
+	updateList();												// put file list in FL1
 
-  Load1();                                             // This is so that we can re-enter LoadFile from within delete 
-	 												   // without have to re-create the LoadFile intent.
+	//setListAdapter(new ArrayAdapter<String>(this, Settings.getLOadapter(this), FL1));  // Display the list
+	mAdapter = new ColoredTextAdapter(this, FL1);
+	setListAdapter(mAdapter);
+	ListView lv = getListView();
+	lv.setTextFilterEnabled(false);
+	lv.setBackgroundColor(mAdapter.backgroundColor);
+
+	// The click listener for the user selection *******************
+
+	lv.setOnItemClickListener(new OnItemClickListener() {
+		public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+			// User has selected a file.
+			// If the selection is a directory, change the program path
+			// and then display the list of files in that directory
+			// otherwise load the selected file
+
+			if (!SelectionIsFile(position)){
+				Basic.SD_ProgramPath = ProgramPath;
+				updateList();
+			} else {
+				FileLoader(FL1.get(position));
+				return;
+			}
+		}
+	});
+
+	// End of Click Listener **********************************************
 }
 
-private void Load1(){
-  
+private void updateList(){
 
-  	FL1 = new ArrayList<String>();
-  	DL1 = new ArrayList<String>();
-  	String FL[];
-  	
-  	File sdDir = null;
-  	File lbDir = null;
- 
 	 ProgramPath = Basic.SD_ProgramPath;                 // Set Load path to current program path
-  	 sdDir = new File(Basic.basePath);						// Base dir
-	 lbDir = new File(sdDir.getAbsoluteFile()			// Plus Load path
-			+ "/" + Basic.AppPath + "/source/" + ProgramPath);
+  	 File lbDir = new File(Basic.getSourcePath(ProgramPath));
 	 lbDir.mkdirs();
-	 
-	 FL = lbDir.list();									// Get the list of files in this dir
+
+	 String[] FL = lbDir.list();									// Get the list of files in this dir
 	 if (FL == null){
-		 Toaster("System Error. File not directory");
+		 Toaster(mContext, "System Error. File not directory");
 		 return;
 	 }
 	 
-  
-  DL1.add("..");										// add the ".." to the top
-  int m = FL.length;
-  
-  // Go through the list of files and mark directories with (d)
-  // also only display files with the .bas extension
-  
-  for (int i=0; i<m; ++i){
-	  String s = FL[i];
-	  File test = new File(lbDir.getAbsoluteFile() + "/" + s);      // If the file is a directory
-	  if (test.isDirectory()){
-		  s = s + "(d)";											// mark with the (d)
-		  DL1.add(s);
-	  } else {
-	  if (s.length() >4 ){											// 	Only put files ending in
-		  String ss = s.substring(s.length()-4);					// .bas into the display list
-		  if (ss.equals(".bas")){
-			  FL1.add(s);
-		  	}
-	  	  }
-	  }
-  }
-  Collections.sort(DL1);										// Sort the directory list
-  Collections.sort(FL1);                                        // Sort the file list
-  for (int i=0; i<FL1.size(); ++i){									// copy the file list to end of dir list
-	  DL1.add(FL1.get(i));
-  	}
-  FL1 = DL1;
 
-  
-//  setListAdapter(new ArrayAdapter<String>(this, Settings.getLOadapter(this), FL1));  // Display the list
-  setListAdapter(new ColoredTextAdapter(this,  FL1));
-  lv = getListView();
-  lv.setTextFilterEnabled(false);
-  
-  if (Settings.getEditorColor(this).equals("BW")){
-	    lv.setBackgroundColor(0xffffffff);
-} else
-  if (Settings.getEditorColor(this).equals("WB")){
-	  lv.setBackgroundColor(0xff000000);
-} else
-    if (Settings.getEditorColor(this).equals("WBL")){
-    	  lv.setBackgroundColor(0xff006478);
-}             	
+	// Go through the list of files and mark directories with (d)
+	// also only display files with the .bas extension
+	ArrayList<String> dirs = new ArrayList<String>();
+	ArrayList<String> files = new ArrayList<String>();
+	String absPath = lbDir.getAbsolutePath() + '/';
+	for (String s : FL) {
+		File test = new File(absPath + s);
+		if (test.isDirectory()) {								// If file is a directory, add "(d)"
+			dirs.add(s + "(d)");								// and add to display list
+		} else {
+			if (s.endsWith(".bas")) {							// 	Only put files ending in
+				files.add(s);									// .bas into the display list
+			}
+		}
+	}
+	Collections.sort(dirs);									// Sort the directory list
+	Collections.sort(files);								// Sort the file list
 
+	FL1.clear();
+	FL1.add("..");											// put  the ".." to the top of the list
+	FL1.addAll(dirs);										// copy the directory list to the adapter list
+	FL1.addAll(files);										// copy the file list to the end of the adapter list
 
-  
- //  The click listener for the user selection *******************
-  
-  lv.setOnItemClickListener(new OnItemClickListener() {
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-    	
-    	// User has selected a file.
-    	// If the selection is a directory, change the program path
-    	// and then display the list of files in that directory
-    	// otherwise load the selected file
-    	
-    	if (!SelectionIsFile(position)){          
-  		  Basic.SD_ProgramPath = ProgramPath;
-  		  Load1();
-    	}else{
-    		FileLoader(FL1.get(position));
-    		return;
-    	}
-    }
-    
-  });
-  
-// End of Click Listener **********************************************
-  
-  Context context = getApplicationContext();                 // Tell the user what to do
-  CharSequence text = "Select File To Load";				 // using Toast
-  int duration = Toast.LENGTH_SHORT;
+	if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
 
-  Toast toast = Toast.makeText(context, text, duration);
-  toast.show();
-
+	Toaster(mContext, "Select File To Load");				// Tell the user what to do using Toast
 }
 
 @Override
@@ -244,6 +202,14 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
     return super.onKeyUp(keyCode, event);
 }
 
+	public static String goUp(String path){					// Return the parent directory
+		if (path.equals("")) { return path; }					// if up at top level dir, just return
+		if (!path.contains("/")) {								// if path does not contain a /
+			return "";											// then path now empty
+		}
+		int k = path.lastIndexOf('/');							// find the right most /
+		return path.substring(0, k);							// eliminate / to end to make a new path
+	}
 
 	private boolean SelectionIsFile(int Index){
 		
@@ -252,36 +218,18 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
 		// in that directory will be displayed.
 		
 		String theFileName = FL1.get(Index);
-		if (Index == 0) {											// if GoUp is selected
-			if (ProgramPath.equals("")){return false;}				// if up at top level dir, just return
-			CharSequence cs = (CharSequence) ProgramPath;		
-			if (!ProgramPath.contains("/")){						// if path does not contains a /
-				ProgramPath = "";									// then clear the load path
-				return false;										// and report not a file
-			}
-			String temp = "";										// Path does contain a /
-			int k = ProgramPath.length();							// find the rightmost /
-			char c = ' ';											
-			do {
-				--k;
-				c = ProgramPath.charAt(k);
-			} while (c != '/');
-			ProgramPath = ProgramPath.substring(0, k);  			// eliminate / to end and set new path
-			return false;											// report this is not a file
+		if (Index == 0) {										// if GoUp is selected
+			ProgramPath = goUp(ProgramPath);					// change FilePath to its parent directory
+			return false;										// report this is not a file
 		}
 																	// Not UP, is selection a dir
-		int theLength = theFileName.length();
-		int x = theLength - 3;										// find out if dir
-		if ( x > 0){												// by looking for the (d) at end
-			String s1 = theFileName.substring(x);
-			String s2 = "(d)";
-			if (s1.equals(s2)){										// if it is a dir that was selected
-				s1 = theFileName.substring(0, x);					// then add this dir to the path
-				ProgramPath = ProgramPath + "/" + s1;
-				return false;										// and report not a file
-			}
+		if (theFileName.endsWith("(d)")) {							// if has (d), then is directory
+			int k = theFileName.length() - 3;
+			theFileName = theFileName.substring(0, k);
+			ProgramPath = ProgramPath + "/" + theFileName;			// then add this dir to the path
+			return false;											// and report not a file
 		}
-		return true;												// if not of the above, it is a file
+		return true;												// if none of the above, it is a file
 	}
 
 	private void  FileLoader(String aFileName){							// Loads the selected file
@@ -289,18 +237,16 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
 		// The user has selected a file to load, load it.
 
 		Basic.ProgramFileName=aFileName;
-		FileInputStream fis = null;
-		String FullFileName = "";
 		BufferedReader buf = null;
-		
+		boolean FileNotFound = false;
+
     																	//Write to SD Card
 
-			  File file = null;
-			  FullFileName = Basic.filePath + "/source/" + 					// Base dir 
+		String FullFileName = Basic.getSourcePath( 							// Base Source dir 
 			  	Basic.SD_ProgramPath + 										// plus load path
 			  	"/" + 
-			  	aFileName;													// plus filename
-			  file = new File(FullFileName);								// is full path to the file to load
+			  	aFileName);													// plus filename
+		File file = new File(FullFileName);									// is full path to the file to load
 
 			  try{ buf = new BufferedReader(new FileReader(file), 8096);}	// Open the reader.
 			  catch(FileNotFoundException e){								// FNF should never happen
@@ -358,9 +304,9 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
 //        	sb.append(' ');
         	if (s.length()==0){Basic.lines.remove(0);}          // If is an empty line, toss it
         	
-            for (int i = 0; i< Basic.lines.size(); ++i ){       // Copy the lines to the display buffer
-            	sb.append(Basic.lines.get(i)+"\n");
-//            	Editor.DisplayText = Editor.DisplayText+ Basic.lines.get(i)+"\n";
+            for (String line : Basic.lines){					// Copy the lines to the display buffer
+            	sb.append(line + '\n');
+//            	Editor.DisplayText = Editor.DisplayText+ line +"\n";
                 }
 //        	Log.v(LoadFile.LOGTAG, " " + LoadFile.CLASSTAG + " t3");
         	Editor.DisplayText = sb.toString();
@@ -374,10 +320,9 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
             Editor.mText.setText(Editor.DisplayText);
             finish();													// LoadFile is done
 	}
-    	
-        private void Toaster(CharSequence msg){						// Tell the user "msg"
-  		  Context context = getApplicationContext();			    // via toast
-  		  CharSequence text = msg;
+
+	public static void Toaster(Context context, CharSequence msg){		// Tell the user "msg"
+  		  CharSequence text = msg;										// via toast
   		  int duration = Toast.LENGTH_SHORT;
   		  Toast toast = Toast.makeText(context, text, duration);
 		  toast.setGravity(Gravity.TOP|Gravity.CENTER,0 , 0);

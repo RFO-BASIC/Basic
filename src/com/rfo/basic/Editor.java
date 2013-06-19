@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010, 2011 Paul Laughton
+ Copyright (C) 2010 - 2013 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -41,8 +41,8 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -50,7 +50,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
-import android.view.View;
 import android.widget.EditText;
 import android.widget.Scroller;
 import android.widget.Toast;
@@ -62,20 +61,16 @@ public class Editor extends Activity {
 //  Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " String Var Value =  " + d);
 
 //    public static Intent theProgramRunner;           // Intents that will be called
-    public static Intent theDeleter;
-    public static Intent theEditor;
+    private Intent theDeleter;
 
     public static EditText mText;					// The Editors display text buffers
 
     public static String DisplayText = "REM Start of BASIC! Program\n";
     public static int SyntaxErrorDisplacement = -1;
  
-    public static boolean LoadAfterSave = false;    // Various flags. Should be private, not public
-    public static boolean ClearAfterSave = false;
-    public static boolean RunAfterSave = false;
-    public static boolean BlockFlag = false;
-	public static String stemp="";
-    public static View theView;
+    private boolean LoadAfterSave = false;    // Various flags
+    private boolean ClearAfterSave = false;
+    private boolean RunAfterSave = false;
 
     public static int selectionStart;
     public static int selectionEnd;
@@ -112,7 +107,6 @@ public class Editor extends Activity {
             mPaint = new Paint();
             mPaint.setStyle(Paint.Style.STROKE);
             mPaint.setColor(0x800000FF);
-            theView = findViewById(R.id.basic_text);
             InitScroller(context);
             LEcontext = context;
 
@@ -287,7 +281,7 @@ public class Editor extends Activity {
 		setContentView(R.layout.editor);
 		setTitle(Name + Basic.ProgramFileName);
 
-		mText = (EditText) theView;		// mText is the TextView Object
+		mText = (EditText) findViewById(R.id.basic_text);		// mText is the TextView Object
 		mText.setTypeface(Typeface.MONOSPACE);
 		mText.setMinLines(4096);
 		mText.setText(DisplayText);		// Put the text lines into Object
@@ -545,32 +539,12 @@ public class Editor extends Activity {
 			case R.id.delete:									// DELETE
 				DisplayText = mText.getText().toString();				// get the text being displayed
 
-
 				// First make sure that the SD Card is present and can be written to
-
-				boolean mExternalStorageAvailable = false;
-				boolean mExternalStorageWriteable = false;
-				String state = Environment.getExternalStorageState();
-
-				if (Environment.MEDIA_MOUNTED.equals(state)) {			// Insure that SD is mounted
-					// We can read and write the media
-					mExternalStorageAvailable = mExternalStorageWriteable = true;
-				} else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-					// We can only read the media
-					mExternalStorageAvailable = true;
-					mExternalStorageWriteable = false;
-				} else {
-					// Something else is wrong. It may be one of many other states, but all we need
-					//  to know is we can neither read nor write
-					mExternalStorageAvailable = mExternalStorageWriteable = false;
-				}   	
-
-				boolean CanWrite = mExternalStorageAvailable && mExternalStorageWriteable;
 
 				// if the SD Card is not available or writable pop some toast and do
 				// not call Delete
 
-				if (!CanWrite) {
+				if (!Basic.checkSDCARD('w')) {
 					Toaster("External storage not available or not writable.");
 					return true;
 				}
@@ -719,28 +693,16 @@ public class Editor extends Activity {
 
 
     private void loadFile() {
-
-
-    	boolean CanRead = true;
-    	// Insure that the SD Card is present
-
-		String state = Environment.getExternalStorageState();	// Make sure SD is care is present
-		if (!Environment.MEDIA_MOUNTED.equals(state)) {
-			CanRead = false;
+		if (!Basic.checkSDCARD('r')) {							// Make sure SD card is present
 			Context context = getApplicationContext();          // if SD card not available, popup
 			CharSequence text = "External storage not available.";		// some toast and do not go to LoadFile
 			int duration = Toast.LENGTH_LONG;
 			Toast toast = Toast.makeText(context, text, duration);
 			toast.show();
-//	     		  startActivity( new Intent(Editor.this, Editor.class));
-//		        finish();
 			return;
-		}
-
-    	if (CanRead) {												    // If the SD Card can be read
+		} else {														// If the SD Card can be read
     		Intent intent = new  Intent(Editor.this, LoadFile.class);   // Go to the LoadFile method
     		startActivity(intent);    // Now go Load
-//     		finish();
     	}
 	}
 
@@ -825,33 +787,13 @@ public class Editor extends Activity {
 
 
 		{														// Write to SD Card
+        	// First insure the SD Card is available and writable 
 
-        	// First insure the SD Card is available and writtable 
-
-        	boolean mExternalStorageAvailable = false;
-        	boolean mExternalStorageWriteable = false;
-        	String state = Environment.getExternalStorageState();
-
-        	if (Environment.MEDIA_MOUNTED.equals(state)) {			// Insure that SD is mounted
-        	    // We can read and write the media
-        	    mExternalStorageAvailable = mExternalStorageWriteable = true;
-        	} else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-        	    // We can only read the media
-        	    mExternalStorageAvailable = true;
-        	    mExternalStorageWriteable = false;
-        	} else {
-        	    // Something else is wrong. It may be one of many other states, but all we need
-        	    //  to know is we can neither read nor write
-        	    mExternalStorageAvailable = mExternalStorageWriteable = false;
-        	}   	
-
-        	boolean CanWrite = mExternalStorageAvailable && mExternalStorageWriteable;
-
-        	if (!CanWrite) {                                           // If can't use SD card, pop up some
+        	if (!Basic.checkSDCARD('w')) {                                      // If can't use SD card, pop up some
         		Toaster("External Storage not available or not writeable.");    // toast,
         	} else {
 				//Write to SD Card
-				File sdDir = new File(Basic.basePath);
+				File sdDir = new File(Basic.getBasePath());
 				if (sdDir.exists() && sdDir.canWrite()) {
 					if (Basic.SD_ProgramPath.equals("Sample_Programs") || Basic.SD_ProgramPath.equals("/Sample_Programs")) Basic.SD_ProgramPath = "";
 					String PathA = "/" + Basic.AppPath + "/source/" + "/" + Basic.SD_ProgramPath;  // Base path
@@ -957,7 +899,7 @@ public class Editor extends Activity {
 		String newBaseDrive = Settings.getBaseDrive(this);
     	
     	if (newBaseDrive.equals("none")) return;
-    	if (newBaseDrive.equals(Basic.basePath)) return;
+    	if (newBaseDrive.equals(Basic.getBasePath())) return;
     	
     	AlertDialog.Builder alt_bld = new AlertDialog.Builder(this);		// using a dialog box.
 

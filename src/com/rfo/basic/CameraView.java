@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -31,16 +31,11 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 
-import static com.rfo.basic.Basic.AppPath;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.List;
 
-import com.rfo.basic.Basic;
-
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.graphics.PixelFormat;
@@ -71,23 +66,23 @@ public class CameraView extends Activity implements SurfaceHolder.Callback,
 
 private void doCameraUI(){
 	  final Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-	  intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(getTempFile(this)) ); 
+	  intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(new File(getTempFileName())) ); 
 	  startActivityForResult(intent, 254);
 
 }
 
 
-private File getTempFile(Context context){
-	  File path = new File (Basic.filePath + "/data/image.png");
-	  return path;
+	private String getTempFileName() { return getTempFileName("png"); }
+
+	private String getTempFileName(String ext){		// ext is "png" or "jpg"
+		return Basic.getDataPath("image." + ext);
 	}
 
 @Override
 protected void onActivityResult(int requestCode, int resultCode, Intent data) {
   if (resultCode == RESULT_OK) {
   if (requestCode == 254){
-        final File file = getTempFile(this);
-        String fn = new File(Basic.filePath + "/data/image.png").getAbsolutePath();
+        String fn = getTempFileName();
         try {
 	        BitmapFactory.Options BFO = new BitmapFactory.Options();
 	        BFO.inSampleSize = 4;
@@ -114,7 +109,6 @@ protected void onDestroy(){
 	private static final String TAG = "CameraTest";
 	Camera mCamera;
 	boolean mPreviewRunning = false;
-	private Context mContext = this;
 	private SurfaceView mSurfaceView;
 	private SurfaceHolder mSurfaceHolder;
 
@@ -141,8 +135,6 @@ protected void onDestroy(){
 	Camera.ErrorCallback errorCallback = new Camera.ErrorCallback() {
 		
 		public void onError(int error, Camera camera) {
-			int k = error;
-			
 		}
 	};
 
@@ -169,63 +161,54 @@ protected void onDestroy(){
 	Camera.PictureCallback jpegCallback = new Camera.PictureCallback() {
 		// The callback is not currently being called
 		public void onPictureTaken(byte[] data, Camera camera) {
-			FileOutputStream outStream = null;
-			try {
-				outStream = new FileOutputStream(Basic.filePath + "/data/image.jpg");
-				outStream.write(data);
-				outStream.close();
-//				Log.d(TAG, "onPictureTaken - wrote bytes: " + data.length);
-		        String fn = new File(Basic.filePath + "/data/image.jpg").getAbsolutePath();
-		        System.gc();
-		        BitmapFactory.Options BFO = new BitmapFactory.Options();
-		        BFO.inSampleSize = 4;
-		        Run.CameraBitmap = BitmapFactory.decodeFile(fn,BFO);           // Make the bit map from the file
-			} catch (Exception e) {
-			}
-			if (Run.CameraManual) mCamera.startPreview();
-			Run.CameraDone = true;
-			finish();
-
+			savePicture("jpg", data);
 		}
 	};
 
 	Camera.PictureCallback pngCallback = new Camera.PictureCallback() {
 		public void onPictureTaken(byte[] data, Camera camera) {
-			FileOutputStream outStream = null;
-			try {
-				outStream = new FileOutputStream(Basic.filePath + "/data/image.png");
-				outStream.write(data);
-				outStream.close();
-//				Log.d(TAG, "onPictureTaken - wrote bytes: " + data.length);
-		        String fn = new File(Basic.filePath + "/data/image.png").getAbsolutePath();
-		        System.gc();
-		        BitmapFactory.Options BFO = new BitmapFactory.Options();
-		        BFO.inSampleSize = 4;
-		        Run.CameraBitmap = BitmapFactory.decodeFile(fn,BFO);           // Make the bit map from the file
-			} catch (Exception e) {
-			}
-			if (Run.CameraManual) mCamera.startPreview();
-			Run.CameraDone = true;
-			finish();
-
+			savePicture("png", data);
 		}
 	};
 
+	private void savePicture(String ext, byte[] data) {
+		FileOutputStream outStream = null;
+		try {
+			String fn = getTempFileName(ext);
+			outStream = new FileOutputStream(fn);
+			outStream.write(data);
+			outStream.close();
+//			Log.d(TAG, "onPictureTaken - wrote bytes: " + data.length);
+	        System.gc();
+	        BitmapFactory.Options BFO = new BitmapFactory.Options();
+	        BFO.inSampleSize = 4;
+	        Run.CameraBitmap = BitmapFactory.decodeFile(fn,BFO);           // Make the bit map from the file
+		} catch (Exception e) {
+		}
+		if (Run.CameraManual) mCamera.startPreview();
+		Run.CameraDone = true;
+		finish();
+	}
+
+	@Override
 	protected void onResume() {
 //		Log.e(TAG, "onResume");
 		super.onResume();
 	}
 
+	@Override
 	protected void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
 	}
 
+	@Override
 	protected void onStop() {
 //		Log.e(TAG, "onStop");
 //		Run.CameraDone = true;
 		super.onStop();
 	}
 
+	
 	public void surfaceCreated(SurfaceHolder holder) {
 //		Log.e(TAG, "surfaceCreated");
 
@@ -273,7 +256,7 @@ protected void onDestroy(){
 		boolean back = true;
 		if (Run.CameraNumber != -1) {
 			Camera.CameraInfo CI = new Camera.CameraInfo();				   
-			mCamera.getCameraInfo(Run.CameraNumber, CI);
+			Camera.getCameraInfo(Run.CameraNumber, CI);
 			if (CI.facing == CameraInfo.CAMERA_FACING_FRONT) 
 				back = false;
 			}
@@ -343,7 +326,5 @@ protected void onDestroy(){
 	}
 
 
-	
-	
 }
 

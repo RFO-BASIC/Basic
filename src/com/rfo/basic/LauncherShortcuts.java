@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -33,11 +33,9 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.os.Environment;
 import android.widget.Button;
 import android.widget.EditText;
 import android.graphics.Bitmap;
-import com.rfo.basic.R;
 
 import android.view.KeyEvent;
 import android.view.View;
@@ -132,27 +130,21 @@ public class LauncherShortcuts extends Activity {
 	  
 	  // The user has pressed OK
 	  
-	  if (Basic.filePath.equals("")) {							// If BASIC! had not been run in a while,
+	  if (Basic.getFilePath().equals("")) {						// If BASIC! had not been run in a while,
 		  														// then filePath will be an empty string
 		  														// In this case, establish paths as Basic.java
 		  														// does when it is run.
-	        String test = Settings.getBaseDrive(this);
-	        if (test.equals("none")) 
-	        	Basic.basePath = Environment.getExternalStorageDirectory().getPath();
-	        else 
-	        	Basic.basePath = test;
-	        Basic.filePath =  Basic.basePath + "/" + Basic.AppPath;
+	        String basePath = Settings.getBaseDrive(this);
+	        Basic.setFilePaths(basePath);
 	  }
 	  
 	  String FileName = this.theText1.getText().toString();
 	  String BitmapFileName = this.theText2.getText().toString();
 	  String AppName = this.theText3.getText().toString();
-	  
-	  String FullFileName ;                                   // The Program File Name
-	  FullFileName = Basic.filePath + "/source/" +FileName;
 
-	  String bmfn;											  // The bitmap file name
-	  bmfn = Basic.filePath + "/data/" +BitmapFileName; 
+	  String FullFileName = Basic.getSourcePath(FileName);    // The Program File Name
+
+	  String bmfn = Basic.getDataPath(BitmapFileName);        // The bitmap file name
 	  Bitmap aBitmap = BitmapFactory.decodeFile(bmfn);        // get the actual bitmap
 
 	  setupShortcut( AppName, FullFileName, aBitmap);         // Go finish the shortcut setup

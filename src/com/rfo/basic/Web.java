@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -48,14 +48,9 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.JsResult;
 
-
-import com.rfo.basic.R;
-
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.os.Process;
 
 import android.webkit.DownloadListener;
@@ -220,7 +215,7 @@ public class Web extends Activity {
 		if (Basic.isAPK) {
 			lbDir = new File("/android_asset/");
 		} else {
-			lbDir = new File(Basic.filePath +"/data/");
+			lbDir = new File(Basic.getDataPath(""));
 		}
     		String s = lbDir.getAbsolutePath();
     		s = "file://" + s + "/";
