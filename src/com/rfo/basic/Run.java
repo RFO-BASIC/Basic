@@ -96,10 +96,7 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.PBEParameterSpec;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -120,7 +117,6 @@ import android.app.ListActivity;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.view.View.OnKeyListener;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -130,10 +126,8 @@ import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Context;
 import android.content.IntentFilter;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.content.res.Resources;
 //import android.content.ClipboardManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -146,13 +140,11 @@ import android.os.Bundle;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.Vibrator;
 import android.os.SystemClock;
-import android.os.ResultReceiver;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.telephony.PhoneStateListener;
@@ -180,24 +172,19 @@ import android.view.inputmethod.InputMethodManager;
 import android.graphics.Bitmap;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
-import 	android.hardware.SensorManager;
-import 	android.text.ClipboardManager;
-import android.text.Editable;
+import android.hardware.SensorManager;
+import android.text.ClipboardManager;
 import android.util.Base64;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import 	android.database.sqlite.SQLiteException;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.graphics.drawable.Drawable;
 
 import org.apache.commons.net.ftp.*;
 import android.widget.AdapterView.OnItemClickListener;
@@ -7131,7 +7118,7 @@ private boolean doUserFunction(){
 		FileEntry.putInt("position", 1);
 		FileEntry.putBoolean("isText", true);
 
-		File file = new File(Basic.filePath + "/data/" + fileName);
+		File file = new File(Basic.getDataPath(fileName));
 
 		if (FileMode == FMR) {											// Read was selected
 			BufferedReader buf = null;
@@ -7482,7 +7469,7 @@ private boolean doUserFunction(){
 					return false;
 				}
 			} else {
-				File file = new File(Basic.filePath + "/data/" + fileName);
+				File file = new File(Basic.getDataPath(fileName));
 				if (file.exists()) {
 					try {
 						FileInputStream fis = new FileInputStream(file);
@@ -7515,7 +7502,7 @@ private boolean doUserFunction(){
 
 		else if (FileMode == FMW) {											// Write Selected
 																			// Write to SD Card
-			File file = new File(Basic.filePath + "/data/" + fileName);
+			File file = new File(Basic.getDataPath(fileName));
 			if (append && file.exists()) {
 				FileEntry.putInt("position", (int) file.length()+1);
 			} else {										// if not appending overwrite existing file
@@ -7619,7 +7606,7 @@ private boolean doUserFunction(){
 		int p = FileEntry.getInt("position");
 		
 		String theFileName = StringConstant;
-		File file = new File(Basic.filePath + "/data/" + theFileName);
+		File file = new File(Basic.getDataPath(theFileName));
 
 		try {
 			file.createNewFile();
@@ -7874,176 +7861,122 @@ private boolean doUserFunction(){
 
 		return true;
 	}
-		
+
+	// ***************************** File Operations ***********************************
+
+	private boolean checkSDCARD(char mount) {				// mount is 'w' for writable,
+															// 'r' for either readable or writable 
+		boolean okay = Basic.checkSDCARD(mount);
+		if (!okay) { RunTimeError("SDCARD not available."); }
+		return okay;
+	}
+
 	private boolean executeMKDIR(){
 		if (!getStringArg()) { return false; }				// get the path
+		String path = StringConstant;
 		if (!checkEOL()) { return false; }
 
-		File lbDir = new File(Basic.filePath + "/data/" + StringConstant);
-		lbDir.mkdirs();
-		if (!lbDir.exists()){								// did we get a dir?
-			RunTimeError(StringConstant + " mkdir failed");
-			return false;
+		File file = new File(Basic.getDataPath(path));
+		file.mkdirs();
+		if (!file.exists()){								// did we get a dir?
+			return RunTimeError(path + " mkdir failed");
 		}
 		
 		return true;
 	}
-	
+
 	private boolean executeRENAME(){
 		if (!getStringArg()) { return false; }				// get the old file name
 		String Old = StringConstant;
+
 		if (!isNext(',')) { return false; }
 		if (!getStringArg()) { return false; }				// get the new file name
 		String New = StringConstant;
-		if (!checkEOL()) return false;
 
-		
-		File sdDir = null;
-		File lbDir = null;
+		if (!checkEOL()) { return false; }
+		if (!checkSDCARD('w')) { return false; }
 
-	     		String state = Environment.getExternalStorageState();
-		    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-		    		RunTimeError("SDCRD not available.");
-	        		return false;
-	        	}
-				  	 sdDir = new File(Basic.filePath + "/data/"  );
-			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/" +  Old);
-		  if (!lbDir.exists()){								// did we get a dir?
-			  RunTimeError(Old + " directory/file not in this path");
-			  return false;
-		  }
-		File newFile = new File(sdDir.getAbsoluteFile() + "/" + New);
-      	boolean success = lbDir.renameTo(newFile);
-      	
-      	if (!success) {
-      		RunTimeError("Rename of " + Old + " to " + New + " failed");
-      		return false;
-      	}
-      		
-		
+		File oldFile = new File(Basic.getDataPath(Old));
+		if (!oldFile.exists()) {							// does the file exist?
+			return RunTimeError(Old + " directory/file not in this path");
+		}
+		File newFile = new File(Basic.getDataPath(New));
+
+		if (!oldFile.renameTo(newFile)) {					// try to rename it
+			return RunTimeError("Rename of " + Old + " to " + New + " failed");
+		}
 		return true;
 	}
-	
+
 	private boolean executeDELETE(){
 
-		  if (!getNVar()) return false;						// get the var to put the size value into
-		  int SaveValueIndex = theValueIndex;
-		  
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;}
-		  ++LineIndex;
+		if (!getNVar()) { return false; }					// get the var to put the result into
+		int SaveValueIndex = theValueIndex;
 
-		
-		if (!evalStringExpression())return false;					//get the old file name
-		if (SEisLE) return false;
-		if (!checkEOL()) return false;
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }				// get the file name
+		String fileName = StringConstant;
 
-		File sdDir = null;
-		File lbDir = null;
+		if (!checkEOL()) { return false; }
+		if (!checkSDCARD('w')) { return false; }
 
-	     		String state = Environment.getExternalStorageState();
-		    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-		    		RunTimeError("SDCRD not available.");
-	        		return false;
-	        	}
-				  	 sdDir = new File(Basic.filePath + "/data/"  );
-			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/" +  StringConstant);
-	/*		  	 
-		  if (!lbDir.exists()){									// did we get a dir?
-			  RunTimeError(StringConstant + " delete failed");
-			  return false;
-		  }
-*/		  
-		  double result = 0;
-		  if (lbDir.delete()) result = 1;
-		  
-		  NumericVarValues.set(SaveValueIndex, result);
-
-		
+		File file = new File(Basic.getDataPath(fileName));
+		double result = file.delete() ? 1 : 0;				// try to delete it
+		NumericVarValues.set(SaveValueIndex, result);
 		return true;
 	}
-	
+
 	private boolean executeFILE_EXISTS(){
-		if (!getNVar()){return false;}				// Next parameter if the FileNumber variable
+		if (!getNVar()) { return false; }					// get the var to put the result into
 		int saveValueIndex = theValueIndex;
-		
-		if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;}
-		++LineIndex;
 
-		if (!evalStringExpression()) return false;
-		if (SEisLE) return false;
-		if (!checkEOL()) return false;
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }				// get the file name
+		String fileName = StringConstant;
 
+		if (!checkEOL()) { return false; }
+		if (!checkSDCARD('r')) { return false; }
 
- 		String state = Environment.getExternalStorageState();
-    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-    		RunTimeError("External Storage not available.");
-    		return false;
-    	}
-	  	File lbDir = new File(Basic.filePath +   "/data/" + StringConstant);
-
-	  	double  exists = 0;								// Assume file does not exists
-	  	if (lbDir.exists()) exists = 1;
+		File file = new File(Basic.getDataPath(fileName));
+		double exists = file.exists() ? 1 : 0;				// does it exist?
 		NumericVarValues.set(saveValueIndex, exists);
 		return true;
 	}
-	
+
 	private boolean executeFILE_SIZE(){
-		  if (!getNVar()) return false;						// get the var to put the size value into
-		  int SaveValueIndex = theValueIndex;
-	
-		  
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;}
-		  ++LineIndex;
+		if (!getNVar()) { return false; }					// get the var to put the size value into
+		int SaveValueIndex = theValueIndex;
 
-		
-		if (!evalStringExpression())return false;					//get the old file name
-		if (SEisLE) return false;
-		if (!checkEOL()) return false;
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }				// get the file name
+		String fileName = StringConstant;
 
-		File sdDir = null;
-		File lbDir = null;
+		if (!checkEOL()) { return false; }
+		if (!checkSDCARD('r')) { return false; }
 
-	     		String state = Environment.getExternalStorageState();
-		    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-		    		RunTimeError("SDCRD not available.");
-	        		return false;
-	        	}
-				  	 sdDir = new File(Basic.filePath + "/");
-			  		 lbDir = new File(sdDir.getAbsoluteFile() + "/" + "/data/" +  StringConstant);
-			  	 
-		  if (!lbDir.exists()){									// did we get a dir?
-			  RunTimeError(StringConstant + " not found");
-			  return false;
-		  }
-		  
-		  long size = lbDir.length();
-		  NumericVarValues.set(SaveValueIndex, (double) size); // Put the item selected into the var
-		
+		File file = new File(Basic.getDataPath(fileName));
+		if (!file.exists()) {								// error if the file does not exist
+			return RunTimeError(fileName + " not found");
+		}
+		double size = file.length();
+		NumericVarValues.set(SaveValueIndex, size);			// Put the file size into the var
+
 		return true;
 	}
-	
+
 	private boolean executeFILE_ROOTS(){
+		if (!getSVar()) { return false; }
+		int SaveVarIndex = theValueIndex;
+
+		if (!checkEOL()) { return false; }
+		if (!checkSDCARD('r')) { return false; }
+
+		File file = new File(Basic.getDataPath(null));		// get path to default data directory
+		String s = "";
+		try { s = file.getCanonicalPath(); }
+		catch(IOException e) {}
 		
-		File lbDir = null;
-
-
- 		String state = Environment.getExternalStorageState();
-    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-    		RunTimeError("SDCRD not available.");
-    		return false;
-    	}
-	  	
-	  	lbDir = new File(Basic.filePath +"/data/");
-	    String s = "";
-	    
-	  	try {s = lbDir.getCanonicalPath();} catch(IOException e) {}
-	  	
-	  	if (!getVar()) return false;
-	  	if (VarIsNumeric) return false;
-	  	StringVarValues.set(theValueIndex, s);
-		if (!checkEOL()) return false;
-
-
+		StringVarValues.set(SaveVarIndex, s);
 		return true;
 	}
 
@@ -8053,43 +7986,42 @@ private boolean doUserFunction(){
 
 		if (!isNext(',')) { return false; }							// parse the ,D$[]
 		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
+		int SaveVarNumber = VarNumber;
+
 		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		if (VarIsNumeric) { return RunTimeError("Not string array"); } // Insure that it is a string array
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
-		File lbDir = new File(Basic.filePath + "/data/" + filePath);
-
-		if (!lbDir.exists()) {										// did we get a dir?
+		File lbDir = new File(Basic.getDataPath(filePath));
+		if (!lbDir.exists()) {										// error if directory does not exist
 			return RunTimeError(filePath + " is invalid path");
 		}
 
-		ArrayList <String> FL1 = new ArrayList<String>();
-		ArrayList <String> DL1 = new ArrayList<String>();
-
-//		DL1.add("..");												// put  the ".." to the top of the list
+		ArrayList <String> files = new ArrayList<String>();
+		ArrayList <String> dirs = new ArrayList<String>();
 
 		String FL[] = lbDir.list();									// get the list of files in the dir
 		if (FL == null) {											// if not a dir
-			DL1.add(" ");											// make list with one element
+			dirs.add(" ");											// make list with one element
 		} else {
 											// Go through the file list and mark directory entries with (d)
 			String absPath = lbDir.getAbsolutePath() + '/';
 			for (String s : FL) {
 				File test = new File(absPath + s);
 				if (test.isDirectory()) {							// If file is a directory, add "(d)"
-					DL1.add(s + "(d)");								// and add to display list
+					dirs.add(s + "(d)");							// and add to display list
 				} else {
-					FL1.add(s);										// else add name without the (d)
+					files.add(s);									// else add name without the (d)
 				}
 			}
-			Collections.sort(DL1);									// Sort the directory list
-			Collections.sort(FL1);									// Sort the file list
-			DL1.addAll(FL1);										// copy the file list to end of dir list
+			Collections.sort(dirs);									// Sort the directory list
+			Collections.sort(files);								// Sort the file list
+			dirs.addAll(files);										// copy the file list to end of dir list
 		}
-		int DLlength = DL1.size();
-		if (DLlength == 0) { DLlength = 1; }				// make at least one element if dir is empty
-															// it will be an empty string
-		return ListToBasicStringArray(VarNumber, DL1, DLlength);	// Copy the list to a BASIC! array
+		int length = dirs.size();									// number of directories and files in list
+		if (length == 0) { length = 1; }							// make at least one element if dir is empty
+																	// it will be an empty string
+		return ListToBasicStringArray(SaveVarNumber, dirs, length);	// Copy the list to a BASIC! array
 	}
 	
 	private boolean executeGRABFILE(){
@@ -8099,16 +8031,11 @@ private boolean doUserFunction(){
 		if (!isNext(',')) { return false; }
 		if (!getStringArg()) { return false; }						// Second parm is the filename
 		String theFileName = StringConstant;
-		if (!checkEOL()) return false;
 
-		String state = Environment.getExternalStorageState();		// Make sure the SD is mounted
-		if (!Environment.MEDIA_MOUNTED.equals(state)) {
-			return RunTimeError("SDCRD not available.");
-		}
+		if (!checkEOL()) { return false; }
+		if (!checkSDCARD('r')) { return false; }
 
-		String FullFileName = Basic.filePath + "/data"				// Add the filename to the base path
-							+ Basic.DataPath + "/" + theFileName;
-		File file = new File(FullFileName);
+		File file = new File(Basic.getDataPath(theFileName));		// Add the filename to the base path
 
 		BufferedInputStream bis = null;
 		ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*8);
@@ -8141,7 +8068,7 @@ private boolean doUserFunction(){
 
 		if (!isNext(',')) { return false; }
 		if (!getStringArg()) { return false; }						// Second parm is the url
-		if (!checkEOL()) return false;
+		if (!checkEOL()) { return false; }
 
 		URL url = null;
 		try {
@@ -8827,46 +8754,39 @@ private boolean doUserFunction(){
 		return true;
 	}
 
-    	  private boolean execute_sql_open(){
+	private boolean execute_sql_open(){
 
-    		   if (!getVar())return false;							// DB Pointer Variable
-    		   if (!VarIsNumeric)return false;						// for the DB table pointer
-    		   int SaveValueIndex = theValueIndex;
+		if (!getVar()) return false;								// DB Pointer Variable
+		if (!VarIsNumeric) return false;							// for the DB table pointer
+		int SaveValueIndex = theValueIndex;
 
-    		   if (!isNext(',')) return false;
-    		   if (!getStringArg()) return false;					// Get Data Base Name
-    		   String DBname = StringConstant;
-    		   
-    			if (!checkEOL()) return false;
-    			
-    	     	String state = Environment.getExternalStorageState();   // Make sure the SD is mounted
-    	    	if (!Environment.MEDIA_MOUNTED.equals(state)) {
-    	    		RunTimeError("External Storage not available.");
-    	    		return false;
-    	    	}
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;							// Get Data Base Name
+		String DBname = StringConstant;
+		if (!checkEOL()) return false;
 
-    		   String fn;
-    		   if (DBname.startsWith(":"))  fn = DBname;
-    		   else fn = Basic.filePath + "/databases/" +DBname; 
-    		    
-    		   File theFile = new File(fn);
+		String fn;
+		if (DBname.startsWith(":")) {
+			fn = DBname;
+		} else {
+			if (!checkSDCARD('w')) return false;
+			fn = Basic.getDataBasePath(DBname);
+		}
 
-    		   SQLiteDatabase db;
-    		   
-    		   try{													// Do the open or create
-    			   db = SQLiteDatabase.openOrCreateDatabase(theFile, null );
-    		   } catch  (Exception e){
-    			   RunTimeError("SQL Exception: "+e);
-    			   return false;
-    		   }
-    		   
-    		   // The newly opened data base is added to the DataBases list.
-    		   // The list index of the new data base is added returned to the user
+		SQLiteDatabase db;
+		try{														// Do the open or create
+			db = SQLiteDatabase.openOrCreateDatabase(new File(fn), null );
+		} catch  (Exception e) {
+			return RunTimeError("SQL Exception: "+e);
+		}
 
-    		   NumericVarValues.set(SaveValueIndex, (double) DataBases.size()+1);
-    		   DataBases.add(db);
-    		   return true;
-    	   }
+		// The newly opened data base is added to the DataBases list.
+		// The list index of the new data base is added returned to the user
+
+		NumericVarValues.set(SaveValueIndex, (double) DataBases.size()+1);
+		DataBases.add(db);
+		return true;
+	}
 
 		private boolean execute_sql_close(){
 		
@@ -16189,42 +16109,43 @@ private boolean doUserFunction(){
 		  return true;
 
 	  }
-	  
-	  //************************************** Run Command ************************************
-	  
-	  private boolean executeRUN(){
-		  
-		  if (Basic.isAPK) {
-			  RunTimeError("Run not permitted in a complied apk");
-			  return false;
-		  }
 
-		  if (!evalStringExpression()) return false;              // Get filename
-		  
-		  Intent intent = new  Intent(this, AutoRun.class);
-		  Bundle bb = new Bundle();
-		  String fn = Basic.filePath + "/source/" + StringConstant;
-		  
-		  String data = "";
-		  
-			char c = ExecutingLineBuffer.charAt(LineIndex);					// Loop value					
-			if ( c == ',') {
-				++LineIndex;
-				if (!evalStringExpression()) return false;
-				data = StringConstant;
-			}
+	//************************************** Run Command ************************************
 
-      	  bb.putString("fn", fn);								  // fn is the tag for the filename parameter
-      	  bb.putString("data", data);
-      	  intent.putExtras(bb);
+	private boolean executeRUN(){
 
-      	  Basic.DoAutoRun = false;
-          startActivity( intent );
-          finish();
+		if (Basic.isAPK) { return RunTimeError("Run not permitted in a compiled apk"); }
 
-		  return true;
-	  }
-	  
+		if (!getStringArg()) { return false; }								// get program filename
+		String fileName = StringConstant;
+
+		String data = "";
+		if (isNext(',')) {													// optional
+			if (!getStringArg()) { return false; }							// parameter to pass to program
+			data = StringConstant;
+		}
+		if (!checkEOL()) { return false; }
+
+		String fn = Basic.getSourcePath(fileName);
+		File file = new File(fn);
+		if (!file.exists()) {												// error if the program file does not exist
+			return RunTimeError(fileName + " not found");
+		}
+
+		Bundle bb = new Bundle();
+		bb.putString("fn", fn);
+		bb.putString("data", data);
+
+		Intent intent = new Intent(this, AutoRun.class);
+		intent.putExtras(bb);
+
+		Basic.DoAutoRun = false;
+		startActivity(intent);
+		finish();
+
+		return true;
+	}
+
 	  //**************************************** Empty Program Command *********************************
 	  
 	  private boolean executeEMPTY_PROGRAM(){
@@ -16239,24 +16160,22 @@ private boolean doUserFunction(){
 		  
 		  int NOTIFICATION_ID = 1;    // These two constants are without meaning in this application
 		  int REQUEST_CODE = 2;
-		  
-		  if (!evalStringExpression()) return false;
-		  String title = StringConstant;
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
-		  ++LineIndex;
-		  
-		  if (!evalStringExpression()) return false;
-		  String subtitle = StringConstant;
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
-		  ++LineIndex;
-		  
-		  if (!evalStringExpression()) return false;
-		  String msg = StringConstant;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression()) return false;
-		  double wait = EvalNumericExpressionValue;
-		  		  
+
+		if (!getStringArg()) return false;
+		String title = StringConstant;
+
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;
+		String subtitle = StringConstant;
+
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;
+		String msg = StringConstant;
+
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression()) return false;				// logical expression: wait flag
+		double wait = EvalNumericExpressionValue;
+
 		  Notified = false;
 		  
 		  NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
