@@ -10375,21 +10375,22 @@ private boolean doUserFunction(){
 	}
 
 	private boolean execute_gr_bitmap_load(){
-		if (!getNVar())return false;									// Graphic Bitmap Pointer Variable
+		if (!getNVar()) return false;									// Graphic Bitmap Pointer Variable
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) { return false; }
+		if (!isNext(',')) return false;
 
 		if (!getStringArg()) return false;								// Get the file path
 		if (!checkEOL()) return false;
+
 		String fileName = StringConstant;								// The filename as given by the user
-		String fn = Basic.filePath + "/data/" + fileName;
-		File file = new File(fn);
+		File file = new File(Basic.getDataPath(fileName));
 		InputStream inputStream = null;									// Establish an input stream
 
 		if (file.exists()) {
 			try {
-				inputStream = new FileInputStream(fn);					// Open an input stream from the SDCARD file
-			} catch (Exception e) {
+				inputStream = new FileInputStream(file);				// Open an input stream from the SDCARD file
+			} catch (IOException e) {
+				closeStream(inputStream, e);
 				return RunTimeError(e);
 			}
 		} else {														// file does not exist
@@ -10399,25 +10400,19 @@ private boolean doUserFunction(){
 				try {
 					inputStream = BasicContext.getResources().openRawResource(resID);	// Open an input stream from raw resource
 				} catch (Exception e) {
+					closeStream(inputStream, null);
 					return RunTimeError(e);
 				}
 			}															// else standard BASIC!, inputStream is still null
 		}
 		   
 		   System.gc();															// Garbage collect
-		   
-		   try{
-			   aBitmap = BitmapFactory.decodeStream(inputStream);				// Create bitmap from the input stream
-			   inputStream.close();
-		   }           
-		   catch (Exception e) {
-				return RunTimeError(e);
-		   }
 
-		   if (aBitmap == null ){
-			   RunTimeError("Bitmap load failed at:");
-			   return false;
-		   }
+		aBitmap = BitmapFactory.decodeStream(inputStream);				// Create bitmap from the input stream
+		try { inputStream.close(); }
+		catch (Exception e) { return RunTimeError(e); }
+
+		if (aBitmap == null) return RunTimeError("Bitmap load failed at:");
 		   
 		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
 		   
@@ -10985,24 +10980,23 @@ private boolean doUserFunction(){
 	  }
 
 	private boolean writeBitmapToFile(Bitmap b, String fn, int quality) {
-		boolean isPNG = true;											// Assume png
+		CompressFormat format = CompressFormat.PNG;						// Assume png
 		String tFN = fn.toUpperCase();									// temp convert fn to upper case
-		if (tFN.endsWith(".JPG")) isPNG = false;						// Test jpg
+		if (tFN.endsWith(".JPG")) format = CompressFormat.JPEG;			// Test jpg
 		else if (!tFN.endsWith(".PNG")) fn = fn + ".png";				// Test png
 
-		File file = new File(Basic.filePath +"/data/"+fn);		// build full path
+		File file = new File(Basic.getDataPath(fn));					// build full path
+		FileOutputStream ostream = null;
 
 		try {															// Write the file
 			file.createNewFile();
-			FileOutputStream ostream = new FileOutputStream(file);
+			ostream = new FileOutputStream(file);
 
-			if (isPNG)													// Write png or jpg
-				b.compress(CompressFormat.PNG, quality, ostream);
-			else
-				b.compress(CompressFormat.JPEG, quality, ostream);
+			b.compress(format, quality, ostream);						// Write png or jpg
 			ostream.close();
 		} 
 		catch (Exception e) {
+			closeStream(ostream, null);
 			return RunTimeError(e);
 		}
 		return true;
@@ -11555,15 +11549,15 @@ private boolean doUserFunction(){
 //		  AudioManager audioSM = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
 		MediaPlayer aMP = null;
 		  
-		if (!getNVar())return false;									// Get the Player Number Var
+		if (!getNVar()) return false;									// Get the Player Number Var
 		int saveValueIndex = theValueIndex;
-		if (!isNext(',')) { return false; }
+		if (!isNext(',')) return false;
 
 		if (!getStringArg()) return false;								// Get the file path
 		if (!checkEOL()) return false;
+
 		String fileName = StringConstant;								// The filename as given by the user
-		String fn = Basic.filePath + "/data/" + fileName;
-		File file = new File(fn);
+		File file = new File(Basic.getDataPath(fileName));
 
 		Uri theURI = null;
 		int resID = 0;
@@ -11826,18 +11820,18 @@ private boolean doUserFunction(){
 		  
 		  return true;
 	  }
-	  
-	  private boolean execute_audio_record_start(){
-		  if (!evalStringExpression()) return false;
-		  String recordFileName = Basic.filePath +"/data/" + StringConstant;
-		  
-		  int source = 0;								// Get optional source
-		  if (ExecutingLineBuffer.charAt(LineIndex) == ','){
-			  ++LineIndex;
-			  if (!evalNumericExpression()) return false;
-			  source = EvalNumericExpressionValue.intValue();
-			  
-		  }
+
+	private boolean execute_audio_record_start(){
+		if (!getStringArg()) return false;
+		String recordFileName = Basic.getDataPath(StringConstant);
+
+		int source = 0;									// Get optional source
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			source = EvalNumericExpressionValue.intValue();
+		}
+		if (!checkEOL()) return false;
+
 		  try {
 	        mRecorder = new MediaRecorder();
 	        switch (source)
@@ -14505,40 +14499,31 @@ private boolean doUserFunction(){
 
 	  		}
 
-	  	private boolean executeFTP_OPEN(){
-	  		if (!evalStringExpression()) return false;					// URL
-	  		String url = StringConstant;
-	  		
-			char c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
-			
-			if (!evalNumericExpression()) return false;					// Port
-			int port = EvalNumericExpressionValue.intValue();
-			
-			c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
+	private boolean executeFTP_OPEN(){
+		if (!getStringArg()) return false;							// URL
+		String url = StringConstant;
 
-	  		if (!evalStringExpression()) return false;					// User Name
-	  		String user = StringConstant;
-	  		
-			c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression()) return false;					// Port
+		int port = EvalNumericExpressionValue.intValue();
 
-	  		if (!evalStringExpression()) return false;					// Pass word
-	  		String pw = StringConstant;
-			
-			if (! ftpConnect( url, user, pw, port)) return false;
-			
-			FTPdir = ftpGetCurrentWorkingDirectory();
-			if (FTPdir == null) return false;
-			
-			return true;
-			
-		}
-	  	
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;							// User Name
+		String user = StringConstant;
+
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;							// Pass word
+		String pw = StringConstant;
+		if (!checkEOL()) return false;
+
+		if (!ftpConnect( url, user, pw, port)) return false;
+
+		FTPdir = ftpGetCurrentWorkingDirectory();
+		if (FTPdir == null) return false;
+
+		return true;
+	}
+
 		public boolean ftpConnect(String host, String username,
 	            String password, int port)
 		{
@@ -14583,6 +14568,7 @@ private boolean doUserFunction(){
 		}
 		
 		private boolean executeFTP_CLOSE(){
+			if (!checkEOL()) return false;
 			if (FTPdir == null) return true;
 			
 			   try {
@@ -14596,268 +14582,214 @@ private boolean doUserFunction(){
 		}
 		
 		private boolean executeFTP_DIR(){
-			
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
-			}
-			
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
+
 			if (!getNVar()) return false;								// get the list VAR
-			
-			ArrayList<String> theStringList = new ArrayList <String>(); // Create a new user list
+			if (!checkEOL()) return false;
+
+			ArrayList<String> theStringList = new ArrayList <String>();	// create a new user list
 			int theIndex = theLists.size();
 			theLists.add(theStringList);
-			 
-			theListsType.add(list_is_string);								// add the type
-			NumericVarValues.set(theValueIndex, (double) theIndex);   		// Return the list pointer
-			
 
-			   try {
-			        FTPFile[] ftpFiles = mFTPClient.listFiles();
-			        int length = ftpFiles.length;
+			theListsType.add(list_is_string);							// add the type
+			NumericVarValues.set(theValueIndex, (double) theIndex);		// return the list pointer
 
-			        for (int i = 0; i < length; i++) {
-			            String name = ftpFiles[i].getName();
-			            if ( ftpFiles[i].isDirectory() ) name= name + "(d)";
-			            theStringList.add(name);
-			        }
-			    } catch(Exception e) {
-			        return RunTimeError(e);
-			    }
-			
+			FTPFile[] ftpFiles;
+			try { ftpFiles = mFTPClient.listFiles(); }					// get the list of files
+			catch (Exception e) { return RunTimeError(e); }
+
+			for (FTPFile file : ftpFiles) {								// write file names to list var
+				String name = file.getName();
+				if (file.isDirectory()) { name += "(d)"; }				// mark directories
+				theStringList.add(name);
+			}
+
 			return true;
 		}
 		
 		private boolean executeFTP_CD(){
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
+
+			if (!getStringArg()) return false;							// new directory name
+			if (!checkEOL()) return false;
+
+			String directory_path = "/" + StringConstant;
+
+			boolean status = false;
+			try {
+				status = mFTPClient.changeWorkingDirectory(directory_path);
+			} catch (Exception e) {
+				return RunTimeError(e);
 			}
-			
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String directory_path = "/"+StringConstant;
+			if (!status) { return RunTimeError("Directory change failed."); }
 
-		    try {
-		        boolean status = mFTPClient.changeWorkingDirectory(directory_path);
-		        if (!status) {
-		        	RunTimeError("Directory change failed.");
-		        	return false;
-		        }
-		    } catch(Exception e) {
-		        return RunTimeError(e);
-		    }
-		    FTPdir = directory_path;
+			FTPdir = directory_path;
 
-		    return true;
+			return true;
 		}
 		
 		private boolean executeFTP_GET(){
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
-			}
-			
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String srcFile = StringConstant;
-	  		
-			char c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
-	  		if (!evalStringExpression()) return false;					// Destination file name
-	  		String destFile = StringConstant;
-	  		
-	  		destFile = Basic.filePath +"/data/" + destFile;
-	  		
-	  		return ftpDownload(srcFile, destFile);
+			if (!getStringArg()) return false;							// Source file name
+			String srcFile = StringConstant;
+
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;							// Destination file name
+			String destFile = StringConstant;
+			if (!checkEOL()) return false;
+
+			destFile = Basic.getDataPath(destFile);
+
+			return ftpDownload(srcFile, destFile);
 		}
-		
+
 		public boolean ftpDownload(String srcFilePath, String desFilePath)
 		{
-		    boolean status = false;
-		    try {
-		        FileOutputStream desFileStream = new FileOutputStream(desFilePath);
-		        status = mFTPClient.retrieveFile(srcFilePath, desFileStream);
-		        desFileStream.close();
-		        if (!status) RunTimeError("Download error");
-
-		        return status;
-		    } catch (Exception e) {
-		        return RunTimeError(e);
-		    }
-		}
-		
-		private boolean executeFTP_PUT(){
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
-			}
-			
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String srcFile = StringConstant;
-	  		
-			char c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
-
-	  		if (!evalStringExpression()) return false;					// Destination file name
-	  		String destFile = StringConstant;
-	  		
-	  		srcFile = Basic.filePath +"/data/" + srcFile;
-	  		
-	  		return ftpUpload(srcFile, destFile);
-		}
-		
-		public boolean ftpUpload(String srcFilePath, String desFileName)
-		{
+			FileOutputStream desFileStream = null;
 			boolean status = false;
-
 			try {
-
-				FileInputStream srcFileStream = new FileInputStream(srcFilePath);
-
-				// change working directory to the destination directory
-					status = mFTPClient.storeFile(desFileName, srcFileStream);
-					if (!status) RunTimeError("Upload problem");
-				srcFileStream.close();
-				return status;
+				desFileStream = new FileOutputStream(desFilePath);
+				status = mFTPClient.retrieveFile(srcFilePath, desFileStream);
+				desFileStream.close();
 			} catch (Exception e) {
+				closeStream(desFileStream, null);
 				return RunTimeError(e);
 			}
+			if (!status) { RunTimeError("Download error"); }
+			return status;
+		}
+
+		private boolean executeFTP_PUT(){
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
+
+			if (!getStringArg()) return false;							// Source file name
+			String srcFile = StringConstant;
+
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;							// Destination file name
+			String destFile = StringConstant;
+			if (!checkEOL()) return false;
+
+			srcFile = Basic.getDataPath(srcFile);
+
+			return ftpUpload(srcFile, destFile);
+		}
+
+		public boolean ftpUpload(String srcFilePath, String desFilePath)
+		{
+			FileInputStream srcFileStream = null;
+			boolean status = false;
+			try {
+				srcFileStream = new FileInputStream(srcFilePath);
+				status = mFTPClient.storeFile(desFilePath, srcFileStream);
+				srcFileStream.close();
+			} catch (Exception e) {
+				closeStream(srcFileStream, null);
+				return RunTimeError(e);
+			}
+			if (!status) { RunTimeError("Upload problem"); }
+			return status;
 		}	
 		
 		public boolean executeFTP_CMD(){
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
-			}
-			
-			
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String cmd = StringConstant;
-	  		
-			char c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
-	  		if (!evalStringExpression()) return false;					// Destination file name
-	  		String parms = StringConstant;
-	  		
-			c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
-			
-			if (!getNVar()) return false;
-			
+			if (!getStringArg()) return false;							// Command
+			String cmd = StringConstant;
+
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;							// String parameter
+			String parms = StringConstant;
+
+			if (!isNext(',')) return false;
+			if (!getNVar()) return false;								// Numeric parameter
+			if (!checkEOL()) return false;
+
+			String[] response = null;
 			try {
-				String[] response = mFTPClient.doCommandAsStrings( cmd, parms );
-				int l = response.length;
-				for (int i = 0; i < l; ++i)
-					PrintShow(response[i]);
-				return true;
+				response = mFTPClient.doCommandAsStrings(cmd, parms);
 			} catch (Exception e) {
 				return RunTimeError(e);
 			}
+			for (String r : response) {
+				PrintShow(r);
+			}
+			return true;
 		}
 		
 		private boolean executeFTP_DELETE(){
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
+
+			if (!getStringArg()) return false;							// get the file name
+			String filePath = StringConstant;
+			if (!checkEOL()) return false;
+
+			boolean status = false;
+			try {
+				status = mFTPClient.deleteFile(filePath);				// try to delete the file
+			} catch (Exception e) {
+				return RunTimeError(e);
 			}
-			
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String filePath = StringConstant;
-
-			
-		    try {
-		        boolean status = mFTPClient.deleteFile(filePath);
-		        if (!status){
-		        	RunTimeError("File not deleted");
-		        }
-		        return status;
-		    } catch (Exception e) {
-		        RunTimeError("Error " + e);
-		        return false;
-		    }
-
-//		    return false;
+			if (!status) { RunTimeError("File not deleted"); }
+			return status;
 		}
 		
 		private boolean executeFTP_RMDIR(){
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
+
+			if (!getStringArg()) return false;							// get the directory name
+			String filePath = StringConstant;
+			if (!checkEOL()) return false;
+
+			boolean status = false;
+			try {
+				status = mFTPClient.removeDirectory(filePath);			// try to remove it
+			} catch (Exception e) {
+				return RunTimeError(e);
 			}
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String filePath = StringConstant;
-
-			
-		    try {
-		        boolean status = mFTPClient.removeDirectory(filePath);
-		        if (!status){
-		        	RunTimeError("Directory not deleted");
-		        }
-		        return status;
-		    } catch (Exception e) {
-		        RunTimeError("Error " + e);
-		        return false;
-		    }
-
-//		    return false;
+			if (!status) { RunTimeError("Directory not deleted"); }
+			return status;
 		}
-		
-		private boolean executeFTP_MKDIR(){
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
-			}
-			
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String filePath = StringConstant;
-			
-		    try {
-		        boolean status = mFTPClient.makeDirectory(filePath);
-		        if (!status){
-		        	RunTimeError("Directory not created");
-		        }
-		        return status;
-		    } catch (Exception e) {
-		        RunTimeError("Error " + e);
-		        return false;
-		    }
 
-//		    return false;
+		private boolean executeFTP_MKDIR(){
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
+
+			if (!getStringArg()) return false;							// get the directory name
+			String filePath = StringConstant;
+			if (!checkEOL()) return false;
+
+			boolean status = false;
+			try {
+				status = mFTPClient.makeDirectory(filePath);
+			} catch (Exception e) {
+				return RunTimeError(e);
+			}
+			if (!status) { RunTimeError("Directory not created"); }
+			return status;
 		}
 		
 		private boolean executeFTP_RENAME(){
-			if (FTPdir == null){
-				RunTimeError("FTP not opened");
-				return false;
+			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
+
+			if (!getStringArg()) return false;							// old file name
+			String oldName = StringConstant;
+
+			if (!isNext(',')) return false;
+			if (!getStringArg()) return false;							// new file name
+			String newName = StringConstant;
+			if (!checkEOL()) return false;
+
+			boolean status = false;
+			try {
+				status = mFTPClient.rename(oldName, newName);
+			} catch (Exception e) {
+				return RunTimeError(e);
 			}
-			
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String oldName = StringConstant;
-	  		
-			char c = ExecutingLineBuffer.charAt(LineIndex);						
-			if ( c != ',') return false;
-			++LineIndex;
-
-	  		if (!evalStringExpression()) return false;					// Source file name
-	  		String newName = StringConstant;
-
-		    try {
-		        boolean status = mFTPClient.rename(oldName, newName);
-		        if (!status){
-		        	RunTimeError("File not renamed");
-		        }
-		        return status;
-		    } catch (Exception e) {
-		        RunTimeError("Error " + e);
-		    }
+			if (!status) { RunTimeError("File not renamed"); }
 			return false;
 		}
-		
+
 // *****************************************  Bluetooth ********************************
 		
 		public boolean executeBT(){
@@ -15235,7 +15167,7 @@ private boolean doUserFunction(){
 		        {
 		            if (isSU) SUprocess = Runtime.getRuntime().exec("su");				// Request Superuser
 		            else {
-		            	File dir = new File(Basic.filePath);
+		            	File dir = new File(Basic.getFilePath());
 		            	if (!dir.exists()) { dir.mkdirs(); }
 		            	SUprocess = Runtime.getRuntime().exec("sh", null, dir);			// Open ordinary shell
 		            }
@@ -15323,42 +15255,39 @@ private boolean doUserFunction(){
 	}
 
 	private boolean executeCONSOLE_DUMP(){
-		
+
 		if (!getStringArg() || !checkEOL()) { return false; }	// Only paramter is the filename
 		String theFileName = StringConstant;
 
 		theBackground.checkpointProgress();						// allow any pending Console activity to complete
 		while (ProgressPending) { Thread.yield(); }				// wait for checkpointProgress semaphore to clear
 
-			File file = new File(Basic.filePath + "/data/" + theFileName);
-        	try {
-        		file.createNewFile();
-        		}catch (Exception e) {
-        			return RunTimeError(e);
-        		}
-        	if (!file.exists() || !file.canWrite()){
-        		RunTimeError("Problem opening " + theFileName);
-	    		return false;
-        	}
+		File file = new File(Basic.getDataPath(theFileName));
+		try {
+			file.createNewFile();
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
+		if (!file.exists() || !file.canWrite()) {
+			return RunTimeError("Problem opening " + theFileName);
+		}
 
-            FileWriter writer = null;
-        	try{
-        		writer = new FileWriter(file, false);						// open the filewriter for the SD Card
-        		int length = output.size();
-        		for (int i = 0; i < length; ++i) {
-        			writer.write(output.get(i)+ "\n");
-        			
-        		}
-				writer.flush();
-				writer.close();
-        		}catch (Exception e) {
-        			return RunTimeError(e);
-        		}
-//        	Log.d(LOGTAG, "executeCONSOLE_DUMP: file " + theFileName + " written");
-		
+		FileWriter writer = null;
+		try {
+			writer = new FileWriter(file, false);				// open the filewriter for the SD Card
+			for (String line : output) {
+				writer.write(line + "\n");
+			}
+			writer.flush();
+			writer.close();
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
+		// Log.d(LOGTAG, "executeCONSOLE_DUMP: file " + theFileName + " written");
+
 		return true;
 	}
-	
+
 	  private boolean executeCONSOLE_FRONT(){
 		  Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
 		  startActivity(Basic.theProgramRunner);
@@ -15473,7 +15402,7 @@ private boolean doUserFunction(){
 		if (!getStringArg()) return false;								// Get the file path
 		if (!checkEOL()) return false;
 		String fileName = StringConstant;								// The filename as given by the user
-		String fn = Basic.filePath + "/data/" + fileName;
+		String fn = Basic.getDataPath(fileName);
 		File file = new File(fn);
 
 		int SoundID = 0;
@@ -15999,7 +15928,7 @@ private boolean doUserFunction(){
               if (Basic.isAPK) {                              // if not standard BASIC! then is user APK
                   urlString = "file:///android_asset/" + urlString;       // try to load the file from the assets resource
               } else {
-                  urlString = "file://" + Basic.filePath + "/data/" + urlString;       // try to load the file from the rfo-bsaic/data folder
+                  urlString = "file://" + Basic.getDataPath(urlString);   // try to load the file from the rfo-bsaic/data folder
               }
           }
 //        Web.aWebView.webLoadUrl(urlString);
