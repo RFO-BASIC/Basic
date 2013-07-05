@@ -8023,7 +8023,7 @@ private boolean doUserFunction(){
 																	// it will be an empty string
 		return ListToBasicStringArray(SaveVarNumber, dirs, length);	// Copy the list to a BASIC! array
 	}
-	
+
 	private boolean executeGRABFILE(){
 		if (!getSVar()) { return false; }							// First parm is string var
 		int saveVarIndex = theValueIndex;
@@ -8032,33 +8032,30 @@ private boolean doUserFunction(){
 		if (!getStringArg()) { return false; }						// Second parm is the filename
 		String theFileName = StringConstant;
 
+		boolean textFlag = false;									// Default: assume ASCII/binary
+		if (isNext(',')) {											// Optional third parm
+			if (!evalNumericExpression()) { return false; }
+			textFlag = (EvalNumericExpressionValue != 0.0);			// is the text flag: unicode if non-zero
+		}
 		if (!checkEOL()) { return false; }
 		if (!checkSDCARD('r')) { return false; }
 
-		File file = new File(Basic.getDataPath(theFileName));		// Add the filename to the base path
-
 		BufferedInputStream bis = null;
-		ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*8);
+		String result = null;
 		IOException ex = null;
+
+		File file = new File(Basic.getDataPath(theFileName));		// Add the filename to the base path
 		try {														// Open the reader for the SD Card
 			FileInputStream fis = new FileInputStream(file);
 			bis = new BufferedInputStream(fis);
-
-			int current = 0;
-			while ((current = bis.read()) != -1) {
-				byteArray.append((byte) current);
-			}
+			result = grabStream(bis, textFlag);
 		} catch (IOException e) {
 			ex = e;
 		} finally {
 			ex = closeStream(bis, ex);
 			if (ex != null) { return RunTimeError(ex); }
 		}
-
-		// Construct a String object from the byte array containing the response
-		String result = new String(byteArray.toByteArray(), 0);
 		StringVarValues.set(saveVarIndex, result);
-
 		return true;
 	}
 
@@ -8070,40 +8067,44 @@ private boolean doUserFunction(){
 		if (!getStringArg()) { return false; }						// Second parm is the url
 		if (!checkEOL()) { return false; }
 
+		BufferedInputStream bis = null;
+		String result = null;
+		IOException ex = null;
+
 		URL url = null;
 		try {
 			// This assumes that you have a URL from which the response will come
 			url = new URL(StringConstant);
-		} catch (Exception e) {
-			return RunTimeError(e);
-		}
-
-		BufferedInputStream bis = null;
-		ByteArrayBuffer byteArray = new ByteArrayBuffer(50);
-		IOException ex = null;
-		try {
 			// Open a connection to the URL and obtain a buffered input stream
 			URLConnection connection = url.openConnection();
 			InputStream inputStream = connection.getInputStream();
 			bis = new BufferedInputStream(inputStream);
-
-			// Read the response into a byte array
-			int current = 0;
-			while ((current = bis.read()) != -1) {
-				byteArray.append((byte) current);
-			}
-		} catch (IOException e) {
-			ex = e;
+			result = grabStream(bis, true);							// Read as encoded text stream, not byte stream
+		} catch (Exception e) {
+			closeStream(bis, null);
+			return RunTimeError(e);
 		} finally {
 			ex = closeStream(bis, ex);
 			if (ex != null) { return RunTimeError(ex); }
 		}
+		StringVarValues.set(saveVarIndex, result);
+		return true;
+	}
+
+	private String grabStream(BufferedInputStream bis, boolean textFlag) throws IOException {
+		ByteArrayBuffer byteArray = new ByteArrayBuffer(1024*8);
+		int current = 0;
+		// Read from the stream into a byte array
+		while ((current = bis.read()) != -1) {
+			byteArray.append((byte) current);
+		}
 
 		// Construct a String object from the byte array containing the response
-		String result = new String(byteArray.toByteArray());
-		StringVarValues.set(saveVarIndex, result);
-
-		return true;
+		if (textFlag) {
+			return new String(byteArray.toByteArray());			// Text: keep full two-byte encoding
+		} else {
+			return new String(byteArray.toByteArray(), 0);		// ASCII or binary: force upper byte 0
+		}
 	}
 
 	// ************************************** Time and TimeZone commands **************************
