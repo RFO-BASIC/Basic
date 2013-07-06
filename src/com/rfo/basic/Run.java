@@ -5030,9 +5030,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 															//calculate array element offset
 															//when array is referenced
 
-			if (TotalElements>10000){						// Limit the size of any one array
-				RunTimeError("Array exceeds 10,000 elements");		// to 10,000 elements
-				return false;
+			if (TotalElements>50000){						// Limit the size of any one array
+				return RunTimeError("Array exceeds 50,000 elements");	// to 50,000 elements
 			}
 		}
 		ArraySizes.remove(0);								//remove the last size (the first size)
