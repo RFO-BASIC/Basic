@@ -84,6 +84,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
@@ -2839,11 +2840,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		if (!executeELSEIF()){SyntaxError();return false;}
 	        		break;
 	        	case BKWend:
-	        	    PrintShow("END");
-//	        		OnErrorLine = 0;
-//	        		SyntaxError = false;
-	        	    Stop = true;
-	        		return true;
+	        		if (!executeEND()){SyntaxError();return false;}
+	        		break;
 	        	case BKWprint:
 	        		if (!executePRINT()){SyntaxError();return false;}
 	        		break;
@@ -4993,7 +4991,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		boolean unDimed = getArrayVar();
 		unDiming = false;
 
-		return unDimed;
+		return unDimed && checkEOL();
 	}
 
 	private   boolean BuildBasicArray(int VarNumber, boolean IsNumeric, ArrayList<Integer> DimList){		//Part of DIM
@@ -5208,6 +5206,25 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		PrintLineReady = !WasSemicolon;
 		StringConstant = printLine.toString();
 		return true;
+	}
+
+	private boolean executeEND() {
+
+		Stop = true;								// ALWAYS stop
+
+		String endMsg = "END";						// Default END message
+		boolean ok = true;
+		if (!isEOL()) {
+			ok = getStringArg();					// Get user's END message
+			if (ok) {
+				endMsg = StringConstant;
+				ok = checkEOL();
+			}
+		}
+
+		if (endMsg.length() > 0) { PrintShow(endMsg); }
+		return ok;
+
 	}
 
 	private boolean executeGOTO() {
@@ -8052,7 +8069,7 @@ private boolean doUserFunction(){
 			ex = e;
 		} finally {
 			ex = closeStream(bis, ex);
-			if (ex != null) { return RunTimeError(ex); }
+			if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
 		}
 		StringVarValues.set(saveVarIndex, result);
 		return true;
@@ -8064,6 +8081,13 @@ private boolean doUserFunction(){
 
 		if (!isNext(',')) { return false; }
 		if (!getStringArg()) { return false; }						// Second parm is the url
+
+		int timeoutMillis = 0;										// Default: assume infinite timeout
+		if (isNext(',')) {											// Optional third parm
+			if (!evalNumericExpression()) { return false; }
+			timeoutMillis = EvalNumericExpressionValue.intValue();	// is the timeout: infinite if 0
+			if (timeoutMillis < 0) { timeoutMillis *= -1; }			// negative value would throw an exception
+		}
 		if (!checkEOL()) { return false; }
 
 		BufferedInputStream bis = null;
@@ -8076,15 +8100,21 @@ private boolean doUserFunction(){
 			url = new URL(StringConstant);
 			// Open a connection to the URL and obtain a buffered input stream
 			URLConnection connection = url.openConnection();
+			if (timeoutMillis != 0) {
+				connection.setConnectTimeout(timeoutMillis);
+				connection.setReadTimeout(timeoutMillis);
+			}
 			InputStream inputStream = connection.getInputStream();
 			bis = new BufferedInputStream(inputStream);
 			result = grabStream(bis, true);							// Read as encoded text stream, not byte stream
-		} catch (Exception e) {
-			closeStream(bis, null);
-			return RunTimeError(e);
+// Alternate implementation: uncomment this catch block to handle Timeout explicitly.
+//		} catch (SocketTimeoutException ste) {						// Connect or Read timeout
+//			result = "";											// Empty result, finally will close stream but will not return
+		} catch (Exception e) {										// Report exception in run time error
+			return RunTimeError(e);									// finally will close stream before return happens
 		} finally {
-			ex = closeStream(bis, ex);
-			if (ex != null) { return RunTimeError(ex); }
+			ex = closeStream(bis, ex);								// Close stream if not already closed
+			if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
 		}
 		StringVarValues.set(saveVarIndex, result);
 		return true;
