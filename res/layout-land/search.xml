@@ -5,7 +5,7 @@
 BASIC! is an implementation of the Basic programming lanuage for
 Android devices.
  
- Copyright (C) 2010, 2011, 2012 Paul Laughton
+ Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -29,103 +29,111 @@ This file is part of BASIC! for Android
 	
 <RelativeLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:layout_width="fill_parent" android:layout_height="fill_parent"
-	android:gravity="center_horizontal" android:padding="10px"
-	>
-		
-	<Button android:id="@+id/next_button"  
-        android:layout_width="wrap_content" 
-        android:layout_height="40dip"
-        android:textSize="15dip"
-        android:layout_marginLeft="10dip" 
-        android:layout_marginBottom="8dip"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentBottom ="true"
-        android:text="Next" />
-        
-    <Button android:id="@+id/done_button"  
-        android:layout_width="wrap_content" 
-        android:layout_height="40dip"
-        android:textSize="15dip"
-        android:layout_marginLeft="10dip" 
-        android:layout_marginBottom="8dip"
-         android:layout_toRightOf="@id/next_button"
-        android:layout_alignTop="@id/next_button"
-        android:text="Done" />
-        
-     <Button android:id="@+id/replace_all_button"  
-        android:layout_width="wrap_content" 
-        android:layout_height="40dip"
-        android:textSize="15dip"
-        android:layout_marginLeft="10dip" 
-        android:layout_marginBottom="8dip"
-        android:layout_alignParentRight="true"
-         android:layout_alignTop="@id/next_button"
-        android:text="Replace All" />
-        
-        
+	android:layout_width="fill_parent" android:layout_height="fill_parent" >
 
-    <Button android:id="@+id/replace_button"  
-        android:layout_width="wrap_content" 
-        android:layout_height="40dip"
-        android:textSize="15dip"
-        android:layout_marginLeft="10dip" 
-        android:layout_marginBottom="8dip"
-        android:layout_toLeftOf="@id/replace_all_button"
-        android:layout_alignTop="@id/next_button"
-        android:text="Replace" />
-		
-
-
-        
-       	<EditText android:id="@+id/replace_text"
-		android:layout_width="220dip"
-		android:layout_alignParentRight="true"
-		android:layout_height="40dip"
-		android:layout_marginLeft="10dip"
-		android:layout_marginBottom="5dip"
-		android:layout_above="@id/next_button"
-		style="@style/edit_text_l" />	
-       
-     <TextView android:id="@+id/replace_with"
-		android:layout_width="220dip"
+	<LinearLayout android:id="@+id/controls_group"
+		android:layout_width="fill_parent"
 		android:layout_height="wrap_content"
-		android:layout_above="@id/replace_text"
+		android:orientation="horizontal"
 		android:layout_marginLeft="10dip"
-		android:layout_marginBottom="5dip"
-		android:layout_alignParentRight="true"
-		
-		style="@style/label_l"
-		android:text="Replace With:" />
- 
-	<EditText android:id="@+id/search_text"
-		android:layout_width="220dip"
-		android:layout_height="40dip"
-		android:layout_marginLeft="10dip"
-		android:layout_marginBottom="5dip"
-		android:layout_alignParentLeft="true"
-		android:layout_above="@+id/next_button"
-		style="@style/edit_text_l" />	
+		android:layout_marginRight="10dip"
+		android:layout_alignParentBottom="true" >
 
-	<TextView android:id="@+id/search_for"
-		android:layout_width="220dip"
-		android:layout_height="wrap_content"
-		android:layout_marginLeft="10dip"
-		android:layout_marginBottom="5dip"
-		android:layout_above="@id/search_text"
-		style="@style/label_l"
-		android:text="Search For:" />
+		<LinearLayout android:id="@+id/search_group"
+			android:layout_weight="1"
+			android:layout_width="0dip"
+			android:layout_height="fill_parent"
+			android:orientation="vertical"
+			android:layout_marginRight="10dip" >
 
-        <EditText android:id="@+id/the_text"
+			<TextView android:id="@+id/search_for"
+				android:layout_width="fill_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="5dip"
+				style="@style/label_l"
+				android:text="Search For:" />
+
+			<EditText android:id="@+id/search_text"
+				android:layout_width="fill_parent"
+				android:layout_height="40dip"
+				android:layout_marginBottom="5dip"
+				style="@style/edit_text_l" />
+
+			<LinearLayout android:id="@+id/search_buttons"
+				android:layout_width="fill_parent"
+				android:layout_height="40dip"
+				android:orientation="horizontal" >
+
+				<Button android:id="@+id/next_button"
+					android:layout_weight="1"
+					android:layout_width="0dip"
+					android:layout_height="fill_parent"
+					android:textSize="15dip"
+					android:text="Next" />
+
+				<Button android:id="@+id/done_button"
+					android:layout_weight="1"
+					android:layout_width="0dip"
+					android:layout_height="fill_parent"
+					android:textSize="15dip"
+					android:text="Done" />
+
+			</LinearLayout> <!-- search_buttons -->
+
+		</LinearLayout> <!-- search_group -->
+
+		<LinearLayout android:id="@+id/replace_group"
+			android:layout_weight="1"
+			android:layout_width="0dip"
+			android:layout_height="fill_parent"
+			android:orientation="vertical"
+			android:layout_marginLeft="10dip" >
+
+			<TextView android:id="@+id/replace_with"
+				android:layout_width="fill_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="5dip"
+				style="@style/label_l"
+				android:text="Replace With:" />
+
+			<EditText android:id="@+id/replace_text"
+				android:layout_width="fill_parent"
+				android:layout_height="40dip"
+				android:layout_marginBottom="5dip"
+				style="@style/edit_text_l" />
+
+			<LinearLayout android:id="@+id/replace_buttons"
+				android:layout_width="fill_parent"
+				android:layout_height="40dip"
+				android:orientation="horizontal" >
+
+				<Button android:id="@+id/replace_button"
+					android:layout_weight="1"
+					android:layout_width="0dip"
+					android:layout_height="fill_parent"
+					android:textSize="15dip"
+					android:text="Replace" />
+
+				<Button android:id="@+id/replace_all_button"
+					android:layout_weight="1"
+					android:layout_width="0dip"
+					android:layout_height="fill_parent"
+					android:textSize="15dip"
+		 			android:text="Replace All" />
+
+			</LinearLayout> <!-- replace_buttons -->
+
+		</LinearLayout> <!-- replace_group -->
+
+	</LinearLayout> <!-- controls_group -->
+
+	<EditText android:id="@+id/the_text"
 		android:layout_width="fill_parent"
 		android:layout_height="fill_parent"
-		android:layout_above="@id/search_for"
+		android:layout_above="@id/controls_group"
 		android:layout_marginLeft="10dip"
+		android:layout_marginRight="10dip"
 		android:layout_marginBottom="5dip"
-		style="@style/edit_text_l"
-		 />
-
-		
-		
+		style="@style/edit_text_l" />
 
 </RelativeLayout>

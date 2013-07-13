@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -29,26 +29,16 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.content.res.Configuration;
-import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
-import android.graphics.Bitmap;
-import com.rfo.basic.R;
-
-import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
 
 
 public class Search extends Activity {
@@ -64,7 +54,9 @@ public class Search extends Activity {
     private EditText theTextView;		//The EditText TextView
     private int Index;					//Indexes into the text
     private int nextIndex;
-    
+
+	private boolean isSearchCaseSensitive = false;		// TODO: provide a control to set case-sensitivity
+
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event)  {
     	// if BACK key restore original text
@@ -205,11 +197,12 @@ public class Search extends Activity {
     private boolean doNext(){										// Find the next occurrence of the search for string
  	   Index = nextIndex;											// Postion from last search becomes start of this search
 	   searchText = sText.getText().toString();						// Get the search text from the dialog box
-	   searchText = searchText.toLowerCase();
 	   String MirrorText = "" + Editor.DisplayText;
-	   MirrorText = MirrorText.toLowerCase();
-	   Index = MirrorText.indexOf(searchText, Index);
-//	   Index = Editor.DisplayText.indexOf(searchText, Index);		// Search for the text
+		if (!isSearchCaseSensitive) {
+			searchText = searchText.toLowerCase();
+			MirrorText = MirrorText.toLowerCase();
+		}
+	   Index = MirrorText.indexOf(searchText, Index);				// Search for the text
 	   if (Index < 0) return false;									// If not found, return false
 	   nextIndex= Index + searchText.length();						// Set nextIndex to the end of the found text
 	   theTextView.setSelection(Index, nextIndex);					// Highlight the selection
@@ -237,34 +230,44 @@ public class Search extends Activity {
     	int count = 0;
     	Index = 0;
     	nextIndex = 0;
- 	   	searchText = sText.getText().toString();						// Get the search text from the dialog box
+ 	   	searchText = sText.getText().toString();				// Get the search text from the dialog box
  	   	int sl = searchText.length();
- 	   	replaceText = rText.getText().toString();					    // Get the replace text from the dialog
+ 	   	replaceText = rText.getText().toString();				// Get the replace text from the dialog
  	   	int rl = replaceText.length();
- 	   	StringBuilder S = new StringBuilder(theTextView.getText().toString());	// Schelpp text around to get needed method
- 	   	
+		String originalText = ("" + Editor.DisplayText);
+		String mirrorText = originalText;
+		StringBuilder S = new StringBuilder("");				// Workspace for building text with replacement
+
+		if (!isSearchCaseSensitive) {
+			searchText = searchText.toLowerCase();
+			mirrorText = mirrorText.toLowerCase();
+		}
+
  	   	do{
  	   		nextIndex = Index;									// Save last Index
- 	   		Index = S.indexOf(searchText,Index);				// Search
+			Index = mirrorText.indexOf(searchText,Index);		// Search
  	   		if (Index >=0){										// If found
- 	   			S.replace(Index, Index+sl, replaceText);		// do the replace
+				S.append(originalText.substring(nextIndex, Index)); // copy up to search text 
+				S.append(replaceText);							// insert replacement text
  	   			count = count + 1;								// Increment count
- 	   			Index = Index + rl;								// Set new inded
+ 	   			Index = Index + sl;								// Set new index
  	   		} 
  	   	}while (Index >= 0);									// Loop until not found
+
+		if (count == 0) { rl = 0; }
+		Index = S.length();										// End of last thing selected
+		S.append(originalText.substring(nextIndex));			// Get the rest of the original string
+
+		nextIndex = Index;										// Location in new string
+		Index -= rl;											// of last thing selected
 
 		Toaster(count + " items replaced");						// Tell the user how many replaced
 
 		Editor.DisplayText = S.toString();						// Schelpp the text back
 	    theTextView.setText(Editor.DisplayText);
-	    if (count == 0) rl = 0;
-	    theTextView.setSelection(nextIndex-rl, nextIndex);	// Select last thing selected
+	    theTextView.setSelection(Index, nextIndex);				// Select last thing selected
 	    theTextView.setFocusable(true);
 		theTextView.requestFocus();
-		Index = nextIndex-rl ;
-
-	    
-    	
     }
     
     private void Toaster(CharSequence msg){							// Tell the user "msg"

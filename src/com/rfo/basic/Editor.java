@@ -63,14 +63,10 @@ public class Editor extends Activity {
 //    public static Intent theProgramRunner;           // Intents that will be called
     private Intent theDeleter;
 
-    public static EditText mText;					// The Editors display text buffers
+	public static LinedEditText mText;					// The Editors display text buffers
 
     public static String DisplayText = "REM Start of BASIC! Program\n";
     public static int SyntaxErrorDisplacement = -1;
- 
-    private boolean LoadAfterSave = false;    // Various flags
-    private boolean ClearAfterSave = false;
-    private boolean RunAfterSave = false;
 
     public static int selectionStart;
     public static int selectionEnd;
@@ -79,11 +75,12 @@ public class Editor extends Activity {
     public static long startTime;						// Time used for blocking re-run
 
 
-
+    private enum Action { NONE, CLEAR, LOAD, RUN, EXIT }
 
     public static class LinedEditText extends EditText {          // Part of the edit screen setup
         private Rect mRect;
         private Paint mPaint;
+        private boolean mLinesSetting;						// Lines preference setting for onDraw
 
         private Scroller mScroller;							// The scroller object
         private VelocityTracker mVelocityTracker;			// The velocity tracker
@@ -93,7 +90,6 @@ public class Editor extends Activity {
         private int mFlingV;								// Minimum velocity for fling
         public static int sHeight;							// Screen height minus the crap at top
         public static boolean didMove;						// Determines if super called on UP
-        public static Context LEcontext;
 
 
 
@@ -108,8 +104,6 @@ public class Editor extends Activity {
             mPaint.setStyle(Paint.Style.STROKE);
             mPaint.setColor(0x800000FF);
             InitScroller(context);
-            LEcontext = context;
-
         }
 
         @Override
@@ -127,31 +121,10 @@ public class Editor extends Activity {
 
         @Override
         protected void onDraw(Canvas canvas) {
-        	
-        	
-            if (Settings.getEditorColor(LEcontext).equals("BW")) {
-          	    mText.setTextColor(0xff000000);
-          	    mText.setBackgroundColor(0xffffffff);
-          	    mPaint.setColor(0x80000000);
-            } else
-			if (Settings.getEditorColor(LEcontext).equals("WB")) {
-				mText.setTextColor(0xffffffff);
-				mText.setBackgroundColor(0xff000000);
-				mPaint.setColor(0x80ffffff);
-            } else
-			if (Settings.getEditorColor(LEcontext).equals("WBL")) {
-				mText.setTextColor(0xffffffff);
-				mText.setBackgroundColor(0xff006478);
-				mPaint.setColor(0x80000000);
-			}             	
-
-            mText.setTextSize(1, Settings.getFont(LEcontext));
-            int count = getLineCount();					// Draw the lines under each line of text
-
-            Rect r = mRect;
-            Paint paint = mPaint;
-
-            if (Settings.getLinedEditor(LEcontext)) {
+            if (mLinesSetting) {
+				Rect r = mRect;
+				Paint paint = mPaint;
+				int count = getLineCount();					// Draw the lines under each line of text
 				for (int i = 0; i < count; i++) {
 					int baseline = getLineBounds(i, r);
 					canvas.drawLine(r.left, baseline + 1, r.right, baseline + 1, paint);
@@ -254,8 +227,32 @@ public class Editor extends Activity {
 			}
 		}
 
+		private void getPreferences(Context context) {
+			setColors(Settings.getEditorColor(context));
+			setTextSize(1, Settings.getFont(context));
+			mLinesSetting = Settings.getLinedEditor(context);
+		}
 
-
+		private void setColors(String colorSetting) {
+			int fg = 0xff000000;						// default foreground color
+			int bg = 0xffffffff;						// default background color
+			int pc = 0x80000000;						// default paint color
+			if (colorSetting.equals("BW")) {			// use defaults
+			} else
+			if (colorSetting.equals("WB")) {
+				fg = 0xffffffff;
+				bg = 0xff000000;
+				pc = 0x80ffffff;
+			} else
+			if (colorSetting.equals("WBL")) {
+				fg = 0xffffffff;
+				bg = 0xff006478;
+				pc = 0x80000000;
+			}
+			mText.setTextColor(fg);
+			mText.setBackgroundColor(bg);
+			mPaint.setColor(pc);
+		}
     }
 
 // ************************* End of LinedEdit Class  ****************************** //
@@ -281,14 +278,10 @@ public class Editor extends Activity {
 		setContentView(R.layout.editor);
 		setTitle(Name + Basic.ProgramFileName);
 
-		mText = (EditText) findViewById(R.id.basic_text);		// mText is the TextView Object
-		mText.setTypeface(Typeface.MONOSPACE);
+		mText = (LinedEditText) findViewById(R.id.basic_text);		// mText is the TextView Object
 		mText.setMinLines(4096);
 		mText.setText(DisplayText);		// Put the text lines into Object
 		mText.setCursorVisible(true);
-
-		int SO = Settings.getSreenOrientation(this);
-		setRequestedOrientation(SO);
 	}
 
 	@Override
@@ -307,8 +300,8 @@ public class Editor extends Activity {
 			return true;									// Do not allow backing out of Editor
 		}
 
-// Do on the fly formatting upon ENTER
-        if (!Settings.getAutoIndent(this)) return false;     // Don't do the formatting if the user does not want it
+		// Do on the fly formatting upon ENTER
+		if (!Settings.getAutoIndent(this)) return false;	// Don't do the formatting if the user does not want it
 
         if (keyCode == KeyEvent.KEYCODE_ENTER && event.getRepeatCount() == 0) {
             int selection = mText.getSelectionEnd();								// Split the text into two parts
@@ -367,6 +360,12 @@ public class Editor extends Activity {
 	        android.os.Process.killProcess(android.os.Process.myPid()) ;
 
         } else {
+			setTitle(Name + Basic.ProgramFileName);
+
+			mText.getPreferences(this);
+			int SO = Settings.getSreenOrientation(this);
+			setRequestedOrientation(SO);
+
         	if (SyntaxErrorDisplacement >= 0 &&
 				SyntaxErrorDisplacement < AddProgramLine.lineCharCounts.size()) {	// If run ended in error, select error line
 
@@ -381,21 +380,12 @@ public class Editor extends Activity {
         				break;
         			}
         		}
-				DisplayText = mText.getText().toString();
-				Editor.mText.setText(Editor.DisplayText);
+
 				if (start > 0 && end > 0 && start <= end)					// make sure values are not crash bait
 					mText.setSelection(start, end);							// Set the selection
 				mText.setCursorVisible(true);
 				SyntaxErrorDisplacement = -1;							// Reset the value
-
-				int SO = Settings.getSreenOrientation(this);
-
-				setRequestedOrientation(SO);
-
-        	}
-        	setTitle(Name + Basic.ProgramFileName);
-
-
+			}
         }
 
     }    
@@ -434,85 +424,26 @@ public class Editor extends Activity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {   // A menu item has been selected
-    	AlertDialog.Builder builder = null;
-    	AlertDialog alert = null;
-
 		switch (item.getItemId()) {
 
-			case R.id.run:										// Run
-				if (Basic.Saved) {								// If current program has been saved
-					ClearAfterSave = false;						// we are not doing clear and
-					RunAfterSave = false;						// we do not need to save first
-					Run();									// then load the program
-					return(true);
+			case R.id.run:									// RUN
+				if (Basic.Saved) {							// If current program has been saved
+					Run();									// then run the program
+				} else {
+					doSaveDialog(Action.RUN);				// Ask if the user wants to save before running
 				}
-
-				// The current program has not been saved. Ask the user if she wants to save it
-				// before we load a new program
-
-				builder = new AlertDialog.Builder(this);   // Current program not saved
-				builder.setMessage("Current Program Not Saved!")				  // Ask user if she wants to save first
-					.setCancelable(true)									  // Do not allow user to BACK key out of dialog
-					.setPositiveButton("Save", new DialogInterface.OnClickListener() {   // User selected save first
-						public void onClick(DialogInterface dialog, int id) {
-							RunAfterSave = true;								// Tell the saver to do Load
-							saveFile();											// after the save is done
-						}
-					})
-					.setNegativeButton("Continue", new DialogInterface.OnClickListener() { 	// User did not want to save
-						public void onClick(DialogInterface dialog, int id) {
-							Run();									  					// load the file
-						}
-					})
-					.setOnCancelListener(new DialogInterface.OnCancelListener(){
-						public void onCancel(DialogInterface arg0) {			// User has canceled save
-							return;												// done
-						}
-					});
-				alert = builder.create();
-				alert.show();
-
 				return true;
 
-			case R.id.load:										// LOAD
-
-				if (Basic.Saved) {								// If current program has been saved
-					ClearAfterSave = false;						// we are not doing clear and
-					LoadAfterSave = false;						// we do not need to save first
-					loadFile();									// then load the program
-					return(true);
+			case R.id.load:									// LOAD
+				if (Basic.Saved) {							// If current program has been saved
+					loadFile();								// then load the program
+				} else {
+					doSaveDialog(Action.LOAD);				// Ask if the user wants to save before loading
 				}
-
-				// The current program has not been saved. Ask the user if she wants to save it
-				// before we load a new program
-
-				builder = new AlertDialog.Builder(this);   // Current program not saved
-				builder.setMessage("Current Program Not Saved!")				  // Ask user if she wants to save first
-					.setCancelable(true)									  // Do not allow user to BACK key out of dialog
-					.setPositiveButton("Save", new DialogInterface.OnClickListener() {   // User selected save first
-						public void onClick(DialogInterface dialog, int id) {
-							LoadAfterSave = true;								// Tell the saver to do Load
-							saveFile();											// after the save is done
-						}
-					})
-					.setNegativeButton("Continue", new DialogInterface.OnClickListener() { 	// User did not want to save
-						public void onClick(DialogInterface dialog, int id) {
-							loadFile();									  					// load the file
-						}
-					})
-					.setOnCancelListener(new DialogInterface.OnCancelListener(){
-						public void onCancel(DialogInterface arg0) {			// User has canceled save
-							return;												// done
-						}
-					});
-				alert = builder.create();
-				alert.show();
-
 				return true;
 
-			case R.id.save:										// SAVE
-
-				saveFile();
+			case R.id.save:									// SAVE
+				saveFile(Action.NONE);						// Just do it; no action needed after Save
 				return true;
 
 			case R.id.search:
@@ -549,73 +480,17 @@ public class Editor extends Activity {
 					return true;
 				}
 
-
-				theDeleter = new Intent(this, Delete.class);		//Go to Delete Method
+				theDeleter = new Intent(this, Delete.class);		// Go to Delete Activity
 				startActivity(theDeleter);
 //           finish();
 				return true;
 
-			case R.id.clear:										// Clear
-
-				if (Basic.Saved) {								// If program has been saved
-					ClearAfterSave = false;						// then do the clear
-					LoadAfterSave = false;
-					Basic.clearProgram();
-					Basic.ProgramFileName = "";
-					setTitle(Name + Basic.ProgramFileName);
-					mText.setText(DisplayText);
-					Editor.mText.setText(Editor.DisplayText);
-					Editor.mText.setTextSize(1, Settings.getFont(this));
-					/*               if (Settings.getEditorColor(this).equals("BW")){
-					 Editor.mText.setTextColor(0xff000000);
-					 Editor.mText.setBackgroundColor(0xffffffff);
-					 } else{
-					 Editor. mText.setTextColor(0xffffffff);
-					 Editor. mText.setBackgroundColor(0xff000000);
-					 }*/
-					int SO = Settings.getSreenOrientation(this);
-					setRequestedOrientation(SO);
-
-
-					return(true);
+			case R.id.clear:								// CLEAR
+				if (Basic.Saved) {							// If program has been saved
+					clearProgram();							// then clear the Editor
+				} else {
+					doSaveDialog(Action.CLEAR);				// Ask if the user wants to save before clearing
 				}
-
-				// The current program has not been saved. Ask the user if he wants
-				// to save before doing the clear.
-
-				builder = new AlertDialog.Builder(this);
-				builder.setMessage("Current Program Not Saved!")
-					.setCancelable(true)												// Do not allow user to BACK key out
-					// of the dialog
-
-					.setPositiveButton("Save", new DialogInterface.OnClickListener() {   // User says to save first
-						public void onClick(DialogInterface dialog, int id) {
-							ClearAfterSave = true;										// Indicate to saver to
-							saveFile();													// clear after saving
-						}
-					})
-
-					.setNegativeButton("Continue", new DialogInterface.OnClickListener() {    // User says Do not save
-						public void onClick(DialogInterface dialog, int id) {
-							Basic.clearProgram();									// Clear the program
-							Basic.ProgramFileName = "";								// Clear the current program file name
-							setTitle(Name + Basic.ProgramFileName); 
-							Basic.Saved = true;
-							Basic.InitialProgramSize = Editor.DisplayText.length();	// Restart editor with cleared program
-//    	      		  startActivity( new Intent(Editor.this, Editor.class));
-//    	        	   finish();
-							mText.setText(DisplayText);
-						}
-
-					})
-					.setOnCancelListener(new DialogInterface.OnCancelListener(){
-           				public void onCancel(DialogInterface arg0) {			// User has canceled save
-           					return;												// done
-           				}
-           		    });
-
-				alert = builder.create();
-				alert.show();
 				return(true);
 
 			case R.id.help:											// HELP
@@ -636,14 +511,45 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.exit:
-				finish();
-//				android.os.Process.killProcess(Basic.ProcessID) ;
-		        android.os.Process.killProcess(android.os.Process.myPid()) ;
-				return true;
+				if (Basic.Saved) {							// If program has been saved
+					finish();								// exit immediately
+//					android.os.Process.killProcess(Basic.ProcessID);
+//					android.os.Process.killProcess(android.os.Process.myPid());
+				} else {
+					doSaveDialog(Action.EXIT);				// Ask if the user wants to save before exiting
+				}
+				return(true);
 
 			default:
 				return true;
 		}
+    }
+
+	private void doSaveDialog(final Action afterSave) {
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage("Current Program Not Saved!")
+			.setCancelable(true)										// Do not allow user to BACK key out of the dialog
+
+			.setPositiveButton("Save", new DialogInterface.OnClickListener() {		// User says to save first
+				public void onClick(DialogInterface dialog, int id) {
+					saveFile(afterSave);								// Tell the saver what to do after the save is done
+				}
+			})
+
+			.setNegativeButton("Continue", new DialogInterface.OnClickListener() {	// User says Do not save
+				public void onClick(DialogInterface dialog, int id) {
+					doAfterSave(afterSave);								// Finish what the Save dialog interrupted
+				}
+			})
+
+			.setOnCancelListener(new DialogInterface.OnCancelListener(){
+				public void onCancel(DialogInterface arg0) {			// User has canceled save
+					return;												// done
+				}
+			});
+
+		AlertDialog alert = builder.create();
+		alert.show();
     }
 
     private void  Run() {
@@ -701,12 +607,19 @@ public class Editor extends Activity {
 			toast.show();
 			return;
 		} else {														// If the SD Card can be read
-    		Intent intent = new  Intent(Editor.this, LoadFile.class);   // Go to the LoadFile method
+    		Intent intent = new  Intent(Editor.this, LoadFile.class);	// Go to the LoadFile Activity
     		startActivity(intent);    // Now go Load
     	}
 	}
 
-    private void saveFile() {
+	private void clearProgram() {
+		Basic.clearProgram();						// then do the clear
+		Basic.ProgramFileName = "";
+		setTitle(Name + Basic.ProgramFileName);
+		mText.setText(DisplayText);
+	}
+
+    private void saveFile(final Action afterSave) {
 
         final AlertDialog.Builder alert = new AlertDialog.Builder(this);          // Get the filename from user
 		final EditText input = new EditText(this);
@@ -745,6 +658,7 @@ public class Editor extends Activity {
 					}
 
 					writeTheFile(theFilename);								// Now go write the file
+					doAfterSave(afterSave);									// and finish what was interrupted by Save dialog
 				}});
 		alert.show();
     }
@@ -843,43 +757,26 @@ public class Editor extends Activity {
     	setTitle(Name + Basic.ProgramFileName);
 		Basic.Saved = true;									// Indicate the program has been saved
         Basic.InitialProgramSize = mText.length();			// Reset initial program size
+	}
 
-
-    	if (LoadAfterSave) {									// if diverted from Doing Load
-        	LoadAfterSave = false;
-        	ClearAfterSave = false;
-        	RunAfterSave = false;
-        	loadFile();										// then go do load
-    	}
-
-    	if (RunAfterSave) {									// if diverted from Doing Load
-        	LoadAfterSave = false;
-        	ClearAfterSave = false;
-        	RunAfterSave = false;
-        	Run();										// then go do load
-    	}
-
-    	if (ClearAfterSave) {								// if diverted from Doing Clear
-			ClearAfterSave = false;
-			LoadAfterSave = false;
-			RunAfterSave = false;
-			Basic.clearProgram();
-			Basic.ProgramFileName = "";
-			setTitle(Name + Basic.ProgramFileName);
-			mText.setText(DisplayText);
-			Editor.mText.setText(Editor.DisplayText);
-			Editor.mText.setTextSize(1, Settings.getFont(this));
-			if (Settings.getEditorColor(this).equals("BW")) {
-				Editor.mText.setTextColor(0xff000000);
-				Editor.mText.setBackgroundColor(0xffffffff);
-			} else {
-				Editor. mText.setTextColor(0xffffffff);
-				Editor. mText.setBackgroundColor(0xff000000);
-			}
-			int SO = Settings.getSreenOrientation(this);
-			setRequestedOrientation(SO);
-        }
-    }
+	private void doAfterSave(Action afterSave) {
+		switch (afterSave) {
+		case NONE:											// No action needed
+			break;
+		case LOAD:											// if diverted from Doing Load
+			loadFile();										// then go do load
+			break;
+		case RUN:											// if diverted from Doing Run
+			Run();											// then go do run
+			break;
+		case CLEAR:											// if diverted from Doing Clear
+			clearProgram();									// then go do clear
+			break;
+		case EXIT:											// if diverted from Doing Exit
+			finish();										// then exit
+			break;
+		}
+	}
 
     private void Toaster(CharSequence msg) {
 		Context context = getApplicationContext();
