@@ -55,8 +55,9 @@ public class AddProgramLine {
 	}
 	
 	public void AddLine(String line, boolean doInclude) {
-		/* Adds one line to Basic.lines		 *  Each line will have all white space characters removed and all characters
-		 *  converted to lower case (unless they are within quotes).    	
+		/* Adds one line to Basic.lines
+		 * Each line will have all white space characters removed and all characters
+		 * converted to lower case (unless they are within quotes).
 		 */
 
     	// Look for block comments. All lines between block comments
@@ -78,48 +79,22 @@ public class AddProgramLine {
 		int linelen = line.length();
    		for (int i=0; i < linelen; ++i) {			// do not mess with characters
 			char c = line.charAt(i);				// between quote marks
-			if (c == '\u201c') c = '"';                    // Change funny quote to real quote
-			if (c == '"') {
-				do {
-					if (c == '\\') {					// look for \"
-						if (i + 1 >= linelen) {
-							line = line + ' ';
-						}
-						if (line.charAt(i + 1) == '"') {    // and retain it 
-							++i;						// so that user can have quotes in strings
-							Temp = Temp + '\\';
-							Temp = Temp + '"';
-						} else if (line.charAt(i + 1) == 'n') {
-							++i;
-							Temp = Temp + '\r';
-						}
-					} else if ( ((i + 1) < linelen) &&		// Pre-processor:
-							  (line.charAt(i + 1) == '=') && // if +=, -=, *=, /= in string 
-							  ("+-*/".indexOf(c) >= 0) ) {	// hide them temporarily by
-						Temp += "{" + c + "&=}";			// converting to "{+&=}", etc.
-						++i;
-					} else Temp = Temp + c;
-
-					++i;
-					if (i >= linelen) { c = '"'; }			// no closing '"', just add it in
-					else {
-						c = line.charAt(i);					// next character
-						if (c == '\u201c') { c = '"'; }		// Change funny quote to real quote
-					}
-				} while (i < linelen && c != '"');
-				Temp = Temp + c;
+			if (c == '"' || c == '\u201c') {		// Change funny quote to real quote
+				StringBuilder sb = new StringBuilder();
+				i = doQuotedString(line, i, linelen, sb);
+				Temp += sb.toString();
 			} else if (c == '%') {					// if the % character appears,
 				break;								// drop it and the rest of the line
 			} else if (c == '~') {					// Pre-processor: check for line continuation '~'
 				int j = i;							// scan after character, skipping spaces and tabs
 				do { ++j; } while ((j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0));
 				if ((j >= linelen) || (line.charAt(j) == '%')) { 	// EOL or comment
-					Temp = Temp + "{+nl}";			// add line continuation marker
+					Temp += "{+nl}";				// add line continuation marker
 					break;
 				}
 			} else if (c != ' ' && c != '\t') {		// toss out spaces and tabs
 				c = Character.toLowerCase(c);		// normal character: convert to lower case
-				Temp = Temp + c;						// and add it to the line
+				Temp += c;							// and add it to the line
 			}
 		}
 
@@ -158,6 +133,41 @@ public class AddProgramLine {
    			Temp = Temp + "\n";						// end the line with New Line
    			Basic.lines.add(Temp);					// add to Basic.lines
    		}
+	}
+
+	private int doQuotedString(String line, int index, int linelen, StringBuilder s) {
+		char c, c2;
+		s.append('"');						// Incoming index points at a quote
+		while (true) {						// Loop until quote or no more characters
+			++index;
+			if (index >= linelen) { break; }	// No more characters, done
+			else { c = line.charAt(index); }	// next character
+			if (c == '"' || c == '\u201c') {	// Found quote, done
+				break;
+			}
+
+			c2 = ((index + 1) < linelen) ? line.charAt(index + 1) : '\0';
+			if (c == '\\') {
+				if (c2 == '"' || c2 == '\\') {	// look for \" or \\ and retain it 
+					s.append('\\').append(c2);	// so that user can have quotes and backslashes in strings
+					++index;
+				} else if (c2 == 'n') {			// change backslash-n to carriage return
+					s.append('\r');
+					++index;
+				} else if (c2 == 't') {			// change backslash-t to tab
+					s.append('\t');
+					++index;
+				}								// else remove the backslash
+			} else if ( (c2 == '=') &&			// Pre-processor:
+						("+-*/".indexOf(c) >= 0) ) {// if +=, -=, *=, /= in string
+				s.append('{').append(c)				// hide them temporarily
+				 .append("&=}");					// by converting to "{+&=}", etc.
+				++index;
+			} else { s.append(c); }				// not quote, backslash, or pre-processor operator
+		}
+		s.append('"');							// Close string. If no closing quote in user string, add one.
+												// If funny quote, convert it to ASCII quote.
+		return index;							// leave index pointing at quote or EOL
 	}
 
 	private String mergeLines(String base, String addition) {

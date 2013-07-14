@@ -3527,29 +3527,20 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		int i = LineIndex;
 		StringConstant = "";
 		char c = ExecutingLineBuffer.charAt(i);
-		if (c!= '"'){return false;}										// first char not "", not String Constant							
-		do {															// Get the rest of the String
-			++i;														// copy character until
+		if (c!= '"'){return false;}										// first char not "", not String Constant
+		while (true) {													// Get the rest of the String
+			++i;														// copy character until " or EOL
 			if (i >= max) return false;
 			c = ExecutingLineBuffer.charAt(i);
-			if (c == '\n'){
-				--i;
-				break;
-			}
-			if (c == '\r'){
+			if (c == '"') break;										// if " we're done
+
+			if (c == '\r') {			// AddProgramLine hides embedded newline as carriage return
 				c = '\n';
+			} else if (c == '\\') {		// AddProgramLine allows only quote or backslash after backslash
+				c = ExecutingLineBuffer.charAt(++i);
 			}
-			
-			boolean flag = false;								// Look for \"
-			if (c == '\\') {									// and replace with "
-				if (ExecutingLineBuffer.charAt(i+1)== '"'){		// So that user can put quotes in a string
-					++i;
-					StringConstant = StringConstant+'"';
-					flag = true;
-				}
-			}
-			if (c != '"' && !flag){StringConstant = StringConstant+c;}			// if not " then add to String Constant
-		}while (i< max && c != '"');			        // terminate by EOL or "
+			StringConstant += c;										// add to String Constant
+		}
 		
         if (i< max-1){ ++i;}							// do not let index be >= line length
         LineIndex = i;
@@ -4958,37 +4949,36 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	private  boolean executeDIM(){									// DIM
 																		// Execute a DIM Comman
-		do {
-		if (ExecutingLineBuffer.charAt(LineIndex)== ','){++LineIndex;}  // Multiple Arrays can be DIMed in one DIM Statement
-																		// seperated by commas
-		doingDim = true;
-		if (!getArrayVar()) { doingDim = false; return false; }			// Get the array name var
-		doingDim = false;
+		do {									// Multiple Arrays can be DIMed in one DIM statement separated by commas
+			doingDim = true;
+			if (!getArrayVar()) { doingDim = false; return false; }		// Get the array name var
+			doingDim = false;
 
-		int svn = VarNumber;										// save the array variable table number
-		boolean svt = VarIsNumeric;										// and the array variable type
-		
-		ArrayList <Integer> dimValues =new ArrayList<Integer>();        // A list to hold the array index values
-		if (ExecutingLineBuffer.charAt(LineIndex)== ']') return false;
-		
-		while (ExecutingLineBuffer.charAt(LineIndex)!= ']'){					// get each index value
-			if (!evalNumericExpression()){SyntaxError(); return false; }
-			dimValues.add(EvalNumericExpressionValue.intValue());				// and add it to the list
-			if (ExecutingLineBuffer.charAt(LineIndex)== ','){++LineIndex;}
-			else if (ExecutingLineBuffer.charAt(LineIndex)!= ']'){SyntaxError(); return false;}
-		}
-		++LineIndex;
-		
-		if (!BuildBasicArray( svn , svt, dimValues)){return false;}			// Build the array
+			int svn = VarNumber;										// save the array variable table number
+			boolean svt = VarIsNumeric;									// and the array variable type
 
-		} while ((ExecutingLineBuffer.charAt(LineIndex)== ','));		// continue while there are arrays to be DIMed
-		
-		return true;													// Then done
+			if (isNext(']')) { return false; }							// Must have dimension(s)
+
+			ArrayList<Integer> dimValues = new ArrayList<Integer>();	// A list to hold the array dimension values
+			do {														// get each index value
+				if (!evalNumericExpression()) { return false; }
+				dimValues.add(EvalNumericExpressionValue.intValue());	// and add it to the list
+			} while (isNext(','));
+
+			if (!isNext(']')) { return false; }							// must have closing bracket
+
+			if (!BuildBasicArray(svn, svt, dimValues)) { return false; }// Build the array
+
+		} while (isNext(','));											// continue while there are arrays to be DIMed
+		return checkEOL();												// Then done
 	}
 	
 	private boolean executeUNDIM(){
+		boolean unDimed = false;
 		unDiming = true;
-		boolean unDimed = getArrayVar();
+		do {									// Multiple Arrays can be UNDIMed in one Statement separated by commas
+			unDimed = getArrayVar() && isNext(']');						// Get the array name var and UNDIM it
+		} while (unDimed && isNext(','));								// continue while there are arrays to be UNDIMed
 		unDiming = false;
 
 		return unDimed && checkEOL();

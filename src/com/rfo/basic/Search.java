@@ -55,6 +55,7 @@ public class Search extends Activity {
     private int Index;					//Indexes into the text
     private int nextIndex;
 
+	private boolean mChanged = false;
 	private boolean isSearchCaseSensitive = false;		// TODO: provide a control to set case-sensitivity
 
     @Override
@@ -176,8 +177,13 @@ public class Search extends Activity {
            
            public void onClick(View v) {
         	   Editor.DisplayText = theTextView.getText().toString();   // Grab the text that the user is seeing
-																		// She may edited it
         	   Editor.mText.setText(Editor.DisplayText);				// Set the Editor's EditText TextView text
+				if (!mChanged) {
+					mChanged = !originalText.equals(Editor.DisplayText);// She may have edited it
+				}
+				if (mChanged) {
+					Basic.Saved = false;
+				}
         	   if (nextIndex < 0 ) nextIndex = 0;						// If nextIndex indicates done, then set to start
         	   if (Index < 0) Index = 0;								// If Index indicates not found, set to start
         	   if (nextIndex < Index){
@@ -217,6 +223,7 @@ public class Search extends Activity {
  	   replaceText = rText.getText().toString();					// Get the replace text from the dialog
 	   StringBuilder S = new StringBuilder(Editor.DisplayText);		// Schelpp text around to get needed method
 	   S.replace(Index, nextIndex, replaceText);					// do the replace
+	   mChanged = true;												// mark changed (even if it really didn't)
 	   Editor.DisplayText = S.toString();							// Schelpp the text back
 	   theTextView.setText(Editor.DisplayText);						
 	   nextIndex= Index + replaceText.length();						// Set nextIndex after the replaced text
@@ -234,8 +241,8 @@ public class Search extends Activity {
  	   	int sl = searchText.length();
  	   	replaceText = rText.getText().toString();				// Get the replace text from the dialog
  	   	int rl = replaceText.length();
-		String originalText = ("" + Editor.DisplayText);
-		String mirrorText = originalText;
+		String workingText = ("" + Editor.DisplayText);
+		String mirrorText = workingText;
 		StringBuilder S = new StringBuilder("");				// Workspace for building text with replacement
 
 		if (!isSearchCaseSensitive) {
@@ -247,16 +254,18 @@ public class Search extends Activity {
  	   		nextIndex = Index;									// Save last Index
 			Index = mirrorText.indexOf(searchText,Index);		// Search
  	   		if (Index >=0){										// If found
-				S.append(originalText.substring(nextIndex, Index)); // copy up to search text 
+				S.append(workingText.substring(nextIndex, Index)); // copy up to search text
 				S.append(replaceText);							// insert replacement text
  	   			count = count + 1;								// Increment count
  	   			Index = Index + sl;								// Set new index
  	   		} 
  	   	}while (Index >= 0);									// Loop until not found
 
-		if (count == 0) { rl = 0; }
+		if (count > 0) { mChanged = true; }						// Mark changed
+		else           { rl = 0; }								// else set highlight length 0
+		
 		Index = S.length();										// End of last thing selected
-		S.append(originalText.substring(nextIndex));			// Get the rest of the original string
+		S.append(workingText.substring(nextIndex));				// Get the rest of the original string
 
 		nextIndex = Index;										// Location in new string
 		Index -= rl;											// of last thing selected
