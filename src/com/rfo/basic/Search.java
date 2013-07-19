@@ -79,20 +79,18 @@ public class Search extends Activity {
        setRequestedOrientation(Settings.getSreenOrientation(this));       
        originalText = Editor.DisplayText;		// Save in case of BACK Key
 
-       this.setContentView(R.layout.search);  // Layouts xmls exist for both landscape or portrait modes
+       setContentView(R.layout.search);			// Layouts xmls exist for both landscape or portrait modes
        
-       this.rText = (EditText) findViewById(R.id.replace_text);          // The replace text
-       this.sText = (EditText) findViewById(R.id.search_text);			 // The search for text
+       rText = (EditText) findViewById(R.id.replace_text);				// The replace text
+       sText = (EditText) findViewById(R.id.search_text);				// The search for text
 
-       this.nextButton = (Button) findViewById(R.id.next_button);		 // The buttons
-       this.replaceButton = (Button) findViewById(R.id.replace_button);
-       this.replaceAllButton = (Button) findViewById(R.id.replace_all_button);
-       this.doneButton = (Button) findViewById(R.id.done_button);
+       nextButton = (Button) findViewById(R.id.next_button);			// The buttons
+       replaceButton = (Button) findViewById(R.id.replace_button);
+       replaceAllButton = (Button) findViewById(R.id.replace_all_button);
+       doneButton = (Button) findViewById(R.id.done_button);
        
-       this.theTextView = (EditText) findViewById(R.id.the_text);		// The text display area
-       theTextView.setTypeface(Typeface.MONOSPACE);
+       theTextView = (EditText) findViewById(R.id.the_text);			// The text display area
        theTextView.setText(Editor.DisplayText);							// The Editor's display text
-//       theTextView.setTextColor(0xff000000);							// Background is white so text is black
        
    if (Settings.getEditorColor(this).equals("BW")){
 	   theTextView.setTextColor(0xff000000);
@@ -137,10 +135,9 @@ public class Search extends Activity {
        
        Index = -1;			// Current Index into text, set for nothing found
        nextIndex = 0;		// next Index
-       
-       
-       this.nextButton.setOnClickListener(new OnClickListener() {		// ***** Next Button ****
-           
+
+		nextButton.setOnClickListener(new OnClickListener() {			// ***** Next Button ****
+
            public void onClick(View v) {
         	   Editor.DisplayText = theTextView.getText().toString();   // Grab the text that the user is seeing
         	   															// She may edited it
@@ -153,9 +150,9 @@ public class Search extends Activity {
         	   return;
            	}
        	});
-       
-       this.replaceButton.setOnClickListener(new OnClickListener() {	// ***** Replace Button ****
-           
+
+		replaceButton.setOnClickListener(new OnClickListener() {		// ***** Replace Button ****
+
            public void onClick(View v) {
         	   if (Index <0){											// If nothing has been found....
             	   Toaster("Nothing found to replace" );
@@ -166,15 +163,15 @@ public class Search extends Activity {
            	}
        	});
 
-       this.replaceAllButton.setOnClickListener(new OnClickListener() {  // ******* Replace All Button *****
-           
+		replaceAllButton.setOnClickListener(new OnClickListener() {		// ******* Replace All Button *****
+
            public void onClick(View v) {
         	   doReplaceAll();
            	}
        	});
-       
-       this.doneButton.setOnClickListener(new OnClickListener() {		// **** Done Button ****
-           
+
+		doneButton.setOnClickListener(new OnClickListener() {			// **** Done Button ****
+
            public void onClick(View v) {
         	   Editor.DisplayText = theTextView.getText().toString();   // Grab the text that the user is seeing
         	   Editor.mText.setText(Editor.DisplayText);				// Set the Editor's EditText TextView text
@@ -199,7 +196,13 @@ public class Search extends Activity {
 
    
     }
-    
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		sText.requestFocus();
+	}
+
     private boolean doNext(){										// Find the next occurrence of the search for string
  	   Index = nextIndex;											// Postion from last search becomes start of this search
 	   searchText = sText.getText().toString();						// Get the search text from the dialog box
@@ -212,8 +215,7 @@ public class Search extends Activity {
 	   if (Index < 0) return false;									// If not found, return false
 	   nextIndex= Index + searchText.length();						// Set nextIndex to the end of the found text
 	   theTextView.setSelection(Index, nextIndex);					// Highlight the selection
-	   theTextView.setFocusable(true);								// Set focus on the text display area
-	   theTextView.requestFocus();
+	   theTextView.requestFocus();									// Set focus on the text display area
 	   return true;
 
     }
@@ -228,7 +230,6 @@ public class Search extends Activity {
 	   theTextView.setText(Editor.DisplayText);						
 	   nextIndex= Index + replaceText.length();						// Set nextIndex after the replaced text
 	   theTextView.setSelection(Index, nextIndex);					// Show the selection highlighted
-	   theTextView.setFocusable(true);
 	   theTextView.requestFocus();
     	
     }
@@ -275,7 +276,6 @@ public class Search extends Activity {
 		Editor.DisplayText = S.toString();						// Schelpp the text back
 	    theTextView.setText(Editor.DisplayText);
 	    theTextView.setSelection(Index, nextIndex);				// Select last thing selected
-	    theTextView.setFocusable(true);
 		theTextView.requestFocus();
     }
     

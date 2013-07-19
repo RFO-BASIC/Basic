@@ -44,78 +44,90 @@ This file is part of BASIC! for Android
 			android:layout_weight="1"
 			android:layout_width="0dip"
 			android:layout_height="fill_parent"
-			android:textSize="12dip"
+			android:textSize="12sp"
 			android:text="Next" />
 
 		<Button android:id="@+id/done_button"
 			android:layout_weight="1"
 			android:layout_width="0dip"
 			android:layout_height="fill_parent"
-			android:textSize="12dip"
+			android:textSize="12sp"
 			android:text="Done" />
 
 		<Button android:id="@+id/replace_button"
 			android:layout_weight="1"
 			android:layout_width="0dip"
 			android:layout_height="fill_parent"
-			android:textSize="12dip"
+			android:textSize="12sp"
 			android:text="Replace" />
 
 		<Button android:id="@+id/replace_all_button"
 			android:layout_weight="1"
 			android:layout_width="0dip"
 			android:layout_height="fill_parent"
-			android:textSize="12dip"
+			android:textSize="12sp"
 			android:text="Replace All" />
 
 	</LinearLayout>
 
-	<EditText android:id="@+id/replace_text"
+	<LinearLayout android:id="@+id/replace_fields"
 		android:layout_width="fill_parent"
 		android:layout_height="40dip"
+		android:orientation="horizontal"
 		android:layout_above="@id/search_buttons"
-		android:layout_marginLeft="10dip"
 		android:layout_marginRight="10dip"
-		android:layout_marginBottom="5dip"
-		style="@style/edit_text_l" />
+		android:layout_marginBottom="8dip" >
+	
+		<TextView
+			android:layout_weight="1"
+			android:layout_width="0dip"
+			android:layout_height="fill_parent"
+			android:layout_marginRight="10dip"
+			android:gravity="right"
+			style="@style/label_l"
+			android:text="Replace With:" />
+	
+		<EditText android:id="@+id/replace_text"
+			android:layout_weight="3"
+			android:layout_width="0dip"
+			android:layout_height="fill_parent"
+			style="@style/edit_text_l" />
 
-	<TextView android:id="@+id/replace_with"
-		android:layout_width="fill_parent"
-		android:layout_height="wrap_content"
-		android:layout_above="@id/replace_text"
-		android:layout_marginLeft="10dip"
-		android:layout_marginRight="10dip"
-		android:layout_marginBottom="5dip"
-		style="@style/label_l"
-		android:text="Replace With:" />
+	</LinearLayout>
 
-	<EditText android:id="@+id/search_text"
+	<LinearLayout android:id="@+id/search_fields"
 		android:layout_width="fill_parent"
 		android:layout_height="40dip"
-		android:layout_above="@id/replace_with"
-		android:layout_marginLeft="10dip"
+		android:orientation="horizontal"
+		android:layout_above="@id/replace_fields"
 		android:layout_marginRight="10dip"
-		android:layout_marginBottom="5dip"
-		style="@style/edit_text_l" />
+		android:layout_marginBottom="8dip" >
 
-	<TextView android:id="@+id/search_for"
-		android:layout_width="fill_parent"
-		android:layout_height="wrap_content"
-		android:layout_above="@id/search_text"
-		android:layout_marginLeft="10dip"
-		android:layout_marginRight="10dip"
-		android:layout_marginBottom="5dip"
-		style="@style/label_l"
-		android:text="Search For:" />
+		<TextView
+			android:layout_weight="1"
+			android:layout_width="0dip"
+			android:layout_height="fill_parent"
+			android:layout_marginRight="10dip"
+			android:gravity="right"
+			style="@style/label_l"
+			android:text="Search For:" />
+
+		<EditText android:id="@+id/search_text"
+			android:layout_weight="3"
+			android:layout_width="0dip"
+			android:layout_height="fill_parent"
+			style="@style/edit_text_l" />
+
+	</LinearLayout>
 
 	<EditText android:id="@+id/the_text"
 		android:layout_width="fill_parent"
 		android:layout_height="fill_parent"
-		android:layout_above="@id/search_for"
-		android:layout_marginLeft="10dip"
-		android:layout_marginRight="10dip"
-		android:layout_marginBottom="5dip"
+		android:layout_above="@id/search_fields"
+		android:layout_marginBottom="8dip"
 		android:scrollHorizontally="true"
+		android:typeface="monospace"
+		android:gravity="top"
 		style="@style/edit_text_l" />
 
 </RelativeLayout>

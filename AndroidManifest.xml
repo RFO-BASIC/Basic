@@ -168,6 +168,7 @@ This file is part of BASIC! for Android
          <activity android:name="Search"
              android:id = "@+id/search_screen"
             android:configChanges="keyboardHidden|orientation|screenSize"
+             android:windowSoftInputMode="adjustResize"
                   android:label="@string/search_name" >
         </activity>
         

@@ -55,7 +55,7 @@ This file is part of BASIC! for Android
 
 			<EditText android:id="@+id/search_text"
 				android:layout_width="fill_parent"
-				android:layout_height="40dip"
+				android:layout_height="35dip"
 				android:layout_marginBottom="5dip"
 				style="@style/edit_text_l" />
 
@@ -98,7 +98,7 @@ This file is part of BASIC! for Android
 
 			<EditText android:id="@+id/replace_text"
 				android:layout_width="fill_parent"
-				android:layout_height="40dip"
+				android:layout_height="35dip"
 				android:layout_marginBottom="5dip"
 				style="@style/edit_text_l" />
 
@@ -131,9 +131,10 @@ This file is part of BASIC! for Android
 		android:layout_width="fill_parent"
 		android:layout_height="fill_parent"
 		android:layout_above="@id/controls_group"
-		android:layout_marginLeft="10dip"
-		android:layout_marginRight="10dip"
 		android:layout_marginBottom="5dip"
+		android:scrollHorizontally="true"
+		android:typeface="monospace"
+		android:gravity="top"
 		style="@style/edit_text_l" />
 
 </RelativeLayout>

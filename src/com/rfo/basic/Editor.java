@@ -38,7 +38,6 @@ import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.AttributeSet;
@@ -462,9 +461,7 @@ public class Editor extends Activity {
 //					android.os.Process.killProcess(Basic.ProcessID) ;
 					android.os.Process.killProcess(android.os.Process.myPid()) ;
 				}
-				DisplayText = mText.getText().toString();
-				startActivity(new Intent(this, Format.class));			// Start the format activity
-				Basic.Saved = false;
+				doFormatDialog();
 				return true;
 
 			case R.id.delete:									// DELETE
@@ -551,6 +548,36 @@ public class Editor extends Activity {
 		AlertDialog alert = builder.create();
 		alert.show();
     }
+
+
+	private void doFormatDialog() {
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage("Format your program?")
+			.setCancelable(true)
+
+			.setPositiveButton("Format", new DialogInterface.OnClickListener() {		// User says to do the format
+				public void onClick(DialogInterface dialog, int id) {
+					DisplayText = mText.getText().toString();
+					startActivity(new Intent(Editor.this, Format.class));			// Start the format activity
+					Basic.Saved = false;
+				}
+			})
+
+			.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {		// User says to cancel
+				public void onClick(DialogInterface dialog, int id) {
+					return;
+				}
+			})
+
+			.setOnCancelListener(new DialogInterface.OnCancelListener(){
+				public void onCancel(DialogInterface arg0) {			// User has canceled format
+					return;												// done
+				}
+			});
+
+		AlertDialog alert = builder.create();
+		alert.show();
+	}
 
     private void  Run() {
 
