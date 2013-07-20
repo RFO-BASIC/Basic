@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -30,417 +30,215 @@ package com.rfo.basic;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.rfo.basic.Run;
-
-import android.app.Activity;
+import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
-import android.hardware.SensorManager;
 import android.hardware.SensorEventListener;
-import android.os.Bundle;
+import android.hardware.SensorManager;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
 
 
 // Log.d(SensorActivity.LOGTAG, " " + SensorActivity.CLASSTAG + " ignored Auto Run" );
-public class SensorActivity extends Activity implements SensorEventListener {
+public class SensorActivity implements SensorEventListener {
     private static final String LOGTAG = "SensorActivity";
     private static final String CLASSTAG = SensorActivity.class.getSimpleName();
 
-     private static SensorManager mSensorManager;
-     private List<Sensor> sensorList;
-     private static Sensor mAccel;
-     private static Sensor mGravity;
-     private static Sensor mGyro;
-     private static Sensor mLight;
-     private static Sensor mMagF;
-     private static Sensor mCompass;
-     private static Sensor mPressure;
-     private static Sensor mProximity;
-     private static Sensor mTemperature;
-     private static Sensor mLinearAccl;
-     private static Sensor mRotVector;
-     private static Sensor mlAccel;
-     private static Sensor mRelHumid;
-     private static Sensor mAmbTemp;
+	public static final int MaxSensors = 15;
+	public static final int UNINIT = -1;
+	private SensorManager mSensorManager;
+	private boolean mIsOpen = false;
+	private Sensor mActiveSensors[];
+	private int mActiveSensorDelays[];
+	private int mPendingSensorDelays[];
+	private double mSensorValues[][];
 
-     
-//     private static Sensor mUnknown[5];
-     
-// This class is invoked from Run when the user executes
-// sensors.open
-     
-     @Override
-     public void onCreate(Bundle savedInstanceState) {
+	// This constructor is invoked from Run when the user executes
+	// sensors.list or sensors.open
+
+	public SensorActivity(Context context) {
 //    	 Log.d(SensorActivity.LOGTAG, " " + SensorActivity.CLASSTAG + " On Create" );
-    	 super.onCreate(savedInstanceState);
-    	 
-        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        
-        // Set up the variables for the listeners
-        // The listeners will be set in onResume
-        
-        mAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER );
-        mGravity = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        mGyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        mLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
-        mMagF = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        mCompass = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
-        mPressure = mSensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
-        mProximity = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
-        mTemperature = mSensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE);
-        mRotVector = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        mLinearAccl = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION );
-        mRelHumid= mSensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY );
-        mAmbTemp= mSensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE );
-     }
-     
 
-     public boolean onKeyUp(int keyCode, KeyEvent event)  {
-//       if ((keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_MENU) && event.getRepeatCount() == 0) {
-         if (keyCode == KeyEvent.KEYCODE_BACK  && event.getRepeatCount() == 0) {
-         	if (Run.OnBackKeyLine != 0){
-        		Run.BackKeyHit = true;
-//            	Run.GRopen = false;
-//            	finish();
-        		return true;
-        	}
+		mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
-//         	Run.GRopen = false;
-        	Run.Stop = true;
-        	
-         	finish();
-        	if (Basic.DoAutoRun) {
-//        		android.os.Process.killProcess(Basic.ProcessID) ;
-        		android.os.Process.killProcess(android.os.Process.myPid()) ;
-        	}
+		mActiveSensors = new Sensor[MaxSensors + 1];			// holds references to active sensors
+		mActiveSensorDelays = new int[MaxSensors + 1];			// holds delay settings of active sensors
+		mPendingSensorDelays = new int[MaxSensors + 1];			// holds delay settings of sensors the user wants to activate
+		mSensorValues = new double[MaxSensors + 1][4];			// holds the current sensor values
+		for (int i = 0; i <= MaxSensors; ++i) {
+			mActiveSensors[i] = null;							// initialize the sensor references to null
+			mActiveSensorDelays[i] =							// initialize the delay arrays to "uninitialized"
+			mPendingSensorDelays[i] = UNINIT;
+			for (int j = 0; j < 4; ++j) {
+				mSensorValues[i][j]= 0;							// initialize the values array to zero
+			}
+		}
+	}
 
-         }
-         return true;
-     }
-     
-     public boolean onTouchEvent(MotionEvent event){
-     	super.onTouchEvent(event);
-     	int action = event.getAction();  // Get action type
-
-
-     	for (int i = 0; i < event.getPointerCount(); i++){
-     		if ( i > 1 ) break;
-         	int pid = event.getPointerId(i);
-         	if (pid > 1) break;
-//     		Log.d(GR.LOGTAG, " " + i + ","+pid+"," + action);
-     		Run.TouchX[pid] = (double)event.getX(i);
-     		Run.TouchY[pid] = (double)event.getY(i);
-     		if (action == MotionEvent.ACTION_DOWN ||
-     			action == MotionEvent.ACTION_POINTER_DOWN ||
-     			action == MotionEvent.ACTION_MOVE){
-         		Run.NewTouch[pid] = true;
-         	} else if (action == MotionEvent.ACTION_UP || 
-         		action == MotionEvent.ACTION_POINTER_UP ||
-         		action == 6 ||
-         		action == 262) {
-         		Run.NewTouch[pid] = false;
-         	}
-     	}
-     	
-     	return false;
-     }
-
-
-    protected void onResume() {
-//         Log.d(SensorActivity.LOGTAG, " " + SensorActivity.CLASSTAG + " On Resume" );
-
-/* This class can be called for both Sensors.list and Sensors.open
- * If the call is from sensors.list, get the list of sensors and
- * then quit.
- */
-         int type;
-         if (Run.GetSensorList) {
-        	 Run.SensorCensus = new ArrayList<String>();
-             sensorList = mSensorManager.getSensorList(Sensor.TYPE_ALL);   // Get the list of sensors
-             for (Sensor sensor : sensorList){							   // and iterate through it
-            	 type =sensor.getType();								   // adding each sensor to SensorCensus list
+	public ArrayList<String> takeCensus() {
+		ArrayList<String> census = new ArrayList<String>();
+		List<Sensor> sensorList = mSensorManager.getSensorList(Sensor.TYPE_ALL);		// Get the list of sensors
+		for (Sensor sensor : sensorList) {								// and iterate through it
+            	 int type = sensor.getType();							// adding each sensor to SensorCensus list
 //            	 Log.d(SensorActivity.LOGTAG, "Sensor list add: " + type );
             	 switch (type) {
-            	 case Sensor.TYPE_ACCELEROMETER  :
-            		 Run.SensorCensus.add("Acclerometer, Type = " + type);
+            	 case Sensor.TYPE_ACCELEROMETER:
+            		 census.add("Acclerometer, Type = " + type);
             		 break;
             	 case Sensor.TYPE_GRAVITY:
-            		 Run.SensorCensus.add("Gravity Type, =  " + type);
+            		 census.add("Gravity Type, =  " + type);
             		 break;
             	 case Sensor.TYPE_GYROSCOPE:
-            		 Run.SensorCensus.add("Gyroscope, Type = " + type);
+            		 census.add("Gyroscope, Type = " + type);
             		 break;
             	 case Sensor.TYPE_LIGHT:
-            		 Run.SensorCensus.add("Light, Type = " + type);
+            		 census.add("Light, Type = " + type);
             		 break;
             	 case Sensor.TYPE_MAGNETIC_FIELD:
-            		 Run.SensorCensus.add("Magnetic Field, Type =  " + type);
+            		 census.add("Magnetic Field, Type =  " + type);
             		 break;
             	 case Sensor.TYPE_ORIENTATION:
-            		 Run.SensorCensus.add("Orientation, Type = " + type);
+            		 census.add("Orientation, Type = " + type);
             		 break;
             	 case Sensor.TYPE_PRESSURE:
-            		 Run.SensorCensus.add("Pressure, Type = " + type);
+            		 census.add("Pressure, Type = " + type);
             		 break;
             	 case Sensor.TYPE_PROXIMITY:
-            		 Run.SensorCensus.add("Proximity,  Type = " + type);
+            		 census.add("Proximity,  Type = " + type);
             		 break;
             	 case Sensor.TYPE_LINEAR_ACCELERATION:
-            		 Run.SensorCensus.add("Linear Acceleration, Type = " + type);
+            		 census.add("Linear Acceleration, Type = " + type);
             		 break;
             	 case Sensor.TYPE_ROTATION_VECTOR:
-            		 Run.SensorCensus.add("Rotational Vector, Type = " + type);
+            		 census.add("Rotational Vector, Type = " + type);
+            		 break;
+            	 case Sensor.TYPE_TEMPERATURE:
+            		 census.add("Temperature, Type = " + type);
             		 break;
             	 case Sensor.TYPE_AMBIENT_TEMPERATURE:
-            		 Run.SensorCensus.add("Ambiant Temperature, Type = " + type);
+            		 census.add("Ambient Temperature, Type = " + type);
             		 break;
             	 case Sensor.TYPE_RELATIVE_HUMIDITY:
-            		 Run.SensorCensus.add("Relatve Humidity, Type = " + type);
+            		 census.add("Relative Humidity, Type = " + type);
             		 break;
             	 default:
-            		 Run.SensorCensus.add("Unknown, Type = " + type);
+            		 census.add("Unknown, Type = " + type);
             		 break;
             	 }
-             }
-             Run.GetSensorList = false;
-             Run.SensorsClass = null;
-             /* This is running in a separate thread from Run which called us.
-              * SensorsRunning is used to signal that Sensors has done what it
-              * needs to do to enable to Run to continue
-              */
-             Run.SensorsRunning = true; 
-             // sensors.list is done now. Finished with this task. Close it.
-             super.onResume();
-             finish();
-             return;
-         }
-         
-/* Doing sensors.open. Register the listeners for each sensor that user wants
- * to monitor. Run.SensorOpenList is the user's list of sensors to monitor.
- */
-         if (Run.SensorOpenList == null){
-        	 Run.SensorsRunning = true;
-             super.onResume();
-        	 return;
-         }
-         
-         for (int i = 0; i < Run.SensorOpenList.size(); ++i){
-        	 type = Run.SensorOpenList.get(i);
-        	 Log.d(SensorActivity.LOGTAG, "Sensor register listener: " + type);
+		}
+		return census;
+	}
 
-        	 switch (type) {
-        	 case Sensor.TYPE_ACCELEROMETER  :
-                 mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_GRAVITY:
-                 mSensorManager.registerListener(this, mGravity, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_GYROSCOPE:
-                 mSensorManager.registerListener(this, mGyro, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_LIGHT:
-                 mSensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_MAGNETIC_FIELD:
-                 mSensorManager.registerListener(this, mMagF, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_ORIENTATION:
-                 mSensorManager.registerListener(this, mCompass, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_ROTATION_VECTOR:
-                 mSensorManager.registerListener(this, mRotVector, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_PRESSURE:
-                 mSensorManager.registerListener(this, mPressure, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_PROXIMITY:
-                 mSensorManager.registerListener(this, mProximity, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_TEMPERATURE:
-                 mSensorManager.registerListener(this, mTemperature, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_LINEAR_ACCELERATION:
-                 mSensorManager.registerListener(this, mLinearAccl, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_RELATIVE_HUMIDITY:
-                 mSensorManager.registerListener(this, mRelHumid, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 case Sensor.TYPE_AMBIENT_TEMPERATURE:
-                 mSensorManager.registerListener(this, mAmbTemp, SensorManager.SENSOR_DELAY_NORMAL);
-        		 break;
-        	 default:
-        		 break;
-        	 }
+	/* Call the markForOpen(int, int) method for each sensor the user wants to monitor.
+	 * When done, call the doOpen() method to register the sensors the user requested.
+	 */
 
-         }
-         
-         // Signal the Run thread that Sensors task is now operating
-         
-         Run.SensorsRunning = true;
-         super.onResume();
-        	 
-     }
-    
-    public void onSensorChanged(SensorEvent event) {
-    	
-// Called each time a sensor value has changed. 
-    	
-    	/* If the user executed sensor.close or if the Run thread is stopping
-    	 * it will signal this thread to stop by setting SensorsStop = true
-    	 * In that case, this thread will shut down.
-    	 */
-    	
-    	if (Run.SensorsStop){
-    		finish();
-    		return;
-    	}
-    	
-    	// A sensor has changed. If its value is reliable,
-    	// copy the values in the parameter variables
-    	
-    	Sensor sensor = event.sensor;
-    	int type = sensor.getType();
-/*      	 Log.d(SensorActivity.LOGTAG, "Sensor changed" + type + " Values = " +
-      			event.values[0] + "," +
-      			event.values[1] + "," +
-      			event.values[2] + "," );*/
+	/* Record a sensor the user wants to monitor. Only record valid sensors
+	 * that are not already open. If the delay value is invalid, use NORMAL.
+	 * Return true if the sensor gets scheduled for open,
+	 * false if the sensor type is invalid or the sensor is already registered.
+	 */
+	public boolean markForOpen(int type, int delay) {
+		if ((type < 0) || (type >= MaxSensors)) { return false; }	// invalid
+		if (mActiveSensors[type] != null) { return false; }			// already active
 
-/*    	if (event.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
-    		Log.d(SensorActivity.LOGTAG, "Sensor Unreliable, "  + type);
-    		return;
-    	}*/
+		switch (type) {
+		case Sensor.TYPE_ACCELEROMETER:
+		case Sensor.TYPE_MAGNETIC_FIELD:
+		case Sensor.TYPE_ORIENTATION:
+		case Sensor.TYPE_GYROSCOPE:
+		case Sensor.TYPE_LIGHT:
+		case Sensor.TYPE_PRESSURE:
+		case Sensor.TYPE_TEMPERATURE:
+		case Sensor.TYPE_PROXIMITY:
+		case Sensor.TYPE_GRAVITY:
+		case Sensor.TYPE_LINEAR_ACCELERATION:
+		case Sensor.TYPE_ROTATION_VECTOR:
+		case Sensor.TYPE_RELATIVE_HUMIDITY:
+		case Sensor.TYPE_AMBIENT_TEMPERATURE:
+			if ((delay < 0) || (delay > SensorManager.SENSOR_DELAY_NORMAL)) {
+				delay = SensorManager.SENSOR_DELAY_NORMAL;
+			}
+			mPendingSensorDelays[type] = delay;					// List as "pending"
+			return true;
+		default:
+			return false;
+		}
+	}
 
-    	Run.SensorValues[type][1] = (double)event.values[0];
-    	Run.SensorValues[type][2] = (double)event.values[1];
-    	Run.SensorValues[type][3] = (double)event.values[2];
-/*    	
-   	 switch (type) {
-   	 
-	 case Sensor.TYPE_ACCELEROMETER :
-		 Run.SensorValues[Sensor.TYPE_ACCELEROMETER][1]= (double)event.values[0];
-		 Run.SensorValues[Sensor.TYPE_ACCELEROMETER][2]= (double)event.values[1];
-		 Run.SensorValues[Sensor.TYPE_ACCELEROMETER][3]= (double)event.values[2];
-		 break;
-	 case Sensor.TYPE_LINEAR_ACCELERATION :
-		 Run.SensorValues[Sensor.TYPE_LINEAR_ACCELERATION][1]= (double)event.values[0];
-		 Run.SensorValues[Sensor.TYPE_LINEAR_ACCELERATION][2]= (double)event.values[1];
-		 Run.SensorValues[Sensor.TYPE_LINEAR_ACCELERATION][3]= (double)event.values[2];
-		 break;
-	 case Sensor.TYPE_GRAVITY:
-		 Run.SensorValues[Sensor.TYPE_GRAVITY][1]= (double)event.values[0];
-		 Run.SensorValues[Sensor.TYPE_GRAVITY][2]= (double)event.values[1];
-		 Run.SensorValues[Sensor.TYPE_GRAVITY][3]= (double)event.values[2];
-		 break;
-	 case Sensor.TYPE_GYROSCOPE:
-		 Run.SensorValues[Sensor.TYPE_GYROSCOPE][1]= (double)event.values[0];
-		 Run.SensorValues[Sensor.TYPE_GYROSCOPE][2]= (double)event.values[1];
-		 Run.SensorValues[Sensor.TYPE_GYROSCOPE][3]= (double)event.values[2];
-		 break;
-	 case Sensor.TYPE_LIGHT:
-		 Run.SensorValues[Sensor.TYPE_LIGHT][1]= (double)event.values[0];
-		 break;
-	 case Sensor.TYPE_MAGNETIC_FIELD:
-		 Run.SensorValues[Sensor.TYPE_MAGNETIC_FIELD][1]= (double)event.values[0];
-		 Run.SensorValues[Sensor.TYPE_MAGNETIC_FIELD][2]= (double)event.values[1];
-		 Run.SensorValues[Sensor.TYPE_MAGNETIC_FIELD][3]= (double)event.values[2];
-		 break;
-	 case Sensor.TYPE_ORIENTATION:
-		 Run.SensorValues[Sensor.TYPE_ORIENTATION][1]= (double)event.values[0];
-		 Run.SensorValues[Sensor.TYPE_ORIENTATION][2]= (double)event.values[1];
-		 Run.SensorValues[Sensor.TYPE_ORIENTATION][3]= (double)event.values[2];
-		 break;
-	 case Sensor.TYPE_ROTATION_VECTOR:
-		 Run.SensorValues[Sensor.TYPE_ROTATION_VECTOR][1]= (double)event.values[0];
-		 Run.SensorValues[Sensor.TYPE_ROTATION_VECTOR][2]= (double)event.values[1];
-		 Run.SensorValues[Sensor.TYPE_ROTATION_VECTOR][3]= (double)event.values[2];
-		 break;
-	 case Sensor.TYPE_PRESSURE:
-		 Run.SensorValues[Sensor.TYPE_PRESSURE][1]= (double)event.values[0];
-		 break;
-	 case Sensor.TYPE_PROXIMITY:
-		 Run.SensorValues[Sensor.TYPE_PROXIMITY][1]= (double)event.values[0];
-		 break;
-	 case Sensor.TYPE_TEMPERATURE:
-		 Run.SensorValues[Sensor.TYPE_TEMPERATURE][1]= (double)event.values[0];
-		 break;
-	 default:
-		 break;
-	 }
-	 
-*/
-   	 Thread.yield();  // Gives Run a chance to do its thing
-    	
-    }
+	public void doOpen() {										// register all sensors on the "pending" list
+		for (int type = 0; type <= MaxSensors; ++type) {
+			int delay = mPendingSensorDelays[type];
+			if (delay == UNINIT) { continue; }					// Not "pending"
 
-/*     protected void onPause() {
-         super.onPause();
-        if (!Run.SensorsRunning) return;
-         
-        int type;
-         for (int i = 0; i < Run.SensorOpenList.size(); ++i){
-        	 type = Run.SensorOpenList.get(i);
-        	 Log.d(SensorActivity.LOGTAG, "Sensor unregister listener: " + type);
+			Log.d(SensorActivity.LOGTAG, "Sensor register listener: " + type);
+			Sensor sensor = mSensorManager.getDefaultSensor(type);
+			mSensorManager.registerListener(this, sensor, delay);
 
-        	 switch (type) {
-        	 case Sensor.TYPE_ACCELEROMETER  :
-                 mSensorManager.unregisterListener(this, mAccel);
-        		 break;
-        	 case Sensor.TYPE_GRAVITY:
-                 mSensorManager.unregisterListener(this, mGravity);
-        		 break;
-        	 case Sensor.TYPE_GYROSCOPE:
-                 mSensorManager.unregisterListener(this, mGyro);
-        		 break;
-        	 case Sensor.TYPE_LIGHT:
-                 mSensorManager.unregisterListener(this, mLight);
-        		 break;
-        	 case Sensor.TYPE_MAGNETIC_FIELD:
-                 mSensorManager.unregisterListener(this, mMagF);
-        		 break;
-        	 case Sensor.TYPE_ORIENTATION:
-                 mSensorManager.unregisterListener(this, mCompass);
-        		 break;
-        	 case Sensor.TYPE_ROTATION_VECTOR:
-                 mSensorManager.unregisterListener(this, mRotVector);
-        		 break;
-        	 case Sensor.TYPE_PRESSURE:
-                 mSensorManager.unregisterListener(this, mPressure);
-        		 break;
-        	 case Sensor.TYPE_PROXIMITY:
-                 mSensorManager.unregisterListener(this, mProximity);
-        		 break;
-        	 case Sensor.TYPE_TEMPERATURE:
-                 mSensorManager.unregisterListener(this, mTemperature);
-        		 break;
-        	 case Sensor.TYPE_LINEAR_ACCELERATION:
-                 mSensorManager.unregisterListener(this, mLinearAccl);
-        		 break;
-        	 case Sensor.TYPE_RELATIVE_HUMIDITY:
-                 mSensorManager.unregisterListener(this, mRelHumid);
-        		 break;
-        	 case Sensor.TYPE_AMBIENT_TEMPERATURE:
-                 mSensorManager.unregisterListener(this, mAmbTemp);
-        		 break;
-        	 default:
-        		 break;
-        	 }
+			mActiveSensors[type] = sensor;						// remember the sensor
+			mActiveSensorDelays[type] = delay;					// and its delay setting
+			mPendingSensorDelays[type] = UNINIT;				// not "pending" any more
+			mIsOpen = true;
+		}
+	}
 
-         }
-     }*/
-     
-     protected void onDestroy() {
-    	 mSensorManager.unregisterListener(this);
-    	 super.onDestroy();
-//         Log.d(SensorActivity.LOGTAG, " " + SensorActivity.CLASSTAG + " On destroy "  );
+	/* Register all of the sensors that have been previously opened.
+	 * This method assumes they have all been unregistered.
+	 * Intended to be called from the onResume() of an Activity.
+	 */
+	public void reOpen() {
+		for (int type = 0; type <= MaxSensors; ++type) {
+			Sensor sensor = mActiveSensors[type];
+			if (sensor == null) { continue; }					// Not active
 
-     }
-     
+			int delay = mActiveSensorDelays[type];
+			mSensorManager.registerListener(this, sensor, delay);
+		}
+	}
 
-     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-    	
-     }
+	public boolean isOpen() {									// Return true if any sensor is active
+		return mIsOpen;
+	}
 
- }
+	public synchronized double[] getValues(int type) {			// Return current values of one sensor
+		double[] values = new double[4];
+		for (int i = 1; i <= 3; ++i) {
+			values[i] = mSensorValues[type][i];
+		}
+		return values;
+	}
+
+	public void stop() {										// Unregister all sensors
+		mSensorManager.unregisterListener(this);
+		mIsOpen = false;
+//		Log.d(SensorActivity.LOGTAG, " " + SensorActivity.CLASSTAG + " unregister "  );
+	}
+
+	public synchronized void onSensorChanged(SensorEvent event) {
+
+		// Called each time a sensor value has changed.
+
+		// A sensor has changed. If its value is reliable,
+		// copy the values in the parameter variables
+
+		Sensor sensor = event.sensor;
+		int type = sensor.getType();
+/*		Log.d(SensorActivity.LOGTAG, "Sensor changed" + type + " Values = " +
+				event.values[0] + "," +
+				event.values[1] + "," +
+				event.values[2] + "," );*/
+
+/*		if (event.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
+			Log.d(SensorActivity.LOGTAG, "Sensor Unreliable, "  + type);
+			return;
+		}*/
+
+		mSensorValues[type][1] = (double)event.values[0];
+		mSensorValues[type][2] = (double)event.values[1];
+		mSensorValues[type][3] = (double)event.values[2];
+	}
+
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+	}
+
+}
  

@@ -1035,15 +1035,8 @@ public class Run extends ListActivity {
     public static boolean PlayIsDone;
     public MediaRecorder mRecorder = null;    
     // ******************************* Variables for Sensor Commands **********************************
-    
-    public static boolean GetSensorList = false;
-    public static ArrayList<String> SensorCensus;
-    public static ArrayList<Integer> SensorOpenList;
-    public static double SensorValues[][];
-    public static Intent SensorsClass;
-    public static boolean SensorsStop;
-    public static boolean SensorsRunning;
-    public static final int MaxSensors = 15;
+
+    private SensorActivity theSensors;
     
     public static final String Sensors_KW[] = {
     	"list","open","read","close", "rotate"
@@ -2206,15 +2199,9 @@ private void InitVars(){
  
     
     // ******************************* Variables for Sensor Commands **********************************
-    
-    GetSensorList = false;
-    SensorCensus = new ArrayList<String>() ;
-    SensorOpenList = new ArrayList<Integer>() ;
-    //SensorValues[][];
-    SensorsClass = null;
-    SensorsStop = true;
-    SensorsRunning = false;
-	
+
+    theSensors = null;
+
     theGPS = null;
 	
 	DoAverage = false;
@@ -2337,9 +2324,12 @@ public void cleanUp(){
 
 	
 	myVib.cancel();
-	SensorsClass = null;
-	SensorsStop = true;
-	
+
+	if (theSensors != null) {
+		theSensors.stop();
+		theSensors = null;
+	}
+
 	if (theServerSocket != null){
 	try{
 		theServerSocket.close();
@@ -2647,8 +2637,11 @@ protected void onRestart(){
 
 protected void onDestroy(){
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Destroy  " );
-	  SensorsClass = null;
-	  SensorsStop = true;
+
+	if (theSensors != null) {
+		theSensors.stop();
+		theSensors = null;
+	}
 
 	if (theGPS != null) {
 		Log.d(LOGTAG, "Stopping GPS from onDestroy");
@@ -3667,7 +3660,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		else {
 			return false;									// nothing left, fail
-			}
+		}
 
 		if (LineIndex >= ExecutingLineBuffer.length() ) return false;
 		c = ExecutingLineBuffer.charAt(LineIndex);
@@ -3676,23 +3669,12 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		if (!PossibleKeyWord.equals("")){
 			if (ExecutingLineBuffer.startsWith(PossibleKeyWord, LineIndex)){
-				if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
-				return true;
+				return handleOp(EOL,  theOpStack, theValueStack);
 			}
 		}
-		if (c==','){										// treat a comma as an eol
-			if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
-			return true;
-		}
 
-		if (c==';'){										// treat a ; as an EOL
-			if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
-			return true;
-		}
-
-		if (c==']'){										// treat a ] as an EOL
-			if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
-			return true;
+		if (",:;]".indexOf(c) >= 0) {						// treat any of these characters as an eol
+			return handleOp(EOL, theOpStack, theValueStack);
 		}
 
 		k = LineIndex;
@@ -3719,16 +3701,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		default:
 			if (!handleOp(OperatorValue,  theOpStack, theValueStack)){return false;} // Handles non special case ops
 		}
-		
-		if (!ENE( theOpStack, theValueStack)){				// Recursively call ENE for rest of expression
-			return false;
-		}
-		
-		return true;						// Done
-	
+
+		return ENE(theOpStack, theValueStack);				// Recursively call ENE for rest of expression
 	}
 
-		private  boolean getOp(){						// Get an expression operator if there is one
+	private boolean getOp(){							// Get an expression operator if there is one
 														// Get a possible Operator
 			
 		int i = 0;
@@ -11947,139 +11924,86 @@ private boolean doUserFunction(){
 		  return false;									// report fail
 
 	  		}
-	  
-	  private boolean execute_sensors_list(){
-		  
-		  if (SensorsClass != null){                 // If SensorsClass is not null ....
-			  RunTimeError("Sensors already opened");
-			  return false;
-		  }
-		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
-		if (VarIsNumeric) { return RunTimeError("Not string array"); }
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
-		if (!checkEOL()) { return false; }							// line must end with ']'
-		int theVarNumber = VarNumber;
-		  
-		  GetSensorList = true;                        // Tells SensorsActivity class the we want the list
-     	  SensorCensus = new ArrayList<String>();      // Create a new list for the list
-      	  SensorsClass = new Intent(this, SensorActivity.class);				// Start the Graphics
-          Run.SensorsRunning = false;                  // SensorsActivity will set to true when it is running
-      	  startActivityForResult(SensorsClass, BASIC_GENERAL_INTENT);				   // Start the Sensor class
-	      while (!SensorsRunning) 					   // Wait for the running signal
-	    	  Thread.yield();
 
-	      int SClength = SensorCensus.size();              // If no sensors reported.....
-	      if (SClength==0){
-	    	  RunTimeError("This device reports no Sensors");
-	    	  return false;
-	      }
-	      
-	      /* Puts the list of sensors into an unDIMed array */
-		return ListToBasicStringArray(theVarNumber, SensorCensus, SClength);
-	  }
-	  
-	  private boolean execute_sensors_open(){
-		  
-		  if (SensorsClass != null){               // If null.............
-			  RunTimeError("Sensors already opened at:");
-			  return false;
-		  }
-		  
-		  SensorValues = new double[MaxSensors+1][4];                     // an array to hold the value
-		  for (int i=0; i<=MaxSensors; ++i){							  // initialize the array to zero
-			  for (int j=0; j<4; ++j) SensorValues[i][j]= 0;
-		  }
-		  
-		  if (ExecutingLineBuffer.charAt(LineIndex)=='\n'){SyntaxError(); return false;}
-		  --LineIndex;
-		  
-		  SensorOpenList = new ArrayList<Integer>();       // Create the list for putting the sensors to open into
-		  
-		  do {														// Get the user's list of sensors to open
-				++LineIndex;
-				if (!evalNumericExpression())return false;			// Get the sensor number
-				double d = EvalNumericExpressionValue;
-				int s = (int)d;
-				SensorOpenList.add(s);								// add to the list
-		  } while (ExecutingLineBuffer.charAt(LineIndex)==',');
+		private boolean execute_sensors_list(){
+			if (!getArrayVarForWrite()) { return false; }				// Get the array variable
+			if (VarIsNumeric) { return RunTimeError("Not string array"); }
+			if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+			if (!checkEOL()) { return false; }							// line must end with ']'
+			int theVarNumber = VarNumber;
 
-
-		  if (!checkEOL()) return false;
-		  GetSensorList = false;				// Signals with SensorsActivity class
-		  SensorsStop = false;					// Will be set when SensorsActivity should stop
-		  SensorsRunning = false;				// will be set true when SensorsActivity thread is running
-      	  SensorsClass = new Intent(this, SensorActivity.class);	// Start the Sensors Class
-      	  startActivityForResult(SensorsClass, BASIC_GENERAL_INTENT);
-	      while (!SensorsRunning)               // Wait until activity is running
-	    	  Thread.yield();
-	      
-	      if (SensorOpenList == null){
-	    	  RunTimeError("Pause 10 seconds before next run.");
-	    	  return false;
-	      }
-	      
-		  if (!GRFront){
-			  Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-			  startActivity(Basic.theProgramRunner);
-			  GRFront = false;
-		  }else{
-			  if (GRclass != null){
-				  GRclass.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-				  startActivity(GRclass);
-				  GRFront = true;
-			  } else {
-				  Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-				  startActivity(Basic.theProgramRunner);
-				  GRFront = false;
-			  }
-		  }
-
-
-
-		  return true;
-	  }
-	  
-	  private boolean execute_sensors_read(){
-		  
-		  if (SensorsClass == null){            // if null.....
-			  RunTimeError("Sensors not opened at:");
-			  return false;
-		  }
-		  
-			if (!evalNumericExpression())return false;							// Get Sensor Type 
-			double d = EvalNumericExpressionValue;
-			int type = (int) d;
-			if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			++LineIndex;
-			
-			if (type <0 || type>MaxSensors){
-				RunTimeError("Sensor type not 0 to " + MaxSensors);
-				return false;
+			if (theSensors == null) {
+				theSensors = new SensorActivity(BasicContext);
 			}
-			
-			
-			   if (!getVar())return false;							// Sensor Variable
-			   if (!VarIsNumeric)return false;
-			   NumericVarValues.set(theValueIndex, SensorValues[type][1]); 
-			   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			   ++LineIndex;
+			ArrayList<String> census = theSensors.takeCensus();
+			int nSensors = census.size();						// If no sensors reported.....
+			if (nSensors==0){
+				return RunTimeError("This device reports no Sensors");
+			}
 
-			   if (!getVar())return false;							// Sensor Variable
-			   if (!VarIsNumeric)return false;						// 
-			   NumericVarValues.set(theValueIndex, SensorValues[type][2]); 
-			   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			   ++LineIndex;
+			/* Puts the list of sensors into an unDIMed array */
+			return ListToBasicStringArray(theVarNumber, census, nSensors);
+		}
 
+		private boolean execute_sensors_open(){
+			if (theSensors == null) {
+				theSensors = new SensorActivity(BasicContext);
+			}
 
-			   if (!getVar())return false;							// Sensor Variable
-			   if (!VarIsNumeric)return false;						// 
-			   NumericVarValues.set(theValueIndex, SensorValues[type][3]); 
-				
-			   if (!checkEOL()) return false;
-		  
-			   return true;
-	  }
-	  
+			if (isEOL()) { return false; }
+			boolean toOpen = false;								// anything to open?
+			do {												// get the user's list of sensors to open
+				if (!evalNumericExpression()) { return false; }	// get the sensor number
+				int s = EvalNumericExpressionValue.intValue();
+				int d = SensorManager.SENSOR_DELAY_NORMAL;
+				if (isNext(':')) {
+					if (!evalNumericExpression()) { return false; }	// get the sensor delay value
+					d = EvalNumericExpressionValue.intValue();
+				}
+				toOpen |= theSensors.markForOpen(s, d);			// record selection
+			} while (isNext(','));
+			if (!checkEOL()) { return false; }
+
+			if (toOpen) {										// if any valid selections
+				theSensors.doOpen();							// open selected sensors
+			}
+			return true;
+		}
+
+		private boolean execute_sensors_read(){
+
+			if (theSensors == null) {
+				return RunTimeError("Sensors not opened at:");
+			}
+
+			if (!evalNumericExpression())return false;			// Get Sensor Type
+			int type = EvalNumericExpressionValue.intValue();
+			if (!isNext(',')) return false;
+
+			if (type < 0 || type > SensorActivity.MaxSensors) {
+				return RunTimeError("Sensor type not 0 to " + SensorActivity.MaxSensors);
+			}
+
+			int[] valueIndex = new int[4];
+			if (!getNVar())return false;						// Sensor Variable
+			valueIndex[1] = theValueIndex;
+			if (!isNext(',')) return false;
+
+			if (!getNVar())return false;						// Sensor Variable
+			valueIndex[2] = theValueIndex;
+			if (!isNext(',')) return false;
+
+			if (!getNVar())return false;						// Sensor Variable
+			valueIndex[3] = theValueIndex;
+			if (!checkEOL()) return false;
+
+			double[] SensorValues = theSensors.getValues(type);
+			for (int i = 1; i <= 3; ++i) {
+				NumericVarValues.set(valueIndex[i], SensorValues[i]); 
+			}
+			return true;
+		}
+
 	  private boolean execute_sensors_rotate(){
 		  
 		  /* This is a test. 
@@ -12089,16 +12013,19 @@ private boolean doUserFunction(){
 		   */
 		  
 		  float mOrientation[] = new float[3];
+		  double SensorValues[];
 
+		  SensorValues = theSensors.getValues(1);
 		  float g[] = new float[3];
-		  g[0] = (float) SensorValues[1][1];
-		  g[1] = (float) SensorValues[1][2];
-		  g[2] = (float) SensorValues[1][3];
+		  g[0] = (float) SensorValues[1];
+		  g[1] = (float) SensorValues[2];
+		  g[2] = (float) SensorValues[3];
 		  
+		  SensorValues = theSensors.getValues(1);
 		  float m[] = new float[3];
-		  m[0] = (float) SensorValues[2][1];
-		  m[1] = (float) SensorValues[2][2];
-		  m[2] = (float) SensorValues[2][3];
+		  m[0] = (float) SensorValues[1];
+		  m[1] = (float) SensorValues[2];
+		  m[2] = (float) SensorValues[3];
 		  
 		  float r[] = new float[16];
 		  float R[] = new float[16];
@@ -12113,19 +12040,13 @@ private boolean doUserFunction(){
 	      
           final float rad2deg = (float)(180.0f/Math.PI);
           
-	      
-		   if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;
+		   if (!getNVar())return false;							// Graphic Object Variable
 		   NumericVarValues.set(theValueIndex, (double) mOrientation[0]);
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		   if (!isNext(',')) return false;
 
-		   if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
+		   if (!getNVar())return false;							// Graphic Object Variable
 		   NumericVarValues.set(theValueIndex, (double) mOrientation[1]); 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-
+		   if (!isNext(',')) return false;
 
 		   if (!getVar())return false;							// Graphic Object Variable
 		   if (!VarIsNumeric)return false;						// 
@@ -12135,14 +12056,16 @@ private boolean doUserFunction(){
 
 		  return true;
 	  }
-	  
- 	  private boolean execute_sensors_close(){
- 			if (!checkEOL()) return false;
-		  SensorsStop = true;     // Signals SensorsActivity to stop
-		  SensorsClass = null;    // Tell everyone that Sensors are closed
-		  return true;
-	  }
- 	  
+
+		private boolean execute_sensors_close(){
+			if (!checkEOL()) return false;
+			if (theSensors != null) {
+				theSensors.stop();
+				theSensors = null;								// Tell everyone that Sensors are closed
+			}
+			return true;
+		}
+
 // ************************************************ GPS Package ***********************************
  	  
  	  private boolean executeGPS(){
