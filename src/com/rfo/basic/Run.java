@@ -4605,27 +4605,23 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				return true;
 
 			case SFright:																		// RIGHT$
-				if (!evalStringExpression()){SyntaxError();return false;}
-				if (SEisLE) return false;
-				if (ExecutingLineBuffer.charAt(LineIndex)!= ',') {SyntaxError();return false;}
-				++LineIndex;
+				if (!getStringArg()) { return false; }
+				if (!isNext(',')) { return false; }
 				SSC = StringConstant;
-				if (!evalNumericExpression()){
-					SyntaxError();
-					return false;
-					}
-				StringConstant = SSC;
+				if (!evalNumericExpression()) { return false; }
 				if (!isNext(')')) { return false; }				// Function must end with ')'
-				if (StringConstant.length()==0){SyntaxError();return true;}
-				d = EvalNumericExpressionValue;
-				e = (int) d;
-				if (e <= 0){
-					StringConstant=""; 
-					return true;
-				}				
-				if (e>=StringConstant.length()){e=StringConstant.length()-1;}
-				e = StringConstant.length() - e;
-				StringConstant = StringConstant.substring(e, StringConstant.length());
+
+				if (SSC.length() > 0) {
+					e = EvalNumericExpressionValue.intValue();
+					if (e <= 0) {
+						SSC = "";
+					} else {
+						e = SSC.length() - e;
+						if (e < 0) { e = 0; }
+						SSC = SSC.substring(e);
+					}
+				}
+				StringConstant = SSC;
 				return true;
 
 			case SFword:
