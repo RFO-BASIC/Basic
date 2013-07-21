@@ -28,7 +28,7 @@ This file is part of BASIC! for Android
 	
 
 <resources>
-    <string name="version">01.74</string>
+    <string name="version">01.75</string>
 
     <string name="hello">Hello World, BASIC!</string>
     <string name="app_name">BASIC!</string>
