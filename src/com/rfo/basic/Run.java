@@ -4533,75 +4533,54 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		double d1 = 0;
 		int e = 0;
 		int e1 = 0;
+		int length;
 		
 		String SSC;
 																// Have a string function, do it
 		switch (SFNumber){
 			case  SFleft:																		// LEFT$
-				if (!evalStringExpression()){SyntaxError();return false;}
-				if (SEisLE) return false;
-				if (ExecutingLineBuffer.charAt(LineIndex)!= ',') {SyntaxError();return false;}
-				++LineIndex;
+				if (!getStringArg()) { return false; }
+				if (!isNext(',')) { return false; }
 				SSC = StringConstant;
-				if (!evalNumericExpression()){SyntaxError();return false;}
-				StringConstant = SSC;
+				if (!evalNumericExpression()) { return false; }
 				if (!isNext(')')) { return false; }				// Function must end with ')'
-				if (StringConstant.length()==0){return true;}
-				d = EvalNumericExpressionValue;
-				e = (int) d;
-				if (e <= 0){
-					StringConstant=""; 
-					return true;
+
+				if (SSC.length() > 0) {
+					e = EvalNumericExpressionValue.intValue();
+					if (e <= 0) { SSC = ""; }
+					else if (e < SSC.length()) { SSC = SSC.substring(0, e); }
 				}
-				if (e>=StringConstant.length()){e=StringConstant.length();}
-				StringConstant = StringConstant.substring(0, e );
+				StringConstant = SSC;
 				return true;
 
 			case SFmid:																			// MID$
-				if (!evalStringExpression()){SyntaxError();return false;}						// Get the string
-				if (SEisLE) return false;
-				if (ExecutingLineBuffer.charAt(LineIndex)!= ',') {SyntaxError();return false;}
-				++LineIndex;
+				if (!getStringArg()) { return false; }			// Get the string
 				SSC = StringConstant;
-				
-				if (!evalNumericExpression()){SyntaxError();return false;}						// Get the displacement
-				StringConstant = SSC;
-//				if (StringConstant.length()==0){SyntaxError();return true;}
-				d = EvalNumericExpressionValue;
-				e = (int) d;
-				if (e <= 0) e = 1;
+				length = SSC.length();
 
-				e1 = StringConstant.length();													// Get the length of the string
+				if (!isNext(',')) { return false; }
+				if (!evalNumericExpression()) { return false; }	// Get the start index
+				e = EvalNumericExpressionValue.intValue();
 
-				if (ExecutingLineBuffer.charAt(LineIndex) == ',') {								// IF there is a count, get it
-					++LineIndex;
-					SSC = StringConstant;
-					if (!evalNumericExpression()){SyntaxError();return false;}
-					StringConstant = SSC;
-					d1 = EvalNumericExpressionValue;
-					e1 = (int) d1;
-					if (e1 < 0 ){
-						RunTimeError("Count < 0");
-						return false;
-						}
-					if (e1>StringConstant.length()){e1 = StringConstant.length();}
-				} 
-/*				else {
-					if (ExecutingLineBuffer.charAt(LineIndex) != ')') return false;
-					e1 = StringConstant.length();}*/
-
-				if (!isNext(')')) { return false; }				// Function must end with ')'
-				if (e>StringConstant.length()){
-					SSC=""; 
-					StringConstant = SSC;
-					return true;
+				if (isNext(',')) {								// If there is a count, get it
+					if (!evalNumericExpression()) { return false; }
+					e1 = EvalNumericExpressionValue.intValue();
+					if (e1 < 0) { return RunTimeError("Count < 0"); }
+				} else {
+					e1 = length;								// Default count is whole string
 				}
-				e = e -1;
-				e1 = e + e1;
+				if (!isNext(')')) { return false; }				// Function must end with ')'
+
+				if (length > 0) {
+					if (e > length) { SSC = ""; }
+					else {
+						if (--e < 0) { e = 0; }					// Change 1-based index to 0-based
+						e1 += e;								// Change count to end index
+						if (e1 > length) { e1 = length; }
+						SSC = SSC.substring(e, e1);
+					}
+				}
 				StringConstant = SSC;
-				if (e1>=StringConstant.length()){e1 = StringConstant.length();}
-				if (e>=StringConstant.length()){e = StringConstant.length();}
-				StringConstant = StringConstant.substring(e, e1 );
 				return true;
 
 			case SFright:																		// RIGHT$
@@ -4611,20 +4590,16 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if (!evalNumericExpression()) { return false; }
 				if (!isNext(')')) { return false; }				// Function must end with ')'
 
-				if (SSC.length() > 0) {
+				length = SSC.length();
+				if (length > 0) {
 					e = EvalNumericExpressionValue.intValue();
-					if (e <= 0) {
-						SSC = "";
-					} else {
-						e = SSC.length() - e;
-						if (e < 0) { e = 0; }
-						SSC = SSC.substring(e);
-					}
+					if (e <= 0) { SSC = ""; }
+					else if (e < length) { SSC = SSC.substring(length - e); }
 				}
 				StringConstant = SSC;
 				return true;
 
-			case SFword:
+			case SFword:																		// WORD$
 				if (!getStringArg()) { return false; }			// String to split
 				String SearchString = StringConstant;
 
@@ -4635,7 +4610,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				String r[] = doSplit(SearchString);				// Get regex arg, if any, and split the string.
 				if (!isNext(')')) { return false; }				// Function must end with ')'
 
-				int length = r.length;							// Get the number of strings generated
+				length = r.length;								// Get the number of strings generated
 				if (length == 0) { return false; }				// error in doSplit()
 
 				wordIndex--;									// Convert to 0-based index
@@ -4644,34 +4619,32 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				return true;
 
 			case SFstr:																			// STR$
-				if (!evalNumericExpression()){SyntaxError();return false;}
+				if (!evalNumericExpression()) { return false; }
 				StringConstant = String.valueOf(EvalNumericExpressionValue);
 				break;
 
 			case SFupper:																		// UPPER$
-				if (!evalStringExpression()){SyntaxError();return false;}
-				if (SEisLE) return false;
+				if (!getStringArg()) { return false; }
 				StringConstant = StringConstant.toUpperCase();
 				break;
 
 			case SFlower:																		// LOWER $
-				if (!evalStringExpression()){SyntaxError();return false;}
-				if (SEisLE) return false;
+				if (!getStringArg()) { return false; }
 				StringConstant = StringConstant.toLowerCase();
 				break;
 
 			case SFformat:																		// FORMAT $
-				if (!evalStringExpression()){SyntaxError();return false;}						// get the pattern string
-				if (SEisLE) return false;
-				if (ExecutingLineBuffer.charAt(LineIndex)!= ',') {SyntaxError();return false;}
-				++LineIndex;
+				if (!getStringArg()) { return false; }			// get the pattern string
+				if (!isNext(',')) { return false; }
 				SSC = StringConstant;
-				if (!evalNumericExpression()){SyntaxError();return false;}						// Get the number to format
+
+				if (!evalNumericExpression()) { return false; }	// Get the number to format
 				if (!isNext(')')) { return false; }				// Function must end with ')'
-				return Format(SSC, EvalNumericExpressionValue);									// and then do the format
+
+				return Format(SSC, EvalNumericExpressionValue);	// and then do the format
 
 			case SFchr:																			// CHR$
-				if (!evalNumericExpression()){return false;}
+				if (!evalNumericExpression()) { return false; }
 				d = EvalNumericExpressionValue;
 				StringConstant = "" + (char) d;
 				break;
@@ -4685,44 +4658,42 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				break;
 				
 			case SFreplace:
-				if (!evalStringExpression()){SyntaxError();return false;}
-				if (SEisLE) return false;
+				if (!getStringArg()) { return false; }
 				String target = StringConstant;
 
-				if (ExecutingLineBuffer.charAt(LineIndex)!= ',') {return false;}
-				++LineIndex;
-				if (!evalStringExpression()){SyntaxError();return false;}
-				if (SEisLE) return false;
+				if (!isNext(',')) { return false; }
+				if (!getStringArg()) { return false; }
 				String argument = StringConstant;
 
-				if (ExecutingLineBuffer.charAt(LineIndex)!= ',') {return false;}
-				++LineIndex;
-				if (!evalStringExpression()){SyntaxError();return false;}
-				if (SEisLE) return false;
+				if (!isNext(',')) { return false; }
+				if (!getStringArg()) { return false; }
 				String replacment = StringConstant;
 
-				if ( argument == null || replacment == null){
-					RunTimeError("Invalid string");
-					return false;
+				if (argument == null || replacment == null) {
+					return RunTimeError("Invalid string");
 				}
 				
 				StringConstant = target.replace(argument, replacment);
 				break;
+
 			case SFhex:
-				if (!evalNumericExpression()){SyntaxError();return false;}
-				int value = EvalNumericExpressionValue.intValue();
-				StringConstant = Integer.toHexString(value);
+				if (!evalNumericExpression()) { return false; }
+				e = EvalNumericExpressionValue.intValue();
+				StringConstant = Integer.toHexString(e);
 				break;
+
 			case SFoct:
-				if (!evalNumericExpression()){SyntaxError();return false;}
-				value = EvalNumericExpressionValue.intValue();
-				StringConstant = Integer.toOctalString(value);
+				if (!evalNumericExpression()) { return false; }
+				e = EvalNumericExpressionValue.intValue();
+				StringConstant = Integer.toOctalString(e);
 				break;
+
 			case SFbin:
-				if (!evalNumericExpression()){SyntaxError();return false;}
-				value = EvalNumericExpressionValue.intValue();
-				StringConstant = Integer.toBinaryString(value);
+				if (!evalNumericExpression()) { return false; }
+				e = EvalNumericExpressionValue.intValue();
+				StringConstant = Integer.toBinaryString(e);
 				break;
+
 			default:
 		}
 		return isNext(')');										// Function must end with ')'
