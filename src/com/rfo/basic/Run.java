@@ -12040,8 +12040,11 @@ private boolean doUserFunction(){
 		    	  return false;
 		      	}else {
 		      	  if (theGPS == null && KeyWordValue != gps_open){
-		      		RunTimeError("GPS not opened at:");
-		      		  return false;
+					theBackground.checkpointProgress();						// if singal @@8 is going to open GPS,
+					while (ProgressPending) { Thread.yield(); }				// this will wait for it to complete
+					if (theGPS == null) {
+						return RunTimeError("GPS not opened at:");
+		    		}
 		      	  }
 		    	  switch (KeyWordValue){
 		    	  	case gps_open:
