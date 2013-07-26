@@ -43,21 +43,20 @@ import android.widget.ListView;
 
 public class Format extends ListActivity {
 
-    private static Background theBackground;					// Background task ID
-    private static ArrayAdapter<String> AA;
-    private static ListView lv ;							    // The output screen list view
-    private static ArrayList<String> output;					// The output screen text lines
-    private static String restoreText;
-    public static boolean blockQuote = false;
+	private Background theBackground;					// Background task ID
+	private ArrayAdapter<String> AA;
+	private ListView lv ;								// The output screen list view
+	private ArrayList<String> output;					// The output screen text lines
+	private boolean blockQuote = false;
 
 
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event) {
-		// if BACK key restore original text
+		// if BACK key leave original Editor text unmodified
 		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-			Editor.DisplayText = restoreText;
-			Editor.mText.setText(Editor.DisplayText);
-			Editor.mText.setSelection(0, 0);
+			if (theBackground != null) synchronized (Editor.DisplayText) {
+				theBackground.cancel(true);
+			}
 			finish();
 			return true;
 		}
@@ -65,12 +64,9 @@ public class Format extends ListActivity {
 		return super.onKeyUp(keyCode, event);
 	}
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-        restoreText = Editor.DisplayText;
 
  	  	output = new ArrayList<String>();
  	  	output.add("");
@@ -86,37 +82,26 @@ public class Format extends ListActivity {
 
     public class Background extends AsyncTask<String, String, String> {
 
-    	private String originalText;               // The original text
+		private String[] originalText;				// The original text, split into lines
     	private String formattedText;			   // The formatted text
         private final String SPACES = " ";	  	   // Spaces for indenting
         private int indentLevel = 0;
-        private boolean wasCase = false;
         private Stack<Integer> swStack = new Stack<Integer>();
 
-        @Override
-        protected  String doInBackground(String...str) {
-			String Temp = "";
+		@Override
+		protected String doInBackground(String...str) {
 			blockQuote = false;
-			for (int charCount=0; charCount < originalText.length(); ++charCount) {      // get each line
-				if (originalText.charAt(charCount) == '\n') {							 // and and process it
-					ProcessLine(Temp);							                     
-					Temp = "";								
-				} else {
-					Temp = Temp + originalText.charAt(charCount);
-				}
-			}
-            return "";
-        }
+			for (String line : originalText) { ProcessLine(line); }
+			return "";
+		}
+
+		@Override
+		protected void onPreExecute() {
+			originalText = Editor.DisplayText.split("\n");	// The original text from the editor
+			formattedText = "";								// The resulting formatted text
+		}
 
         @Override
-        protected void onPreExecute() {
-            originalText = Editor.DisplayText;					// The original text from the editor
-            formattedText = "";									// The resulting formatted text
-
-        }
-
-
-        @Override    
         protected void onProgressUpdate(String... str) {     // Called when publishProgress() is executed.
 
         	for (int i=0; i < str.length; ++i) {				  // Form strings of 20 characters
@@ -132,12 +117,14 @@ public class Format extends ListActivity {
 	    	lv.setSelection(output.size() - 1);		// set last line as the selected line to scroll
         }
 
-        protected void onPostExecute(String result) {
-            Editor.DisplayText = formattedText;					// Done. Transfer the formatted text
-            Editor.mText.setText(Editor.DisplayText);			// to the Editor
-            Editor.mText.setSelection(0, 0);					// Set the cursor at the top
-            finish();
-        }
+		protected void onPostExecute(String result) {				// Done
+			synchronized (Editor.DisplayText) {						// protect from cancel
+				Editor.DisplayText = formattedText;					// Transfer the formatted text
+				Editor.mText.setText(Editor.DisplayText);			// to the Editor
+				Editor.mText.setSelection(0, 0);					// Set the cursor at the top
+			}
+			finish();
+		}
 
         private void ProcessLine(String theLine) {							// Process one line
         	int blanks = CountBlanks(theLine, 0);
@@ -163,38 +150,32 @@ public class Format extends ListActivity {
         			if (c != '\t') theLine = theLine + c;
         	}
 
-        	boolean processed = false;
-
-        	if (theLine.startsWith("elseif") ||						// Indenting is determined by start of line key words
-        		theLine.startsWith("else") ||
-        		theLine.startsWith("endif") ||        		
-        		theLine.startsWith("until") ||
+        	if (theLine.startsWith("endif") ||						// Indenting is determined by start of line key words
+        		theLine.startsWith("until") ||						// This group ends a block, reducing indent by 1
         		theLine.startsWith("repeat") ||
         		theLine.startsWith("fn.end") ||
         		theLine.startsWith("next") 
         		) {
 				indentLevel -= 1;					// Decrement indent level
 				temp = DoIndent();					// Do the indent for this line
-				processed = true;					// Indicate the line was processed
-				wasCase = false;					// Nasty stuff to deal with Switch commands
         	}
-
-        	if (theLine.startsWith("elseif") ||
-				theLine.startsWith("fn.def") ||
-				theLine.startsWith("else") ||
+			else
+        	if (theLine.startsWith("fn.def") ||						// This group starts a block, increasing subsequent indent by 1
 				theLine.startsWith("do") ||
 				theLine.startsWith("while") ||
 				theLine.startsWith("for")
-				) {  
-				if (wasCase) ++indentLevel;
+				) {
 				temp = DoIndent();
 				indentLevel += 1;
-				processed = true;
-				wasCase = false;           			
 			}
-
-        	if (theLine.startsWith("if")) {							// Tricky processing for the
-				if (wasCase) ++indentLevel;							// varieties of IF syntax
+			else
+			if (theLine.startsWith("else")) {						// This is both "else" and "elseif";
+				indentLevel -= 1;									// they end one block and start another
+				temp = DoIndent();
+				indentLevel += 1;
+			}
+			else
+        	if (theLine.startsWith("if")) {							// Tricky processing for the varieties of IF syntax
         		temp = DoIndent();
         		if (theLine.contains("then")) {
         			int x = theLine.indexOf("then");
@@ -204,56 +185,33 @@ public class Format extends ListActivity {
         			}
            			if (q.length() == 0) indentLevel += 1;
         		} else indentLevel += 1;
-    			wasCase = false;
-        		processed = true;
         	}
-
-    		if (theLine.startsWith("sw.begin")) {						// Nasty stuff to deal with Switch
-				if (wasCase) ++indentLevel;
-				temp = DoIndent();
-				swStack.push(indentLevel);
-    			indentLevel += 1;
-    			processed = true;
-    			wasCase = true;
-    		}
-
-    		if (theLine.startsWith("sw.end")) {
-    			if (!swStack.empty()) {
-    				indentLevel = swStack.pop();
-    			} else indentLevel = 0;
-				temp = DoIndent();
-    			processed = true;
-    			wasCase = false;
+			else
+			if (theLine.startsWith("sw.")) {						// Nasty stuff to deal with Switch
+				if (theLine.startsWith("begin, 3")) {
+					temp = DoIndent();
+					swStack.push(indentLevel);
+					indentLevel += 1;
+				}
+				else
+				if (theLine.startsWith("end", 3)) {
+					indentLevel = swStack.empty() ? 0 : swStack.pop();
+					temp = DoIndent();
+				}
+				else
+				if (theLine.startsWith("case", 3) ||
+					theLine.startsWith("default", 3)
+					) {
+					indentLevel = swStack.empty() ? 1 : (swStack.peek() + 1);
+					temp = DoIndent();
+					indentLevel += 1;
+				}
+				else {												// If break (valid) or anything else (invalid)
+					temp = DoIndent();								// just do normal indenting
+				}
 			}
-
-    		if (theLine.startsWith("sw.case")) {
-    			temp = DoIndent();
-//    			if (!wasCase) indentLevel += 1;
-    			wasCase = true;
-    			processed = true;
-    		}
-
-    		if (theLine.startsWith("sw.default")) {
-    			temp = DoIndent();
-    			if (!wasCase) indentLevel += 1;
-    			wasCase = true;
-    			processed = true;
-    		}
-
-
-        	if (theLine.startsWith("sw.break")) {
-				if (wasCase) ++indentLevel;
+			else {											// Not processed above so do it now.
         		temp = DoIndent();
-        		indentLevel -= 1;
-        		processed = true;
-    			wasCase = true;
-        	}
-
-        	if (!processed) {								// Not processed above so do it now.
-        		if (!theLine.startsWith("!"))
-        			if (wasCase) ++indentLevel;
-        		temp = DoIndent();
-    			wasCase = false;
         	}
 
         	return temp + aLine;							// Concat line onto spaces
@@ -287,7 +245,7 @@ public class Format extends ListActivity {
     	return current - start;
     }
 
-    private static boolean isBlockQuote(String aLine, int blanks) {	// Track start and end of block quotes
+    private boolean isBlockQuote(String aLine, int blanks) {	// Track start and end of block quotes
     	if (aLine.startsWith("!!", blanks)) {
     		blockQuote = !blockQuote;
     		return true;
@@ -300,7 +258,7 @@ public class Format extends ListActivity {
     	return ProcessKeyWords(actualLine, blanks);
     }
 
-    private static synchronized String ProcessKeyWords(String actualLine, int blanks) {
+    private static String ProcessKeyWords(String actualLine, int blanks) {
     															// Find and capitalize the key words,
     															// leading blanks already counted
     	if (actualLine.equals("")) return actualLine;					// Skip empty line
@@ -341,6 +299,10 @@ public class Format extends ListActivity {
 		if (kw.equals("if")) {													// Process IF statement
 			actualLine = TestAndReplaceFirst("then", lcLine, actualLine);
 			actualLine = TestAndReplaceFirst("else", lcLine, actualLine);
+		}
+
+		if (kw.equals("elseif")) {												// Process ELSEIF statement
+			actualLine = TestAndReplaceFirst("then", lcLine, actualLine);
 		}
 
 		if (kw.equals("for")) {													// Process FOR statement
