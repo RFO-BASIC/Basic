@@ -77,54 +77,29 @@ public class SensorActivity implements SensorEventListener {
 	public ArrayList<String> takeCensus() {
 		ArrayList<String> census = new ArrayList<String>();
 		List<Sensor> sensorList = mSensorManager.getSensorList(Sensor.TYPE_ALL);		// Get the list of sensors
-		for (Sensor sensor : sensorList) {								// and iterate through it
-            	 int type = sensor.getType();							// adding each sensor to SensorCensus list
+		String name;
+		for (Sensor sensor : sensorList) {						// and iterate through it
+			int type = sensor.getType();						// adding each sensor to SensorCensus list
 //            	 Log.d(SensorActivity.LOGTAG, "Sensor list add: " + type );
-            	 switch (type) {
-            	 case Sensor.TYPE_ACCELEROMETER:
-            		 census.add("Acclerometer, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_GRAVITY:
-            		 census.add("Gravity Type, =  " + type);
-            		 break;
-            	 case Sensor.TYPE_GYROSCOPE:
-            		 census.add("Gyroscope, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_LIGHT:
-            		 census.add("Light, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_MAGNETIC_FIELD:
-            		 census.add("Magnetic Field, Type =  " + type);
-            		 break;
-            	 case Sensor.TYPE_ORIENTATION:
-            		 census.add("Orientation, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_PRESSURE:
-            		 census.add("Pressure, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_PROXIMITY:
-            		 census.add("Proximity,  Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_LINEAR_ACCELERATION:
-            		 census.add("Linear Acceleration, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_ROTATION_VECTOR:
-            		 census.add("Rotational Vector, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_TEMPERATURE:
-            		 census.add("Temperature, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_AMBIENT_TEMPERATURE:
-            		 census.add("Ambient Temperature, Type = " + type);
-            		 break;
-            	 case Sensor.TYPE_RELATIVE_HUMIDITY:
-            		 census.add("Relative Humidity, Type = " + type);
-            		 break;
-            	 default:
-            		 census.add("Unknown, Type = " + type);
-            		 break;
-            	 }
+			switch (type) {
+			case Sensor.TYPE_ACCELEROMETER:       name = "Acclerometer";        break;
+			case Sensor.TYPE_GRAVITY:             name = "Gravity";             break;
+			case Sensor.TYPE_GYROSCOPE:           name = "Gyroscope";           break;
+			case Sensor.TYPE_LIGHT:               name = "Light";               break;
+			case Sensor.TYPE_MAGNETIC_FIELD:      name = "Magnetic Field";      break;
+			case Sensor.TYPE_ORIENTATION:         name = "Orientation";         break;
+			case Sensor.TYPE_PRESSURE:            name = "Pressure";            break;
+			case Sensor.TYPE_PROXIMITY:           name = "Proximity";           break;
+			case Sensor.TYPE_LINEAR_ACCELERATION: name = "Linear Acceleration"; break;
+			case Sensor.TYPE_ROTATION_VECTOR:     name = "Rotational Vector";   break;
+			case Sensor.TYPE_TEMPERATURE:         name = "Temperature";         break;
+			case Sensor.TYPE_AMBIENT_TEMPERATURE: name = "Ambient Temperature"; break;
+			case Sensor.TYPE_RELATIVE_HUMIDITY:   name = "Relative Humidity";   break;
+			default:                              name = "Unknown";             break;
+			}
+			census.add(name + ", Type = " + type);
 		}
+
 		return census;
 	}
 
