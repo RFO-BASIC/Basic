@@ -207,19 +207,16 @@ public class Run extends ListActivity {
 //  Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
 	public static class Command {						// Map a command key word string to its execution function
-		private final String mName;						// The command key word
-		public Command(String name) { mName = name; }
-		public String name() { return mName; }			// Get the command key word
+		public final String name;						// The command key word
+		public Command(String name) { this.name = name; }
 		public boolean run() { return false; }			// Run the command execution function
 	}
 
 	private boolean executeCommand(Command[] commands, String type){// If the current line starts with a key word in a command list
 																	// execute the command. The "type" is used only to report errors.
-		String line = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
 		for (Command c : commands) {								// loop through the command list
-			String name = c.name();
-			if (line.startsWith(name)) {							// if there is a match
-				LineIndex += name.length();							// move the line index to end of key word
+			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) {// if there is a match
+				LineIndex += c.name.length();						// move the line index to end of key word
 				return c.run();										// run the function and report back
 			}
 		}
@@ -247,8 +244,8 @@ public class Run extends ListActivity {
     	"cls", "array.", "select",
     	"exit", "clipboard.get",
     	"clipboard.put",
-    	"encrypt", "decrypt", "split",
-    	"undim", "byte.open", "byte.close",
+    	"encrypt", "decrypt", "split.all",		// split.all new/2013-07-25 gt
+    	"split", "byte.open", "byte.close",
     	"byte.read.byte", "byte.write.byte",
     	"graburl", "fn.def", "fn.rtn",
     	"fn.end", "byte.copy",
@@ -259,12 +256,12 @@ public class Run extends ListActivity {
     	"file.dir", "file.mkdir", "file.rename",   // Same as dir, mkdir, rename
     	"file.root", "file.exists", "grabfile",
     	"wakelock", "tone", "list.", "bundle.",
-    	"stack.", "socket.", "http.post", "device",     
+    	"stack.", "socket.", "http.post", "device",
     	"debug.", "console.",
     	"tts.init","tts.speak","tts.local",
     	"ftp."," ","bt.",
     	"call", "su.", "system.",
-    	" ", "tget",
+    	"undim", "tget",
     	"f_n.break", "w_r.break", "d_u.break",
     	"text.position.get", "text.position.set",
     	"byte.position.get", "byte.position.set",
@@ -339,8 +336,8 @@ public class Run extends ListActivity {
     public static final int BKWclipboard_put =46;
     public static final int BKWencrypt =47;
     public static final int BKWdecrypt =48;
-    public static final int BKWsplit =49;
-    public static final int BKWundim =50;
+    public static final int BKWsplit_all =49;
+    public static final int BKWsplit =50;
     public static final int BKWbyte_open =51;
     public static final int BKWbyte_close =52;
     public static final int BKWbyte_read_byte =53;
@@ -387,7 +384,7 @@ public class Run extends ListActivity {
     public static final int BKWcall = 94;
     public static final int BKWsu = 95;
     public static final int BKWsystem = 96;
-    public static final int BKWnull97 = 97;
+    public static final int BKWundim = 97;
     public static final int BKWtget = 98;
     public static final int BKWf_n_break = 99;
     public static final int BKWw_r_break = 100;
@@ -462,7 +459,7 @@ public class Run extends ListActivity {
     	"randomize(", "background(",
     	"atan(", "cbrt(", "cosh(", "hypot(",
     	"sinh(", "pow(", "log10(",
-    	"ucode("
+    	"ucode(", "pi(", "min(", "max(",		// pi, min, max: new/2013-07-29 gt
     };
     
     public static final int MFsin = 0;			// Enumerated name for the Match Functions
@@ -508,6 +505,9 @@ public class Run extends ListActivity {
     public static final int MFpow = 40;
     public static final int MFlog10 = 41;
     public static final int MFucode = 42;
+    public static final int MFpi = 43;				// pi new/2013-07-29 gt
+    public static final int MFmin = 44;				// min new/2013-07-29 gt
+    public static final int MFmax = 45;				// max new/2013-07-29 gt
 
     public static  int MFNumber = 0;				// Will contain a math function's enumerated name value
     
@@ -547,42 +547,7 @@ public class Run extends ListActivity {
     public static final int SOE = 19;
     public static final int EOL = 20;
     public static final int FLPRN = 21;
-/*
- * The values of the constants that follow must be in the same sequence as
- * the math functions.     
- */
-    public static final int FSIN = 22;
-    public static final int FCOS = 23;
-    public static final int FTAN = 24;
-    public static final int FSQR = 25;
-    public static final int FABS = 26;
-    public static final int FRND = 27;
 
-    public static final int FVAL = 28;
-    public static final int FLEN = 29;
-    
-	public static final int FACOS = 30;
-    public static final int FASIN = 31;
-    public static final int FATAN  = 32;
-    public static final int FCEIL = 33;
-    
-    public static final int FFLOOR = 34;
-    public static final int FMOD = 35;
-    public static final int FLOG = 36;
-    public static final int FROUND = 37;
-    
-    public static final int FTORADIANS = 38;
-    public static final int FTODEGREES = 39;
-    public static final int FENULL1 = 40;
-    public static final int FEXP = 41;
-    public static final int FISIN = 42;
-    public static final int FCLOCK = 43;
-    public static final int FBOR = 44;
-    public static final int FBAND = 45;
-    public static final int FBXOR = 46;
-    
-    public static final int FakeEOL = 47;
-   	
     public static final int GoesOnPrecedence[]={     // Precedence for going onto stack
         8,  8,  8, 8, 8,
         8, 12, 10, 9,  9,
@@ -2983,7 +2948,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		if (!executeDECRYPT()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWsplit:
-	        		if (!executeSPLIT()){SyntaxError(); return false;}
+	        		if (!executeSPLIT(0)){SyntaxError(); return false;}
+	        		break;
+	        	case BKWsplit_all:		// split.all new/2013-07-25 gt
+	        		if (!executeSPLIT(-1)){SyntaxError(); return false;}
 	        		break;
 	        	case BKWundim:
 	        		if (!executeUNDIM()){SyntaxError(); return false;}
@@ -3977,7 +3945,25 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.floor(d1));
 				break;
-				
+
+			case MFmin:											// min new/2013-07-29 gt
+				if (!evalNumericExpression()){return false;}
+				d1 = EvalNumericExpressionValue;
+				if (!isNext(',')) { return false; }
+				if (!evalNumericExpression()){return false;}
+				d2 = EvalNumericExpressionValue;
+				theValueStack.push(Math.min(d1, d2));
+				break;
+
+			case MFmax:											// max new/2013-07-29 gt
+				if (!evalNumericExpression()){return false;}
+				d1 = EvalNumericExpressionValue;
+				if (!isNext(',')) { return false; }
+				if (!evalNumericExpression()){return false;}
+				d2 = EvalNumericExpressionValue;
+				theValueStack.push(Math.max(d1, d2));
+				break;
+
 			case MFlog:
 				if (!evalNumericExpression()) return false;
 				d1 = EvalNumericExpressionValue;
@@ -4000,6 +3986,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if (!evalNumericExpression()) return false;
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.toRadians(d1));
+				break;
+
+			case MFpi:											// pi new/2013-07-29 gt
+				theValueStack.push(Math.PI);
 				break;
 
 			case MFatan:
@@ -4607,7 +4597,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				if (!evalNumericExpression()) { return false; }	// Which word to return
 				int wordIndex = EvalNumericExpressionValue.intValue();
 
-				String r[] = doSplit(SearchString);				// Get regex arg, if any, and split the string.
+				String r[] = doSplit(SearchString, 0);			// Get regex arg, if any, and split the string.
 				if (!isNext(')')) { return false; }				// Function must end with ')'
 
 				length = r.length;								// Get the number of strings generated
@@ -8026,7 +8016,6 @@ private boolean doUserFunction(){
 
 		BufferedInputStream bis = null;
 		String result = null;
-		IOException ex = null;
 
 		URL url = null;
 		try {
@@ -8047,7 +8036,7 @@ private boolean doUserFunction(){
 		} catch (Exception e) {										// Report exception in run time error
 			return RunTimeError(e);									// finally will close stream before return happens
 		} finally {
-			ex = closeStream(bis, ex);								// Close stream if not already closed
+			IOException ex = closeStream(bis, null);				// Close stream if not already closed
 			if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
 		}
 		StringVarValues.set(saveVarIndex, result);
@@ -8298,7 +8287,7 @@ private boolean doUserFunction(){
 		return true;
 	}
 
-	private boolean executeSPLIT(){
+	private boolean executeSPLIT(int limit){
 
 		if (!getArrayVarForWrite()) { return false; }				// Get the result array variable
 		if (VarIsNumeric) { return RunTimeError("Not string array"); } // Insure that it is a string array
@@ -8309,7 +8298,7 @@ private boolean doUserFunction(){
 		if (!getStringArg()) { return false; }						// Get the string to split
 		String SearchString = StringConstant;
 
-		String r[] = doSplit(SearchString);							// Get regex arg, if any, and split the string.
+		String r[] = doSplit(SearchString, limit);					// Get regex arg, if any, and split the string.
 		if (!checkEOL()) { return false; }
 
 		int length = r.length;										// Get the number of strings generated
@@ -8318,7 +8307,9 @@ private boolean doUserFunction(){
 		return ListToBasicStringArray(SaveArrayVarNumber, Arrays.asList(r), length);
 	}
 
-	private String[] doSplit(String SearchString) {					// Split a string
+	private String[] doSplit(String SearchString, int limit) {		// Split a string
+		// If limit < 0, keep all fields. If limit is 0, trim trailing blank fields.
+		// If limit > 0, keep only up to limit fields.
 		String r[] = new String[0];									// If error, return zero-length string
 		String REString = null;
 		if (isNext(',')) {											// If user command supplied a regex
@@ -8328,7 +8319,7 @@ private boolean doUserFunction(){
 			REString = "\\s+";										// Otherwise split on whitespace
 		}
 		try {
-			r = SearchString.split(REString);
+			r = SearchString.split(REString, limit);
 		} catch (PatternSyntaxException pse) {
 			RunTimeError(REString + " is invalid argument at");
 		} catch (Exception e) {
@@ -15055,13 +15046,11 @@ private boolean doUserFunction(){
 //    ***********************************  Superuser and System ***************************
 
 	private boolean executeSU(boolean isSU) {	// SU command (isSU true) or system comand (isSU false)
-		String line = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
 		for (Command c : SU_cmd) {								// loop through the command list
-			String name = c.name();
-			if (line.startsWith(name)) {						// if there is a match
-				LineIndex += name.length();						// move the line index to end of key word
+			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) { // if there is a match
+				LineIndex += c.name.length();					// move the line index to end of key word
 				if (SUprocess == null) {
-					if (name.equals("open")) this.isSU = isSU;
+					if (c.name.equals("open")) this.isSU = isSU;
 					else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
 				}
 				return c.run();									// run the function and report back
