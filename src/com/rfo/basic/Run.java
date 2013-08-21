@@ -84,7 +84,6 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
@@ -138,8 +137,6 @@ import android.media.MediaRecorder;
 import android.media.SoundPool;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.AsyncTask;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -205,6 +202,21 @@ public class Run extends ListActivity {
     private static final String LOGTAG = "Run";
     private static final String CLASSTAG = Run.class.getSimpleName();
 //  Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
+
+	// ********************* Message types for the Handler *********************
+																// message numbers < 256 are in "default" group 0
+	public static final int MESSAGE_PUBLISH_PROGRESS = 1;
+	public static final int MESSAGE_TOAST            = 2;		// carried over from BluetoothChatService, not presently used
+
+	public static final int MESSAGE_GROUP_MASK       = 0x0F00;	// groups can be 0x1 through 0xF
+
+	public static final int MESSAGE_DEFAULT_GROUP    = 0x0000;
+	public static final int MESSAGE_BT_GROUP         = 0x0100;	// add this offset to messages from BlueTooth commands
+	public static final int MESSAGE_HTML_GROUP       = 0x0200;	// add this offset to messages from HTML commands
+
+	public static final int MESSAGE_DEBUG_GROUP      = 0x0F00;	// add this offset to messages from debug commands
+
+	// ***************************** Command class *****************************
 
 	public static class Command {						// Map a command key word string to its execution function
 		public final String name;						// The command key word
@@ -1292,11 +1304,10 @@ public class Run extends ListActivity {
 	// ***************************************  Bluetooth  ********************************************
 	
     // Message types sent from the BluetoothChatService Handler
-    public static final int MESSAGE_STATE_CHANGE = 1;
-    public static final int MESSAGE_READ = 2;
-    public static final int MESSAGE_WRITE = 3;
-    public static final int MESSAGE_DEVICE_NAME = 4;
-    public static final int MESSAGE_TOAST = 5;
+    public static final int MESSAGE_STATE_CHANGE = MESSAGE_BT_GROUP + 1;
+    public static final int MESSAGE_READ         = MESSAGE_BT_GROUP + 2;
+    public static final int MESSAGE_WRITE        = MESSAGE_BT_GROUP + 3;
+    public static final int MESSAGE_DEVICE_NAME  = MESSAGE_BT_GROUP + 4;
 
     // Key names received from the BluetoothChatService Handler
     public static final String DEVICE_NAME = "device_name";
@@ -1583,13 +1594,13 @@ public class Run extends ListActivity {
     												
 
 
-public class Background extends AsyncTask<String, String, String>{
+public class Background extends Thread {
 	
-// The execution of the basic program is done by this Async Background task. This is done to keep the UI task
+// The execution of the basic program is done by this background Thread. This is done to keep the UI task
 // responsive. This method controls Run as it is running in the background.
     	
         @Override
-        protected  String doInBackground(String...str ) {
+        public void run() {
         	
         	boolean flag = true;
 //    		Basic.Echo = Settings.getEcho(Basic.BasicContext);
@@ -1629,7 +1640,6 @@ public class Background extends AsyncTask<String, String, String>{
 
          	Basic.theRunContext = null;  // Signals that the background task has stopped
          	cleanUp();
-  		    cancel(true);		// Done with program. Cancel the background task
         	}
         	
         	else{              // We get here if PreScan found error or duplicate label
@@ -1638,9 +1648,12 @@ public class Background extends AsyncTask<String, String, String>{
         			}
         		TempOutputIndex = 0;
         	}
-        	return "true";
         }
-        
+
+        private void publishProgress(String s) {
+        	mHandler.obtainMessage(MESSAGE_PUBLISH_PROGRESS, s).sendToTarget();
+        }
+
 // The RunLoop() drives the execution of the program. It is called from doInBackground and
 // recursively from doUserFunction.
         
@@ -1789,14 +1802,38 @@ public class Background extends AsyncTask<String, String, String>{
         	return false;								//Turn off the interrupt
         }
 
-// The following method is in the UI (foreground) Task part of Run. It gets control when the background
-// task sends it a message in the form of a string. Most of the strings are just text for the output
-// screen. A few are signals. Signals start with "@@"
+} // End of Background class
 
-	@Override
+	// This Handler is in the UI (foreground) Task part of Run. It gets control when the background
+	// task sends it a Message. Most of the messages carry strings that are just text for the output
+	// screen. A few are signals. Signals start with "@@"
+
+	private final Handler mHandler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			switch (msg.what) {
+			case MESSAGE_PUBLISH_PROGRESS:
+				onProgressUpdate((String)msg.obj);
+				break;
+			case MESSAGE_TOAST:		// carried over from BluetoothChatService, not presently used
+				Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST),
+						Toast.LENGTH_SHORT).show();
+				break;
+			default:
+				switch (msg.what & MESSAGE_GROUP_MASK) {
+				case MESSAGE_BT_GROUP:
+					handleBTMessage(msg);								// handle BluetoothMessages
+					break;
+				case MESSAGE_HTML_GROUP:
+				case MESSAGE_DEBUG_GROUP:
+				default:												// unrecognized Message
+					break;												// ignore it
+				}
+			}
+		}
+	};
+
 	protected void onProgressUpdate(String... str) {
-
-		Context context = getApplicationContext();
 
 		for (int i=0; i<str.length; ++i) {								// Check for signals
 			if (str[i].startsWith("@")) {								// Fast check for possible signal
@@ -1810,7 +1847,7 @@ public class Background extends AsyncTask<String, String, String>{
         			  CharSequence text = "Not a number. Try Again.";
         			  int duration = Toast.LENGTH_SHORT;
 
-        			  Toast toast = Toast.makeText(context, text, duration);
+        			  Toast toast = Toast.makeText(this, text, duration);
         			  toast.setGravity(Gravity.TOP,0,50);
         			  toast.show();
         			  BadInput = false;
@@ -1823,8 +1860,8 @@ public class Background extends AsyncTask<String, String, String>{
         			  
         		}else if (str[i].startsWith("@@4")){					// Does the toast for popup command
       			  CharSequence text = ToastMsg;
-    			  Toast toast = Toast.makeText(context, text, ToastDuration);
-    			  toast.setGravity(Gravity.CENTER|Gravity.CENTER, ToastX, ToastY);
+    			  Toast toast = Toast.makeText(this, text, ToastDuration);
+    			  toast.setGravity(Gravity.CENTER, ToastX, ToastY);
     			  toast.show();
         		
         		}else if (str[i].startsWith("@@5")){					// Clear Screen Signal
@@ -1838,7 +1875,7 @@ public class Background extends AsyncTask<String, String, String>{
         		}else if (str[i].startsWith("@@9")){					// from checkpointProgress
         			ProgressPending = false;							// progress is published, done waiting
         		}else if (str[i].startsWith("@@A")){
-        			output.add("");        			
+        			output.add("");
         		}else if (str[i].startsWith("@@B")){
         			char c = str[i].charAt(3);
         			String s = output.get(output.size()-1) + c;
@@ -1859,7 +1896,7 @@ public class Background extends AsyncTask<String, String, String>{
         		}else if (str[i].startsWith("@@I")){					// Select dialog called
         			doDebugSelectDialog();
         		}else if (str[i].startsWith("@@J")){					// Alert dialog var not set called
-        		}
+        		} else {output.add(str[i]);}		// Not a signal, just write msg to screen.
 			} else {output.add(str[i]);}			// Not a signal, just write msg to screen.
 
 			setListAdapter(AA);						// show the output
@@ -1890,10 +1927,7 @@ public class Background extends AsyncTask<String, String, String>{
         	}
         	
         }
-        
 
-
-} // End of Background class
 
 // *********************Run Entry Point. Called from Editor or AutoRun *******************
 
@@ -1968,7 +2002,7 @@ public void onCreate(Bundle savedInstanceState) {
 	      });
 
 	theBackground = new Background();						// Start the background task
-	theBackground.execute("");
+	theBackground.start();
 	
 	}
 
@@ -14857,10 +14891,8 @@ private boolean doUserFunction(){
 		        }
 		    }
 		    
-		    public final Handler mHandler = new Handler() {		// Currently used only for Bluetooth messages
-		        @Override
-		        public void handleMessage(Message msg) {
-		            switch (msg.what) {
+		    public boolean handleBTMessage(Message msg) {
+		        switch (msg.what) {
 		            case MESSAGE_STATE_CHANGE:
 		            	bt_state = msg.arg1;
 		                break;
@@ -14889,13 +14921,11 @@ private boolean doUserFunction(){
 		                // save the connected device's name
 		                mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
 		                break;
-		            case MESSAGE_TOAST:
-//		                Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST),
-//		                               Toast.LENGTH_SHORT).show();
-		                break;
-		            }
+		            default:
+		                return false;							// message not recognized
 		        }
-		    };
+		        return true;									// message handled
+		    }
 		    
 		    public void connectDevice(Intent data, boolean secure) {
 		    	
