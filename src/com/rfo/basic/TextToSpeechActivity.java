@@ -119,7 +119,9 @@ public class TextToSpeechActivity {
 	public void speakToFile(String text, HashMap<String, String> params, String filename) {
 		if (text != null) {
 			params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, ID);
-			mTTS.synthesizeToFile(text, params, filename);
+			if (mTTS.synthesizeToFile(text, params, filename) != TextToSpeech.SUCCESS) {
+				mDone = true;									// Trouble: no file written
+			}
 		}
 	}
 

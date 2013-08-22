@@ -2326,10 +2326,7 @@ public void cleanUp(){
 	   theTimer = null;
 	}
 
-	if (theTTS != null) {
-		theTTS.shutdown();
-		theTTS = null;
-	}
+	ttsStop();
 
 	myVib.cancel();
 
@@ -14352,12 +14349,12 @@ private boolean doUserFunction(){
 		String speech = StringConstant;
 		boolean block = true;					// Default if no "wait" parameter is to block. This preserves
 		if (isNext(',')) {						// behavior from before v01.76, when the parameter was added.
-			if (!evalNumericExpression()) { return false; }			// optional "wait" flag
-			block = (EvalNumericExpressionValue != 0.0);			// block if non-zero
+			if (!evalNumericExpression()) { return false; }		// optional "wait" flag
+			block = (EvalNumericExpressionValue != 0.0);		// block if non-zero
 		}
 		if (!checkEOL()) return false;
 
-		while (!theTTS.mDone) Thread.yield();						// Wait for any previous speaking to finish
+		if (!ttsWaitForDone()) return false;					// wait for any previous speaking to finish
 
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		HashMap<String, String> params = new HashMap<String, String>();
@@ -14365,7 +14362,7 @@ private boolean doUserFunction(){
 
 		theTTS.mDone = false;
 		theTTS.speak(speech, params);
-		if (block) { while (!theTTS.mDone) Thread.yield(); }		// if requested, wait for speech to complete
+		if (block) { ttsWaitForDone(); }						// if requested, wait for speech to complete
 		return true;
 	}
 
@@ -14376,26 +14373,37 @@ private boolean doUserFunction(){
 		if (!evalStringExpression()) return false;
 		String speech = StringConstant;
 		String theFileName;
-		if (isNext(',')) {											// optional file name parameter
+		if (isNext(',')) {										// optional file name parameter
 			if (!getStringArg()) { return false; }
 			theFileName = StringConstant;
-		} else { theFileName = "tts.wav"; }							// default file name
+		} else { theFileName = "tts.wav"; }						// default file name
 		if (!checkEOL()) return false;
 
-		while (!theTTS.mDone) Thread.yield();						// Wait for any previous speaking to finish
+		if (!ttsWaitForDone()) return false;					// wait for any previous speaking to finish
 
 		HashMap<String, String> params = new HashMap<String, String>();
 
 		theFileName = getDataPath(theFileName);
 		theTTS.mDone = false;
 		theTTS.speakToFile(speech, params, theFileName);
+		ttsWaitForDone();										// wait for speech to complete
 		return true;
 	}
 
 	private boolean executeTTS_STOP() {
-		if (!checkEOL()) return false;
+		return checkEOL() && ttsWaitForDone() && ttsStop();
+	}
+
+	private boolean ttsWaitForDone() {							// wait for any outstanding speaking to finish
+		while (theTTS != null) {								// because cleanup() can kill theTTS while we're not looking
+			if (theTTS.mDone) break; 
+			Thread.yield();
+		}
+		return (theTTS != null);
+	}
+
+	private boolean ttsStop() {
 		if (theTTS != null) {
-			while (!theTTS.mDone) Thread.yield();					// Wait for any previous speaking to finish
 			theTTS.shutdown();
 			theTTS = null;
 		}
