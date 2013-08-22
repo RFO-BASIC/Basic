@@ -270,8 +270,8 @@ public class Run extends ListActivity {
     	"wakelock", "tone", "list.", "bundle.",
     	"stack.", "socket.", "http.post", "device",
     	"debug.", "console.",
-    	"tts.init","tts.speak","tts.local",
-    	"ftp."," ","bt.",
+    	"tts.","ftp.", "bt.",						// moved three "tts" commands to tts_cmd
+    	" ", " ", " ",
     	"call", "su.", "system.",
     	"undim", "tget",
     	"f_n.break", "w_r.break", "d_u.break",
@@ -387,12 +387,12 @@ public class Run extends ListActivity {
     public static final int BKWdevice = 85;
     public static final int BKWdebug = 86;
     public static final int BKWconsole = 87;
-    public static final int BKWtts_init = 88;
-    public static final int BKWtts_speak = 89;
-    public static final int BKWtts_local = 90;
-    public static final int BKWftp = 91;
+    public static final int BKWtts = 88;					// TTS commands moved to tts_cmd
+    public static final int BKWftp = 89;
+    public static final int BKWbt = 90;
+    public static final int BKWnull91 = 91;
     public static final int BKWnull92 = 92;
-    public static final int BKWbt = 93;
+    public static final int BKWnull93 = 93;
     public static final int BKWcall = 94;
     public static final int BKWsu = 95;
     public static final int BKWsystem = 96;
@@ -1262,12 +1262,20 @@ public class Run extends ListActivity {
 	public static boolean Echo = false;
 	
 	// *********************************************** Text to Speech *******************************
-	
-	public static TextToSpeech mTts;
+
+	public static final String tts_KW[] = {
+		"init", "speak.tofile", "speak", "stop"
+	};
+
+	private final Command[] tts_cmd = new Command[] {		// Map TTS command key words to their execution functions
+		new Command("init")             { public boolean run() { return executeTTS_INIT(); } },
+		new Command("speak.tofile")     { public boolean run() { return executeTTS_SPEAK_TOFILE(); } },
+		new Command("speak")            { public boolean run() { return executeTTS_SPEAK(); } },
+		new Command("stop")             { public boolean run() { return executeTTS_STOP(); } }
+	};
+
+	public static TextToSpeechActivity theTTS;
 	public static boolean ttsInit;
-	public static int ttsInitResult;
-	public static Intent ttsIntent; 
-	public static boolean ttsSpeakDone;
 	
 	// *********************************************** FTP Client *************************************
 	
@@ -2244,11 +2252,8 @@ private void InitVars(){
 	clientSocketState = STATE_NONE;
 	serverSocketState = STATE_NONE;
 
-	TextToSpeech mTts = null;
+	theTTS = null;
 	ttsInit = false;
-	ttsInitResult = 0;
-	ttsIntent = null; 
-	ttsSpeakDone = false;
 	
 	mFTPClient = null;
 	FTPdir = null;
@@ -2321,7 +2326,11 @@ public void cleanUp(){
 	   theTimer = null;
 	}
 
-	
+	if (theTTS != null) {
+		theTTS.shutdown();
+		theTTS = null;
+	}
+
 	myVib.cancel();
 
 	if (theSensors != null) {
@@ -3101,14 +3110,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        	case BKWconsole:
 	        		if (!executeCONSOLE()){SyntaxError(); return false;}
 	        		break;
-	        	case BKWtts_init:
-	        		if (!executeTTS_INIT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtts_speak:
-	        		if (!executeTTS_SPEAK()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtts_local:
-	        		if (!executeTTS_LOCAL()){SyntaxError(); return false;}
+	        	case BKWtts:
+	        		if (!executeTTS()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWftp:
 	        		if (!executeFTP()){SyntaxError(); return false;}
@@ -12065,7 +12068,7 @@ private boolean doUserFunction(){
 		    	  return false;
 		      	}else {
 		      	  if (theGPS == null && KeyWordValue != gps_open){
-					theBackground.checkpointProgress();						// if singal @@8 is going to open GPS,
+					theBackground.checkpointProgress();						// if signal @@8 is going to open GPS,
 					while (ProgressPending) { Thread.yield(); }				// this will wait for it to complete
 					if (theGPS == null) {
 						return RunTimeError("GPS not opened at:");
@@ -14315,71 +14318,90 @@ private boolean doUserFunction(){
 	}
 	
 	//****************************************** TTS *******************************************
-	
+
+	private boolean executeTTS(){								// Get TTS command key word if it is there
+		return executeCommand(tts_cmd, "TTS");
+	}
+
 	private boolean executeTTS_INIT(){
-		  
-		  ttsInit = false;
-    	  ttsIntent = new Intent(this, TextToSpeechActivity.class);				// Start the GPS
+		if (!checkEOL()) return false;
+		if (theTTS != null) return true;						// done if already opened
 
-	      startActivityForResult(ttsIntent, BASIC_GENERAL_INTENT);
-	      while (!ttsInit) Thread.yield();				// Wait for signal from GPS thread
-	      
-	      switch (ttsInitResult){
-	      case TextToSpeech.SUCCESS:
-	    	  break;
-	    	  
-	      case TextToSpeech.LANG_MISSING_DATA:
-	    	  RunTimeError("Language Data Missing");
-	    	  return false;
-	    	  
-	      case TextToSpeech.LANG_NOT_SUPPORTED:
-	    	  RunTimeError("Language Not Supported");
-	    	  return false;
-	    	  
-	      default:
-	    	  RunTimeError("TTS Init Failed. Code = " + ttsInitResult);
-	    	  return false;
-	      }
-		  if (!GRFront){
-			  Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-			  startActivity(Basic.theProgramRunner);
-			  GRFront = false;
-		  }else if (GRclass == null){
-			  GRFront = false;
-		  }else {
-			  GRclass.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-			  startActivity(GRclass);
-			  GRFront = true;
-		  }
-
-
-		return true;
-	}
-	
-	
-	private boolean executeTTS_SPEAK(){
-		if (mTts == null) {
-			RunTimeError("Text to speech not initialized");
-			return false;
+		ttsInit = false;
+		theTTS = new TextToSpeechActivity(Run.this);
+		if (theTTS == null) return false;
+		while (!ttsInit) {
+			Thread.yield();
 		}
-		
+
+		switch (theTTS.mStatus) {
+		case TextToSpeech.SUCCESS:            break;
+		case TextToSpeech.LANG_MISSING_DATA:  return RunTimeError("Language Data Missing");
+		case TextToSpeech.LANG_NOT_SUPPORTED: return RunTimeError("Language Not Supported");
+		default:                              return RunTimeError("TTS Init Failed. Code = " + theTTS.mStatus);
+		}
+
+		return true;
+	}
+
+	private boolean executeTTS_SPEAK(){
+		if (theTTS == null) {
+			return RunTimeError("Text to speech not initialized");
+		}
 		if (!evalStringExpression()) return false;
-		  setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		  ttsSpeakDone = false;
-	      HashMap<String, String> myHashAlarm = new HashMap<String, String>();
-	      myHashAlarm.put(TextToSpeech.Engine.KEY_PARAM_STREAM, String.valueOf(AudioManager.STREAM_MUSIC));
-	      myHashAlarm.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "Done");
-	      Run.mTts.speak(StringConstant, TextToSpeech.QUEUE_FLUSH, myHashAlarm);
-	      while (!ttsSpeakDone) 
-	    	  Thread.yield();
+		String speech = StringConstant;
+		boolean block = true;					// Default if no "wait" parameter is to block. This preserves
+		if (isNext(',')) {						// behavior from before v01.76, when the parameter was added.
+			if (!evalNumericExpression()) { return false; }			// optional "wait" flag
+			block = (EvalNumericExpressionValue != 0.0);			// block if non-zero
+		}
+		if (!checkEOL()) return false;
+
+		while (!theTTS.mDone) Thread.yield();						// Wait for any previous speaking to finish
+
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		HashMap<String, String> params = new HashMap<String, String>();
+		params.put(TextToSpeech.Engine.KEY_PARAM_STREAM, String.valueOf(AudioManager.STREAM_MUSIC));
+
+		theTTS.mDone = false;
+		theTTS.speak(speech, params);
+		if (block) { while (!theTTS.mDone) Thread.yield(); }		// if requested, wait for speech to complete
 		return true;
 	}
-	
-	private boolean executeTTS_LOCAL() {
+
+	private boolean executeTTS_SPEAK_TOFILE(){
+		if (theTTS == null) {
+			return RunTimeError("Text to speech not initialized");
+		}
+		if (!evalStringExpression()) return false;
+		String speech = StringConstant;
+		String theFileName;
+		if (isNext(',')) {											// optional file name parameter
+			if (!getStringArg()) { return false; }
+			theFileName = StringConstant;
+		} else { theFileName = "tts.wav"; }							// default file name
+		if (!checkEOL()) return false;
+
+		while (!theTTS.mDone) Thread.yield();						// Wait for any previous speaking to finish
+
+		HashMap<String, String> params = new HashMap<String, String>();
+
+		theFileName = getDataPath(theFileName);
+		theTTS.mDone = false;
+		theTTS.speakToFile(speech, params, theFileName);
 		return true;
-		
 	}
-	
+
+	private boolean executeTTS_STOP() {
+		if (!checkEOL()) return false;
+		if (theTTS != null) {
+			while (!theTTS.mDone) Thread.yield();					// Wait for any previous speaking to finish
+			theTTS.shutdown();
+			theTTS = null;
+		}
+		return true;
+	}
+
 // **********************************************  FTP **************************************************
 
 

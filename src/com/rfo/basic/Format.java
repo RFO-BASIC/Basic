@@ -336,12 +336,12 @@ public class Format extends ListActivity {
 				actualLine = ExpandedKeyWord(Run.Debug_KW, lcLine, actualLine, start);
 			else if (kw.equals("stack."))
 					actualLine = ExpandedKeyWord(Run.Stack_KW, lcLine, actualLine, start);
+			else if (kw.equals("tts."))
+				actualLine = ExpandedKeyWord(Run.tts_KW, lcLine, actualLine, start);
 			else if (kw.equals("ftp."))
 				actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
 			else if (kw.equals("bt."))
 				actualLine = ExpandedKeyWord(Run.bt_KW, lcLine, actualLine, start);
-			else if (kw.equals("ftp."))
-				actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
 			else if (kw.equals("su."))
 				actualLine = ExpandedKeyWord(Run.su_KW, lcLine, actualLine, start);
 			else if (kw.equals("system."))

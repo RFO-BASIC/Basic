@@ -28,136 +28,99 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 import java.util.HashMap;
-import java.util.Locale;
-import java.util.Random;
 
-import com.rfo.basic.Run;
-import android.app.Activity;
-import android.media.AudioManager;
-import android.os.Bundle;
-import android.speech.tts.TextToSpeech;
-import android.util.Log;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
-import android.view.View;
-import android.widget.Button;
-import com.rfo.basic.Run;
-import android.util.Log;
 import android.content.Context;
 import android.speech.tts.TextToSpeech;
-import android.speech.tts.TextToSpeech.OnUtteranceCompletedListener;
-import android.text.format.Time;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 
-public class TextToSpeechActivity extends Activity implements TextToSpeech.OnInitListener, OnUtteranceCompletedListener{
+public class TextToSpeechActivity {
 
-    private static final String TAG = "TextToSpeechDemo";
-    
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+	private static final String TAG = "TextToSpeech";
+	private static final String ID = "BASIC TTS";
 
-        // Initialize text-to-speech. This is an asynchronous operation.
-        // The OnInitListener (second argument) is called after initialization completes.
-        Run.mTts = new TextToSpeech(this,
-            this  // TextToSpeech.OnInitListener
-            );
+	public int mStatus;
+	public boolean mDone;
+	private TextToSpeech mTTS;
 
-    }
-    
-    public boolean onKeyUp(int keyCode, KeyEvent event)  {
-//      if ((keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_MENU) && event.getRepeatCount() == 0) {
-        if (keyCode == KeyEvent.KEYCODE_BACK  && event.getRepeatCount() == 0) {
-        	if (Run.OnBackKeyLine != 0){
-        		Run.BackKeyHit = true;
-//            	Run.GRopen = false;
-//            	finish();
-        		return true;
-        	}
+	public TextToSpeechActivity(Context context) {
+		Log.d(TAG, "constructor");
+		mDone = true;								// not currently speaking
 
-//        	Run.GRopen = false;
-       	Run.Stop = true;
-       	
-        	finish();
-        	if (Basic.DoAutoRun) {
-//        		android.os.Process.killProcess(Basic.ProcessID) ;
-        		android.os.Process.killProcess(android.os.Process.myPid()) ;
-        	}
+		// Initialize text-to-speech. This is an asynchronous operation.
+		// The OnInitListener (second argument) is called after initialization completes.
+		mTTS = new TextToSpeech(context, initListener);
+	}
 
-        }
-        return true;
-    }
-    
-    public boolean onTouchEvent(MotionEvent event){
-    	super.onTouchEvent(event);
-    	int action = event.getAction();  // Get action type
+	public void shutdown() {
+		// Don't forget to shutdown!
+		Log.d(TAG, "shutdown");
+		if (mTTS != null) {
+			mTTS.stop();
+			mTTS.shutdown();
+			mTTS = null;
+			mDone = true;
+		}
+	}
 
+	private TextToSpeech.OnInitListener initListener = new TextToSpeech.OnInitListener() {
+		public void onInit(int status) {
+			Log.d(TAG, "OnInitListener.onInit");
+			if (status == TextToSpeech.SUCCESS) {
+				setListener();
+			}
+			mStatus = status;
+			Run.ttsInit = true;
+		}
+	};
 
-    	for (int i = 0; i < event.getPointerCount(); i++){
-    		if ( i > 1 ) break;
-        	int pid = event.getPointerId(i);
-        	if (pid > 1) break;
-//    		Log.v(GR.LOGTAG, " " + i + ","+pid+"," + action);
-    		Run.TouchX[pid] = (double)event.getX(i);
-    		Run.TouchY[pid] = (double)event.getY(i);
-    		if (action == MotionEvent.ACTION_DOWN ||
-    			action == MotionEvent.ACTION_POINTER_DOWN ||
-    			action == MotionEvent.ACTION_MOVE){
-        		Run.NewTouch[pid] = true;
-        	} else if (action == MotionEvent.ACTION_UP || 
-        		action == MotionEvent.ACTION_POINTER_UP ||
-        		action == 6 ||
-        		action == 262) {
-        		Run.NewTouch[pid] = false;
-        	}
-    	}
-    	
-    	return true;
-    }
+	@SuppressWarnings("deprecation")
+	private void setListener() {
+		int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
+		if (level < 18) {
+			mTTS.setOnUtteranceCompletedListener(new TextToSpeech.OnUtteranceCompletedListener() {
+				public void onUtteranceCompleted(String utteranceId) {
+					Log.i(TAG, "completeListener: " + utteranceId);
+					if (utteranceId.equals(ID))		// utteranceId is value of KEY_PARAM_UTTERANCE_ID
+						mDone = true;
+					return;
+				}
+			});
+		} else {
+			mTTS.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+				public void onStart(String utteranceId) {
+					Log.i(TAG, "progressListener onStart: " + utteranceId);
+				}
 
+				public void onError(String utteranceId) {
+					Log.i(TAG, "progressListener onError: " + utteranceId);
+					if (utteranceId.equals(ID))
+						mDone = true;
+					return;
+				}
 
+				public void onDone(String utteranceId) {
+					Log.i(TAG, "progressListener onDone: " + utteranceId);
+					if (utteranceId.equals(ID))
+						mDone = true;
+					return;
+				}
+			});
+		}
+	}
 
-    @Override
-    public void onDestroy() {
-        // Don't forget to shutdown!
-        if (Run.mTts != null) {
-            Run.mTts.stop();
-            Run.mTts.shutdown();
-        }
+	public void speak(String text, HashMap<String, String> params) {
+		if (text != null) {
+			params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, ID);
+			mTTS.speak(text, TextToSpeech.QUEUE_FLUSH, params);
+		}
+	}
 
-        super.onDestroy();
-    }
+	public void speakToFile(String text, HashMap<String, String> params, String filename) {
+		if (text != null) {
+			params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, ID);
+			mTTS.synthesizeToFile(text, params, filename);
+		}
+	}
 
-    // Implements TextToSpeech.OnInitListener.
-    public void onInit(int status) {
-        if(status == TextToSpeech.SUCCESS) {
-            Run.mTts.setOnUtteranceCompletedListener(this);
-        }
-    	Run.ttsInitResult = status;
-        Run.ttsInit = true;
-
-    }
-
-
-    public void onUtteranceCompleted(String utteranceId) {
-    	   
-    	   Log.i(TAG, utteranceId); //utteranceId == "Done"
-    	   if (utteranceId.equals("Done")) Run.ttsSpeakDone = true;
-    	   return;
-    	   }
-    
-    private void speak(String text) {
-    	   if(text != null) {
-    	      HashMap<String, String> myHashAlarm = new HashMap<String, String>();
-    	      myHashAlarm.put(TextToSpeech.Engine.KEY_PARAM_STREAM, String.valueOf(AudioManager.STREAM_ALARM));
-    	      myHashAlarm.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "SOME MESSAGE");
-    	      Run.mTts.speak(text, TextToSpeech.QUEUE_FLUSH, myHashAlarm);
-    	   }
-    	}
-    
-    
-    public void doSpeak(String text){
-
-    }
-    
  }
