@@ -205,8 +205,11 @@ public class Run extends ListActivity {
 
 	// ********************* Message types for the Handler *********************
 																// message numbers < 256 are in "default" group 0
-	public static final int MESSAGE_PUBLISH_PROGRESS = 1;
-	public static final int MESSAGE_TOAST            = 2;		// carried over from BluetoothChatService, not presently used
+	public static final int MESSAGE_INPUT_DIALOG     = 1;		// for INPUT command
+	public static final int MESSAGE_TOAST            = 2;		// for POPUP command
+	public static final int MESSAGE_CLEAR_SCREEN     = 3;		// for CLS command
+	public static final int MESSAGE_CONSOLE_TITLE    = 4;		// for CONSOLE.TITLE command
+	public static final int MESSAGE_PUBLISH_PROGRESS = 20;
 
 	public static final int MESSAGE_GROUP_MASK       = 0x0F00;	// groups can be 0x1 through 0xF
 
@@ -664,21 +667,7 @@ public class Run extends ListActivity {
 
     public static Background theBackground;					// Background task ID
     public static boolean SyntaxError = false;		        // Set true when Syntax Error message has been output		
-    
-    public static String UserPrompt = "";
-    public static String theInput = "";						// Holds Input from Input dialog box
-    public Context RunContext;	
-    
-    
-    public boolean WaitForInput ;							// Signals between background task and foreground
-    public boolean BadInput = false;
-    public boolean InputCancelled = false;
-    public boolean InputDismissed = false;
-    public AlertDialog.Builder InputDialog;
-    public AlertDialog theAlertDialog;
-    public boolean InputIsNumeric = true;
-    public String InputDefault = "";
-    public int inputVarNumber;
+
     private boolean ProgressPending = false;
 	
 	// debugger dialog and ui thread vars
@@ -804,7 +793,17 @@ public class Run extends ListActivity {
 		new Command("line.char")        { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
 	};
 
-    private String ConsoleTitle = null;					// null means use default string resource
+	//  ******************  Input Command variables ********************************
+
+	private boolean WaitForInput ;							// Signals between background task and foreground
+	private boolean BadInput = false;
+	private boolean InputCancelled = false;
+	private boolean InputIsNumeric = true;
+	private int inputVarNumber;
+	private String UserPrompt = "";
+	private String InputDefault = "";
+	private boolean InputDismissed = false;					// These two will be used only if we dismiss the dialog in onPause
+	private AlertDialog theAlertDialog;
 
     //  ******************  Popup Command variables ********************************
     
@@ -1658,7 +1657,7 @@ public class Background extends Thread {
         	}
         }
 
-        private void publishProgress(String s) {
+        private void publishProgress(String... s) {
         	mHandler.obtainMessage(MESSAGE_PUBLISH_PROGRESS, s).sendToTarget();
         }
 
@@ -1764,28 +1763,22 @@ public class Background extends Thread {
 						
 					}while(WaitForResume && !DebuggerStep);
 				}
-				
-           		if (WaitForInput){									// if waiting for Input
-        			do{												// wait a bit
-                	try {Thread.sleep(500);}catch(InterruptedException e){}
-                	if (BadInput){									// If user input was bad
-                		publishProgress("@@2");						// tell her and then
-                		}
-                	if (InputCancelled){							// User hit back on Input Dialog
-                		if (OnErrorLine != 0){
-                			ExecutingLineIndex = OnErrorLine;
-                			WaitForInput = false;
-                		} else {
-                			publishProgress("@@3");						// Signal for message
-                			Stop = true;
-                			// and stop executing
-                		}
-                	 }
-        			} while (WaitForInput && !Stop);				// and try again
 
-        			WaitForInput = false;							// have the Input, no longer waiting
-        		}
-         		
+				while (WaitForInput && !Stop) {						// if waiting for Input
+					try {Thread.sleep(500);}catch(InterruptedException e){}
+					if (BadInput) {									// If user input was bad
+						sendMessage(MESSAGE_INPUT_DIALOG);			// tell her and try again
+					} else if (InputCancelled) {					// User hit back on Input Dialog
+						WaitForInput = false;
+						if (OnErrorLine != 0){
+							ExecutingLineIndex = OnErrorLine;
+						} else {									// Tell user we are stopping
+							publishProgress("Input dialog cancelled", "Execution halted");
+							Stop = true;							// and stop executing
+						}
+					}
+				}
+
         		++ExecutingLineIndex;								// Step to next line
 
         		if (fnRTN){					// fn_rtn signal. If true make RunLoop() return
@@ -1812,6 +1805,18 @@ public class Background extends Thread {
 
 } // End of Background class
 
+	private Context getContext() {
+		return GRFront ? GR.context : this;
+	}
+
+	private void sendMessage(int what) {				// used by Background to send message to mHandler
+		mHandler.obtainMessage(what).sendToTarget();
+	}
+
+	private void sendMessage(int what, String text) {	// used by Background to send message to mHandler
+		mHandler.obtainMessage(what, text).sendToTarget();
+	}
+
 	// This Handler is in the UI (foreground) Task part of Run. It gets control when the background
 	// task sends it a Message. Most of the messages carry strings that are just text for the output
 	// screen. A few are signals. Signals start with "@@"
@@ -1819,24 +1824,41 @@ public class Background extends Thread {
 	private final Handler mHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
-			switch (msg.what) {
-			case MESSAGE_PUBLISH_PROGRESS:
-				onProgressUpdate((String)msg.obj);
-				break;
-			case MESSAGE_TOAST:		// carried over from BluetoothChatService, not presently used
-				Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST),
-						Toast.LENGTH_SHORT).show();
-				break;
-			default:
-				switch (msg.what & MESSAGE_GROUP_MASK) {
-				case MESSAGE_BT_GROUP:
-					handleBTMessage(msg);								// handle BluetoothMessages
+			switch (msg.what & MESSAGE_GROUP_MASK) {
+			case MESSAGE_DEFAULT_GROUP:
+				switch (msg.what) {
+				case MESSAGE_INPUT_DIALOG:
+					if (BadInput) {
+						BadInput = false;
+						Toaster("Not a number. Try Again.").show();
+					}
+					theAlertDialog = doInputDialog().show();
 					break;
-				case MESSAGE_HTML_GROUP:
-				case MESSAGE_DEBUG_GROUP:
-				default:												// unrecognized Message
-					break;												// ignore it
+				case MESSAGE_TOAST:
+					Toast toast = Toaster(ToastMsg, ToastDuration);
+					toast.setGravity(Gravity.CENTER, ToastX, ToastY);
+					toast.show();
+					break;
+				case MESSAGE_CLEAR_SCREEN:
+					output.clear();
+					break;
+				case MESSAGE_CONSOLE_TITLE:
+					String title = (String)msg.obj;
+					setTitle((title != null) ? title : getResources().getString(R.string.run_name));
+					break;
+				case MESSAGE_PUBLISH_PROGRESS:
+					onProgressUpdate((String[])msg.obj);
+					break;
+				default:
 				}
+				break;
+			case MESSAGE_BT_GROUP:
+				handleBTMessage(msg);								// handle BluetoothMessages
+				break;
+			case MESSAGE_HTML_GROUP:
+			case MESSAGE_DEBUG_GROUP:
+			default:												// unrecognized Message
+				break;												// ignore it
 			}
 		}
 	};
@@ -1845,40 +1867,7 @@ public class Background extends Thread {
 
 		for (int i=0; i<str.length; ++i) {								// Check for signals
 			if (str[i].startsWith("@")) {								// Fast check for possible signal
-        		if (str[i].startsWith("@@1")){      					// Input dialog signal
-        			doInputDialog();
-        			if (InputDialog != null)
-        			theAlertDialog = InputDialog.show();				// show the Input dialog box
-        			}
-        		
-        		else if (str[i].startsWith("@@2")){						// Invalid Input Dialog Input
-        			  CharSequence text = "Not a number. Try Again.";
-        			  int duration = Toast.LENGTH_SHORT;
-
-        			  Toast toast = Toast.makeText(this, text, duration);
-        			  toast.setGravity(Gravity.TOP,0,50);
-        			  toast.show();
-        			  BadInput = false;
-          			  doInputDialog();
-          			  theAlertDialog = InputDialog.show();				// show the Input dialog box
-        			  
-        		}else if (str[i].startsWith("@@3")){					// User canceled dialog with back key
-        			  output.add("Input dialog cancelled");				// Tell user we are stopping
-        			  output.add("Execution halted");
-        			  
-        		}else if (str[i].startsWith("@@4")){					// Does the toast for popup command
-      			  CharSequence text = ToastMsg;
-    			  Toast toast = Toast.makeText(this, text, ToastDuration);
-    			  toast.setGravity(Gravity.CENTER, ToastX, ToastY);
-    			  toast.show();
-        		
-        		}else if (str[i].startsWith("@@5")){					// Clear Screen Signal
-        			output.clear();
-        		}else if (str[i].startsWith("@@6")){					// NOT CURRENTLY USED
-        		}else if (str[i].startsWith("@@7")){					// Set the console title
-        			if (ConsoleTitle != null) setTitle(ConsoleTitle);
-        			else setTitle(getResources().getString(R.string.run_name));
-        		}else if (str[i].startsWith("@@8")){					// Start GPS
+        		if (str[i].startsWith("@@8")){					// Start GPS
         			if (theGPS == null) theGPS = new GPS(Run.this);
         		}else if (str[i].startsWith("@@9")){					// from checkpointProgress
         			ProgressPending = false;							// progress is published, done waiting
@@ -2056,21 +2045,7 @@ private void InitVars(){
 
     theBackground = null;					// Background task ID
     SyntaxError = false;		        // Set true when Syntax Error message has been output		
-    
-    UserPrompt = "";
-    theInput = "";						// Holds Input from Input dialog box
-    RunContext = null;	
-    
-    
-    WaitForInput = false ;							// Signals between background task and foreground
-    BadInput = false;
-    InputCancelled = false;
-    InputDismissed = false;
-    InputDialog = null;
-   theAlertDialog = null;
-   InputIsNumeric = true;
-   InputDefault = "";
-   inputVarNumber = 0;
+
    ProgressPending = false;
    randomizer = null;
    background = false;
@@ -2156,7 +2131,17 @@ private void InitVars(){
     
     clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 
-    ConsoleTitle = null;							// null means use default string resource
+	//  ******************  Input Command variables ********************************
+
+	WaitForInput = false;
+	BadInput = false;
+	InputCancelled = false;
+	InputIsNumeric = true;
+	inputVarNumber = 0;
+	UserPrompt = "";
+	InputDefault = "";
+	InputDismissed = false;
+	theAlertDialog = null;
 
     //  ******************  Popup Command variables ********************************
     
@@ -2587,7 +2572,7 @@ protected void onResume() {
 	  bgStateChange = true;
 //	  if (Stop) InitVars();
 
-//	  if (WaitForInput) Show("@@1");
+//	  if (WaitForInput) theAlertDialog = doInputDialog().show(); maybe???
 	  super.onResume();
 
 }    
@@ -5556,83 +5541,76 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 	
 	private  boolean executeINPUT(){
-		
-		if (evalStringExpression() && !SEisLE){
-			UserPrompt = StringConstant;
-			if (ExecutingLineBuffer.charAt(LineIndex)!= ','){
-				SyntaxError();
-				return false;
-			}
-			++LineIndex;
-		}
-		for (int i = UserPrompt.length(); i < 19 ; ++i){
+
+		if (!getStringArg()) return false;
+		UserPrompt = StringConstant;
+		if (!isNext(',')) return false;
+		for (int i = UserPrompt.length(); i < 19 ; ++i) {
 			UserPrompt = UserPrompt + (" ");
 		}
-		if (!getVar()){SyntaxError();return false;}
+		if (!getVar()) return false;
 		InputIsNumeric = VarIsNumeric;
 		inputVarNumber = VarNumber;
-		
+
 		InputDefault = "";
-		
-		if (ExecutingLineBuffer.charAt(LineIndex )== ','){
-			++LineIndex;
+		if (isNext(',')) {
 			if (InputIsNumeric) {
-				if (!evalNumericExpression())return false;
+				if (!evalNumericExpression()) return false;
 				StringConstant = String.valueOf(EvalNumericExpressionValue);
 			} else {
-				if (!evalStringExpression()) return false;
+				if (!getStringArg()) return false;
 			}
 			InputDefault = StringConstant;
 		}
 		if (!checkEOL()) return false;
-	    WaitForInput = true;
-	    BadInput = false;
-	    InputCancelled = false;
-		PrintShow("@@1");
 
+		WaitForInput = true;
+		BadInput = false;
+		InputCancelled = false;
+		sendMessage(MESSAGE_INPUT_DIALOG);
 		return true;
 	}
 
-	private void doInputDialog(){
-
-		InputDialog = new AlertDialog.Builder(this);
-	    final EditText input = new EditText(this);
+	private AlertDialog.Builder doInputDialog(){
+		Context context = getContext();
+		AlertDialog.Builder dialog = new AlertDialog.Builder(context);
+		final EditText input = new EditText(context);
 	    input.setText(InputDefault);
 	    if (InputIsNumeric) input.setInputType(0x00003002); // Limits keys to signed decimal numbers
-	    InputDialog.setView(input);
-	    InputDialog.setCancelable(true);
-	    InputDialog.setTitle(UserPrompt);
-	    InputDialog.setOnCancelListener(new DialogInterface.OnCancelListener(){
+		dialog.setView(input);
+		dialog.setCancelable(true);
+		dialog.setTitle(UserPrompt);
+		dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
 			public void onCancel(DialogInterface arg0) {
 				InputCancelled = true;
-				WaitForInput = false;
 			}
 	    });
-	    InputDialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+	    dialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
 
 // ****************************************  start of Dialog Click Listener**************************************
 //
-//  This methond is not executed until the user presses OK on the Dialog Box
-	    	
-	          public void onClick(DialogInterface dialog, int whichButton) {
-	              if (InputIsNumeric){                                 // Numeric Input Handling
-	                WaitForInput = false; //<=== moved to here
-	                 theInput = input.getText().toString().trim();
-	                 double d = 0;
-	                 try { d = Double.parseDouble(theInput);}                           // have java parse it into a double
-	                 catch (Exception e) {
-	                       BadInput=true;
-	                       WaitForInput = true;//<====changed to true
-	                    }
-	                 NumericVarValues.set(VarIndex.get(inputVarNumber), d);
-	                 
-	              }else {                                          // String Input Handling
-	                 theInput = input.getText().toString();
-	                 StringVarValues.set(VarIndex.get(inputVarNumber), theInput);
-	                 WaitForInput = false;
-	              }
-	          }});
+//  This method is not executed until the user presses OK on the Dialog Box
+
+			public void onClick(DialogInterface dialog, int whichButton) {
+				String theInput = input.getText().toString();
+				if (InputIsNumeric) {							// Numeric Input Handling
+					double d = 0;
+					try {
+						d = Double.parseDouble(theInput.trim());// have java parse it into a double
+					} catch (Exception e) {
+						BadInput = true;
+						return;
+					}
+					NumericVarValues.set(VarIndex.get(inputVarNumber), d);
+				} else {										// String Input Handling
+					StringVarValues.set(VarIndex.get(inputVarNumber), theInput);
+				}
+				WaitForInput = false;
+				theAlertDialog = null;
+			}});
 //***************End of Input Click Listener *******************************************
+
+		return dialog;
 	}
 	
 	private boolean executeBACK_RESUME(){
@@ -6371,7 +6349,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 					break;
 				}
 				
-				Toaster(Name);
+				Toaster(Name).show();
 				
 			}
 		});
@@ -6408,18 +6386,19 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		theDebugSwapDialog.getWindow().setAttributes(lp);
 		
 	}
-	private void Toaster(CharSequence msg) {
-		Context context = getApplicationContext();
-		CharSequence text = msg;
-		int duration = Toast.LENGTH_SHORT;
 
-		Toast toast = Toast.makeText(context, text, duration);
-		toast.setGravity(Gravity.TOP | Gravity.CENTER, 0 , 50);
+	private Toast Toaster(CharSequence msg) {			// default: short, high toast
+		Toast toast = Toaster(msg, Toast.LENGTH_SHORT);
+		toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 50);
+		return toast;
+	}
 
-		toast.show();
+	private Toast Toaster(CharSequence msg, int duration) {
+		Context context = getContext();
+		Toast toast = Toast.makeText(context, msg, duration);
+		return toast;
+	}
 
-
-    }
 	private void doDebugSelectDialog(){
 		if(theDebugSelectDialog != null) theDebugSelectDialog.dismiss();
 		
@@ -8216,45 +8195,33 @@ private boolean doUserFunction(){
 		  }
 		  return doResume();
 	  }
-	  
-	  private boolean executePOPUP(){
-		  if (!evalStringExpression()) return false;							// get the message
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  if (SEisLE) return false;
-		  ToastMsg  = StringConstant;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get x
-		   double d = EvalNumericExpressionValue;
-		   ToastX = (int) d;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get y
-		   d = EvalNumericExpressionValue;
-		   ToastY = (int) d;
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
 
-		  if (!evalNumericExpression())return false;							// Get duration
-		   d = EvalNumericExpressionValue;
+	private boolean executePOPUP(){
+		if (!getStringArg()) return false;						// get the message
+		ToastMsg = StringConstant;
 
-		   if (!checkEOL()) return false;
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression())return false;				// get x
+		ToastX = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression())return false;				// get y
+		ToastY = EvalNumericExpressionValue.intValue();
 
-		   ToastDuration = 0;
-		   if (d!=0) ToastDuration = 1;
-		   PrintShow("@@4");															// Signals On Progres Update
-		   																		// (the UI Task)
-		   																		// to show the toast
-
-		  return true;
-	  }
-	  
-	  public boolean executeCLS(){							// Clear Screen
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression())return false;				// get duration
+		ToastDuration = (EvalNumericExpressionValue == 0.0)
+					  ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG;
 		if (!checkEOL()) return false;
-		  PrintShow("@@5");										// Signal UI task
-		  return true;
-	  }
+
+		sendMessage(MESSAGE_TOAST);								// tell the UI Task to pop the toast
+		return true;
+	}
+
+	public boolean executeCLS(){							// Clear Screen
+		if (!checkEOL()) return false;
+		sendMessage(MESSAGE_CLEAR_SCREEN);						// signal UI task
+		return true;
+	}
 
 	public boolean executeSELECT(){
 
@@ -15206,13 +15173,14 @@ private boolean doUserFunction(){
 	}
 
 	private boolean executeCONSOLE_TITLE() {					// Set the console title string
+		String title;
 		if (isEOL()) {
-			ConsoleTitle = null;								// Use default
+			title = null;										// Use default
 		} else {
 			if (!getStringArg() || !checkEOL()) return false;	// Get new title
-			ConsoleTitle = StringConstant;
+			title = StringConstant;
 		}
-		Show("@@7");											// Signal UI to update its title
+		sendMessage(MESSAGE_CONSOLE_TITLE, title);				// Signal UI to update its title
 		return true;
 	}
 

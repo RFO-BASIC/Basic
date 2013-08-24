@@ -27,12 +27,7 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-import 	java.lang.Thread;
 import java.util.ArrayList;
-import java.util.List;
-
-import android.graphics.Region.Op;
-
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.media.AudioManager;
@@ -42,16 +37,12 @@ import android.speech.RecognizerIntent;
 import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
-import android.view.OrientationListener;
 import android.view.Window;
 import android.view.WindowManager;
 import android.content.Context;
 import android.content.Intent;
-
-
 import android.content.pm.ActivityInfo;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Point;
@@ -62,11 +53,11 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.graphics.RectF;
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.Config;
 
 public class GR extends Activity {
     private static final String LOGTAG = "GR";
     private static final String CLASSTAG = GR.class.getSimpleName();
+    public static Context context;
     public static DrawView drawView;
     public static Bitmap screenBitmap = null;
     public static int theBackGround;
@@ -188,7 +179,7 @@ public class GR extends Activity {
 //        Run.GRrunning = true;
     	Run.background = false;
     	Run.bgStateChange = true;
-
+		context = this;
       super.onResume();
     }  
     @Override
