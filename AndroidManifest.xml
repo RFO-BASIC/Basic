@@ -223,13 +223,6 @@ This file is part of BASIC! for Android
               
           </activity>
 
-        <activity android:name="TextToSpeechActivity"
-            android:id = "@+id/tts_screen"
-         		  android:configChanges="keyboardHidden|orientation|screenSize"
-        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
-                  android:label="Speech" >
-        </activity>
-        
         <activity android:name="CameraView"
             android:id = "@+id/camera_screen"
          		  android:configChanges="keyboardHidden|orientation|screenSize"
@@ -264,6 +257,6 @@ This file is part of BASIC! for Android
         
     </application>
     
-      <uses-sdk android:minSdkVersion="7" android:targetSdkVersion ="17" />
+      <uses-sdk android:minSdkVersion="7" android:targetSdkVersion ="18" />
     
 </manifest>
