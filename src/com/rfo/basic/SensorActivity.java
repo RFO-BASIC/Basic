@@ -85,13 +85,17 @@ public class SensorActivity implements SensorEventListener {
 			case Sensor.TYPE_ACCELEROMETER:       name = "Acclerometer";        break;
 			case Sensor.TYPE_GRAVITY:             name = "Gravity";             break;
 			case Sensor.TYPE_GYROSCOPE:           name = "Gyroscope";           break;
+			case Sensor.TYPE_GYROSCOPE_UNCALIBRATED: name = "Uncalibrated Gyroscope"; break;
 			case Sensor.TYPE_LIGHT:               name = "Light";               break;
 			case Sensor.TYPE_MAGNETIC_FIELD:      name = "Magnetic Field";      break;
+			case Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED: name = "Uncalibrated Magnetic Field"; break;
 			case Sensor.TYPE_ORIENTATION:         name = "Orientation";         break;
 			case Sensor.TYPE_PRESSURE:            name = "Pressure";            break;
 			case Sensor.TYPE_PROXIMITY:           name = "Proximity";           break;
 			case Sensor.TYPE_LINEAR_ACCELERATION: name = "Linear Acceleration"; break;
+			case Sensor.TYPE_SIGNIFICANT_MOTION:  name = "Significant Motion";  break;
 			case Sensor.TYPE_ROTATION_VECTOR:     name = "Rotational Vector";   break;
+			case Sensor.TYPE_GAME_ROTATION_VECTOR:name = "Game Rotation Vector";break;
 			case Sensor.TYPE_TEMPERATURE:         name = "Temperature";         break;
 			case Sensor.TYPE_AMBIENT_TEMPERATURE: name = "Ambient Temperature"; break;
 			case Sensor.TYPE_RELATIVE_HUMIDITY:   name = "Relative Humidity";   break;
@@ -119,15 +123,19 @@ public class SensorActivity implements SensorEventListener {
 		switch (type) {
 		case Sensor.TYPE_ACCELEROMETER:
 		case Sensor.TYPE_MAGNETIC_FIELD:
+		case Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED:
 		case Sensor.TYPE_ORIENTATION:
 		case Sensor.TYPE_GYROSCOPE:
+		case Sensor.TYPE_GYROSCOPE_UNCALIBRATED:
 		case Sensor.TYPE_LIGHT:
 		case Sensor.TYPE_PRESSURE:
 		case Sensor.TYPE_TEMPERATURE:
 		case Sensor.TYPE_PROXIMITY:
 		case Sensor.TYPE_GRAVITY:
 		case Sensor.TYPE_LINEAR_ACCELERATION:
+		case Sensor.TYPE_SIGNIFICANT_MOTION:
 		case Sensor.TYPE_ROTATION_VECTOR:
+		case Sensor.TYPE_GAME_ROTATION_VECTOR:
 		case Sensor.TYPE_RELATIVE_HUMIDITY:
 		case Sensor.TYPE_AMBIENT_TEMPERATURE:
 			if ((delay < 0) || (delay > SensorManager.SENSOR_DELAY_NORMAL)) {
