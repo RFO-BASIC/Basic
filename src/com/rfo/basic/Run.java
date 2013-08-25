@@ -906,7 +906,7 @@ public class Run extends ListActivity {
     	 "bitmap.drawinto.end", "bitmap.draw",
     	 "get.bmpixel", "get.value", "set.antialias",
     	 "get.textbounds", "text.typeface", "ongrtouch.resume",
-    	 "camera.select", "getdl"
+    	 "camera.select", " ", "getdl"					// placeholder for "camera.blindshoot"
     
     };
 
@@ -973,7 +973,8 @@ public class Run extends ListActivity {
     public static final int gr_text_typeface = 60;
     public static final int gr_ontouch_resume = 61;
     public static final int gr_camera_select = 62;
-    public static final int gr_getdl = 63;
+    public static final int gr_camera_blindshoot = 63;
+    public static final int gr_getdl = 64;
     
     public static final int gr_none = 98;
     
@@ -1303,11 +1304,9 @@ public class Run extends ListActivity {
 	
 	public static Bitmap CameraBitmap;
 	public static boolean CameraDone;
-	public static boolean CameraAuto;
-	public static boolean CameraManual;
-	public static int CameraFlashMode;
-	public static int CameraNumber;
-	
+	private int CameraNumber;
+	private int NumberOfCameras;			// -1 if we don't know yet
+
 	// ***************************************  Bluetooth  ********************************************
 	
     // Message types sent from the BluetoothChatService Handler
@@ -1348,8 +1347,6 @@ public class Run extends ListActivity {
     public static BluetoothDevice btConnectDevice = null;
     public static boolean btReadReady = false;
     public static int OnBTReadLine = 0;
-    
-    public static Looper btLooper;
 
     public static final String bt_KW[] = {				// Bluetooth Commands
     	"open", "close", "status", 
@@ -2245,15 +2242,12 @@ private void InitVars(){
 	
 	CameraBitmap = null;
 	CameraDone = true;
-	CameraAuto = false;
-	CameraManual = false;
-	CameraFlashMode = 0; 
-	
+	NumberOfCameras = -1;
+
 	mConnectedDeviceName = null;
     mOutStringBuffer = null;
     mBluetoothAdapter = null;
     mChatService = null;
-    btLooper = null;
     btReadReady = false;
     interruptResume = -1;
     OnBTReadLine = 0;
@@ -2382,12 +2376,7 @@ public void cleanUp(){
 				mChatService.stop();
 				mChatService = null;
 			}
-		
-			if (btLooper != null){
-				btLooper.quit();
-				btLooper = null;
-			}
-			
+
 			if ( theSUReader != null ){
 				theSUReader.stop();
 				theSUReader = null;
@@ -2551,11 +2540,6 @@ public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is select
 				mChatService.stop();
 				mChatService = null;
 			}
-		
-			if (btLooper != null){
-  				btLooper.quit();
-  				btLooper = null;
-  			}
 
 	   finish();
 
@@ -9233,19 +9217,16 @@ private boolean doUserFunction(){
    	    	  		if (!execute_bitmap_save()){return false;}
    	    	  		break;
    	    	  	case gr_camera_shoot:
-   	    	  		CameraAuto = false;
-   	    	  		CameraManual = false;
-   	    	  		if (!execute_camera_shoot()){return false;}
+   	    	  		if (!execute_camera_shoot(CameraView.PICTURE_MODE_USE_UI)){return false;}
    	    	  		break;
    	    	  	case gr_camera_autoshoot:
-   	    	  		CameraAuto = true;
-   	    	  		CameraManual = false;
-   	    	  		if (!execute_camera_shoot()){return false;}
+   	    	  		if (!execute_camera_shoot(CameraView.PICTURE_MODE_AUTO)){return false;}
    	    	  		break;
    	    	  	case gr_camera_manualshoot:
-   	    	  		CameraAuto = false;
-   	    	  		CameraManual = true;
-   	    	  		if (!execute_camera_shoot()){return false;}
+   	    	  		if (!execute_camera_shoot(CameraView.PICTURE_MODE_MANUAL)){return false;}
+   	    	  		break;
+   	    	  	case gr_camera_blindshoot:
+   	    	  		if (!execute_camera_shoot(CameraView.PICTURE_MODE_BLIND)){return false;}
    	    	  		break;
    	    	  	case gr_screen_to_bitmap:
    	    	  		if (!execute_screen_to_bitmap()){return false;}
@@ -11234,126 +11215,92 @@ private boolean doUserFunction(){
 
 		  return true;
 	  }
-	  
-	  private boolean execute_gr_camera_select(){
-		  
-		  int BACK = 1;
-		  int FRONT = 2;
-		  int cameraChoice = BACK;
-		  
-		  int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
-		  int cameraCount = 0;
-		  
-		  if (level >= 9) {												// if SDK >= then May be more than one camera
-			  cameraCount = Camera.getNumberOfCameras();						// so get the count
-		   } else {														// otherwise there can only be one camera
-			   Camera tCamera = Camera.open();							// Check to see if there is any camera at all
-			   if (tCamera == null) {
-				   RunTimeError("This device does not have a camera.");
-				   return false;										// No Camera
-			   }
-			   CameraNumber = -1;										// There is a camera
-			   tCamera.release();
-			   return true;
-		   }
-		  
-		   Camera tCamera = Camera.open(0);									// Determine which camera number is BACK
-		   Camera.CameraInfo CI = new Camera.CameraInfo();				    // Assume 0 is BACK
-		   tCamera.getCameraInfo(0, CI);
-		   boolean zero_is_back = true;
-		   if (CI.facing == CameraInfo.CAMERA_FACING_FRONT) zero_is_back = false;
-		   tCamera.release();
 
-		  
-		   if (!evalNumericExpression())return false;						// Get user's choice
-		   int choice = EvalNumericExpressionValue.intValue();
-		   if (choice != BACK && choice != FRONT) {
-			   RunTimeError("Select value must be 1 (Back) or 2 (Front).");
-			   return false;
-		   }
-		   
-		   if (cameraCount == 1) {
-			   if (choice == BACK && zero_is_back) {
-				   CameraNumber = 0;
-				   return true;
-			   }
-			   if (choice == BACK && !zero_is_back) {
-				   RunTimeError("Device has no back camera");
-				   return false;
-			   }
-			   
-			   if (choice == FRONT && !zero_is_back) {
-				   CameraNumber = 0;
-				   return true;
-			   }
+		private static int getNumberOfCameras() {
 
-			   if (choice == FRONT && zero_is_back) {
-				   RunTimeError("Device has no front camera");
-				   return false;
-			   }
-		   }
-		   
-		   if (choice == BACK && zero_is_back) CameraNumber = 0;
-		   if (choice == BACK && !zero_is_back) CameraNumber = 1;
-		   if (choice == FRONT && zero_is_back) CameraNumber = 1;
-		   if (choice == FRONT && !zero_is_back) CameraNumber = 0;
-
-		  return true;
-	  }
-	  
-		private boolean execute_camera_shoot(){
-			
-			  int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
-			  int cameraCount = 0;
-			  if (CameraNumber == -1) {
-				  if (level >= 9) {
-					  int count = Camera.getNumberOfCameras();
-					  if (count == 0) {
-					    	RunTimeError("This device does not have a camera.");
-					    	return false;
-					  }
-					  CameraNumber = 0;
-				  }
-			  }
-			  
-			Camera tCamera = null;
-			try{
-				if (CameraNumber == -1) tCamera = Camera.open();
-				else tCamera = Camera.open(CameraNumber);
+			int cameraCount;
+			int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
+			if (level < 9) {											// if SDK < 9 there can be only one camera
+				Camera tCamera = Camera.open();							// Check to see if there is any camera at all
+				cameraCount = (tCamera == null) ? 0 : 1;
+				tCamera.release();
+			} else {
+				cameraCount = Camera.getNumberOfCameras();				// May be more than one camera
 			}
-			catch (Exception e){
-				return RunTimeError(e);
+			return cameraCount;
+		}
+
+	private boolean execute_gr_camera_select(){
+
+		if (NumberOfCameras < 0) { NumberOfCameras = getNumberOfCameras(); }
+		if (NumberOfCameras == 0) { return RunTimeError("This device does not have a camera."); }
+
+		int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
+		if (level < 9) {											// if SDK < 9 there can be only one camera
+			CameraNumber = -1;										// so no selection is possible
+			return (NumberOfCameras != 0);
+		}
+
+		int BACK = 1;
+		int FRONT = 2;
+
+		if (!evalNumericExpression()) { return false; }				// Get user's choice
+		if (!checkEOL()) { return false; }
+
+		int choice = EvalNumericExpressionValue.intValue();
+		if (choice != BACK && choice != FRONT) {
+			return RunTimeError("Select value must be 1 (Back) or 2 (Front).");
+		}
+
+		Camera.CameraInfo CI = new Camera.CameraInfo();				// Determine which camera number is BACK
+		Camera.getCameraInfo(0, CI);								// Assume 0 is BACK
+		boolean zero_is_back = (CI.facing == CameraInfo.CAMERA_FACING_BACK);
+
+		if (NumberOfCameras == 1) {									// Camera 0 is the only camera
+			CameraNumber = 0;
+			if ((choice == BACK) && !zero_is_back) { return RunTimeError("Device has no back camera"); }
+			if ((choice == FRONT) && zero_is_back) { return RunTimeError("Device has no front camera"); }
+		} else {
+			CameraNumber = ((choice == BACK) == zero_is_back) ? 0 : 1;
+		}
+		return true;
+	}
+
+	private boolean execute_camera_shoot(int pictureMode){
+
+		if (NumberOfCameras < 0) { NumberOfCameras = getNumberOfCameras(); }
+		if (NumberOfCameras == 0) { return RunTimeError("This device does not have a camera."); }
+
+		int flashMode = 0;
+		int focusMode = 0;
+		if (!getNVar()) return false;
+		int saveValueIndex = theValueIndex;
+
+		if (isNext(',')) {
+			if (!evalNumericExpression()) { return false; }
+			flashMode = EvalNumericExpressionValue.intValue();
+
+			if (isNext(',')) {											// Focus/2013-07-25 gt
+				if (!evalNumericExpression()) { return false; }
+				focusMode = EvalNumericExpressionValue.intValue();
 			}
-			
-		    if (tCamera == null){
-		    	RunTimeError("This device does not have a camera.");
-		    	return false;
-		    }
-		    tCamera.release();
+		}
+		if (!checkEOL()) { return false; };
 
-			if (!getNVar()) return false;
-			int saveValueIndex = theValueIndex;
-			   
-			   CameraFlashMode = 0 ;
-			   if (ExecutingLineBuffer.charAt(LineIndex) == ','){
-				   ++LineIndex;
-				   if (!evalNumericExpression()) return false;
-				   CameraFlashMode = EvalNumericExpressionValue.intValue();
-			   }
+		CameraBitmap = null;
+		CameraDone = false;
+		Intent cameraIntent = new Intent(this, CameraView.class);		// Start the Camera
+		cameraIntent.putExtra(CameraView.EXTRA_PICTURE_MODE, pictureMode);
+		cameraIntent.putExtra(CameraView.EXTRA_CAMERA_NUMBER, CameraNumber);
+		cameraIntent.putExtra(CameraView.EXTRA_FLASH_MODE, flashMode);
+		cameraIntent.putExtra(CameraView.EXTRA_FOCUS_MODE, focusMode);
+		try {
+			startActivityForResult(cameraIntent, BASIC_GENERAL_INTENT);
+		} catch (Exception e){
+			return RunTimeError(e);
+		}
+		while (!CameraDone) Thread.yield();
 
-			CameraBitmap = null;
-			CameraDone = false;
-			
-	    	Intent cameraIntent = new Intent(this, CameraView.class);				// Start the Camera
-		    try{
-		    	startActivityForResult(cameraIntent, BASIC_GENERAL_INTENT);
-		    } catch (Exception e){
-		    	return RunTimeError(e);
-		    }
-
-			while (!CameraDone) Thread.yield();
-//			CameraNumber = -1;
-			
 			if (CameraBitmap != null){
 			   NumericVarValues.set(saveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
 			   BitmapList.add(CameraBitmap);

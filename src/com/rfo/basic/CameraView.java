@@ -57,11 +57,33 @@ import android.view.WindowManager;
 
 public class CameraView extends Activity implements SurfaceHolder.Callback,
 													OnClickListener{
+
+	public static final int PICTURE_MODE_USE_UI = 0;
+	public static final int PICTURE_MODE_AUTO = 1;
+	public static final int PICTURE_MODE_MANUAL = 2;
+	public static final int PICTURE_MODE_BLIND = 3; // preview on dummy surface, view is black, implies PICTURE_MODE_AUTO
+	public static final String EXTRA_PICTURE_MODE = "picture_mode";
+	public static final String EXTRA_CAMERA_NUMBER = "camera_number";
+	public static final String EXTRA_FLASH_MODE = "flash_mode";
+	public static final String EXTRA_FOCUS_MODE = "focus_mode";
+	private int mPictureMode;
+	private int mCameraNumber;
+	private int mNewFlashMode;
+	private int mNewFocusMode;
+	private boolean mAutoFocus;
+
 	public void onCreate(Bundle icicle) {
 		super.onCreate(icicle);
-	  if (Run.CameraAuto || Run.CameraManual) doCameraNow();
-	  else doCameraUI();
-
+		Intent intent = getIntent();
+		mPictureMode = intent.getIntExtra(EXTRA_PICTURE_MODE, 0);
+		mCameraNumber = intent.getIntExtra(EXTRA_CAMERA_NUMBER, 0);
+		mNewFlashMode = intent.getIntExtra(EXTRA_FLASH_MODE, 0);
+		mNewFocusMode = intent.getIntExtra(EXTRA_FOCUS_MODE, 0);
+		if (mPictureMode == PICTURE_MODE_USE_UI) {
+			doCameraUI();
+		} else {
+			doCameraNow();
+		}
 	}
 
 private void doCameraUI(){
@@ -80,8 +102,7 @@ private void doCameraUI(){
 
 @Override
 protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-  if (resultCode == RESULT_OK) {
-  if (requestCode == 254){
+  if ((resultCode == RESULT_OK) && (requestCode == 254)) {
         String fn = getTempFileName();
         try {
 	        BitmapFactory.Options BFO = new BitmapFactory.Options();
@@ -89,25 +110,24 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 	        Run.CameraBitmap = BitmapFactory.decodeFile(fn, BFO);           // Make the bit map from the file
   		}
   		catch (Exception e) {}
-    	}
   }
-    
+
   Run.CameraDone = true;
   finish();
 }
 
-protected void onDestroy(){
-	Run.CameraDone = true;
-    super.onDestroy();
-
-}
-
+	protected void onDestroy() {
+		Run.CameraDone = true;
+		if (mPreviewRunning || mAutoFocus || (mCamera != null)) {
+			surfaceDestroyed(null);
+		}
+		super.onDestroy();
+	}
 
 // **************************** Auto/Manual shutter, No UI **********************************
 
-//	static final int FOTO_MODE = 0;
 	private static final String TAG = "CameraTest";
-	Camera mCamera;
+	private Camera mCamera = null;
 	boolean mPreviewRunning = false;
 	private SurfaceView mSurfaceView;
 	private SurfaceHolder mSurfaceHolder;
@@ -115,16 +135,33 @@ protected void onDestroy(){
 
 	private void doCameraNow() {
 
-		getWindow().setFormat(PixelFormat.TRANSLUCENT);
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
-		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-				WindowManager.LayoutParams.FLAG_FULLSCREEN);
-		setContentView(R.layout.camera);
-		mSurfaceView = (SurfaceView) findViewById(R.id.surface_camera);
+		if (mPictureMode != PICTURE_MODE_BLIND) {
+			getWindow().setFormat(PixelFormat.TRANSLUCENT);
+			requestWindowFeature(Window.FEATURE_NO_TITLE);
+			getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+					WindowManager.LayoutParams.FLAG_FULLSCREEN);
+			setContentView(R.layout.camera);
+			mSurfaceView = (SurfaceView) findViewById(R.id.surface_camera);
+		} else {
+			mSurfaceView = new SurfaceView(getApplicationContext());
+		}
 		mSurfaceHolder = mSurfaceView.getHolder();
-		mSurfaceHolder.addCallback(this);
 		mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-		if (Run.CameraManual) mSurfaceView.setOnClickListener(this);
+		switch (mPictureMode) {
+		case PICTURE_MODE_MANUAL:
+			mSurfaceView.setOnClickListener(this);
+			/** FALL THROUGH to add callback **/
+		case PICTURE_MODE_AUTO:
+			mSurfaceHolder.addCallback(this);
+			break;
+		case PICTURE_MODE_BLIND:
+			surfaceCreated(mSurfaceHolder);
+			surfaceChanged(mSurfaceHolder, 0, 0, 0);
+			break;
+		default:
+			Log.e(TAG, "Invalid picture mode " + mPictureMode);
+			break;
+		}
 	}
 
 	@Override
@@ -158,6 +195,16 @@ protected void onDestroy(){
 		}
 	};
 
+	Camera.AutoFocusCallback focusCallback = new Camera.AutoFocusCallback() {	
+		public void onAutoFocus(boolean success, Camera camera) {
+			try{
+				mCamera.takePicture(null, null, null, pngCallback);
+			} catch (Exception e){
+				Log.e(TAG, "Camera Exception " + e);
+			}
+		}
+	};
+
 	Camera.PictureCallback jpegCallback = new Camera.PictureCallback() {
 		// The callback is not currently being called
 		public void onPictureTaken(byte[] data, Camera camera) {
@@ -173,72 +220,75 @@ protected void onDestroy(){
 
 	private void savePicture(String ext, byte[] data) {
 		FileOutputStream outStream = null;
+		String fn = getTempFileName(ext);
 		try {
-			String fn = getTempFileName(ext);
 			outStream = new FileOutputStream(fn);
 			outStream.write(data);
 			outStream.close();
 //			Log.d(TAG, "onPictureTaken - wrote bytes: " + data.length);
-	        System.gc();
-	        BitmapFactory.Options BFO = new BitmapFactory.Options();
-	        BFO.inSampleSize = 4;
-	        Run.CameraBitmap = BitmapFactory.decodeFile(fn,BFO);           // Make the bit map from the file
 		} catch (Exception e) {
 		}
-		if (Run.CameraManual) mCamera.startPreview();
+		System.gc();
+		BitmapFactory.Options BFO = new BitmapFactory.Options();
+		BFO.inSampleSize = 4;
+		Run.CameraBitmap = BitmapFactory.decodeFile(fn,BFO);           // Make the bit map from the file
+		// if (Run.CameraManual) mCamera.startPreview();
 		Run.CameraDone = true;
 		finish();
 	}
 
-	@Override
-	protected void onResume() {
-//		Log.e(TAG, "onResume");
-		super.onResume();
-	}
-
-	@Override
-	protected void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-	}
-
-	@Override
-	protected void onStop() {
-//		Log.e(TAG, "onStop");
-//		Run.CameraDone = true;
-		super.onStop();
-	}
-
-	
 	public void surfaceCreated(SurfaceHolder holder) {
-//		Log.e(TAG, "surfaceCreated");
+//		Log.d(TAG, "surfaceCreated");
 
-		try {														//Run has previously determined SDK Level
-			if (Run.CameraNumber == -1 ) mCamera = Camera.open();   //If number = -1 then use level < 9 command
-			else mCamera = Camera.open(Run.CameraNumber);           //else use level >= 9 command
+		try {														// Run has previously determined SDK Level
+			if (mCameraNumber == -1 ) { mCamera = Camera.open(); }	// If number = -1 then use level < 9 command
+			else { mCamera = Camera.open(mCameraNumber); }			// else use level >= 9 command
 		}
-		catch (Exception e){										//If open fails, we are done.
+		catch (Exception e){										// If open fails, we are done.
 			Log.e(TAG, "Camera open error: " + e);
+			mCamera = null;
+		}
+		if (mCamera != null) {
+			if (!setParameters()) {
+				mCamera = null;
+			} else try {
+				mCamera.setPreviewDisplay(holder);
+				mCamera.startPreview();
+				mPreviewRunning = true;
+			} catch (Exception e) {
+				Log.e(TAG, "Camera start preview error : " + e);
+				try {
+					mCamera.stopPreview();
+				} catch (Exception e1) {
+					// ignore: the preview didn't get started
+				} finally {
+					mCamera = null;
+				}
+			}
+		}
+		if (mCamera == null) {
 			Run.CameraDone = true;
 			finish();
-			return;
 		}
-
 	}
-	
+
 	public void onClick(View arg0) {
 
-		if (Run.CameraManual)
-			try{
-				mCamera.takePicture(null, null, null, pngCallback);
+		if (mPictureMode == PICTURE_MODE_MANUAL) {
+			if (!mAutoFocus) {
+				try {
+					mCamera.takePicture(null, null, null, pngCallback);
+				} catch (Exception e) {
+					Log.e(TAG, "CameraManual Exception " + e);
+				}
+			} else {
+				mCamera.autoFocus(focusCallback);
 			}
-			catch (Exception e){
-				Log.e(TAG, "CameraManual Exception " + e);
-			}
-
+		}
 	}
 
 	public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
-//		Log.e(TAG, "surfaceChanged");
+//		Log.d(TAG, "surfaceChanged");
 		if (mCamera == null) {					// If no camera link then done
 			Log.e(TAG, "Surface changed. mCamera NULL ");
 			Run.CameraDone = true;
@@ -246,85 +296,122 @@ protected void onDestroy(){
 			return;
 		}
 
-		// XXX stopPreview() will crash if preview is not running
-		if (mPreviewRunning) {
-			mCamera.stopPreview();
-		}
-
-		Camera.Parameters p = mCamera.getParameters();
+		// If Auto shutter, take picture now.
 		
-		boolean back = true;
-		if (Run.CameraNumber != -1) {
-			Camera.CameraInfo CI = new Camera.CameraInfo();				   
-			Camera.getCameraInfo(Run.CameraNumber, CI);
-			if (CI.facing == CameraInfo.CAMERA_FACING_FRONT) 
-				back = false;
+		if (mPictureMode == PICTURE_MODE_AUTO || mPictureMode == PICTURE_MODE_BLIND) {
+			if (!mAutoFocus) {
+				try{
+					mCamera.takePicture(null, null, null, pngCallback);
+				} catch (Exception e){
+					Log.e(TAG, "CameraAuto Exception " + e);
+				}
+			} else {
+				mCamera.autoFocus(focusCallback);
 			}
-
-		if (back) {
-			if (Run.CameraFlashMode == 0) p.setFlashMode(Camera.Parameters.FLASH_MODE_AUTO);
-			if (Run.CameraFlashMode == 1) p.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
-			if (Run.CameraFlashMode == 2) p.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
 		}
-				
+	}
+
+	private boolean setParameters() {	
+		Camera.Parameters p = mCamera.getParameters();
+
+		String oldMode = p.getFlashMode();
+		String newMode;
+		switch (mNewFlashMode) {
+		case 0: newMode = Camera.Parameters.FLASH_MODE_AUTO;    break;
+		case 1: newMode = Camera.Parameters.FLASH_MODE_ON;      break;
+		case 2: newMode = Camera.Parameters.FLASH_MODE_OFF;     break;
+		case 3: newMode = Camera.Parameters.FLASH_MODE_TORCH;   break;	//Full Power/Flashlight/2013-07-25-16-42 gt
+		case 4: newMode = Camera.Parameters.FLASH_MODE_RED_EYE; break;	//Flashlight/2013-07-27-19-12 gt
+		default: newMode = ""; break;
+		}
+		List<String> supportedModes = p.getSupportedFlashModes();
+		if ((oldMode != null) && (supportedModes != null)) {
+			for (String mode : supportedModes) {
+				if (mode.equals(newMode)) {
+					p.setFlashMode(newMode);
+					break;
+				}
+			}
+		} else {														// "Supported Modes" not supported!
+			p.setFlashMode(newMode);									// Just do it. May not work, but doesn't seem to hurt.
+		}
+
+		oldMode = p.getFocusMode();
+		switch (mNewFocusMode) {											//Focus/2013-07-25-17-37 gt
+		case 0: newMode = Camera.Parameters.FOCUS_MODE_AUTO;     break;
+		case 1: newMode = Camera.Parameters.FOCUS_MODE_FIXED;    break;
+		case 2: newMode = Camera.Parameters.FOCUS_MODE_INFINITY; break;
+		case 3: newMode = Camera.Parameters.FOCUS_MODE_MACRO;    break;
+		// (4 CONTINUOUS_VIDEO permissions?)
+		//case 5: newMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO; break;
+		default: newMode = ""; break;
+		}
+		supportedModes = p.getSupportedFocusModes();
+		if ((oldMode != null) && (supportedModes != null)) {
+			for (String mode : supportedModes) {
+				if (mode.equals(newMode)) {
+					p.setFocusMode(newMode);
+					mAutoFocus = mode.equals(Camera.Parameters.FOCUS_MODE_AUTO);
+					break;
+				}
+			}
+		} else {														// "Supported Modes" not supported!
+			p.setFlashMode(newMode);									// Just do it. May not work, but doesn't seem to hurt.
+		}
+
+		// if (Run.CameraSceneModeBarcode == 1) p.setSceneMode(Camera.Parameters.SCENE_MODE_BARCODE);
+
 		// Use the largest preview size
 		
-		List<Camera.Size> previewSizes = p.getSupportedPreviewSizes();
-		Camera.Size cs1 = previewSizes.get(0);
-		p.setPreviewSize(cs1.width, cs1.height);
-			
-		
+		List<Camera.Size> sizes = p.getSupportedPreviewSizes();
+		Camera.Size cs = sizes.get(0);
+		for (Camera.Size ps : sizes) {	//2013-07-27-01-15 gt
+			if (cs.width < ps.width) {
+				cs = ps;
+			}
+		}
+		p.setPreviewSize(cs.width, cs.height);
+
 		// Use the largest picture size
 		
-		List<Camera.Size> list = p.getSupportedPictureSizes();
-		Camera.Size cs = list.get(0);
+		sizes = p.getSupportedPictureSizes();
+		cs = sizes.get(0);
+		for (Camera.Size ps : sizes) {	//2013-07-27-01-15 gt
+			if (cs.width < ps.width) {
+				cs = ps;
+			}
+		}
 		p.setPictureSize(cs.width, cs.height);
 
-		
 		// Now set the parameters
 		
 		try {
 			mCamera.setParameters(p);
-
-			mCamera.setPreviewDisplay(holder);
 		} catch (Exception e) {
 			Log.e(TAG, "Camera parameter set error : " + e);
 			Run.CameraDone = true;
 			finish();
-			return;
+			return false;
 
 		}
-		
-		try{
-			mCamera.startPreview();
-		} catch (Exception e) {
-			Log.e(TAG, "Camera start preview error : " + e);
-			Run.CameraDone = true;
-			finish();
-			return;
-		}
-		
-		mPreviewRunning = true;
-		
-		// If Auto shutter, take picture now.
-		
-		if (Run.CameraAuto)
-			try{
-				mCamera.takePicture(null, null, null, pngCallback);
-			}
-			catch (Exception e){
-				Log.d(TAG, "CameraAuto Exception " + e);
-
-			}
+		return true;
 	}
 
 	public void surfaceDestroyed(SurfaceHolder holder) {
-//		Log.e(TAG, "surfaceDestroyed");
-		mCamera.stopPreview();
-		mPreviewRunning = false;
-		mCamera.release();
+//		Log.d(TAG, "surfaceDestroyed");
+		if (mPreviewRunning) {
+			if (mCamera != null) { mCamera.stopPreview(); }
+			mPreviewRunning = false;
+		}
+		if (mAutoFocus) {
+			if (mCamera != null) {mCamera.cancelAutoFocus(); }
+			mAutoFocus = false;
+		}
+		if (mCamera != null) {
+			mCamera.release();
+			mCamera = null;
+		}
 	}
-
 
 }
 
