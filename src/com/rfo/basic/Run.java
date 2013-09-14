@@ -7883,6 +7883,7 @@ private boolean doUserFunction(){
 	private boolean executeFILE_SIZE(){
 		if (!getNVar()) { return false; }					// get the var to put the size value into
 		int SaveValueIndex = theValueIndex;
+		double size = 0;
 
 		if (!isNext(',')) { return false; }
 		if (!getStringArg()) { return false; }				// get the file name
@@ -7892,10 +7893,22 @@ private boolean doUserFunction(){
 		if (!checkSDCARD('r')) { return false; }
 
 		File file = new File(Basic.getDataPath(fileName));
-		if (!file.exists()) {								// error if the file does not exist
-			return RunTimeError(fileName + " not found");
+		if (!file.exists()) {								// the file does not exist
+			if (Basic.isAPK) {								// we are in APK -> try to get it from raw resources
+				int resID = getRawResourceID(fileName);
+				if (resID == 0) { return RunTimeError(fileName + " not found"); }
+				try {
+					InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+					size = inputStream.available();
+				} catch (Exception e) {
+					return RunTimeError(e);
+				}
+			} else {													// standard BASIC! -> error
+				return RunTimeError(fileName + " not found");
+			}
+		} else {														// the file exists
+			size = file.length();
 		}
-		double size = file.length();
 		NumericVarValues.set(SaveValueIndex, size);			// Put the file size into the var
 
 		return true;
@@ -7997,7 +8010,7 @@ private boolean doUserFunction(){
 			return true;
 		} else {													// file does not exist
 			if (Basic.isAPK) {										// if not standard BASIC! then is user APK
-				int resID = getRawResourceID(fileName);				// try to load the file from a raw resource
+				int resID = getRawResourceID(theFileName);				// try to load the file from a raw resource
 				if (resID == 0) { return false; }
 				try {
 					InputStream inputStream = BasicContext.getResources().openRawResource(resID);
