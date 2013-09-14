@@ -7982,18 +7982,39 @@ private boolean doUserFunction(){
 		IOException ex = null;
 
 		File file = new File(Basic.getDataPath(theFileName));		// Add the filename to the base path
-		try {														// Open the reader for the SD Card
-			FileInputStream fis = new FileInputStream(file);
-			bis = new BufferedInputStream(fis);
-			result = grabStream(bis, textFlag);
-		} catch (IOException e) {
-			ex = e;
-		} finally {
-			ex = closeStream(bis, ex);
-			if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
+		if (file.exists()) {
+			try {														// Open the reader for the SD Card
+				FileInputStream fis = new FileInputStream(file);
+				bis = new BufferedInputStream(fis);
+				result = grabStream(bis, textFlag);
+			} catch (IOException e) {
+				ex = e;
+			} finally {
+				ex = closeStream(bis, ex);
+				if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
+			}
+			StringVarValues.set(saveVarIndex, result);
+			return true;
+		} else {													// file does not exist
+			if (Basic.isAPK) {										// if not standard BASIC! then is user APK
+				int resID = getRawResourceID(fileName);				// try to load the file from a raw resource
+				if (resID == 0) { return false; }
+				try {
+					InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+					bis = new BufferedInputStream(inputStream, 8192);
+					result = grabStream(bis, textFlag);
+				} catch (IOException e) {
+					ex = e;
+				} finally {
+					ex = closeStream(bis, ex);
+					if (ex != null) { return RunTimeError(ex); }
+				}
+				StringVarValues.set(saveVarIndex, result);
+				return true;
+			} else {												// standard BASIC!
+				return RunTimeError(ex);
+			}
 		}
-		StringVarValues.set(saveVarIndex, result);
-		return true;
 	}
 
 	private boolean executeGRABURL(){
