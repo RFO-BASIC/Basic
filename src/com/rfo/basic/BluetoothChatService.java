@@ -503,7 +503,9 @@ public class BluetoothChatService {
                 }
                 // Send a copy of the obtained bytes to the UI Activity
                 if (bytes > 0) {
-                    mHandler.obtainMessage(Run.MESSAGE_READ, bytes, -1, Arrays.copyOf(buffer, bytes))
+                    byte[] bfrcopy = new byte[bytes];
+                    System.arraycopy(buffer, 0, bfrcopy, 0, bytes);
+                    mHandler.obtainMessage(Run.MESSAGE_READ, bytes, -1, bfrcopy)
                             .sendToTarget();
                 }
             }

@@ -70,7 +70,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -138,7 +137,6 @@ import android.media.SoundPool;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.Vibrator;
@@ -906,7 +904,7 @@ public class Run extends ListActivity {
     	 "bitmap.drawinto.end", "bitmap.draw",
     	 "get.bmpixel", "get.value", "set.antialias",
     	 "get.textbounds", "text.typeface", "ongrtouch.resume",
-    	 "camera.select", " ", "getdl"					// placeholder for "camera.blindshoot"
+    	 "camera.select", " ", "getdl", "point"			// placeholder for "camera.blindshoot"
     
     };
 
@@ -975,6 +973,7 @@ public class Run extends ListActivity {
     public static final int gr_camera_select = 62;
     public static final int gr_camera_blindshoot = 63;
     public static final int gr_getdl = 64;
+    public static final int gr_point = 65;
     
     public static final int gr_none = 98;
     
@@ -1309,13 +1308,13 @@ public class Run extends ListActivity {
 
 	// ***************************************  Bluetooth  ********************************************
 	
-    // Message types sent from the BluetoothChatService Handler
+    // Message types sent from the BluetoothChatService
     public static final int MESSAGE_STATE_CHANGE = MESSAGE_BT_GROUP + 1;
     public static final int MESSAGE_READ         = MESSAGE_BT_GROUP + 2;
     public static final int MESSAGE_WRITE        = MESSAGE_BT_GROUP + 3;
     public static final int MESSAGE_DEVICE_NAME  = MESSAGE_BT_GROUP + 4;
 
-    // Key names received from the BluetoothChatService Handler
+    // Key names received from the BluetoothChatService
     public static final String DEVICE_NAME = "device_name";
     public static final String TOAST = "toast";
 
@@ -2396,12 +2395,14 @@ public void cleanUp(){
 // The following methods run in the foreground. The are called by asynchronous user events
 // caused by the user pressing a key.
 
+@Override
 public boolean onTouchEvent(MotionEvent event){
 	super.onTouchEvent(event);
 	int action = event.getAction();  // Get action type
 	return false;
 }
 
+	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)  {						// The user hit the back key
 		Log.v(Run.LOGTAG, " " + Run.CLASSTAG + "onKeyDown" + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
@@ -2435,6 +2436,7 @@ public boolean onTouchEvent(MotionEvent event){
 	}
 	
 
+	@Override
 	public boolean onKeyUp( int keyCode, KeyEvent event)  {
 		Log.v(Run.LOGTAG, " " + Run.CLASSTAG + "onKeyUp" + keyCode);
 
@@ -2559,9 +2561,9 @@ protected void onResume() {
 //	  if (WaitForInput) theAlertDialog = doInputDialog().show(); maybe???
 	  super.onResume();
 
-}    
-@Override
+}
 
+@Override
 protected void onPause() {	
 	// The Android OS wants me to dismiss dialog while paused so I will
 	
@@ -2584,12 +2586,14 @@ protected void onPause() {
 	super.onPause();
 }
 
+@Override
 protected void onStart(){
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Start  " );
 //	InitVars();
 	super.onStart();
 }
 
+@Override
 protected void onStop(){
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " onStop " + kbShown);
 	System.gc();
@@ -2602,6 +2606,7 @@ protected void onStop(){
 	super.onStop();
 }
 
+@Override
 protected void onRestart(){
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " onRestart ");
 
@@ -2609,6 +2614,7 @@ protected void onRestart(){
 
 }
 
+@Override
 protected void onDestroy(){
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Destroy  " );
 
@@ -2641,6 +2647,7 @@ protected void onDestroy(){
 	super.onDestroy();
 }
 
+@Override
 public void onLowMemory(){
 	Show("Warning: Low Memory");
 }
@@ -6018,10 +6025,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			    	return true;
 			    }
 			    
-			    Iterator it = set.iterator();
-			    
-			    for (int i=0; i<set.size(); ++i){
-			    	String s = (String) it.next();
+			    for (String s : set) {
 			    	if (!s.startsWith("@@@N.")) {
 			    		boolean isNumeric = b.getBoolean("@@@N."+ s);
 			    		if (isNumeric) {
@@ -6572,10 +6576,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 						return msg;
 			    }
 			    
-			    Iterator it = set.iterator();
-			    
-			    for (int i=0; i<set.size(); ++i){
-			    	String s = (String) it.next();
+			    for (String s : set) {
 			    	if (!s.startsWith("@@@N.")) {
 			    		boolean isNumeric = b.getBoolean("@@@N."+ s);
 			    		if (isNumeric) {
@@ -9118,6 +9119,9 @@ private boolean doUserFunction(){
    	    	  	case gr_color:
    	    	  		if (!execute_gr_color()){return false;}
    	    	  		break;
+   	    	  	case gr_point:
+   	    	  		if (!execute_gr_point()){return false;}
+   	    	  		break;
    	    	  	case gr_line:
    	    	  		if (!execute_gr_line()){return false;}
    	    	  		break;
@@ -9676,7 +9680,35 @@ private boolean doUserFunction(){
 			
 		  return true;
 	  }
-	  	  
+
+	private boolean execute_gr_point(){
+		Bundle aBundle = new Bundle();
+		aBundle.putInt("type", GR.dPoint);
+		aBundle.putInt("hide", 0);
+
+		if (!getNVar()) return false;							// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;				// Get x
+		int x = EvalNumericExpressionValue.intValue();
+		aBundle.putInt("x", x);
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;				// Get y
+		int y = EvalNumericExpressionValue.intValue();
+		aBundle.putInt("y", y);
+
+		if (!checkEOL()) return false;
+
+		int p = PaintList.size();								// Set the most current paint as the paint
+		aBundle.putInt("paint", p-1);							// paint for this point
+		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
+
+		DisplayListAdd(aBundle);								// Add the line to the display list
+		return true;
+	}
+
 	  private boolean execute_gr_line(){
 		  Bundle aBundle = new Bundle();
 		  aBundle.putInt("type", GR.dLine);
@@ -12949,7 +12981,7 @@ private boolean doUserFunction(){
 			if (!checkEOL()) return false;
 
 			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
-			if (getIndex < 0 || getIndex >= thisStringList.size()){		
+			if (getIndex < 0 || getIndex > thisStringList.size()) {		// if index == size element goes at end of list
 				RunTimeError("Index out of bounds");
 				return false;
 			}
@@ -12964,7 +12996,7 @@ private boolean doUserFunction(){
 			if (!checkEOL()) return false;
 
 			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
-			if (getIndex < 0 || getIndex >= thisNumericList.size()){
+			if (getIndex < 0 || getIndex > thisNumericList.size()) {	// if index == size element goes at end of list
 				RunTimeError("Index out of bounds");
 				return false;
 			}
@@ -13238,15 +13270,13 @@ private boolean doUserFunction(){
 		 theListsType.add(list_is_string);
 		 NumericVarValues.set(theValueIndex, (double) theIndex);
 
-	    Bundle b = theBundles.get(bundleIndex);
-	    Set<String> set= b.keySet();
-	    
-	    Iterator it = set.iterator();
-	    for (int i=0; i<set.size(); ++i){
-	    	String s = (String) it.next();
-	    	if (!s.startsWith("@@@N."))theStringList.add(s);
-	    }
-	    
+		Bundle b = theBundles.get(bundleIndex);
+		Set<String> set= b.keySet();
+
+		for (String s : set) {
+			if (!s.startsWith("@@@N.")) { theStringList.add(s); }
+		}
+
 		return true;
 	}
 	

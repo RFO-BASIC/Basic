@@ -93,6 +93,7 @@ public class GR extends Activity {
     public static final int dsetPixels = 12;
     public static final int dClip = 13;
     public static final int dPoly = 14;
+    public static final int dPoint = 15;
 
     
 //  Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " String Var Value =  ");
@@ -611,6 +612,11 @@ public class GR extends Activity {
            				y1= b.getInt("y1");
            				y2 =b.getInt("y2");
            				canvas.drawLine(x1,y1,x2,y2, thePaint);
+           				break;
+           			case dPoint:
+           				x1= b.getInt("x");
+           				y1 =b.getInt("y");
+           				canvas.drawPoint(x1,y1, thePaint);
            				break;
            			case dsetPixels:
            				x1=b.getInt("x");
