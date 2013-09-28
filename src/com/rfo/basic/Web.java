@@ -42,15 +42,14 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.JsResult;
 
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.Process;
 
 import android.webkit.DownloadListener;
@@ -61,9 +60,8 @@ public class Web extends Activity {
 	//Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
 	WebView engine;									
-	public static theWebView aWebView = null;
-	public static addData doAddData;
-	public static Handler theWebHandler;
+	public static TheWebView aWebView = null;
+	public static AddData doAddData;
 	private static final String LOGTAG = "Web";
 	private static final String CLASSTAG = Web.class.getSimpleName();
 	
@@ -92,7 +90,7 @@ public class Web extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
        super.onCreate(savedInstanceState);
        setContentView(R.layout.web);
-       doAddData = new addData();
+       doAddData = new AddData();
        
        View v = findViewById(R.id.web_engine);
        
@@ -115,11 +113,11 @@ public class Web extends Activity {
        webSettings.setGeolocationEnabled(true);
        webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
       
-       engine.addJavascriptInterface(new JavaScriptInterface(this), "Android");
+       engine.addJavascriptInterface(new JavaScriptInterface(), "Android");
               
        engine.setWebViewClient(new MyWebViewClient());
        
-       aWebView = new theWebView(this);
+       aWebView = new TheWebView(this);
        
        engine.setWebChromeClient(new WebChromeClient() {
     		@Override
@@ -201,9 +199,9 @@ public class Web extends Activity {
 
     // **************************  Methods called from Run.java ****************************
     
-    public class theWebView  {
+    public class TheWebView  {
     	
-    	public theWebView(Context context){
+    	public TheWebView(Context context){
     	}
     	
     	public void webLoadUrl(String URL){
@@ -243,8 +241,8 @@ public class Web extends Activity {
     		if (engine != null) engine.clearHistory();
     	}
     	
-    	public void webPost(String URL){
-    		engine.postUrl(URL, EncodingUtils.getBytes(Run.htmlPostString, "BASE64"));
+    	public void webPost(String URL, String htmlPostString){
+    		engine.postUrl(URL, EncodingUtils.getBytes(htmlPostString, "BASE64"));
     	}
 
 
@@ -253,13 +251,8 @@ public class Web extends Activity {
     //******************************** Intercept dataLink calls ***********************
     
     public class JavaScriptInterface {
-        Context mContext;
 
-        /** Instantiate the interface and set the context */
-        JavaScriptInterface(Context c) {
-            mContext = c;
-        }
-
+        @JavascriptInterface
         public void dataLink(String data) {
         	if (data.equals("STT")) {
         		startVoiceRecognitionActivity();
@@ -297,7 +290,7 @@ public class Web extends Activity {
     
     //**************************  Local method to put data into the Run read data link queue
     
-    public class addData{
+    public class AddData{
     	public void addData(String type, String data){
     		String theData = type + ":" + data;
     		if(Run.htmlData_Buffer != null)

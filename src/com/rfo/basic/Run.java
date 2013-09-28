@@ -1443,12 +1443,21 @@ public class Run extends ListActivity {
     public static final int html_clear_history = 8;
     public static final int html_post = 9;
     
+    // Message types for the HTML commands
+    private static final int MESSAGE_HTML_OPEN     = MESSAGE_HTML_GROUP + 1;
+    private static final int MESSAGE_GO_BACK       = MESSAGE_HTML_GROUP + 2;
+    private static final int MESSAGE_GO_FORWARD    = MESSAGE_HTML_GROUP + 3;
+    private static final int MESSAGE_CLEAR_CACHE   = MESSAGE_HTML_GROUP + 4;
+    private static final int MESSAGE_CLEAR_HISTORY = MESSAGE_HTML_GROUP + 5;
+    private static final int MESSAGE_LOAD_URL      = MESSAGE_HTML_GROUP + 6;
+    private static final int MESSAGE_LOAD_STRING   = MESSAGE_HTML_GROUP + 7;
+    private static final int MESSAGE_POST          = MESSAGE_HTML_GROUP + 8;
+
     Intent htmlIntent;
     public static ArrayList <String> htmlData_Buffer;
     public boolean htmlOpening;
     public String htmlCmd;
-    public static String htmlPostString;
-    
+
     public static boolean Notified;
    
     //********************* SMS Receive Vars ***********************************
@@ -1805,17 +1814,23 @@ public class Background extends Thread {
 		return GRFront ? GR.context : this;
 	}
 
-	private void sendMessage(int what) {				// used by Background to send message to mHandler
+	// These sendMessage methods are used by Background to send messages to mHandler.
+	// For convenience, there are several combinations of message parameters provided.
+
+	private void sendMessage(int what) {
 		mHandler.obtainMessage(what).sendToTarget();
 	}
 
-	private void sendMessage(int what, String text) {	// used by Background to send message to mHandler
-		mHandler.obtainMessage(what, text).sendToTarget();
+	private void sendMessage(int what, Object obj) {			// Use this to send a String or other Object
+		mHandler.obtainMessage(what, obj).sendToTarget();
 	}
 
-	// This Handler is in the UI (foreground) Task part of Run. It gets control when the background
-	// task sends it a Message. Most of the messages carry strings that are just text for the output
-	// screen. A few are signals. Signals start with "@@"
+	private void sendMessage(int what, int arg1, int arg2) {	// Use this to send one or two int arguments
+		mHandler.obtainMessage(what, arg1, arg2).sendToTarget();
+	}
+
+	// This Handler is in the UI (foreground) Task part of Run.
+	// It gets control when the background task sends a Message.
 
 	private final Handler mHandler = new Handler() {
 		@Override
@@ -1852,6 +1867,8 @@ public class Background extends Thread {
 				handleBTMessage(msg);								// handle BluetoothMessages
 				break;
 			case MESSAGE_HTML_GROUP:
+				handleHtmlMessage(msg);								// handle HTML Messages
+				break;
 			case MESSAGE_DEBUG_GROUP:
 			default:												// unrecognized Message
 				break;												// ignore it
@@ -1873,10 +1890,6 @@ public class Background extends Thread {
         			char c = str[i].charAt(3);
         			String s = output.get(output.size()-1) + c;
         			output.set(output.size()-1, s);
-        		}else if (str[i].startsWith("@@C")){
-        			doHTMLCommand(str[i].substring(3));
-        		}else if (str[i].startsWith("@@D")){
-        			startVoiceRecognitionActivity();
         		}else if (str[i].startsWith("@@E")){					// Input dialog signal
         			doDebugDialog();
         		}else if (str[i].startsWith("@@F")){					// Debug step completed
@@ -1897,30 +1910,6 @@ public class Background extends Thread {
 //			Log.d(LOGTAG, "onProgressUpdate: print <" + str[i] + ">");
 		} // for each string
 	} // onProgressUpdate()
-
-        public void doHTMLCommand(String cmd){			// Executes HTML commands from the UI thread.
-        	if (cmd.startsWith("OP") && htmlIntent != null){
-  	          startActivityForResult(htmlIntent, BASIC_GENERAL_INTENT);		   
-        	}else if (Web.aWebView == null){
-        		// Do nothing
-        	}else if (cmd.startsWith("GB")){
-        		Web.aWebView.goBack();
-        	}else if (cmd.startsWith("GF")){
-        		Web.aWebView.goForward();
-        	}else if (cmd.startsWith("CC")){
-        		Web.aWebView.clearCache();
-        	}else if (cmd.startsWith("CH")){
-        		Web.aWebView.clearHistory();
-        	}else if (cmd.startsWith("LU")){
-        		Web.aWebView.webLoadUrl(cmd.substring(2));
-        	}else if (cmd.startsWith("LS")){
-        		Web.aWebView.webLoadString(cmd.substring(2));
-        	}else if (cmd.startsWith("PS")){
-        		Web.aWebView.webPost(cmd.substring(2));
-        	}
-        	
-        }
-
 
 // *********************Run Entry Point. Called from Editor or AutoRun *******************
 
@@ -6007,10 +5996,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  if (!Debug) return true;
 			  
 				if (!evalNumericExpression()) return false;							// Get the Bundle pointer
+				if (!checkEOL()) return false;
 				int bundleIndex = EvalNumericExpressionValue.intValue();
 				if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-					RunTimeError("Invalid Bundle Pointer");
-					return false;
+					return RunTimeError("Invalid Bundle Pointer");
 				}
 				
 			    Bundle b = theBundles.get(bundleIndex);
@@ -6040,7 +6029,10 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			    PrintShow("....");
 			    
 			  return true;
-		  }//=====================DEBUGGER DIALOG STUFF========================
+		  }
+
+		//=====================DEBUGGER DIALOG STUFF========================
+
 		  private boolean executeDEBUG_WATCH_CLEAR(){
 			  if(!Debug) return true;
 				WatchVarIndex.clear();
@@ -15841,8 +15833,7 @@ private boolean doUserFunction(){
 	  
 	  private boolean execute_html_open(){
 		  if (Web.aWebView != null) {
-			  RunTimeError("HTML previously open and not closed");
-			  return false;
+			return RunTimeError("HTML previously open and not closed");
 		  }
 		  
 		  ShowStatusBar = 0;
@@ -15854,14 +15845,14 @@ private boolean doUserFunction(){
           htmlIntent= new Intent(this, Web.class);         // Intent variable used to tell if opened
           Web.aWebView = null;							   // Will be set int Web.java
           htmlData_Buffer = new ArrayList<String>();	   // Initialize the datalink buffer
-          PrintShow("@@COP");									// Start Web View in UI thread.
+		sendMessage(MESSAGE_HTML_OPEN);						// Start Web View in UI thread.
           htmlOpening = true;
           
           return true;
 	  }
 	  
       private boolean execute_html_load_url(){              // Load an internet url
-          if (!evalStringExpression()) return false;
+		if (!getStringArg() || !checkEOL()) return false;
 
           String urlString = StringConstant;
           String protocolName = urlString.substring(0,4);
@@ -15873,112 +15864,133 @@ private boolean doUserFunction(){
               }
           }
 //        Web.aWebView.webLoadUrl(urlString);
-          PrintShow("@@CLU" + urlString);
+		sendMessage(MESSAGE_LOAD_URL, urlString);
           return true;
       }
-	  
-	  private boolean execute_html_load_string(){			// Load an html string
-		  if (!evalStringExpression()) return false;
-//		  Web.aWebView.webLoadString(StringConstant);
-		  PrintShow("@@CLS" + StringConstant);
-		  return true;
-	  }
-	  
-	  private boolean execute_html_get_datalink(){			// Gets a data sring from datalink queue
-		  
-		  if (!getSVar()) return false;						// The string return variable
-		  String data = "";
-		  
-		  if (htmlData_Buffer != null)
-			  if (htmlData_Buffer.size()>0 ) {					// If the buffer is not empty
-				  data = htmlData_Buffer.get(0);				// get the oldest entry
-				  htmlData_Buffer.remove(0);					// and remove it from the buffer
-			  }
-		  
-	      StringVarValues.set(theValueIndex, data);			// return the data to the user
-	      
-	      if (Web.aWebView == null) return true;			// if already closed, return now
-	      													// else check to see if we should close
-	      
-//	      if (data.startsWith("FOR:")) return execute_html_close();   // if Form, close the html
-	      if (data.startsWith("ERR:")) return execute_html_close();   // if error, close the html
-		  return true;
-	  }
-	  
-	  private boolean execute_html_go_back(){
-//		  Web.aWebView.goBack();
-		  PrintShow("@@CGB");
-		  return true;
-	  }
-	  
-	  private boolean execute_html_go_forward(){
-//		  Web.aWebView.goForward();
-		  PrintShow("@@CGF");
-		  return true;
-	  }
-	  
-	  private boolean execute_html_clear_cache(){
-//		  Web.aWebView.clearCache();
-		  PrintShow("@@CCC");
-		  return true;
-	  }
-	  
-	  private boolean execute_html_clear_history(){
-//		  Web.aWebView.clearHistory();
-		  PrintShow("@@CCH");
-		  return true;
-	  }
-	  
-	  private boolean execute_html_close(){							// Close to the html
+
+	private boolean execute_html_load_string(){			// Load an html string
+		if (!getStringArg() || !checkEOL()) return false;
+//		Web.aWebView.webLoadString(StringConstant);
+		sendMessage(MESSAGE_LOAD_STRING, StringConstant);
+		return true;
+	}
+
+	private boolean execute_html_get_datalink(){			// Gets a data sring from datalink queue
+
+		if (!getSVar()) return false;						// The string return variable
+		if (!checkEOL()) return false;
+
+		String data = "";
+		if (htmlData_Buffer != null)
+			if (htmlData_Buffer.size() > 0)					// If the buffer is not empty
+				data = htmlData_Buffer.remove(0);			// get the oldest entry and remove it from the buffer
+
+		StringVarValues.set(theValueIndex, data);			// return the data to the user
+
+		if (Web.aWebView == null) return true;				// if already closed, return now
+															// else check to see if we should close
+//		if (data.startsWith("FOR:")) return execute_html_close();	// if Form, close the html
+		if (data.startsWith("ERR:")) return execute_html_close();	// if error, close the html
+
+		return true;
+	}
+
+	private boolean execute_html_go_back(){
+		if (!checkEOL()) return false;
+//		Web.aWebView.goBack();
+		sendMessage(MESSAGE_GO_BACK);
+		return true;
+	}
+
+	private boolean execute_html_go_forward(){
+		if (!checkEOL()) return false;
+//		Web.aWebView.goForward();
+		sendMessage(MESSAGE_GO_FORWARD);
+		return true;
+	}
+
+	private boolean execute_html_clear_cache(){
+		if (!checkEOL()) return false;
+//		Web.aWebView.clearCache();
+		sendMessage(MESSAGE_CLEAR_CACHE);
+		return true;
+	}
+
+	private boolean execute_html_clear_history(){
+		if (!checkEOL()) return false;
+//		Web.aWebView.clearHistory();
+		sendMessage(MESSAGE_CLEAR_HISTORY);
+		return true;
+	}
+
+	  private boolean execute_html_close(){							// Close the html
+		  if (!checkEOL()) return false;
 		  if (Web.aWebView != null) Web.aWebView.webClose();        // if it is open
 		  while (Web.aWebView != null) Thread.yield();              // wait for the close signal
 		  htmlIntent = null;										// Indicate not open
 		  return true;
 	  }
-	  
-	  private boolean execute_html_post(){
-		  if (!evalStringExpression()) return false;
-		  String url = StringConstant;
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
-		  ++LineIndex;
-		  
-		   if (!evalNumericExpression())return false;
-		   int theListIndex = EvalNumericExpressionValue.intValue();
-		   if (theListIndex <1 || theListIndex>= theLists.size()){
-			   RunTimeError("Invalid list pointer");
-			   return false;
-		   }
-		   
-		   if (!checkEOL()) return false;
 
-		   if (theListsType.get(theListIndex) == list_is_numeric){
-			   RunTimeError("List must be of string type.");
-			   return false;
-		   }
-		   
-		   List<String> thisList = theLists.get(theListIndex);
-		   
-		   int r = thisList.size() % 2;
-		   if (r !=0 ) {
-			   RunTimeError("List must have even number of elements");
-			   return false;
-		   }
-		   
-		   htmlPostString = "";
-	       for (int i = 0; i <thisList.size(); ++i){
-	    	   htmlPostString = htmlPostString + thisList.get(i) + "=";
-	    	   ++i;
-	    	   htmlPostString = htmlPostString + thisList.get(i) + "&";
-	       }
-	       htmlPostString.substring(0, htmlPostString.length()-2);
-	       		   
-	       PrintShow("@@CPS" + url);
-		   
+	private boolean execute_html_post(){
+		if (!getStringArg()) return false;
+		String url = StringConstant;
 
-		  
-		  return true;
+		if (!isNext(',')) return false; 
+		if (!evalNumericExpression())return false;
+		if (!checkEOL()) return false;
 
-	  }
+		int theListIndex = EvalNumericExpressionValue.intValue();
+		if (theListIndex < 1 || theListIndex >= theLists.size()) {
+			return RunTimeError("Invalid list pointer");
+		}
+		if (theListsType.get(theListIndex) == list_is_numeric){
+			return RunTimeError("List must be of string type.");
+		}
+		List<String> thisList = theLists.get(theListIndex);
+		int r = thisList.size() % 2;
+		if (r != 0) {
+			return RunTimeError("List must have even number of elements");
+		}
+
+		StringBuilder sb = new StringBuilder();
+		int i = 0;
+		while (i < thisList.size()) {
+			sb.append(thisList.get(i++)).append('=');
+			sb.append(thisList.get(i++)).append('&');
+		}
+		String[] params = { url, sb.substring(0, sb.length() - 1) };
+
+		sendMessage(MESSAGE_POST, params);
+		return true;
+	}
+
+	public boolean handleHtmlMessage(Message msg) {
+		if ((msg.what == MESSAGE_HTML_OPEN) && (htmlIntent != null)) {
+			startActivityForResult(htmlIntent, BASIC_GENERAL_INTENT);
+		} else if (Web.aWebView != null) {
+			switch (msg.what) {
+			case MESSAGE_GO_BACK:		Web.aWebView.goBack();		break;
+			case MESSAGE_GO_FORWARD:	Web.aWebView.goForward();	break;
+			case MESSAGE_CLEAR_CACHE:	Web.aWebView.clearCache();	break;
+			case MESSAGE_CLEAR_HISTORY:	Web.aWebView.clearHistory();break;
+			case MESSAGE_LOAD_URL:
+				String url = (String)msg.obj;
+				Web.aWebView.webLoadUrl(url);
+				break;
+			case MESSAGE_LOAD_STRING:
+				String string = (String)msg.obj;
+				Web.aWebView.webLoadString(string);
+				break;
+			case MESSAGE_POST:
+				String[] params = (String[])msg.obj;
+				Web.aWebView.webPost(params[0], params[1]);		// URL and data for "POST" request
+				break;
+			default:
+				return false;									// message not recognized
+			}
+		}
+		return true;											// message handled
+	}
 
 	//************************************** Run Command ************************************
 
@@ -16119,7 +16131,6 @@ private boolean doUserFunction(){
 	        
 	        sttListening = true;
 	        sttDone = false;
-//	        Show("@@D");
 	        if (GRopen) GR.doSTT = true;
 	        else startVoiceRecognitionActivity();
 	        return true;
