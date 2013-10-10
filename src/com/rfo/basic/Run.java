@@ -203,19 +203,24 @@ public class Run extends ListActivity {
 
 	// ********************* Message types for the Handler *********************
 																// message numbers < 256 are in "default" group 0
-	public static final int MESSAGE_INPUT_DIALOG     = 1;		// for INPUT command
-	public static final int MESSAGE_TOAST            = 2;		// for POPUP command
-	public static final int MESSAGE_CLEAR_SCREEN     = 3;		// for CLS command
-	public static final int MESSAGE_CONSOLE_TITLE    = 4;		// for CONSOLE.TITLE command
-	public static final int MESSAGE_PUBLISH_PROGRESS = 20;
+	private static final int MESSAGE_INPUT_DIALOG      = 1;		// for INPUT command
+	private static final int MESSAGE_TOAST             = 2;		// for POPUP command
+	private static final int MESSAGE_CONSOLE_WRITE     = 3;		// write to the console
+	private static final int MESSAGE_CLEAR_SCREEN      = 4;		// for CLS command
+	private static final int MESSAGE_CONSOLE_TITLE     = 5;		// for CONSOLE.TITLE command
+	private static final int MESSAGE_CONSOLE_LINE_NEW  = 6;		// for CONSOLE.LINE.NEW command
+	private static final int MESSAGE_CONSOLE_LINE_CHAR = 7;		// for CONSOLE.LINE.CHAR command
+	private static final int MESSAGE_START_GPS         = 8;		// for GPS.OPEN command
+	private static final int MESSAGE_CHECKPOINT        = 9;		// for checkpointMessage() method
+	private static final int MESSAGE_PUBLISH_PROGRESS  = 20;
 
-	public static final int MESSAGE_GROUP_MASK       = 0x0F00;	// groups can be 0x1 through 0xF
+	private static final int MESSAGE_GROUP_MASK        = 0x0F00;// groups can be 0x1 through 0xF
 
-	public static final int MESSAGE_DEFAULT_GROUP    = 0x0000;
-	public static final int MESSAGE_BT_GROUP         = 0x0100;	// add this offset to messages from BlueTooth commands
-	public static final int MESSAGE_HTML_GROUP       = 0x0200;	// add this offset to messages from HTML commands
+	private static final int MESSAGE_DEFAULT_GROUP     = 0x0000;
+	private static final int MESSAGE_BT_GROUP          = 0x0100;// add this offset to messages from BlueTooth commands
+	private static final int MESSAGE_HTML_GROUP        = 0x0200;// add this offset to messages from HTML commands
 
-	public static final int MESSAGE_DEBUG_GROUP      = 0x0F00;	// add this offset to messages from debug commands
+	private static final int MESSAGE_DEBUG_GROUP       = 0x0F00;// add this offset to messages from debug commands
 
 	// ***************************** Command class *****************************
 
@@ -669,6 +674,9 @@ public class Run extends ListActivity {
     private boolean ProgressPending = false;
 	
 	// debugger dialog and ui thread vars
+	private static final int MESSAGE_DEBUG_DIALOG = MESSAGE_DEBUG_GROUP + 1;
+	private static final int MESSAGE_DEBUG_SWAP   = MESSAGE_DEBUG_GROUP + 2;
+	private static final int MESSAGE_DEBUG_SELECT = MESSAGE_DEBUG_GROUP + 3;
 	private boolean WaitForResume = false ; 
 	private boolean DebuggerStep = false;
 	private boolean DebuggerHalt = false;
@@ -1732,50 +1740,46 @@ public class Background extends Thread {
         		TempOutputIndex = 0;
 				
 				// Debugger control
-        		if (WaitForResume||DebuggerStep){
+				// Michael/paulon0n also defined a @@J for "Alert dialog var not set called". TODO?
+				while (WaitForResume) {
+					Thread.yield();
+					if (DebuggerHalt) {
+						publishProgress("Execution halted");
+						Stop = true;
+					}
+					if (DebuggerStep) {
 						DebuggerStep = false;
-					do{
-						try{Thread.sleep(0);} catch(InterruptedException e){} // dont sleep
-						if (DebuggerHalt){
-							publishProgress("@@G");
-							Stop =true;
-							}
-						if (DebuggerStep){
-							publishProgress("@@F");
-						}
-						
-						if (dbSwap){
-									publishProgress("@@H");
-									WaitForSwap =true;
-									do{
-										try{Thread.sleep(0);} catch(InterruptedException e){} // dont sleep
-										/*
-										if(dbSelect){
-											publishProgress("@@I");
-											WaitForSelect = true;
-											dbSelect = false;
-							
-											do{
-												try{Thread.sleep(0);} catch(InterruptedException e){} // dont sleep
-											}while(WaitForSelect);
-										}
-										*/
-									}while(WaitForSwap);
-					  			publishProgress("@@E");
-									dbSwap = false;
+						publishProgress("@@E");						// signal UI to run debugger dialog again
+						break;
+					}
+					if (dbSwap) {
+						publishProgress("@@H");
+						WaitForSwap = true;
+						while (WaitForSwap) {
+							Thread.yield();
+							/*
+							if(dbSelect){
+								dbSelect = false;
+								WaitForSelect = true;
+								publishProgress("@@I");
+								while (WaitForSelect) {
+									Thread.yield();
 								}
-								
-						
-					}while(WaitForResume && !DebuggerStep);
+							}
+							*/
+						}
+						publishProgress("@@E");						// signal UI to run debugger dialog again
+						dbSwap = false;
+					}
 				}
 
 				while (WaitForInput && !Stop) {						// if waiting for Input
 					try {Thread.sleep(500);}catch(InterruptedException e){}
 					if (BadInput) {									// If user input was bad
-						sendMessage(MESSAGE_INPUT_DIALOG);			// tell her and try again
+						publishProgress("@@1");						// tell her and try again
 					} else if (InputCancelled) {					// User hit back on Input Dialog
 						WaitForInput = false;
-						if (OnErrorLine != 0){
+						if (OnErrorLine != 0) {
 							ExecutingLineIndex = OnErrorLine;
 						} else {									// Tell user we are stopping
 							publishProgress("Input dialog cancelled", "Execution halted");
@@ -1864,12 +1868,14 @@ public class Background extends Thread {
 				}
 				break;
 			case MESSAGE_BT_GROUP:
-				handleBTMessage(msg);								// handle BluetoothMessages
+				handleBTMessage(msg);								// handle Bluetooth Messages
 				break;
 			case MESSAGE_HTML_GROUP:
 				handleHtmlMessage(msg);								// handle HTML Messages
 				break;
 			case MESSAGE_DEBUG_GROUP:
+				handleDebugMessage(msg);							// handle debug Messages
+				break;
 			default:												// unrecognized Message
 				break;												// ignore it
 			}
@@ -1880,7 +1886,19 @@ public class Background extends Thread {
 
 		for (int i=0; i<str.length; ++i) {								// Check for signals
 			if (str[i].startsWith("@")) {								// Fast check for possible signal
-        		if (str[i].startsWith("@@8")){					// Start GPS
+				if (str[i].startsWith("@@1")){      					// Input dialog signal
+					if (BadInput) {
+						BadInput = false;
+						Toaster("Not a number. Try Again.").show();
+					}
+					theAlertDialog = doInputDialog().show();
+				}else if (str[i].startsWith("@@4")){					// Does the toast for popup command
+					Toast toast = Toaster(ToastMsg, ToastDuration);
+					toast.setGravity(Gravity.CENTER, ToastX, ToastY);
+					toast.show();
+        		}else if (str[i].startsWith("@@5")){					// Clear Screen Signal
+        			output.clear();
+        		}else if (str[i].startsWith("@@8")){					// Start GPS
         			if (theGPS == null) theGPS = new GPS(Run.this);
         		}else if (str[i].startsWith("@@9")){					// from checkpointProgress
         			ProgressPending = false;							// progress is published, done waiting
@@ -1892,16 +1910,10 @@ public class Background extends Thread {
         			output.set(output.size()-1, s);
         		}else if (str[i].startsWith("@@E")){					// Input dialog signal
         			doDebugDialog();
-        		}else if (str[i].startsWith("@@F")){					// Debug step completed
-        			DebuggerStep = false;
-        			doDebugDialog();
-        		}else if (str[i].startsWith("@@G")){					// User canceled dialog with back key or halt
-        			output.add("Execution halted");
         		}else if (str[i].startsWith("@@H")){					// Swap dialog called
         			doDebugSwapDialog();
         		}else if (str[i].startsWith("@@I")){					// Select dialog called
         			doDebugSelectDialog();
-        		}else if (str[i].startsWith("@@J")){					// Alert dialog var not set called
         		} else {output.add(str[i]);}		// Not a signal, just write msg to screen.
 			} else {output.add(str[i]);}			// Not a signal, just write msg to screen.
 
@@ -5547,7 +5559,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		WaitForInput = true;
 		BadInput = false;
 		InputCancelled = false;
-		sendMessage(MESSAGE_INPUT_DIALOG);
+		PrintShow("@@1");
 		return true;
 	}
 
@@ -6581,7 +6593,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			    }
 			  return msg;
 			}
-		  
+
+	public boolean handleDebugMessage(Message msg) {
+		switch (msg.what) {
+		case MESSAGE_DEBUG_DIALOG: doDebugDialog();       break;
+		case MESSAGE_DEBUG_SWAP:   doDebugSwapDialog();   break;
+		case MESSAGE_DEBUG_SELECT: doDebugSelectDialog(); break;
+		default:
+			return false;										// message not recognized
+		}
+		return true;											// message handled
+	}
 
 // ******************************* User Defined Functions ******************************
 
@@ -7349,7 +7371,7 @@ private boolean doUserFunction(){
 			HaveTextInput = false;
 		    startActivityForResult(intent, BASIC_GENERAL_INTENT);
 		    while (!HaveTextInput) Thread.yield();
-		    Show(Prompt + TextInputString);
+		    PrintShow(Prompt + TextInputString);
 		    
 		    StringVarValues.set(saveValueIndex, TextInputString);
 			return true;
@@ -8224,13 +8246,13 @@ private boolean doUserFunction(){
 					  ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG;
 		if (!checkEOL()) return false;
 
-		sendMessage(MESSAGE_TOAST);								// tell the UI Task to pop the toast
+		PrintShow("@@4");										// tell the UI Task to pop the toast
 		return true;
 	}
 
 	public boolean executeCLS(){							// Clear Screen
 		if (!checkEOL()) return false;
-		sendMessage(MESSAGE_CLEAR_SCREEN);						// signal UI task
+		PrintShow("@@5");										// signal UI task
 		return true;
 	}
 
@@ -10016,10 +10038,7 @@ private boolean doUserFunction(){
 	     double d = EvalNumericExpressionValue;
 			if (!checkEOL()) return false;
 	     if (d<0 || d>= DisplayList.size()){
-	    	 Show("Hide parameter out of range");
-	    	 Show(ExecutingLineBuffer);
-	    	 SyntaxError= true;
-	    	 return false;
+			return RunTimeError("Hide parameter out of range");
 	     }
 	     Bundle b = DisplayList.get((int) d);			// Get the specified display object
 	     b.putInt("hide", 1);							// Set hide to true
@@ -10031,8 +10050,7 @@ private boolean doUserFunction(){
 			 if (!evalNumericExpression())return false;							// Get Object Number
 		     double d = EvalNumericExpressionValue;
 		     if (d<0 || d>= DisplayList.size()){
-		    	 RunTimeError("Show parameter out of range");
-		    	 return false;
+				return RunTimeError("Show parameter out of range");
 		     }
 				if (!checkEOL()) return false;
 		     Bundle b = DisplayList.get((int) d);     // Get the specified display object
@@ -10045,8 +10063,7 @@ private boolean doUserFunction(){
 			 if (!evalNumericExpression())return false;							// Get Object Number
 		     double d = EvalNumericExpressionValue;
 		     if (d<0 || d>= DisplayList.size()){
-		    	 RunTimeError("Show parameter out of range");
-		    	 return false;
+				return RunTimeError("Object out of range");
 		     }
 		     Bundle b = DisplayList.get((int) d);     // Get the specified display object
 		     
@@ -10076,8 +10093,7 @@ private boolean doUserFunction(){
 			 if (!evalNumericExpression())return false;							// Get Object Number
 		     double d = EvalNumericExpressionValue;
 		     if (d<0 || d>= DisplayList.size()){
-		    	 RunTimeError("Show parameter out of range");
-		    	 return false;
+				return RunTimeError("Object out of range");
 		     }
 		     Bundle b = DisplayList.get((int) d);     // Get the specified display object
 		     
