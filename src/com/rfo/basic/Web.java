@@ -183,7 +183,7 @@ public class Web extends Activity {
     
     @Override
     protected void onStop(){                     
-    	aWebView = null;
+    //	aWebView = null; // otherwise html.load doses not work after a return to BASIC! Thanks to LUCA! !! 2013-10-11 gt
     	Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " onStop ");
     	super.onStop();
     }
