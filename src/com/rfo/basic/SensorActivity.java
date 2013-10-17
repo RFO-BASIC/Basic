@@ -82,7 +82,7 @@ public class SensorActivity implements SensorEventListener {
 			int type = sensor.getType();						// adding each sensor to SensorCensus list
 //            	 Log.d(SensorActivity.LOGTAG, "Sensor list add: " + type );
 			switch (type) {
-			case Sensor.TYPE_ACCELEROMETER:       name = "Acclerometer";        break;
+			case Sensor.TYPE_ACCELEROMETER:       name = "Accelerometer";       break;
 			case Sensor.TYPE_GRAVITY:             name = "Gravity";             break;
 			case Sensor.TYPE_GYROSCOPE:           name = "Gyroscope";           break;
 			case Sensor.TYPE_GYROSCOPE_UNCALIBRATED: name = "Uncalibrated Gyroscope"; break;

@@ -8354,6 +8354,10 @@ private boolean doUserFunction(){
 		}
 		try {
 			r = SearchString.split(REString, limit);
+			if (r.length == 0) {									// Special case: REString same as SearchString
+				r = new String[1];									// Return non-empty array
+				r[0] = "";											// with one empty String
+			}
 		} catch (PatternSyntaxException pse) {
 			RunTimeError(REString + " is invalid argument at");
 		} catch (Exception e) {
@@ -8484,10 +8488,10 @@ private boolean doUserFunction(){
 	    	
 	    	if (flagMinBuff) {
 	    	
-	    		int minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
+	    		int minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
 	    				AudioFormat.ENCODING_PCM_16BIT);
-	    		if (numSamples< minBuffer){
-	    			double minDuration = Math.ceil(1000 * (double)minBuffer/(double)sampleRate);
+	    		if (2 * numSamples< minBuffer){
+	    			double minDuration = Math.ceil(1000 * (double)minBuffer/(2 * (double)sampleRate));
 	    			RunTimeError("Minimum tone duration for this device: " + (int) minDuration + " milliseconds");
 	    			return false;
 	    		}
@@ -8525,7 +8529,7 @@ private boolean doUserFunction(){
 	        AudioTrack audioTrack = null;									// Get audio track
 	        try {
 	        	audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
-	        			sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
+	        			sampleRate, AudioFormat.CHANNEL_OUT_MONO,
 	        			AudioFormat.ENCODING_PCM_16BIT, numSamples*2,
 	        			AudioTrack.MODE_STATIC);
 	        	audioTrack.write(generatedSnd.array(), 0, numSamples*2);			// Load the track
