@@ -64,20 +64,12 @@ This file is part of BASIC! for Android
      <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
      <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
      
-     	 
-     	     	 <application android:icon="@drawable/icon" 
-    			 android:label="@string/app_name"
-    			 android:debuggable="false"
-    			 android:name="Debugger">
-    			 
-  			 
 
-  	<activity android:name="org.acra.CrashReportDialog"
-        	android:theme="@android:style/Theme.Dialog"
-        	android:launchMode="singleInstance"
-        	android:excludeFromRecents="true"
-        	android:finishOnTaskLaunch="true" />
-     	     	     	
+     <application android:icon="@drawable/icon"
+         android:label="@string/app_name"
+         android:debuggable="false"
+     >
+
     	<receiver android:enabled="false" android:name=".BootUpReceiver">
 			<intent-filter>
     		<action android:name="android.intent.action.BOOT_COMPLETED" />

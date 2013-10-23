@@ -4,7 +4,7 @@
 BASIC! is an implementation of the Basic programming lanuage for
 Android devices.
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010, 2011, 2012 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -96,10 +96,6 @@ This file is part of BASIC! for Android
                 android:defaultValue="none"
                 android:dialogTitle="Choose one" />
          
-         <CheckBoxPreference android:key="acra.disable"
-                android:title="Disable Crash Reports"
-                android:summaryOn="Crash reporting is disabled"
-                android:summaryOff="Ask me before sending a crash report"
-                android:defaultValue="false"/>
+         
       
 </PreferenceScreen>
