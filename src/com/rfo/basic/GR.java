@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -185,7 +185,7 @@ public class GR extends Activity {
     }  
     @Override
     protected void onDestroy() {
-    	Run.GrStop = true;
+    	Run.GRrunning = false;
     	Run.GraphicsPaused = false;
         super.onDestroy();
         Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onDestroy");
@@ -197,30 +197,10 @@ public class GR extends Activity {
 
     	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyDown " + keyCode);
 
-    	
-/*        if (keyCode == KeyEvent.KEYCODE_BACK) {
- 
-            Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " BACK KEY HIT");
-
-        	if (Run.OnBackKeyLine != 0){
-        		Run.BackKeyHit = true;
-        		return true;
-        	}
-
-        	Run.GRopen = false;
-        	Run.Stop = true;
- 
-        	finish();
-        	if (Basic.DoAutoRun) {
-//        		android.os.Process.killProcess(Basic.ProcessID) ;
-        		android.os.Process.killProcess(android.os.Process.myPid()) ;
-			}
-
-        }*/
         return true;
     }
     
-	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit the back key
+	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit a key
 		
     	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyUp " + keyCode);
     	
@@ -235,16 +215,12 @@ public class GR extends Activity {
 
         	Run.GRopen = false;
         	Run.Stop = true;
- 
-        	finish();
         	if (Basic.DoAutoRun) {
-//        		android.os.Process.killProcess(Basic.ProcessID) ;
-        		android.os.Process.killProcess(android.os.Process.myPid()) ;
-			}
+        		 Run.Exit = true;			// Signal Run to exit immediately and silently
+        	}
+        	finish();
         	return true;
-
         }
-
 
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			if (Run.OnMenuKeyLine != 0) {
@@ -252,10 +228,6 @@ public class GR extends Activity {
 				return true;
 			}
 		}
-		if (keyCode == KeyEvent.KEYCODE_BACK && Run.OnBackKeyLine != 0) {
-			return true;             // If Menu key, then handle it
-		}
-	    
 
 		char c;
 	    String theKey = "@";
@@ -484,7 +456,7 @@ public class GR extends Activity {
         	canvas.scale(scaleX, scaleY);
         	
         	if (Run.DisplayList == null){					        // If we have lost context then
-        		System.exit(0);	
+        		throw new RuntimeException("GR.onDraw: null DisplayList");
         	}
         	
         	if (Brightness != -1){

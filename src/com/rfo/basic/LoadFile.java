@@ -314,8 +314,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
             Basic.InitialProgramSize = Editor.DisplayText.length();		// Save the initial size for changed
             Basic.Saved =true;											// check
             if (Editor.mText == null) {
-//            	android.os.Process.killProcess(Basic.ProcessID) ;
-            	android.os.Process.killProcess(android.os.Process.myPid()) ;
+            	throw new RuntimeException("LoadFile: Editor.mText null");
             }
             Editor.mText.setText(Editor.DisplayText);
             finish();													// LoadFile is done

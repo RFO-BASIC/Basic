@@ -262,10 +262,9 @@ public class Editor extends Activity {
 		super.onCreate(savedInstanceState);                 // Setup and the display the text to be edited
 
 		if (Basic.BasicContext == null) {							         // If we have lost context then
-//			android.os.Process.killProcess(Basic.ProcessID) ;   // things have gone very bad. Die!
-	        android.os.Process.killProcess(android.os.Process.myPid()) ;
-
+			throw new RuntimeException("Editor.onCreate: lost Context");
 		}
+		Run.Exit = false; 			// Clear this in case it was set last time BASIC! exited.
 
 		/*
 		 * Open up the view.
@@ -353,11 +352,14 @@ public class Editor extends Activity {
     		doBaseDriveChange();
     	}
 
+    	if (Run.Exit) {		// Somebody told Run to exit, so exit Editor, too.
+    		finish();		// Do not clear Exit here; it might still be seen by another Activity
+    		return;			// Instead, clear it in onCreate() the next time the Editor starts
+    	}
+
 //        Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " onResume " + Basic.DoAutoRun);
         if (Basic.DoAutoRun) {
-//			android.os.Process.killProcess(Basic.ProcessID) ;
-	        android.os.Process.killProcess(android.os.Process.myPid()) ;
-
+        	throw new RuntimeException("Editor.onResume: AutoRun is set");
         } else {
 			setTitle(Name + Basic.ProgramFileName);
 
@@ -447,8 +449,7 @@ public class Editor extends Activity {
 
 			case R.id.search:
 				if (mText == null) {
-//					android.os.Process.killProcess(Basic.ProcessID) ;
-					android.os.Process.killProcess(android.os.Process.myPid()) ;
+					throw new RuntimeException("Editor: attempt to Search with null mText");
 				}
 				DisplayText = mText.getText().toString();
 				selectionStart = mText.getSelectionStart();
@@ -458,8 +459,7 @@ public class Editor extends Activity {
 
 			case R.id.format:
 				if (mText == null) {
-//					android.os.Process.killProcess(Basic.ProcessID) ;
-					android.os.Process.killProcess(android.os.Process.myPid()) ;
+					throw new RuntimeException("Editor: attempt to Format with null mText");
 				}
 				doFormatDialog();
 				return true;
@@ -510,8 +510,6 @@ public class Editor extends Activity {
 			case R.id.exit:
 				if (Basic.Saved) {							// If program has been saved
 					finish();								// exit immediately
-//					android.os.Process.killProcess(Basic.ProcessID);
-//					android.os.Process.killProcess(android.os.Process.myPid());
 				} else {
 					doSaveDialog(Action.EXIT);				// Ask if the user wants to save before exiting
 				}

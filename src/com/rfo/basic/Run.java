@@ -708,9 +708,9 @@ public class Run extends ListActivity {
 	private int WatchedStack;
 	private int WatchedBundle;
 	// end debugger ui vars
-    
-    public static boolean GrStop = false;						// Signal from GR that it has died
+
     public static boolean Stop = false;	   						// Stops program from running
+    public static boolean Exit = false;	   						// Exits program and signals caller to exit, too
     public static boolean GraphicsPaused = false;               // Signal from GR that it has been paused
     public static boolean RunPaused = false;                    // Used to control the media player
     public static boolean StopDisplay = false;
@@ -1641,7 +1641,7 @@ public class Background extends Thread {
         	
         	OnBackKeyLine = 0;
         	
-    		  if (OnErrorLine == 0 && !SyntaxError ){
+    		  if (OnErrorLine == 0 && !SyntaxError && !Exit){
       			  
     	  		  
     	  		    if (!ForNextStack.empty()){
@@ -1668,6 +1668,9 @@ public class Background extends Thread {
         			}
         		TempOutputIndex = 0;
         	}
+        	if (Exit) {
+        		finish();
+        	}
         }
 
         private void publishProgress(String... s) {
@@ -1688,6 +1691,7 @@ public class Background extends Thread {
  
         		flag = StatementExecuter();							// execute the next statement
         															// returns true if no problems executing statement
+        		if (Exit) return flag;								// if Exit skip all other processing
         		
         		if (!flag && (OnErrorLine != 0)){                   // If Error and there is an OnError label
         			ExecutingLineIndex = OnErrorLine;               // Go to the OnError line
@@ -1933,9 +1937,7 @@ public void onCreate(Bundle savedInstanceState) {
 	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Create  " + ExecutingLineIndex );
 	
 	if (Basic.lines == null){
-//        android.os.Process.killProcess(Basic.ProcessID) ;
-        android.os.Process.killProcess(android.os.Process.myPid()) ;
-        
+		throw new RuntimeException("Run: Basic.lines null");
 	}
 	
 //	System.gc();
@@ -2072,10 +2074,9 @@ private void InitVars(){
 	DebugSelectDialog = null;
 	theDebugSelectDialog = null;
 	dbSwap = false;
-	
-    
-    GrStop = false;						// Signal from GR that it has died
+
     Stop = false;	   						// Stops program from running
+    Exit = false;							// Exits program and signals caller to exit, too
     GraphicsPaused = false;               // Signal from GR that it has been paused
     RunPaused = false;                    // Used to control the media player
    StopDisplay = false;
@@ -2404,7 +2405,7 @@ public boolean onTouchEvent(MotionEvent event){
 }
 
 	@Override
-	public boolean onKeyDown(int keyCode, KeyEvent event)  {						// The user hit the back key
+	public boolean onKeyDown(int keyCode, KeyEvent event)  {						// The user hit a key
 		Log.v(Run.LOGTAG, " " + Run.CLASSTAG + "onKeyDown" + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			if (OnMenuKeyLine != 0) {
@@ -2418,22 +2419,19 @@ public boolean onTouchEvent(MotionEvent event){
 		}
 
 		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-    	if (OnBackKeyLine != 0){
-    		BackKeyHit = true;
-    		return true;
-    	}
-    	
-    	if (Stop == false) Stop = true;
-    	else {
-    		if (DoAutoRun) {
-//    			android.os.Process.killProcess(Basic.ProcessID) ;
-    			android.os.Process.killProcess(android.os.Process.myPid()) ;
-    		}
-    		else finish();
-    	}
-        return false;
-    	}
-    	return super.onKeyDown(keyCode, event);
+			if (OnBackKeyLine != 0){
+				BackKeyHit = true;
+				return true;
+			}
+
+			if (DoAutoRun) Exit = true;	// If AutoRun, back key always means exit
+			if (!Stop) {
+				Stop = true;				// If running a program, stop it
+			}
+			else finish();				// else already stopped, return to the Editor
+			return true;
+		}
+		return super.onKeyDown(keyCode, event);
 	}
 	
 
@@ -2456,7 +2454,7 @@ public boolean onTouchEvent(MotionEvent event){
 			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
 
 
-		if (keyCode == KeyEvent.KEYCODE_BACK && OnBackKeyLine != 0) return true;             // If Menu key, then handle it
+		if (keyCode == KeyEvent.KEYCODE_BACK && OnBackKeyLine != 0) return true;
 	    
 	    
 	    char c;
@@ -2948,9 +2946,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		if (!executeSELECT()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWexit:
-	        		Stop = true;
-	                android.os.Process.killProcess(Basic.ProcessID) ;
-	                android.os.Process.killProcess(android.os.Process.myPid()) ;
+	        		Stop = Exit = true;
 	                break;
 	        	case BKWclipboard_get:
 	        		if (!executeCLIPBOARD_GET()){SyntaxError(); return false;}
