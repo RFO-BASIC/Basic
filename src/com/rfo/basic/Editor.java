@@ -57,10 +57,7 @@ import android.widget.Toast;
 public class Editor extends Activity {
     private static final String LOGTAG = "Editor";
     private static final String CLASSTAG = Editor.class.getSimpleName();
-//  Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " String Var Value =  " + d);
-
-//    public static Intent theProgramRunner;           // Intents that will be called
-    private Intent theDeleter;
+//  Log.v(LOGTAG, CLASSTAG + " String Var Value =  " + d);
 
 	public static LinedEditText mText;					// The Editors display text buffers
 
@@ -262,7 +259,9 @@ public class Editor extends Activity {
 		super.onCreate(savedInstanceState);                 // Setup and the display the text to be edited
 
 		if (Basic.BasicContext == null) {							         // If we have lost context then
-			throw new RuntimeException("Editor.onCreate: lost Context");
+			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Shutting down.");
+			finish();
+			return;
 		}
 		Run.Exit = false; 			// Clear this in case it was set last time BASIC! exited.
 
@@ -357,9 +356,10 @@ public class Editor extends Activity {
     		return;			// Instead, clear it in onCreate() the next time the Editor starts
     	}
 
-//        Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " onResume " + Basic.DoAutoRun);
+//        Log.v(LOGTAG, CLASSTAG + ".onResume " + BasicDoAutoRun);
         if (Basic.DoAutoRun) {
-        	throw new RuntimeException("Editor.onResume: AutoRun is set");
+        	Log.e(LOGTAG, CLASSTAG + ".onResume: AutoRun is set. Shutting down.");
+        	finish();
         } else {
 			setTitle(Name + Basic.ProgramFileName);
 
@@ -391,29 +391,31 @@ public class Editor extends Activity {
 
     }    
 
+/*
     @Override
     protected void onPause() {
         super.onPause();
-//        Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " onPause");
-    }    
+        Log.v(LOGTAG, CLASSTAG + " onPause");
+    }
 
     @Override
     protected void onStart() {
         super.onStart();
-//        Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " onStart");
-    }    
+        Log.v(LOGTAG, CLASSTAG + " onStart");
+    }
 
     @Override
     protected void onRestart() {
         super.onRestart();
-//        Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " onRestart");
-    }    
+        Log.v(LOGTAG, CLASSTAG + " onRestart");
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-//        Log.v(Editor.LOGTAG, " " + Editor.CLASSTAG + " onDestroy");
-    }    
-
+        Log.v(LOGTAG, CLASSTAG + " onDestroy");
+    }
+*/
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {     // When the user presses Menu
@@ -477,9 +479,7 @@ public class Editor extends Activity {
 					return true;
 				}
 
-				theDeleter = new Intent(this, Delete.class);		// Go to Delete Activity
-				startActivity(theDeleter);
-//           finish();
+				startActivity(new Intent(this, Delete.class));		// Go to Delete Activity
 				return true;
 
 			case R.id.clear:								// CLEAR

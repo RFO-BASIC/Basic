@@ -72,8 +72,7 @@ public class Basic extends ListActivity  {
     	"htmldemo1.html", "htmldemo2.html",
     	""
     };
-    
-    public static int ProcessID;
+
 	public static Boolean DoAutoRun = false;
 	public static String filePath = "";
 	public static String basePath = "";
@@ -162,20 +161,18 @@ public class Basic extends ListActivity  {
 		return getFilePath(DATABASES_DIR, subPath);
 	}
 
-//  Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " String Var Value =  " + d);
-    
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
     	
         super.onCreate(savedInstanceState);					// Set up of fresh start
         
-        Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " Entry Process ID =  " + ProcessID);
+        Log.v(LOGTAG, CLASSTAG + " onCreate");
         BasicContext = getApplicationContext();
         BasicPackage = BasicContext.getPackageName();
 
         String base = Settings.getBaseDrive(this);
-        Basic.setFilePaths(base);
+        setFilePaths(base);
 
         if (isAPK) {
         	createForAPK();
@@ -317,7 +314,7 @@ public class Basic extends ListActivity  {
     			String f2 = f1.substring(5, 7);
     			String f3 = f1.substring(8,10);
     			f1 = f2 + "." + f3;
-    			f2 = Basic.BasicContext.getString(R.string.version);   // Get the version string
+    			f2 = BasicContext.getString(R.string.version);         // Get the version string
     			if (f1.equals(f2)) { return true; }		               // Compare version numbers
     		}
     		for (String fileName : FL) {			// If different, empty the directory
@@ -373,14 +370,14 @@ public class Basic extends ListActivity  {
     	            InitDirs();											// Initialize Basic directories every time
     	            LoadGraphics();										// Load the graphics files
 
-    	            Basic.lines = new ArrayList <String>();              // Program will be loaded into this array list
+    	            lines = new ArrayList <String>();                    // Program will be loaded into this array list
 
     	            LoadTheFile();                                       // Load the basic program file into memory
 
     	            theProgramRunner = new Intent(BasicContext, Run.class);		//now go run the program
     	            theRunContext = null;
     	            DoAutoRun = true;
-    	            startActivity(Basic.theProgramRunner);               // The program is now running
+    	            startActivity(theProgramRunner);                     // The program is now running
     	            finish();
 
     	        }
@@ -435,7 +432,7 @@ public class Basic extends ListActivity  {
     	        		if (fileName.equals("")) return;
 
     	        		String fn = getRawFileName(fileName);
-    	        		int resID = Basic.BasicContext.getResources().getIdentifier(fn, "raw", BasicPackage);
+    	        		int resID = BasicContext.getResources().getIdentifier(fn, "raw", BasicPackage);
     	        		InputStream inputStream = BasicContext.getResources().openRawResource(resID);
     	        		String path = (fileName.endsWith(".db")) ? databasesPath : dataPath;
     	        		Load1Graphic(inputStream, path + fileName);
@@ -469,7 +466,7 @@ public class Basic extends ListActivity  {
     	        	         	 } while (dis != null);
     	        	              
     	        	          } catch (IOException e) {
-//    	        	         	  Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " I/O Exception 2 ");
+//    	        	         	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 2 ");
     	        	          }
     	        	          finally {
     	        	  			if (dos1 != null) {
@@ -477,7 +474,7 @@ public class Basic extends ListActivity  {
     	        	  					dos1.flush();
     	        	  					dos1.close();
     	        	  				} catch (IOException e) {
-//    	        	  		        	  Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " I/O Exception 4 ");
+//    	        	  		        	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 4 ");
     	        	  				}
     	        	  			}
     	        	          }
@@ -498,7 +495,7 @@ public class Basic extends ListActivity  {
     	    		// because the the_list will not be there in APKs
     	    		
 	        		String fn = getRawFileName("the_list");
-	        		int resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
+	        		int resID = BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
 	    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
 
     	            InputStreamReader inputreader = new InputStreamReader(inputStream);
@@ -513,7 +510,7 @@ public class Basic extends ListActivity  {
     	                   LoadList.add(line);
     	                 }
     	             } catch (IOException e) {
-//    	            	  Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " I/O Exception 1  ");
+//    	            	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 1  ");
     	             }
     	             
     	    // Now go load each file in the list, one at a time
@@ -546,7 +543,7 @@ public class Basic extends ListActivity  {
     	            	   writer.write(line);
     	                 }
     	             } catch (IOException e) {
-//    	            	  Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " I/O Exception 3 ");
+//    	            	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 3 ");
     	             }
     	             finally {
     	     			if (writer != null) {
@@ -554,7 +551,7 @@ public class Basic extends ListActivity  {
     	     					writer.flush();
     	     					writer.close();
     	     				} catch (IOException e) {
-//    	     		        	  Log.v(Basic.LOGTAG, " " + Basic.CLASSTAG + " I/O Exception 4 ");
+//    	     		        	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 4 ");
     	     				}
     	     			}
     	     		}    
