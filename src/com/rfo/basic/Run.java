@@ -2647,7 +2647,9 @@ protected void onDestroy(){
 		   System.gc();
 	}
 
-	unregisterReceiver(headsetBroadcastReceiver);
+	if (headsetBroadcastReceiver != null) {
+		unregisterReceiver(headsetBroadcastReceiver);
+	}
 
 	super.onDestroy();
 }
@@ -11158,25 +11160,22 @@ private boolean doUserFunction(){
 		    System.gc();
 			return retval;
 	  }
-	  
-	  
-	  private boolean execute_gr_scale(){
 
-		   if (!evalNumericExpression())return false;							// Get x
-		   double x = EvalNumericExpressionValue;
+	private boolean execute_gr_scale(){
 
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-			  
-			if (!evalNumericExpression())return false;							// Get y
-			double y = EvalNumericExpressionValue;
-			if (!checkEOL()) return false;
-			
-			GR.scaleX = (float) x;
-			GR.scaleY = (float) y;
+		if (!evalNumericExpression()) return false;								// Get x
+		double x = EvalNumericExpressionValue;
 
-			return true;
-	  }
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression())return false;								// Get y
+		double y = EvalNumericExpressionValue;
+		if (!checkEOL()) return false;
+
+		GR.scaleX = (float) x;
+		GR.scaleY = (float) y;
+
+		return true;
+	}
 
 	  private boolean execute_gr_clip(){
 		  
