@@ -37,7 +37,7 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-//Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
+//Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -199,7 +199,7 @@ public class Run extends ListActivity {
 	public static boolean isOld = false;
     private static final String LOGTAG = "Run";
     private static final String CLASSTAG = Run.class.getSimpleName();
-//  Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
+//  Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
 	// ********************* Message types for the Handler *********************
 																// message numbers < 256 are in "default" group 0
@@ -1685,7 +1685,7 @@ public class Background extends Thread {
         	do {
         		if (ExecutingLineIndex >= Basic.lines.size())break;
         		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
-//        		Log.v(Run.LOGTAG, " RunLoop: " + ExecutingLineBuffer);
+//        		Log.v(LOGTAG, "Background.RunLoop: " + ExecutingLineBuffer);
         		LineIndex = 0 ;
         		sTime = SystemClock.uptimeMillis();
  
@@ -1934,14 +1934,16 @@ public class Background extends Thread {
 public void onCreate(Bundle savedInstanceState) {
 	
 	super.onCreate(savedInstanceState);
-	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Create  " + ExecutingLineIndex );
+	Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex );
 	
 	if (Basic.lines == null){
-		throw new RuntimeException("Run: Basic.lines null");
+		Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Shutting down.");
+		finish();
+		return;
 	}
 	
 //	System.gc();
-//	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " isOld  " + isOld);
+//	Log.v(LOGTAG, CLASSTAG + " isOld  " + isOld);
 	if (isOld){
 		if (theWakeLock != null){
 			theWakeLock.release();
@@ -1951,7 +1953,7 @@ public void onCreate(Bundle savedInstanceState) {
 	isOld = true;
 
 	InitVars();	
-//	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Create 2 " + ExecutingLineIndex );
+//	Log.v(LOGTAG, CLASSTAG + " On Create 2 " + ExecutingLineIndex );
 
 	myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
 	AA= new ColoredTextAdapter(this,  output);
@@ -2289,7 +2291,7 @@ private void InitVars(){
 
 public void cleanUp(){
 	if (theMP != null){
-		try {Run.theMP.stop();} catch (IllegalStateException e){}
+		try {theMP.stop();} catch (IllegalStateException e){}
 		if (theMP != null) theMP.release();
 		theMP = null;
 	}
@@ -2371,6 +2373,7 @@ public void cleanUp(){
 		      SrcBitMap.recycle();
 		   BitmapList.set(i, null);
 		}
+	BitmapList.clear();
 
 	
 		if (mChatService != null) {
@@ -2406,7 +2409,7 @@ public boolean onTouchEvent(MotionEvent event){
 
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)  {						// The user hit a key
-		Log.v(Run.LOGTAG, " " + Run.CLASSTAG + "onKeyDown" + keyCode);
+		// Log.v(LOGTAG, CLASSTAG + " onKeyDown" + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			if (OnMenuKeyLine != 0) {
 				MenuKeyHit = true;
@@ -2437,7 +2440,7 @@ public boolean onTouchEvent(MotionEvent event){
 
 	@Override
 	public boolean onKeyUp( int keyCode, KeyEvent event)  {
-		Log.v(Run.LOGTAG, " " + Run.CLASSTAG + "onKeyUp" + keyCode);
+		// Log.v(LOGTAG, CLASSTAG + " onKeyUp" + keyCode);
 
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			if (OnMenuKeyLine != 0) {
@@ -2450,7 +2453,7 @@ public boolean onTouchEvent(MotionEvent event){
 			return false;				// Let Android create the Run Menu.
 		}
 		
-		if (Run.kbShown)
+		if (kbShown)
 			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
 
 
@@ -2550,7 +2553,7 @@ public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is select
 
 @Override
 protected void onResume() {
-	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Resume  " + kbShown);
+	Log.v(LOGTAG, CLASSTAG + " On Resume " + kbShown);
 
 	  RunPaused = false;
 	  background = false;
@@ -2573,7 +2576,7 @@ protected void onPause() {
 	  
 	// If there is a Media Player running, pause it and hope
 	// that it works.
-	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " onPause " + kbShown);
+	Log.v(LOGTAG, CLASSTAG + " onPause " + kbShown);
 	if (kbShown)  IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
 	
 /*	  if (theMP != null){
@@ -2587,14 +2590,14 @@ protected void onPause() {
 
 @Override
 protected void onStart(){
-	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Start  " );
+	Log.v(LOGTAG, CLASSTAG + " On Start");
 //	InitVars();
 	super.onStart();
 }
 
 @Override
 protected void onStop(){
-	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " onStop " + kbShown);
+	Log.v(LOGTAG, CLASSTAG + " onStop " + kbShown);
 	System.gc();
 	if (!GRrunning) {
 		background = true;
@@ -2607,7 +2610,7 @@ protected void onStop(){
 
 @Override
 protected void onRestart(){
-	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " onRestart ");
+	Log.v(LOGTAG, CLASSTAG + " onRestart");
 
 	super.onRestart();
 
@@ -2615,7 +2618,7 @@ protected void onRestart(){
 
 @Override
 protected void onDestroy(){
-	Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " On Destroy  " );
+	Log.v(LOGTAG, CLASSTAG + " On Destroy");
 
 	if (theSensors != null) {
 		theSensors.stop();
@@ -2632,14 +2635,17 @@ protected void onDestroy(){
 			theWakeLock.release();
 			theWakeLock = null;
 		}
-		
-		for (int i = 0; i <BitmapList.size(); ++i ){
-		   Bitmap SrcBitMap = BitmapList.get(i);
-		   if (SrcBitMap != null)
-		      SrcBitMap.recycle();
-		   BitmapList.set(i, null);
+	
+	if (BitmapList != null) {
+		for (int i = 0; i <BitmapList.size(); ++i) {
+			Bitmap SrcBitMap = BitmapList.get(i);
+			if (SrcBitMap != null)
+				SrcBitMap.recycle();
+			BitmapList.set(i, null);
 		}
+		BitmapList.clear();
 		   System.gc();
+	}
 
 	unregisterReceiver(headsetBroadcastReceiver);
 
@@ -7512,7 +7518,7 @@ private boolean doUserFunction(){
 			try {
 				bis.close();
 			} catch (IOException e) {
-//				Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
+//				Log.e(LOGTAG, e.getLocalizedMessage() + " 3");
 				return RunTimeError(e);
 			}
 		} else if (FileMode == FMW) {						// close file open for write
@@ -7521,7 +7527,7 @@ private boolean doUserFunction(){
 				dos.flush();
 				dos.close();
 			} catch (IOException e) {
-//				Log.e(Run.LOGTAG, e.getLocalizedMessage() + " 3");
+//				Log.e(LOGTAG, e.getLocalizedMessage() + " 3");
 				return RunTimeError(e);
 			}
 		} else {
@@ -8364,7 +8370,7 @@ private boolean doUserFunction(){
 
 	  private boolean executeKBSHOW(){
 		  if (!checkEOL()) return false;
-			Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " KBSHOW  " + kbShown );
+			Log.v(LOGTAG, CLASSTAG + " KBSHOW  " + kbShown );
 
 		  if (kbShown) return true;
 		  
@@ -8388,7 +8394,7 @@ private boolean doUserFunction(){
 	  
 	  private boolean executeKBHIDE(){
 			if (!checkEOL()) return false;
-			Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " KBHIDE  " + kbShown);
+			Log.v(LOGTAG, CLASSTAG + " KBHIDE " + kbShown);
 
 		  if (GRFront) {
 //			  GR.GraphicsImm.toggleSoftInputFromWindow(GR.drawView.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
@@ -10016,7 +10022,7 @@ private boolean doUserFunction(){
                 theRect = new Rect();
     			theRect.top = b.getInt("y");
     			theRect.left = b.getInt("x");
-    			Bitmap theBitmap = Run.BitmapList.get(b.getInt("bitmap"));
+    			Bitmap theBitmap = BitmapList.get(b.getInt("bitmap"));
     			theRect.bottom = theRect.top + theBitmap.getHeight();
     			theRect.right = theRect.left + theBitmap.getWidth();
                 break;
@@ -11625,7 +11631,7 @@ private boolean doUserFunction(){
 		  setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		  
 		  theMP = aMP;
-//		  Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " play " +theMP );
+//		  Log.v(LOGTAG, CLASSTAG + " play " + theMP);
 		  try {theMP.prepare();}
 		  catch (Exception e) {
 //				return RunTimeError(e);
@@ -11661,142 +11667,123 @@ private boolean doUserFunction(){
 				}
 		  });
 
-//		  Log.v(Run.LOGTAG, " " + Run.CLASSTAG + " is playing " + theMP.isPlaying());
+//		  Log.v(LOGTAG, CLASSTAG + " is playing " + theMP.isPlaying());
 		  
 		  return true;
 	  }
-	  
-	  private boolean execute_audio_isdone(){
-		  if (theMP == null){
-			  PlayIsDone = true;		  }
-		  
-		  if (!getNVar())return false;	
-		  if (!checkEOL()) return false;
-		  double d = 0;
-		  if (PlayIsDone) d =1;
-		  NumericVarValues.set(theValueIndex, d);
-		  return true;
-	  }
-	  
-	  private boolean execute_audio_loop(){
-			if (!checkEOL()) return false;
-		  if (theMP == null){
-			   Show("Audio not playing at:");
-			   Show (ExecutingLineBuffer);
-			   SyntaxError= true;
-			   return false;			  
-		  }
-		  
-		  theMP.setLooping(true);
-		  return true;
-	  }
-	  
 
-	  
-	  private boolean execute_audio_stop(){
-			if (!checkEOL()) return false;
-
-			if (theMP == null) return true;                               // if theMP is null, Media player has stopped
-//		  MediaPlayer.setOnSeekCompleteListener (mSeekListener);
-//	  	 try {Thread.sleep(1000);}catch(InterruptedException e){}
-	  	  try {Run.theMP.stop();}catch (Exception e) {
-				return RunTimeError(e);
-	  	  }
-
-	  	  theMP = null;                                                 // Signal MP stopped
-		  return true;
-	  }
-	  
-	  private boolean execute_audio_pause(){
-			
-		  if (!checkEOL()) return false;
-		  if (theMP == null) return true;                               // if theMP is null, Media player has stopped
-	  	  try {Run.theMP.pause();} catch (Exception e) {
-				return RunTimeError(e);
-	  	  }
-	  	  theMP = null;                                                 // Signal MP stopped
-		  return true;
-	  }
-	  
-	  private boolean execute_audio_volume(){
-
-		  if (theMP == null){
-			  RunTimeError("Audio not playing at:");
-			   return false;			  
-		  }
-		  if (!evalNumericExpression()) return false;
-		  double d = EvalNumericExpressionValue;
-		  float  left = (float) d;
-
-	  	  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-	  	  ++LineIndex;
-		  if (!evalNumericExpression()) return false;
-		  d = EvalNumericExpressionValue;
-		  float right = (float) d;
-		  setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		  theMP.setVolume(left, right);
+	private boolean execute_audio_isdone(){
+		if (!getNVar()) return false;	
 		if (!checkEOL()) return false;
 
-		  return true;
-	  }
-	  
-	  private boolean execute_audio_pcurrent(){
-		  if (theMP == null){
-			  RunTimeError("Audio not playing");
-			   return false;			  
-		  }
-		  
-		  if (!getNVar())return false;											
-		  NumericVarValues.set(theValueIndex, (double)theMP.getCurrentPosition());
+		if (theMP == null) {
+			PlayIsDone = true;
+		}
+		double d = (PlayIsDone) ? 1 : 0;
+		NumericVarValues.set(theValueIndex, d);
 
-			if (!checkEOL()) return false;
-		  return true;
-	  }
-	  
-	  private boolean execute_audio_pseek(){
-		  if (theMP == null){
-			  RunTimeError("Audio not playing at:");
-			   return false;			  
-		  }
-		  
-		  if (!evalNumericExpression()) return false;
-		  double d = EvalNumericExpressionValue;
-		  int dd = (int) d;
-		  theMP.seekTo(dd); 
-			if (!checkEOL()) return false;
-		  return true;
-	  }
-	  
-	  private boolean execute_audio_length(){
-		  
-		  if (!getNVar())return false;											// Get the Player Number Var
-		  int saveValueIndex = theValueIndex;
-	  	  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-	  	  ++LineIndex;
+		return true;
+	}
 
-		  
-		  if (!evalNumericExpression()) return false;
-		  double d = EvalNumericExpressionValue;
-		  int index = (int) d;
-		  if (index <=0 || index >= theMPList.size()){
-			  RunTimeError("Invalid Player List Value");
-			  return false;
-		  }
-			if (!checkEOL()) return false;
+	private boolean execute_audio_loop(){
+		if (theMP == null) {
+			return RunTimeError("Audio not playing at:");
+		}
+		if (!checkEOL()) return false;
 
-		  
-		  MediaPlayer aMP = theMPList.get(index);
-		  if (aMP == null){
-			  RunTimeError("Audio not loaded at:");
-			   return false;			  
-		  }
-		  
-		  double  length = (double)aMP.getDuration();
-		  
-		  NumericVarValues.set(saveValueIndex, length);
-		  
-		  return true;
-	  }
+		theMP.setLooping(true);
+		return true;
+	}
+
+	private boolean execute_audio_stop(){
+		if (!checkEOL()) return false;
+		if (theMP == null) return true;								// if theMP is null, Media player has stopped
+
+//		MediaPlayer.setOnSeekCompleteListener(mSeekListener);
+//		try {Thread.sleep(1000);}catch(InterruptedException e){}
+		try { theMP.stop(); }
+		catch (Exception e) { return RunTimeError(e); }
+		finally { theMP = null; }									// Signal MP stopped
+
+		return true;
+	}
+
+	private boolean execute_audio_pause(){
+		if (!checkEOL()) return false;
+		if (theMP == null) return true;								// if theMP is null, Media player has stopped
+
+		try { theMP.pause(); }
+		catch (Exception e) { return RunTimeError(e); }
+		finally { theMP = null; }									// Signal MP stopped
+
+		return true;
+	}
+
+	private boolean execute_audio_volume(){
+		if (theMP == null) {
+			return RunTimeError("Audio not playing at:");
+		}
+		if (!evalNumericExpression()) return false;
+		float left = EvalNumericExpressionValue.floatValue();
+
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression()) return false;
+		float right = EvalNumericExpressionValue.floatValue();
+		if (!checkEOL()) return false;
+
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		theMP.setVolume(left, right);
+
+		return true;
+	}
+
+	private boolean execute_audio_pcurrent(){
+		if (theMP == null) {
+			return RunTimeError("Audio not playing at:");
+		}
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+
+		NumericVarValues.set(theValueIndex, (double)theMP.getCurrentPosition());
+
+		return true;
+	}
+
+	private boolean execute_audio_pseek(){
+		if (theMP == null) {
+			return RunTimeError("Audio not playing at:");
+		}
+		if (!evalNumericExpression()) return false;
+		if (!checkEOL()) return false;
+
+		int pos = EvalNumericExpressionValue.intValue();
+		theMP.seekTo(pos);
+
+		return true;
+	}
+
+	private boolean execute_audio_length(){
+		if (!getNVar()) return false;								// Get the Player Number Var
+		int saveValueIndex = theValueIndex;
+
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression()) return false;
+		int index = EvalNumericExpressionValue.intValue();
+		if (index <= 0 || index >= theMPList.size()) {
+			return RunTimeError("Invalid Player List Value");
+		}
+		if (!checkEOL()) return false;
+
+		MediaPlayer aMP = theMPList.get(index);
+		if (aMP == null) {
+			return RunTimeError("Audio not loaded at:");
+		}
+
+		int length = aMP.getDuration();
+		NumericVarValues.set(saveValueIndex, (double)length);
+
+		return true;
+	}
 
 	private boolean execute_audio_record_start(){
 		if (!getStringArg()) return false;
@@ -15232,7 +15219,7 @@ private boolean doUserFunction(){
 		} catch (Exception e) {
 			return RunTimeError(e);
 		}
-		// Log.d(LOGTAG, "executeCONSOLE_DUMP: file " + theFileName + " written");
+		// Log.d(LOGTAG, CLASSTAG + " executeCONSOLE_DUMP: file " + theFileName + " written");
 
 		return true;
 	}
