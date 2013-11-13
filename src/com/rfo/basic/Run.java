@@ -1937,7 +1937,10 @@ public void onCreate(Bundle savedInstanceState) {
 	Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex );
 	
 	if (Basic.lines == null){
-		Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Shutting down.");
+		Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
+		Intent intent = new Intent(this, Basic.class);
+		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		startActivity(intent);
 		finish();
 		return;
 	}
@@ -3679,7 +3682,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				}
 			}
 			return false;									// op stack got corrupted?
-		case LPRN:
+		case NOT:											// can't use unary operator after operand
+		case LPRN:											// can't start new expression after operand
 			return false;
 		default:
 			if (!handleOp(OperatorValue,  theOpStack, theValueStack)){return false;} // Handles non special case ops

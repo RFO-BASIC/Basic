@@ -68,9 +68,6 @@ public class Editor extends Activity {
     public static int selectionEnd;
     public static final String Name = "BASIC! Program Editor - ";
 
-    public static long startTime;						// Time used for blocking re-run
-
-
     private enum Action { NONE, CLEAR, LOAD, RUN, EXIT }
 
     public static class LinedEditText extends EditText {          // Part of the edit screen setup
@@ -259,7 +256,10 @@ public class Editor extends Activity {
 		super.onCreate(savedInstanceState);                 // Setup and the display the text to be edited
 
 		if (Basic.BasicContext == null) {							         // If we have lost context then
-			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Shutting down.");
+			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Restarting BASIC!.");
+			Intent intent = new Intent(this, Basic.class);
+			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			startActivity(intent);
 			finish();
 			return;
 		}
@@ -612,12 +612,6 @@ public class Editor extends Activity {
 		Basic.theRunContext = null;                      			// Run will set theRunContext to non-null value
 		SyntaxErrorDisplacement = -1 ;
 
-
-		/*       long NowTime = SystemClock.uptimeMillis();
-		 long interval = NowTime - startTime;
-		 if ( interval < 10000){
-		 try {Thread.sleep((int) 10000 - interval);}catch(InterruptedException e){};
-		 } */
 		startActivity(Basic.theProgramRunner);
     }
 
