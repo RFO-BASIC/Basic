@@ -8970,21 +8970,29 @@ private boolean doUserFunction(){
 		if (!getStringArg()) return false;						// Table Name
 		String TableName = StringConstant;
 
-		String Where = null;										// if no Where given, set null
+		int returnValueIndex = 0;
+		String Where = null;									// if no Where given, set null
 		if (isNext(',')) {										// if no comma, then no optional Where
 			if (!getStringArg()) return false;					// Where Value
 			Where = StringConstant;
+			if (isNext(',')) {									// if there's a where
+				if (!getNVar()) return false;					// there can be a return value
+				returnValueIndex = theValueIndex;
+			}
 		}
 		if (!checkEOL()) return false;
 
-	   try {
-		   db.delete(TableName, Where, null);					// do the deletes
-	   }
-	   catch (Exception e){
-		   return RunTimeError(e);
-	   }
+		int count = 0;
+		try {
+			count = db.delete(TableName, Where, null);			// do the deletes
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
 
-	   return true;
+		if (returnValueIndex != 0) {
+			NumericVarValues.set(returnValueIndex, (double)count);
+		}
+		return true;
 	}
 
 		private boolean execute_sql_update() {
