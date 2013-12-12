@@ -741,8 +741,7 @@ public class Run extends ListActivity {
 	private int theValueIndex;							// The index into the value table for the current var
 	private int ArrayValueStart = 0;					// Value index for newly created array 
 
-	private boolean VarIsFunction = false;				// Flag set by getVar() when var is a user function
-	private boolean DoingDef = false;
+	private boolean VarIsFunction = false;				// Flag set by parseVar() when var is a user function
 	private ArrayList<Bundle> FunctionTable;      		// A bundle is created for each defined function
 	private Bundle ufBundle;							// Bundle set by isUserFunction and used by doUserFunction
 	private Stack<Bundle> FunctionStack;				// Stack contains the currently executing functions
@@ -750,10 +749,6 @@ public class Run extends ListActivity {
 	private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
 	private int scOpValue;								// An instance variable that needs to be saved when executing function
 
-	private boolean doingDim = false;					// Signal to get Var that un dimed array var is ok
-	private boolean unDiming = false;					// Signal to get Var that an array is being undimed
-	private boolean SkipArrayValues = false;			// Set true for some array.xxx commands
-	private boolean FindingLabels = false;				// Signal to get var to report var is label if it is
 	private boolean VarIsNew = true;					// Signal from get var that this var is new
 	private boolean VarIsNumeric = true;				// if false, Var is string
 	private boolean VarIsArray = false;					// if true, Var is an Array
@@ -2107,8 +2102,7 @@ private void InitVars(){
     theValueIndex = 0;				// The index into the value table for the current var
 	ArrayValueStart = 0;				// Value index for newly created array 
 	
-	VarIsFunction = false;		// Flag set by getVar() when var is a user function
-	DoingDef = false;
+	VarIsFunction = false;		// Flag set by parseVar() when var is a user function
 	FunctionTable = new ArrayList<Bundle>() ;      // A bundle is created for each defined function
 	ufBundle = null ;						// Bundle set by isUserFunction and used by doUserFunction
     FunctionStack = new Stack<Bundle>() ;			// Stack contains the currently executing functions
@@ -2116,12 +2110,7 @@ private void InitVars(){
    fnRTN = false;				// Set true by fn.rtn. Cause RunLoop() to return
    scOpValue = 0;						// An instance variable that needs to be saved when executing function
    Debug = false;
-												
 
-    doingDim = false;				// Signal to get Var that un dimed array var is ok
-    unDiming = false;             // Signal to get Var that an array is being undimed
-    SkipArrayValues = false;      // Set true for some array.xxx commands
-   FindingLabels = false;		// Signal to get var to report var is label if it is
     VarIsNew = true;				// Signal from get var that this var is new
     VarIsNumeric = true;			// if false, Var is string(
     VarIsArray = false;			// if true, Var is an Array
@@ -2746,14 +2735,13 @@ private boolean PreScan() {
 	return true;
 }
 
-private int  isLabel(int theVarNumber){
+private int isLabel(String varName){
 	int nope = -1;
 	int s = LabelNames.size();
-	if (s==0) {return nope;}
-	String name = VarNames.get(theVarNumber);
-	
+	if (s == 0) { return nope; }
+
 	for (int i=0; i < s; ++i ){
-		if (LabelNames.get(i).equals(name)) return LabelValues.get(i);
+		if (LabelNames.get(i).equals(varName)) return LabelValues.get(i);
 	}
 	return nope;
 }
@@ -2780,14 +2768,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 
 
-private  boolean StatementExecuter(){					// Execute one basic line (statement)
+	private  boolean StatementExecuter(){					// Execute one basic line (statement)
 
-		Double d1 = (double)0.0;
 		PossibleKeyWord = "";
-			
-		GetKeyWord();
-		{															// Get the keyword that may start the line
-			
+		GetKeyWord();												// Get the keyword that may start the line
 
 			if (KeyWordValue == BKWnone) KeyWordValue = BKWlet;    // If no key word, then assume pseudo LET
 
@@ -2857,19 +2841,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		if (!executeGOTO()){SyntaxError();return false;}
 	        		break;
 	        	case BKWgosub:
-	        		if (getVar()) {
-	        			int gln = isLabel(VarNumber);
-	        			if (gln <0){
-	        				RunTimeError("Undefined Label at:");
-	        				return false;
-	        			}
-	        			if (!checkEOL()) return false;
-	        			GosubStack.push(ExecutingLineIndex);
-	        			ExecutingLineIndex = gln;
-	        		}else{
-	        			SyntaxError();
-	        			return false;
-	        		}
+	        		if (!executeGOSUB()){SyntaxError();return false;}
 	        		break;
 	        	case BKWreturn:
 	        		if (!checkEOL()) return false;
@@ -3224,9 +3196,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	        		break;
 	        	default:
 	        		break;
-	        }
-	       }
-	return true;     // Statement executed ok. Return to main looper.
+	        } // end switch on KeyWordValue
+
+		return true;     // Statement executed ok. Return to main looper.
 	}
 		
 	private  void SyntaxError(){						// Called to output Syntax Error Message
@@ -3251,18 +3223,22 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 
 	}
-		
-   private boolean RunTimeError(String msg){
-	   Show(msg);
-	   Show(ExecutingLineBuffer);
-	   SyntaxError = true;
-	   errorMsg = msg + "\nLine: " + ExecutingLineBuffer;
-	   return false;						// Always return false as convenience for caller
-   }
 
-   private boolean RunTimeError(Exception e) {
-	   return RunTimeError("Error: " + e);
-   }
+	private boolean RunTimeError(String... msgs){
+		Show(msgs[0]);								// Display error message
+		Show(ExecutingLineBuffer);					// Display offending line
+		for (int i = 1; i < msgs.length; ++i) {		// Display any supplemental text
+			Show(msgs[i]);
+		}
+
+		SyntaxError = true;
+		errorMsg = msgs[0] + "\nLine: " + ExecutingLineBuffer;
+		return false;						// Always return false as convenience for caller
+	}
+
+	private boolean RunTimeError(Exception e) {
+		return RunTimeError("Error: " + e);
+	}
 
    private boolean nextLine() {				// Move to beginning of next line
 	   if (++ExecutingLineIndex < Basic.lines.size()) {	// if not at end of program
@@ -3311,153 +3287,245 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return true;							// return value in EvalNumericExpressionValue
 	}
 
-   private  boolean GetKeyWord(){						// Get a Basic key word if it is there
+	private  boolean GetKeyWord(){						// Get a Basic key word if it is there
 		// is the current line index at a key word?
 		int i = 0;
 		for (i = 0; i<BasicKeyWords.length; ++i){		// loop through the key word list
 			 if (ExecutingLineBuffer.startsWith(BasicKeyWords[i], LineIndex)){    // if there is a match
 				 KeyWordValue = i;						// set the key word number
-				 LineIndex = LineIndex + BasicKeyWords[i].length(); // move the line index to end of key word
+				 LineIndex += BasicKeyWords[i].length(); // move the line index to end of key word
 				 return true;							// and report back
 			 	}
 			}
 		KeyWordValue = BKWnone;							// no key word found
 		return false;									// report fail
-			
-		}
-	
-    private boolean getNVar(){							// Get Var and assure that it is numeric
-    	int i = LineIndex;
-    	if (!getVar()) return false;
-    	if (VarIsNumeric) return true;
-    	LineIndex = i;
-    	return false;
-    }
-    
-    private boolean getSVar(){							// Get Var and assure that it is not numeric
-    	int i = LineIndex;
-    	if (!getVar()) return false;
-    	if (!VarIsNumeric) return true;
-    	LineIndex = i;
-    	return false;
-    }
+	}
 
-	private boolean getArrayVar(){						// Get Var and assure that it an array
-		int i = LineIndex;
-		if (!getVar()) return false;
-		if (VarIsArray) return true;
+	// ************************* start of getVar() and its derivatives ****************************
 
-		LineIndex = i;
-		return RunTimeError("Array variable expected");	// Not an array var
+	private static final boolean TYPE_NUMERIC = true;	// true: type is numeric
+	private static final boolean TYPE_STRING  = false;	// false: type is NOT numeric
+	private static final boolean USER_FN_OK = true;		// flag used as parseVar() argument, when false
+														// user-defined function names are not recognized as valid symbols
+
+	private static final String EXPECT_ARRAY_VAR = "Array variable expected";
+	private static final String EXPECT_NEW_ARRAY = "Array previously dimensioned";
+	// private static final String EXPECT_UNDIM_ARRAY = "Array must not be DIMed";
+	private static final String EXPECT_DIM_ARRAY = "Array must be DIMed before using";
+	// private static final String EXPECT_DIM_ARRAY = "Array not DIMed";
+	private static final String EXPECT_ARRAY_NO_INDEX = "Expected '[]'";
+	private static final String EXPECT_NUM_ARRAY = "Array not numeric";
+	private static final String EXPECT_STRING_ARRAY = "Not string array";
+	private static final String EXPECT_NEW_FN_NAME = "Function previously defined at:";
+
+	// getVar:
+	// This function parses a function name out of the input stream, then searches for
+	// it in the variable lists. If an existing variable is not found, it creates one.
+	// It writes global flags, variables, and data structures for results and status.
+	// There are other functions that duplicate getVar() except for small changes that
+	// make certain cases more efficient by leaving out some of the work.
+	//
+	// In Paul's original design, this function handled all cases of scalar and array
+	// variables, and user-defined function names for FN.DEF (but not function calls)
+	// with special cases directed by global these global flags:
+	//     doingDim, unDiming, SkipArrayValues, DoingDef
+	// This implementation behaves as the original did when all flags were set false.
+	// There are now dedicated functions for some of the special cases.
+	// All other cases must be built up from the primitives found below.
+	//
+	private boolean getVar() {							// Get variable name if there is one.
+		int LI = LineIndex;
+		if (getVarValue(getVarAndType())) return true;	// If there is one, find it in the symbol table.
+														// If not found in table, create new variable.
+		LineIndex = LI;
+		return false;
+	}
+
+	private boolean getNVar() {							// get var and assure that it is numeric
+		int LI = LineIndex;
+		if (getVarValue(getVarAndType(TYPE_NUMERIC))) return true;
+		LineIndex = LI;
+		return false;
+	}
+
+	private boolean getSVar() {							// get var and assure that it is not numeric
+		int LI = LineIndex;
+		if (getVarValue(getVarAndType(TYPE_STRING))) return true;
+		LineIndex = LI;
+		return false;
 	}
 
 	private boolean getArrayVarForWrite() {				// get the array var name as a new, undimensioned array
-		doingDim = true;
-		if (!getArrayVar()) { doingDim = false; return false; }
-		doingDim = false;
-		return (VarIsNew || RunTimeError("Array must not be DIMed"));
+		int LI = LineIndex;
+		boolean ok = true;
+		String var = getVarAndType();					// either string or numeric type is ok
+		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
+		else if (!VarIsNew)					{ RunTimeError(EXPECT_NEW_ARRAY); }
+		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+		else {
+			createNewVar(var);							// no error, create new variable with dummy VarIndex
+			return true;
+		}
+		LineIndex = LI;
+		return false;
+	}
+
+	private boolean getArrayVarForWrite(boolean type) {	// get the array var name as a new, undimensioned array
+		int LI = LineIndex;
+		String var = parseVar(!USER_FN_OK);
+		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
+		else if (type != VarIsNumeric)		{ RunTimeError(type ? EXPECT_NUM_ARRAY : EXPECT_STRING_ARRAY); }
+		else if (searchVar(var))			{ RunTimeError(EXPECT_NEW_ARRAY); }
+		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+		else {
+			createNewVar(var);							// no error, create new variable with dummy VarIndex
+			return true;
+		} 
+		LineIndex = LI;
+		return false;
 	}
 
 	private boolean getArrayVarForRead() {				// get the array var name as a previously-dimensioned array
-		SkipArrayValues = true;
-		if (!getArrayVar()) { SkipArrayValues = false; return false; }
-		SkipArrayValues = false;
-		return (!VarIsNew || RunTimeError("Array not DIMed"));
+		int LI = LineIndex;
+		String var = getVarAndType();					// type must match expected type
+		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
+		else if (VarIsNew)					{ RunTimeError(EXPECT_DIM_ARRAY); }
+		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+		else {
+			return true;								// no error
+		}
+		LineIndex = LI;
+		return false;
 	}
 
-	private   boolean  getVar(){							// Get a variable if there is one
-
+	private boolean getNewFNVar() {						// get var and assure that it is a new function name
 		int LI = LineIndex;
-    	VarIsNumeric = true;						// Assume the var is going to be numeric
-    	int max = ExecutingLineBuffer.length();
-		
+		String var = parseVar(USER_FN_OK);				// Get function name if there is one.
+		if ((var != null) && VarIsFunction) {			// If there is one...
+			searchVar(var);								// ... look for it in the symbol table.
+			if (VarIsNew) {
+				createNewVar(var);
+				return true;
+			} else {
+				RunTimeError(EXPECT_NEW_FN_NAME);
+			}
+		}
+		LineIndex = LI;
+		return false;
+	}
+
+	// ************************* top half of getVar() *************************
+
+	private String getVarAndType() {
+		String var = parseVar(!USER_FN_OK);				// Get variable name if there is one.
+		if (var != null) {								// If there is one...
+			searchVar(var);								// ... find it in the symbol table.
+		}
+		return var;										// note: LineIndex does not change if var is null
+	}
+
+	private String getVarAndType(boolean needNumeric) {	// specify TYPE_NUMERIC or TYPE_STRING
+		String var = parseVar(!USER_FN_OK);				// get variable name if there is one
+		if (var != null) {
+			if (needNumeric == VarIsNumeric) {			// if type matches expected type
+				searchVar(var);							// look up the variable name
+				return var;								// note: parseVar changed LineIndex
+			}											// else type mismatch, return no var
+		}
+		return null;									// note: LineIndex does not change
+	}
+
+	// Gets the variable name and type. Sets VarIsNumeric, VarIsArray, VarIsFunction.
+	// Returns variable name. Name includes $ for strings, [ for arrays, ( for functions.
+	// If arg is false, user-defined function names are not valid variable names.
+	// Does not advance LineIndex unless it finds a valid variable name.
+	private String parseVar(boolean isUserFnAllowed) {
+		int LI = LineIndex;
+		int max = ExecutingLineBuffer.length();
+
 		// For the special cases where a var could be followed by keyword THEN, TO or STEP
 		boolean stopOnPossibleKeyWord = !PossibleKeyWord.equals("");
 																// Isolate the var characters
-		String var = getWord(ExecutingLineBuffer, LineIndex, stopOnPossibleKeyWord);
-		if (var.length() == 0) { return false; }				// length is 0, no var
-		LineIndex += var.length();
-		
-		VarIsNumeric = !isNext('$');							// Is this a string var?
-		if (!VarIsNumeric) var += '$';
-
-		VarIsArray = isNext('[');								// Is this an Array?
-		if (VarIsArray) {
-			var += '[';
-			VarIsFunction = false;
-		} else {
-			VarIsFunction = isNext('(');						// Is this a Function?
-			if (VarIsFunction) {
-				var += '(';
-				if (!DoingDef) {
-					LineIndex = LI;
-					return false;
-				}
+		String var = getWord(ExecutingLineBuffer, LI, stopOnPossibleKeyWord);
+		if (var.length() == 0) { return null; }					// length is 0, no var
+		LI += var.length();
+		if (LI < max) {
+			char c = ExecutingLineBuffer.charAt(LI);
+			VarIsNumeric = (c != '$');							// Is this a string var?
+			if (!VarIsNumeric && (++LI < max)) {
+				var += c;
+				c = ExecutingLineBuffer.charAt(LI);
+			}
+			VarIsArray = (c == '[');							// Is this an array?
+			VarIsFunction = (c == '(');							// Is this a function?
+			if (VarIsArray && (++LI < max)) {
+				var += c;
+			} else if (VarIsFunction && (++LI < max)) {
+				if (!isUserFnAllowed) { return null; } 			// Do not write LineIndex
+				var += c;
 			}
 		}
-		if (LineIndex >= max) return false;
-
-        int j = VarSearchStart;								// Usually zero but will change when 
-        													// executing User Function
-
-        while (j<VarNames.size()){							// Look up this var in the variable table
-        		if (var.equals(VarNames.get(j))){           // Var is not new
-        			VarNumber = j;
-        			VarIsNew = false;
-        			theValueIndex = VarIndex.get(j);		// Get the value index from the var table 
-        			if (!VarIsArray) {return true;}			// If this is not array, done
-        													// var is an array
-        			if (unDiming){                          // If unDiming
-        				VarNames.set(j," ");                // Change name in table
-        				return true;
-        			}
-        			if (doingDim){							// If doing dim, then var has been used or dimed
-        				RunTimeError("Array previously dimensioned");
-        				LineIndex = LI;
-        				VarNames.set(VarNumber, "!");
-        				return false;
-        			}
-        			
-        			if (SkipArrayValues) return true;
-        			int svn = VarNumber;					// Save the VarNumber
-        			boolean svt = VarIsNumeric;
-        			if (!GetArrayValue(VarNumber)){return false;}   // Get the value based upon the index values
-        			VarIsNumeric= svt;
-        			VarNumber = svn;
-        			return true;							// Get Var is now done
-        		}
-        		++j;
-        	}
-        if (unDiming) return true;                          // If unDiming then don't create new array
-        
-        VarIsNew = true;									// var was not in var table, thus it is new
-        VarNumber = VarNames.size();						// thus we will make a new var table entry
-        VarNames.add(var);
-        VarIndex.add(0);									// Keep VarIndex in sync
-        
-        if (VarIsArray) {									// New Var is an array								
-        	if (!doingDim) {								// If not doing dim then we have a problem
-        		RunTimeError("Array must be DIMed before using");
-        		LineIndex = LI;
-        		VarNames.set(VarNumber, "!");
-        		return false;
-        	}												// Else doing Dim, leave var index = 0 for now
-        } else {											// New var is a scalar
-        	int kk = 0;
-        	if (!VarIsNumeric){								// if var is string
-        		kk = StringVarValues.size();				// then the value index is the index
-        		StringVarValues.add("");					// to the next unused entry in string values list
-        	} else {
-        													// New Var is numeric scalar
-        		kk = NumericVarValues.size();				// then the value index is the index
-        		NumericVarValues.add(0.0);					// to the next unused entry in numeric values list
-        	}
-        	VarIndex.set(VarNumber, kk);					// The var index is the next avail Numeric Value
-        	theValueIndex = kk;
-        }
-        return true;
+		if (LI >= max) { LineIndex = max; return null; }
+		LineIndex = LI;
+		return var;
 	}
-	
+
+	private boolean searchVar(String var) {			// search for a variable by name
+		int j = VarSearchStart;						// Usually zero but will change when executing User Function
+		for ( ; j < VarNames.size(); ++j) {			// look up this var in the variable table
+			if (var.equals(VarNames.get(j))) {		// found it
+				VarIsNew = false;
+				VarNumber = j;
+				theValueIndex = VarIndex.get(j);	// get the value index from the var table
+				return true;
+			}
+		}
+		VarIsNew = true;
+		return false;								// not in list of variable names
+	}
+
+	// ************************* bottom half of getVar() **********************
+
+	private boolean getVarValue(String var) {		// bottom half of getVar()
+													// do NOT call before calling parseVar() and searchVar(String)
+													// can automatically create salar but not array
+		if (var == null) return false;				// no var to get
+		if (VarIsArray) {
+			if (VarIsNew) {							// new array: error
+				return RunTimeError(EXPECT_DIM_ARRAY);
+			} else {								// old array (has real VarIndex):
+				return GetArrayValue();				// set theValueIndex based upon user's index values
+			}
+		} else if (VarIsNew) {
+			createNewScalar(var);					// create new scalar with real VarIndex, theVarIndex is valid
+		}
+		return true;
+	}
+
+	private int createNewVar(String var) {			// make a new var table entry
+		VarNumber = VarNames.size();
+		VarNames.add(var);
+		VarIndex.add(0);							// keep VarIndex in sync
+		return VarNumber;
+	}
+
+	private void createNewScalar(String var) {		// make a new var table entry and put a scalar in it
+		int kk = 0;
+		if (!VarIsNumeric) {						// if var is string
+			kk = StringVarValues.size();			// then the value index is the index
+			StringVarValues.add("");				// to the next unused entry in string values list
+		} else {									// else var is numeric
+			kk = NumericVarValues.size();			// then the value index is the index
+			NumericVarValues.add(0.0);				// to the next unused entry in numeric values list
+		}
+		VarNumber = VarNames.size();				// make a new var table entry
+		VarNames.add(var);
+		VarIndex.add(kk);							// The var index is the next avail Numeric Value
+		theValueIndex = kk;
+	}
+
+	// ************************************* end of getVar() **************************************
+
 	private  boolean getNumber(){						// Get a number if there is one
 														// Attempt to parse out a number
 		char c = 0;
@@ -3580,21 +3648,19 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		Stack<Double> ValueStack = new Stack<Double>();     // Each call to eval gets its own stack
 		Stack<Integer>OpStack = new Stack<Integer>();		// thus we can recursively call eval
 		int SaveIndex = LineIndex;
-		
+
 		OpStack.push(SOE);									// Push Start of Expression onto stack
-		
-		
-		if (!ENE(OpStack, ValueStack)){						// Now do the recursive evaluation
+		if (!ENE(OpStack, ValueStack)) {					// Now do the recursive evaluation
 			LineIndex = SaveIndex;							// if it fails, back up
 			return false;									// and die
 		}
 
-		if (ValueStack.empty())return false;
+		if (ValueStack.empty()) return false;
 		EvalNumericExpressionValue = ValueStack.pop();		// Recursive eval succeeded. Pop stack for results
 		return true;
 	}
 		
-	private  boolean ENE(Stack<Integer> theOpStack, Stack<Double> theValueStack){ // Part of evaluating a number expression
+	private boolean ENE(Stack<Integer> theOpStack, Stack<Double> theValueStack){ // Part of evaluating a number expression
 
 																// The recursive part of Eval Expression
 		Bundle ufb = ufBundle;
@@ -3627,11 +3693,11 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		
 		else if (evalStringExpression()){		           // Try String Logical Expression
-			if (!SEisLE)return false;                      // If was not a logical string expression, fail
+			if (!SEisLE) return false;                     // If was not a logical string expression, fail
 			theValueStack.push(EvalNumericExpressionValue);			
 		}
 
-		else if (isUserFunction(true)){						// Try User Function
+		else if (isUserFunction(TYPE_NUMERIC)) {			// Try User Function
 			if (!doUserFunction()) return false;
 			ufBundle = ufb;
 			theValueStack.push(EvalNumericExpressionValue);
@@ -4495,32 +4561,27 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	
 	
 	
-	private  boolean ESE(){								// Part of evaluating a string expression
+	private boolean ESE(){								// Part of evaluating a string expression
 
 														// Get the String expression element
 		if (GetStringConstant()) {return true;}					// Try String Constant
 
-		int LI = LineIndex;										// Try sting variable
-/*		
-		if (getNumber()) {
-			LineIndex = i;
-			return false;
-		}
-*/
-		if (getVar()){
-//			if (VarIsFunction) return false;
-			if (VarIsNumeric){
+		int LI = LineIndex;										// Try string variable
+		String var = getVarAndType();							// top half of getVar()
+		if (var != null) {
+			if (VarIsNumeric) {
 				LineIndex = LI;
-//				SyntaxError();
 				return false;
 			}
-			StringConstant = StringVarValues.get(theValueIndex);
-			return true;
+			if (getVarValue(var)) {								// bottom half of getVar()
+				StringConstant = StringVarValues.get(theValueIndex);
+				return true;
+			}
+			LineIndex = LI;
 		}
-		
-		LI = LineIndex;
+
 		Bundle ufb = ufBundle;
-		if (isUserFunction(false)){
+		if (isUserFunction(TYPE_STRING)) {
 			boolean flag = doUserFunction();
 			ufBundle = ufb;
 			if (flag){
@@ -4899,45 +4960,43 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
         return true;												// and we are done
 
 	}
-	
+
 	private  boolean executeDIM(){									// DIM
 																		// Execute a DIM Comman
 		do {									// Multiple Arrays can be DIMed in one DIM statement separated by commas
-			doingDim = true;
-			if (!getArrayVar()) { doingDim = false; return false; }		// Get the array name var
-			doingDim = false;
+			String var = getVarAndType();								// get the array name var
+			if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+			if (!VarIsNew)						{ return RunTimeError(EXPECT_NEW_ARRAY); }
+			if (isNext(']')) 					{ return false; }		// must have dimension(s)
+			boolean avt = VarIsNumeric;									// preserve the array's type
 
-			int svn = VarNumber;										// save the array variable table number
-			boolean svt = VarIsNumeric;									// and the array variable type
-
-			if (isNext(']')) { return false; }							// Must have dimension(s)
-
-			ArrayList<Integer> dimValues = new ArrayList<Integer>();	// A list to hold the array dimension values
+			ArrayList<Integer> dimValues = new ArrayList<Integer>();	// a list to hold the array dimension values
 			do {														// get each index value
-				if (!evalNumericExpression()) { return false; }
+				if (!evalNumericExpression())	{ return false; }
 				dimValues.add(EvalNumericExpressionValue.intValue());	// and add it to the list
 			} while (isNext(','));
+			if (!isNext(']'))					{ return false; }		// must have closing bracket
 
-			if (!isNext(']')) { return false; }							// must have closing bracket
-
-			if (!BuildBasicArray(svn, svt, dimValues)) { return false; }// Build the array
+			int avn = createNewVar(var);								// no error, create new variable
+			if (!BuildBasicArray(avn, avt, dimValues)) { return false; } // build the array
 
 		} while (isNext(','));											// continue while there are arrays to be DIMed
-		return checkEOL();												// Then done
+		return checkEOL();												// then done
 	}
-	
+
 	private boolean executeUNDIM(){
-		boolean unDimed = false;
-		unDiming = true;
 		do {									// Multiple Arrays can be UNDIMed in one Statement separated by commas
-			unDimed = getArrayVar() && isNext(']');						// Get the array name var and UNDIM it
-		} while (unDimed && isNext(','));								// continue while there are arrays to be UNDIMed
-		unDiming = false;
+			if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+			if (!isNext(']'))								{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+			if (!VarIsNew) {
+				VarNames.set(VarNumber, " ");							// if DIMed, UNDIM it
+			}
+		} while (isNext(','));											// continue while there are arrays to be UNDIMed
 
-		return unDimed && checkEOL();
+		return checkEOL();
 	}
 
-	private   boolean BuildBasicArray(int VarNumber, boolean IsNumeric, ArrayList<Integer> DimList){		//Part of DIM
+	private   boolean BuildBasicArray(int VarNum, boolean IsNumeric, ArrayList<Integer> DimList){	//Part of DIM
 
 													// Build a basic array
 													// Makes a bundle with information about the 
@@ -4999,20 +5058,20 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		ArrayEntry.putIntegerArrayList("sizes", ArraySizes);	// The array sizes
 		ArrayEntry.putInt("length", TotalElements);
 		ArrayEntry.putInt("base", ArrayValueStart);				// The pointer the first array element value
-		VarIndex.set(VarNumber, ArrayTable.size());		        // The VAR's value is it's array table index		
+		VarIndex.set(VarNum, ArrayTable.size());				// The var's value is its array table index		
 		ArrayTable.add(ArrayEntry);								// Put the element bundle into the array table
 		
 		return true;
 	}// end BuildBasicArray
 
-	private boolean BuildBasicArray(int VarNumber, boolean IsNumeric, int length){	// Build 1D array
+	private boolean BuildBasicArray(int VarNum, boolean IsNumeric, int length){	// Build 1D array
 		ArrayList <Integer> dimValues = new ArrayList<Integer>();		// list of dimensions
 		dimValues.add(length);											// only one dimension
-		return (BuildBasicArray(VarNumber, IsNumeric, dimValues));		// go build an array of the proper size
+		return (BuildBasicArray(VarNum, IsNumeric, dimValues));			// go build an array of the proper size
 	}
 
-	private boolean ListToBasicNumericArray(int VarNumber, List <Double> Values, int length) {
-		if (!BuildBasicArray(VarNumber, true, length)) return false;	// go build an array of the proper size and type
+	private boolean ListToBasicNumericArray(int VarNum, List <Double> Values, int length) {
+		if (!BuildBasicArray(VarNum, true, length)) return false;		// go build an array of the proper size and type
 		int i = ArrayValueStart;
 		for (Double d : Values) {										// stuff the array
 			NumericVarValues.set(i++, d);
@@ -5020,8 +5079,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return true;
 	}
 
-	private boolean ListToBasicStringArray(int VarNumber, List <String> Values, int length) {
-		if (!BuildBasicArray(VarNumber, false, length)) return false;	// go build an array of the proper size and type
+	private boolean ListToBasicStringArray(int VarNum, List <String> Values, int length) {
+		if (!BuildBasicArray(VarNum, false, length)) return false;		// go build an array of the proper size and type
 		int i = ArrayValueStart;
 		for (String s : Values) {										// stuff the array
 			StringVarValues.set(i++, s);
@@ -5029,25 +5088,21 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return true;
 	}
 
-	private  boolean GetArrayValue(int theVarNumber) {			//Get the value of an array element given it's index values
-
-													// Get the index into the numeric or string
-													// value table pointed to by the given
-													// index values in this call
-		
+	private  boolean GetArrayValue() {				// Get the value of an array element using its index values
 		ArrayList<Integer> indicies = new ArrayList<Integer>();
-		
-													// Parse out the index values for this call
-		
-		while (ExecutingLineBuffer.charAt(LineIndex)!= ']'){
-			if (!evalNumericExpression()){SyntaxError(); return false; }
-			indicies.add(EvalNumericExpressionValue.intValue());
-			if (ExecutingLineBuffer.charAt(LineIndex)== ','){++LineIndex;}
-			else if (ExecutingLineBuffer.charAt(LineIndex)!= ']'){SyntaxError(); return false;}
+		if (!isNext(']')) {							// Parse out the index values for this call
+			int avn = VarNumber;					// preserve the array's VarNumber
+			boolean avt = VarIsNumeric;				// and type
+			do {
+				if (!evalNumericExpression())	{ SyntaxError(); return false; }
+				indicies.add(EvalNumericExpressionValue.intValue());
+			} while (isNext(','));
+			if (!isNext(']'))					{ SyntaxError(); return false; }
+			VarNumber = avn;						// restore the array's varNumber
+			VarIsNumeric = avt;						// and type
 		}
-		++LineIndex;
-		
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(theVarNumber)); // Get the array table bundle for this array
+
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
 		ArrayList<Integer> dims = ArrayEntry.getIntegerArrayList("dims");
 		ArrayList<Integer> sizes = ArrayEntry.getIntegerArrayList("sizes");
 
@@ -5171,34 +5226,43 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 	}
 
 	private boolean executeGOTO() {
-		
+
 		int maxStack = 50000 ;						// 50,000 should be enough
-		
+
 		if (IfElseStack.size() > maxStack) {
-			RunTimeError("Stack overflow. See manual about use of GOTO.");
-			return false;
+			return RunTimeError("Stack overflow. See manual about use of GOTO.");
 		}
-		
 		if (ForNextStack.size() > maxStack) {
-			RunTimeError("Stack overflow. See manual about use of GOTO");
-			return false;
-		}
-		
-		if (getVar()) {
-			int gln = isLabel(VarNumber);
-			if (gln <0){
-				RunTimeError("Undefined Label at:");
-				return false;
-			}
-			if (!checkEOL()) return false;
-			ExecutingLineIndex = gln;
-		}else{
-			return false;
+			return RunTimeError("Stack overflow. See manual about use of GOTO");
 		}
 
-		return true;
+		String varName = getVarAndType();			// get label name and look up its VarNumber
+		if ((varName != null) && checkEOL()) {
+			int gln = isLabel(varName);
+			if (gln < 0) {
+				return RunTimeError("Undefined Label at:");
+			}
+			ExecutingLineIndex = gln;
+			return true;
+		}
+		return false;
 	}
-	
+
+	private boolean executeGOSUB() {
+
+		String varName = getVarAndType();			// get label name and look up its VarNumber
+		if ((varName != null) && checkEOL()) {
+			int gln = isLabel(varName);
+			if (gln < 0) {
+				return RunTimeError("Undefined Label at:");
+			}
+			GosubStack.push(ExecutingLineIndex);
+			ExecutingLineIndex = gln;
+			return true;
+		}
+		return false;
+	}
+
 	private  boolean executeIF(){
 		
 		if (!IfElseStack.empty()){			 								// if inside of an IF block		
@@ -5218,9 +5282,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		}
 		// Execute this IF
 		
-		PossibleKeyWord = "then";					// Tell getVar to expect a THEN
+		PossibleKeyWord = "then";					// Tell parseVar to expect a THEN
 		if (!evalNumericExpression()) { return false; }
-		PossibleKeyWord = "";						// getVar should no longer expect THEN
+		PossibleKeyWord = "";						// parseVar should no longer expect THEN
 		boolean condition = (EvalNumericExpressionValue != 0);
 		
 		if (ExecutingLineBuffer.charAt(LineIndex) != '\n') {
@@ -5280,9 +5344,9 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		if (q == IEexec) {
 			IfElseStack.push(IEskip2);
 		} else {
-			PossibleKeyWord = "then";					// Tell getVar to expect a THEN
+			PossibleKeyWord = "then";					// Tell parseVar to expect a THEN
 			if (!evalNumericExpression()) { return false; }
-			PossibleKeyWord = "";						// getVar should no longer expect THEN
+			PossibleKeyWord = "";						// parseVar should no longer expect THEN
 			boolean condition = (EvalNumericExpressionValue != 0);
 
 			if (ExecutingLineBuffer.startsWith("then", LineIndex)) LineIndex = LineIndex + 4;
@@ -5885,13 +5949,14 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 			  return true;
 		  }
 
-		  private boolean executeDUMP_ARRAY(){
-			  if (!Debug) return true;
+	private boolean executeDUMP_ARRAY(){
+		if (!Debug) return true;
 
-			  if (!getArrayVarForRead()) { return false; }
+		if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+		if (VarIsNew)									{ return RunTimeError(EXPECT_DIM_ARRAY); }
 
-			  PrintShow("Dumping Array " + VarNames.get(VarNumber) + "]");
-			  
+		PrintShow("Dumping Array " + VarNames.get(VarNumber) + "]");
+
 				Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
 				int length = ArrayEntry.getInt("length");				// get the array length
 				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
@@ -5906,8 +5971,8 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				}
 				
 				PrintShow("....");
-			  return true;
-		  }
+		return true;
+	}
 
 		  private boolean executeDUMP_LIST(){
 			  if (!Debug) return true;
@@ -6092,16 +6157,17 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 				executeDEBUG_SHOW();
 				return true;
 			}
-			private boolean executeDEBUG_SHOW_ARRAY(){
-			  if (!Debug) return true;
 
-			  if (!getArrayVarForRead()) { return false; }
+	private boolean executeDEBUG_SHOW_ARRAY(){
+		if (!Debug) return true;
+		if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+		if (VarIsNew)									{ return RunTimeError(EXPECT_DIM_ARRAY); }
+		WatchedArray = VarNumber;
+		DialogSelector(2);
+		executeDEBUG_SHOW();
+		return true;
+	}
 
-				WatchedArray = VarNumber;
-				DialogSelector(2);
-				executeDEBUG_SHOW();
-				return true;
-			}
 			private boolean executeDEBUG_SHOW_LIST(){
 				if (!Debug) return true;
 			  
@@ -6615,38 +6681,30 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 
 // ******************************* User Defined Functions ******************************
 
-		private boolean  executeFN_DEF(){									// Define Function
-		
-		DoingDef = true;
-		if (!getVar()) { DoingDef = false; return false; }			// Get the function name
-		DoingDef = false;
-		if (!VarIsFunction) { return false; }						// Make sure it is a function
-		if (!VarIsNew) { return RunTimeError("Function previously defined at:"); }
-		
+	private boolean  executeFN_DEF(){									// Define Function
+
+		if (!getNewFNVar()) return false;							// Get the function name
+
 		int fVarNumber = VarNumber;                                  // Save the VarNumber of the function name
 		boolean fType = VarIsNumeric;
 		int NVV = NumericVarValues.size();							// Save for array trim
 		int SVV = StringVarValues.size();
-		
-//		int saveVarSearchStart = VarSearchStart;					// Save current VarSearchStart
-//		VarSearchStart = fVarNumber;								// Set new start
 
 		ArrayList<String> fVarName = new ArrayList<String>();        // List of parameter names
 		ArrayList<Integer> fVarType = new ArrayList<Integer>();      // List of parameter types
 		ArrayList<Integer> fVarArray = new ArrayList<Integer>();     // A list of indicating if parm is array
 
 		if (!isNext(')')) {
-			do{															// Get each of the parameter names
-				doingDim = true;
-				if (!getVar()) { return false; }
-				doingDim = false;
-				if (VarIsArray){										// Process array
-					if (!isNext(']')) { return RunTimeError("Expected '[]'"); } // Array must not have any indices
+			do {													// Get each of the parameter names
+				String var = getVarAndType();
+				if (var == null) { return false; }
+				if (VarIsArray) {									// Process array
+					if (!isNext(']')) { return RunTimeError(EXPECT_ARRAY_NO_INDEX); } // Array must not have any indices
 					fVarArray.add(1);      // 1 Indicates var is array
 				} else fVarArray.add(0);   // 0 Indicates var is not an array
-						
-				fVarName.add(VarNames.get(VarNumber));					// Save the name
-				fVarType.add(VarIsNumeric ? 1 : 0);						// Save the type
+
+				fVarName.add(var);									// Save the name
+				fVarType.add(VarIsNumeric ? 1 : 0);					// Save the type
 			} while (isNext(','));
 			if ( !(isNext(')') && checkEOL()) ) { return false; }
 		}
@@ -6664,8 +6722,7 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		
 		VarIndex.set(fVarNumber, fn);								// Associate the function number with
 																	// the function name
-		
-//		VarSearchStart = saveVarSearchStart;					// Restore Var Search Start
+
 		trimArray(VarNames, fVarNumber+1);						// Remove parameter names from the
 		trimArray(VarIndex, fVarNumber+1);						// variable name and index tables
 		trimArray(NumericVarValues, NVV);						// Numeric var values
@@ -6730,37 +6787,33 @@ private  boolean StatementExecuter(){					// Execute one basic line (statement)
 		return checkEOL();
 
 	}
-	
+
 	private boolean executeCALL(){
-		if (isUserFunction(true)) return doUserFunction();
-		if (!isUserFunction(false)) return false;
-		return doUserFunction();
-			}
-	
-	private boolean isUserFunction(boolean isNumeric){
-		
-		Bundle b;
-		if (FunctionTable.size() == 0) return false;					// If function table empty, return fail
-		
-		int i = 0;
-
-		for (i = 0; i<FunctionTable.size(); ++i){				        // scan the Function Tables
-			 b = FunctionTable.get(i);									// get the bundle
-			 String name = b.getString("fname");						// get the function name
-			 if (ExecutingLineBuffer.startsWith(name, LineIndex)){					            // if in list
-				 if (isNumeric != b.getBoolean("isNumeric")) return false;
-				 ufBundle = b;
-				 LineIndex = LineIndex + name.length();
-				 return true;											// report found
-			 	}
-			}
-		return false;													// report fail
-
+		if (isUserFunction(TYPE_NUMERIC)) return doUserFunction();
+		if (isUserFunction(TYPE_STRING)) return doUserFunction();
+		return false;
 	}
-	
-private boolean doUserFunction(){
+
+	private boolean isUserFunction(boolean isNumeric){
+
+		if (FunctionTable.size() == 0) return false;					// If function table empty, return fail
+
+		for (Bundle b : FunctionTable) {								// for each Bundle in the Function Table
+			String name = b.getString("fname");							// get the function name
+			if (ExecutingLineBuffer.startsWith(name, LineIndex)) {		// if in list
+				if (isNumeric != b.getBoolean("isNumeric")) return false;
+				ufBundle = b;
+				LineIndex += name.length();
+				return true;											// report found
+			}
+		}
+		return false;													// report fail
+	}
+
+	private boolean doUserFunction(){
+
 	Bundle fsb = new Bundle();											// The Function Stack Bundle
-	
+
 	int sVarNames = VarNames.size();									// Save a bunch of things that will need to be restored
 	int sVarIndex = VarIndex.size();
 	fsb.putBoolean("isNum", ufBundle.getBoolean("isNumeric"));
@@ -6788,67 +6841,57 @@ private boolean doUserFunction(){
 	int i = 0;
 	if (pCount != 0) {													// For each parameter
 		do {
-			if (i >= pCount){														// Insure no more parms than defined
-				RunTimeError("Calling parameter count exceeds defined parameter count");
-				SyntaxError = true;
-				return false;
-				}
-		
+			if (i >= pCount) {											// Insure no more parms than defined
+				return RunTimeError("Calling parameter count exceeds defined parameter count");
+			}
+
+			boolean isGlobal = isNext('&');								// optional for scalars, ignored for arrays
 			boolean typeIsNumeric = (fVarType.get(i) != 0);
-			if (fVarArray.get(i) == 1){												// if this parm is an array
-				SkipArrayValues = true;
-				if (!getVar()) { SkipArrayValues = false; return false; }			// get the calling array
-				SkipArrayValues = false;
-				if (!(VarIsArray && isNext(']'))) { return false; }					// make sure it is an array with no index
-				if (typeIsNumeric != VarIsNumeric) {								// Insure type (string or number) match
-					RunTimeError("Array parameter type mismatch at:");
-					return false;
+			if (fVarArray.get(i) == 1){									// if this parm is an array
+				if (!getArrayVarForRead())	{ return false; }			// Get the array name var
+				if (typeIsNumeric != VarIsNumeric) {					// Insure type (string or number) match
+					return RunTimeError("Array parameter type mismatch at:");
 				}
-				
-				VarNames.add(fVarName.get(i));						// and add the var name
-				VarIndex.add(VarIndex.get(VarNumber));				// copy array table pointer to the new array.
+
+				VarNames.add(fVarName.get(i));							// and add the var name
+				VarIndex.add(VarIndex.get(VarNumber));					// copy array table pointer to the new array.
 			} // end array
-			else{
-				boolean isGlobal = isNext('&');   // if this is a Global Var
+			else {
 				if (isGlobal) {
-					if (!getVar()) { return false; }				// then must be var not expression
-					if (VarIsNew){
-						RunTimeError("Call by reference vars must be predefined");
-						return false;
+					String var = getVarAndType();						// if this is a Global Var
+					if (var == null)		{ return false; }			// then must be var not expression
+					if (VarIsNew) { return RunTimeError("Call by reference vars must be predefined"); }
+					if (typeIsNumeric != VarIsNumeric) {				// insure type (string or number) match
+						return RunTimeError("Global parameter type mismatch at:");
 					}
-					if (typeIsNumeric != VarIsNumeric) {								// Insure type (string or number) match
-						RunTimeError("Global parameter type mismatch at:");
-						return false;
-					}
-					int thisValueIndex = VarIndex.get(VarNumber);	// get the calling var's value index
-					VarNames.add(fVarName.get(i));					// add the called var name to the var name table		
-					VarIndex.add(thisValueIndex);					// but give it the value index of the calling var
+					if (!getVarValue(var))	{ return false; }			// bottom half of getVar()
+
+					VarNames.add(fVarName.get(i));						// add the called var name to the var name table
+					VarIndex.add(theValueIndex);						// but give it the value index of the calling var
 				} // end global
 				else {
 					if (!typeIsNumeric) {								// if parm is string
-						if (!evalStringExpression()){					// get the string value
-							RunTimeError("Parameter type mismatch at:");
-							return false;
+						if (!evalStringExpression()) {					// get the string value
+							return RunTimeError("Parameter type mismatch at:");
 						}else{
-							VarIndex.add(StringVarValues.size());		// Put the string value into the
-							StringVarValues.add(StringConstant);        // string var values table
-							VarNames.add(fVarName.get(i));				// and add the var name
+							VarIndex.add(StringVarValues.size());				// Put the string value into the
+							StringVarValues.add(StringConstant);				// string var values table
+							VarNames.add(fVarName.get(i));						// and add the var name
 						}
-					}else{
-						if (!evalNumericExpression()){						// if parm is number
-							RunTimeError("Parameter type mismatch at:");	// get the numeric value
-							return false;
-						}else{
+					} else {
+						if (!evalNumericExpression()) {					// if parm is number get the numeric value
+							return RunTimeError("Parameter type mismatch at:");
+						} else {
 							VarIndex.add(NumericVarValues.size());				// Put the number values into the
-							NumericVarValues.add(EvalNumericExpressionValue);   // numeric var values table
+							NumericVarValues.add(EvalNumericExpressionValue);	// numeric var values table
 							VarNames.add(fVarName.get(i));						// and add the var name
 						}
 					}
 				}
 			} // end scalar
-			
+
 			++i;											//  Keep going while calling parms exist
-				
+
 		} while ( isNext(','));
 	} // end if
 
@@ -6883,9 +6926,9 @@ private boolean doUserFunction(){
 	trimArray(VarIndex, fsb.getInt("VI"));
 	VarSearchStart = fsb.getInt("VSS");
 	scOpValue = fsb.getInt("SCOV");
-//	trimArray(NumericVarValues, fsb.getInt("NVV"));
-//	trimArray(StringVarValues, fsb.getInt("SVV"));
-//	trimArray(ArrayTable, fsb.getInt("AT"));
+	trimArray(NumericVarValues, fsb.getInt("NVV"));
+	trimArray(StringVarValues, fsb.getInt("SVV"));
+	trimArray(ArrayTable, fsb.getInt("AT"));
 	ExecutingLineIndex = fsb.getInt("ELI");
 	LineIndex = fsb.getInt("LI");
 	PossibleKeyWord = fsb.getString("PKW");
@@ -6893,7 +6936,7 @@ private boolean doUserFunction(){
 	ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
 	
 	return flag;                                      // Pass on the pass/fail state from the function
-		}
+	}
 
 // **************************** SWITCH Statements *************************************
 	
@@ -7257,8 +7300,7 @@ private boolean doUserFunction(){
 	}
 
 		private boolean executeTEXT_INPUT(){
-			if (!getVar()) return false;
-			if (VarIsNumeric) return false;
+			if (!getSVar()) return false;
 			int saveValueIndex = theValueIndex;
 
 			TextInputString = "";
@@ -7958,12 +8000,9 @@ private boolean doUserFunction(){
 		String filePath = StringConstant;
 
 		if (!isNext(',')) { return false; }							// parse the ,D$[]
-		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
-		int SaveVarNumber = VarNumber;
-
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
-		if (VarIsNumeric) { return RunTimeError("Not string array"); } // Insure that it is a string array
+		if (!getArrayVarForWrite(TYPE_STRING)) { return false; }	// Get the array variable
 		if (!checkEOL()) { return false; }							// line must end with ']'
+		int SaveVarNumber = VarNumber;
 
 		File lbDir = new File(Basic.getDataPath(filePath));
 		if (!lbDir.exists()) {										// error if directory does not exist
@@ -8181,21 +8220,18 @@ private boolean doUserFunction(){
 
 	// ************************************** Miscellaneous Non-core commands **************************
 
-	  private boolean executePAUSE(){
-			 if (!evalNumericExpression())return false;							// Get pause duration value
-		     double d = EvalNumericExpressionValue;
-		     if (d<1){
-		    	 RunTimeError("Pause must be greater than zero");
-		    	 return false;
-		     }
-			if (!checkEOL()) return false;
+	private boolean executePAUSE(){
+		if (!evalNumericExpression()) return false;							// Get pause duration value
+		if (!checkEOL()) return false;
+		long dur = EvalNumericExpressionValue.longValue();
+		if (dur < 1) {
+			return RunTimeError("Pause must be greater than zero");
+		}
 
-		  
-		  try {Thread.sleep((int) d);}catch(InterruptedException e){}
+		try { Thread.sleep(dur); } catch (InterruptedException e) {}
+		return true;
+	}
 
-		  return true;
-	  }
-	  
 	  private boolean executeBROWSE(){
 		  
 		  if (!evalStringExpression()){return false;}
@@ -8242,14 +8278,14 @@ private boolean doUserFunction(){
 		ToastMsg = StringConstant;
 
 		if (!isNext(',')) return false;
-		if (!evalNumericExpression())return false;				// get x
+		if (!evalNumericExpression()) return false;				// get x
 		ToastX = EvalNumericExpressionValue.intValue();
 		if (!isNext(',')) return false;
-		if (!evalNumericExpression())return false;				// get y
+		if (!evalNumericExpression()) return false;				// get y
 		ToastY = EvalNumericExpressionValue.intValue();
 
 		if (!isNext(',')) return false;
-		if (!evalNumericExpression())return false;				// get duration
+		if (!evalNumericExpression()) return false;				// get duration
 		ToastDuration = (EvalNumericExpressionValue == 0.0)
 					  ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG;
 		if (!checkEOL()) return false;
@@ -8271,13 +8307,10 @@ private boolean doUserFunction(){
 		if (!isNext(',')) return false;
 
 		int saveLineIndex = LineIndex;
-		SkipArrayValues = true;
-		boolean isArrayVar = getVar() && VarIsArray && isNext(']');
-		SkipArrayValues = false;
-		if (SyntaxError) return false;
-
-		if (isArrayVar) {
-			if (VarIsNumeric) { return RunTimeError("Not string array"); }
+		if ((getVarAndType() != null) && VarIsArray) {
+			if (!isNext(']'))	{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); } // Array must not have any indices
+			if (VarIsNumeric)	{ return RunTimeError(EXPECT_STRING_ARRAY); }
+			if (VarIsNew)		{ return RunTimeError(EXPECT_DIM_ARRAY); }
 
 			Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
 			int length = ArrayEntry.getInt("length");				// get the array length
@@ -8331,9 +8364,7 @@ private boolean doUserFunction(){
 
 	private boolean executeSPLIT(int limit){
 
-		if (!getArrayVarForWrite()) { return false; }				// Get the result array variable
-		if (VarIsNumeric) { return RunTimeError("Not string array"); } // Insure that it is a string array
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!getArrayVarForWrite(TYPE_STRING)) { return false; }	// Get the result array variable
 		int SaveArrayVarNumber = VarNumber;
 
 		if (!isNext(',')) { return false; }
@@ -8419,17 +8450,17 @@ private boolean doUserFunction(){
 	  private boolean executeWAKELOCK(){
 		  PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
 		  
-		  if (!evalNumericExpression())return false;							// Get x
+		  if (!evalNumericExpression()) return false;						// Get x
 		  
 		  int code  = EvalNumericExpressionValue.intValue();
 		  
-		  if (theWakeLock != null){
+		  if (theWakeLock != null) {
 			  theWakeLock.release();
 			  theWakeLock = null;
 		  }
 		  
 		  
-		  switch (code){
+		  switch (code) {
 		  	case partial:
 		  		theWakeLock = pm.newWakeLock(
                         PowerManager.PARTIAL_WAKE_LOCK,
@@ -8471,12 +8502,12 @@ private boolean doUserFunction(){
 		    double freqOfTone = 1000; 			// hz
 		    int sampleRate = 8000;				// a number
 
-		  if (!evalNumericExpression())return false;			// Get frequency
+		  if (!evalNumericExpression()) return false;			// Get frequency
 		  freqOfTone =  EvalNumericExpressionValue;
 		  
 		  if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;			// Get duration
+		  if (!evalNumericExpression()) return false;			// Get duration
 		  duration= EvalNumericExpressionValue/1000 ;
 	
 	    	double dnumSamples = duration * sampleRate;
@@ -8570,8 +8601,7 @@ private boolean doUserFunction(){
 	private boolean executeVIBRATE(){
 
 		if (!getArrayVarForRead()) return false;					// Get the array variable
-		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); } // Insure that it is a numeric array
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
 
 		if (!isNext(',')) return false;								// Get the repeat value
@@ -8593,7 +8623,7 @@ private boolean doUserFunction(){
 		return true;
 	}
 
-	  private boolean executeDEVICE(){
+	private boolean executeDEVICE(){
 		  
 		  if (!getSVar()) return false;
 		  
@@ -8607,33 +8637,28 @@ private boolean doUserFunction(){
 		  StringVarValues.set(theValueIndex, info);
 		  
 		  return true;
-	  }
-	  
-	  private boolean executeHTTP_POST(){
-		  if (!evalStringExpression()) return false;
-		  String url = StringConstant;
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
-		  ++LineIndex;
-		  
-		   if (!evalNumericExpression())return false;
-		   int theListIndex = EvalNumericExpressionValue.intValue();
-		   if (theListIndex <1 || theListIndex>= theLists.size()){
-			   RunTimeError("Invalid list pointer");
-			   return false;
-		   }
-		   if (theListsType.get(theListIndex) == list_is_numeric){
-			   RunTimeError("List must be of string type.");
-			   return false;
-		   }
-		   
-		   List<String> thisList = theLists.get(theListIndex);
-		   
-		   int r = thisList.size() % 2;
-		   if (r !=0 ) {
-			   RunTimeError("List must have even number of elements");
-			   return false;
-		   }
-		   
+	}
+
+	private boolean executeHTTP_POST(){
+		if (!getStringArg()) return false;
+		String url = StringConstant;
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;
+		int theListIndex = EvalNumericExpressionValue.intValue();
+		if (theListIndex < 1 || theListIndex>= theLists.size()) {
+			return RunTimeError("Invalid list pointer");
+		}
+		if (theListsType.get(theListIndex) == list_is_numeric) {
+			return RunTimeError("List must be of string type.");
+		}
+	
+		List<String> thisList = theLists.get(theListIndex);
+		int r = thisList.size() % 2;
+		if (r !=0 ) {
+			return RunTimeError("List must have even number of elements");
+		}
+	
 	       List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
 	       for (int i = 0; i <thisList.size(); ++i){
 	    	   nameValuePairs.add(new BasicNameValuePair(thisList.get(i), thisList.get(++i)));
@@ -8650,24 +8675,19 @@ private boolean doUserFunction(){
 		        ResponseHandler<String> responseHandler=new BasicResponseHandler();
 		         Result = client.execute(post, responseHandler);
 
-		    	} catch (Exception e){
-		    		RunTimeError("! " + e);
-		    		return false;
-		    	} 
+			} catch (Exception e) {
+				return RunTimeError("! " + e);
+			}
 
-		   if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
-		   ++LineIndex;		   
-		   if (!getSVar()) return false;		   
-		   StringVarValues.set(theValueIndex, Result);
-		   
-		   if (!checkEOL()) return false;
+		if (!isNext(',')) return false;
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+		StringVarValues.set(theValueIndex, Result);
 
-		  
-		  return true;
-	  }
-	  
-	  
-	  // ************************************************ SQL Package ***************************************	  
+		return true;
+	}
+
+	// ************************************************ SQL Package ***************************************
 
 	private boolean executeSQL(){									// Get SQL command key word if it is there
 		return executeCommand(SQL_cmd, "SQL");
@@ -8757,9 +8777,8 @@ private boolean doUserFunction(){
 
 	private boolean execute_sql_open(){
 
-		if (!getVar()) return false;								// DB Pointer Variable
-		if (!VarIsNumeric) return false;							// for the DB table pointer
-		int SaveValueIndex = theValueIndex;
+		if (!getNVar()) return false;								// DB Pointer Variable
+		int SaveValueIndex = theValueIndex;							// for the DB table pointer
 
 		if (!isNext(',')) return false;
 		if (!getStringArg()) return false;							// Get Data Base Name
@@ -8912,9 +8931,9 @@ private boolean doUserFunction(){
 		   String result;
 		   if (cursor.moveToNext()) {							// if there is another row, go there
 			   for (int index = 0; isNext(','); ++index) {
-				   if (!getSVar())return false;					// Get next result variable
-				   try{
-				   result = cursor.getString(index); 			// get the result
+				   if (!getSVar()) return false;				// Get next result variable
+				   try {
+						result = cursor.getString(index); 		// get the result
 				   } catch (Exception e) {
 						return RunTimeError(e);
 				   }
@@ -9445,9 +9464,7 @@ private boolean doUserFunction(){
 
 	private boolean execute_gr_getdl(){
 
-		if (!getArrayVarForWrite()) { return false; }				// Get the array variable
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
-		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
+		if (!getArrayVarForWrite(TYPE_NUMERIC)) { return false; }	// Get the array variable
 		int arrayVarNumber = VarNumber;
 		boolean keepHiddenObjects = false;
 		if (isNext(',')) {											// Optional "hidden" flag
@@ -9477,7 +9494,6 @@ private boolean doUserFunction(){
 	  private boolean execute_gr_newdl(){
 		  
 		  if (!getArrayVarForRead()) return false;					// Get the array variable
-		  if (!isNext(']')) { return RunTimeError("Expected '[]'"); } // Array must not have any indices
 		  if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
 		  if (!checkEOL()) { return false; }						// line must end with ']'
 
@@ -9510,56 +9526,43 @@ private boolean doUserFunction(){
 		  rPaint.setTypeface(tf);
 		  return rPaint;
 	  }
-	  
- 	  private boolean execute_gr_open(){
-		  
-		  if (GRopen) {
-			  RunTimeError("Graphics already Opened");
-			  return false;
-		  }
-		   if (!evalNumericExpression())return false;								// Get alpha
-			  double d = EvalNumericExpressionValue;
-			  int a = (int) d;
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (!evalNumericExpression())return false;							// Get red
-			   d = EvalNumericExpressionValue;
-			   int r = (int) d;
-			   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (!evalNumericExpression())return false;							// Get green
-			   d = EvalNumericExpressionValue;
-			   int g = (int) d;
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
 
-			  if (!evalNumericExpression())return false;							// Get blue
-			   d = EvalNumericExpressionValue;
-			   int b = (int) d;
-			   
+	private boolean execute_gr_open(){
+		if (GRopen) {
+			return RunTimeError("Graphics already Opened");
+		}
+
+		if (!evalNumericExpression()) return false;							// Get alpha
+		int a = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get red
+		int r = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get green
+		int g = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get blue
+		int b = EvalNumericExpressionValue.intValue();
+
+		ShowStatusBar = 0;
+		GRorientation = 0;
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			ShowStatusBar = EvalNumericExpressionValue.intValue();
+			if (isNext(',')) {
+				if (!evalNumericExpression()) return false;
+				GRorientation = EvalNumericExpressionValue.intValue();
+			}
+		}
+		if (!checkEOL()) return false;
+
 			  GR.theBackGround = a * 0x1000000 +									// Set the appropriate bytes
 			  					 r * 0x10000 +
 			  					 g * 0x100 +
 			  					 b ;
-
-			  ShowStatusBar = 0;
-			   if (ExecutingLineBuffer.charAt(LineIndex) == ','){
-				  ++LineIndex;
-				  if (!evalNumericExpression())return false;
-				  ShowStatusBar = EvalNumericExpressionValue.intValue();
-			   }
-			   
-			   GRorientation = 0;
-			   if (ExecutingLineBuffer.charAt(LineIndex) == ','){
-					  ++LineIndex;
-					  if (!evalNumericExpression())return false;
-					  GRorientation = EvalNumericExpressionValue.intValue();
-				   }
-
-			   
-				if (!checkEOL()) return false;
 
 		  drawintoCanvas = null;
 		  DisplayListClear();
@@ -9646,74 +9649,62 @@ private boolean doUserFunction(){
 		  }
 		  return true;
 	  }
-	  
-	  private boolean execute_gr_color(){
-		  
-		   if (!evalNumericExpression())return false;								// Get alph
-			  double d = EvalNumericExpressionValue;
-			  int a = (int) d;
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (!evalNumericExpression())return false;							// Get red
-			   d = EvalNumericExpressionValue;
-			   int r = (int) d;
-			   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (!evalNumericExpression())return false;							// Get green
-			   d = EvalNumericExpressionValue;
-			   int g = (int) d;
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
 
-			  if (!evalNumericExpression())return false;							// Get blue
-			   d = EvalNumericExpressionValue;
-			   int b = (int) d;
-			   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-				++LineIndex;
+	private boolean execute_gr_color(){
 
-			  if (!evalNumericExpression())return false;							// Get fill
-  			  d = EvalNumericExpressionValue;
-  			  
-  			if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get alpha
+		int a = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
 
+		if (!evalNumericExpression()) return false;							// Get red
+		int r = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get green
+		int g = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get blue
+		int b = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get fill
+		double d = EvalNumericExpressionValue;
+		if (!checkEOL()) return false;
 
 		   Paint tPaint = newPaint(aPaint);					// Create a newPaint object
 		   tPaint.setARGB(a, r, g, b);							// Set the colors, etc
 //		   tPaint.setAntiAlias(true);
-		   if (d ==0) tPaint.setStyle(Paint.Style.STROKE );
-		   else if (d == 1) tPaint.setStyle(Paint.Style.FILL );
+		   if (d == 0) tPaint.setStyle(Paint.Style.STROKE );
+		   else if (d == 1) tPaint.setStyle(Paint.Style.FILL);
 		   else tPaint.setStyle(Paint.Style.FILL_AND_STROKE);
 		   aPaint = newPaint(tPaint);							// Copy the temp paint to aPaint
 	       PaintListAdd(aPaint);								// Add the newPaint to the Paint List
 		  return true;
-	  }
-	  
-	  private boolean execute_gr_antialias(){
-		  if (!evalNumericExpression())return false;		    // Get the boolean
-		  Paint tPaint = newPaint(aPaint);
-		  if (EvalNumericExpressionValue == 0) tPaint.setAntiAlias(false);
-		  else tPaint.setAntiAlias(true);
-		   aPaint = newPaint(tPaint);							// Copy the temp paint to aPaint
-	       PaintListAdd(aPaint);								// Add the newPaint to the Paint List
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_stroke_width(){
-		   if (!evalNumericExpression())return false;								// Get the width
-		   float width = EvalNumericExpressionValue.floatValue();
-		   if (width<0){
-			   RunTimeError("Width must be >= 0");
-			   return false;
-		   }
-		   Paint tPaint = newPaint(aPaint);					// Create a newPaint object
-		   tPaint.setStrokeWidth(width);						// Set the stroke width
-		   aPaint = newPaint(tPaint);							// Copy the temp paint to aPaint
-	       PaintListAdd(aPaint);								// Add the newPaint to the Paint List
-			
-		  return true;
-	  }
+	}
+
+	private boolean execute_gr_antialias(){
+		if (!evalNumericExpression()) return false;				// Get the boolean
+		Paint tPaint = newPaint(aPaint);
+		tPaint.setAntiAlias(EvalNumericExpressionValue != 0);
+		aPaint = newPaint(tPaint);								// Copy the temp paint to aPaint
+		PaintListAdd(aPaint);									// Add the newPaint to the Paint List
+		return true;
+	}
+
+	private boolean execute_gr_stroke_width(){
+		if (!evalNumericExpression()) return false;				// Get the width
+		float width = EvalNumericExpressionValue.floatValue();
+		if (width < 0) {
+			return RunTimeError("Width must be >= 0");
+		}
+		Paint tPaint = newPaint(aPaint);						// Create a newPaint object
+		tPaint.setStrokeWidth(width);							// Set the stroke width
+		aPaint = newPaint(tPaint);								// Copy the temp paint to aPaint
+		PaintListAdd(aPaint);									// Add the newPaint to the Paint List
+
+		return true;
+	}
 
 	private boolean execute_gr_point(){
 		Bundle aBundle = new Bundle();
@@ -9726,15 +9717,14 @@ private boolean doUserFunction(){
 
 		if (!evalNumericExpression()) return false;				// Get x
 		int x = EvalNumericExpressionValue.intValue();
-		aBundle.putInt("x", x);
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;				// Get y
 		int y = EvalNumericExpressionValue.intValue();
-		aBundle.putInt("y", y);
-
 		if (!checkEOL()) return false;
 
+		aBundle.putInt("x", x);
+		aBundle.putInt("y", y);
 		int p = PaintList.size();								// Set the most current paint as the paint
 		aBundle.putInt("paint", p-1);							// paint for this point
 		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
@@ -9743,40 +9733,30 @@ private boolean doUserFunction(){
 		return true;
 	}
 
-	  private boolean execute_gr_line(){
+	private boolean execute_gr_line(){
 		  Bundle aBundle = new Bundle();
 		  aBundle.putInt("type", GR.dLine);
 		  aBundle.putInt("hide", 0);
 
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		if (!getNVar()) return false;										// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		   if (!evalNumericExpression())return false;							// Get x1
-		  double d = EvalNumericExpressionValue;
-		  aBundle.putInt("x1", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get y1
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("y1", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get x2
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("x2", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		if (!evalNumericExpression()) return false;							// Get x1
+		aBundle.putInt("x1", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get y2
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("y2", (int) d);
-		  
-			if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get y1
+		aBundle.putInt("y1", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get x2
+		aBundle.putInt("x2", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get y2
+		aBundle.putInt("y2", EvalNumericExpressionValue.intValue());
+		if (!checkEOL()) return false;
 
 
 		  int p = PaintList.size();								// Set the most current paint as the paint
@@ -9785,41 +9765,32 @@ private boolean doUserFunction(){
 
 		  DisplayListAdd(aBundle);				// Add the line to the display list
 		  return true;
-	  }
+	}
 
-	  private boolean execute_gr_rect(){
+	private boolean execute_gr_rect(){
 		  Bundle aBundle = new Bundle();
 		  aBundle.putInt("type", GR.dRect);
 		  aBundle.putInt("hide", 0);
 
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		if (!getNVar()) return false;										// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		   if (!evalNumericExpression())return false;							// Get left
-		  double d = EvalNumericExpressionValue;
-		  aBundle.putInt("left", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get top
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("top", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get right
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("right", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		if (!evalNumericExpression()) return false;							// Get left
+		aBundle.putInt("left", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get bottom
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("bottom", (int) d);
-		  if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get top
+		aBundle.putInt("top", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get right
+		aBundle.putInt("right", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get bottom
+		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
+		if (!checkEOL()) return false;
 
 		  int p = PaintList.size();						// Set current paint as this circle's paint
 		  aBundle.putInt("paint", p-1);
@@ -9827,60 +9798,44 @@ private boolean doUserFunction(){
 
 		  DisplayListAdd(aBundle);
 		  return true;
-	  }
-	  
-	  private boolean execute_gr_arc(){
+	}
+
+	private boolean execute_gr_arc(){
 		  Bundle aBundle = new Bundle();
 		  aBundle.putInt("type", GR.dArc);
 		  aBundle.putInt("hide", 0);
 
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		if (!getNVar()) return false;										// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		   if (!evalNumericExpression())return false;							// Get left
-		  double d = EvalNumericExpressionValue;
-		  aBundle.putInt("left", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get top
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("top", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get right
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("right", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		if (!evalNumericExpression()) return false;							// Get left
+		aBundle.putInt("left", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get bottom
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("bottom", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		if (!evalNumericExpression()) return false;							// Get top
+		aBundle.putInt("top", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get start angle
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("start_angle", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		if (!evalNumericExpression()) return false;							// Get right
+		aBundle.putInt("right", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get end angle
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("sweep_angle", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		if (!evalNumericExpression()) return false;							// Get bottom
+		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get flag
-		   d = EvalNumericExpressionValue;
-		   aBundle.putInt("fill_mode", (int) d);
-		
-		   if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get start angle
+		aBundle.putInt("start_angle", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get end angle
+		aBundle.putInt("sweep_angle", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get flag
+		aBundle.putInt("fill_mode", EvalNumericExpressionValue.intValue());
+		if (!checkEOL()) return false;
 
 		  int p = PaintList.size();						// Set the current paint as this objct's paint
 		  aBundle.putInt("paint", p-1);
@@ -9888,88 +9843,68 @@ private boolean doUserFunction(){
 
 		  DisplayListAdd(aBundle);
 		  return true;
-	  }
-	  
-	  private boolean execute_gr_circle(){
+	}
+
+	private boolean execute_gr_circle(){
 		  Bundle aBundle = new Bundle();
 		  aBundle.putInt("type", GR.dCircle);
 		  aBundle.putInt("hide", 0);
-		  
-		  
-		   if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
 
-		   if (!evalNumericExpression())return false;							// Get x
-		  double d = EvalNumericExpressionValue;
-		  aBundle.putInt("x", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get x
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("y", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get r
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("radius", (int) d);
+		if (!getNVar()) return false;										// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		  if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get x
+		aBundle.putInt("x", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get x
+		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get r
+		aBundle.putInt("radius", EvalNumericExpressionValue.intValue());
+		if (!checkEOL()) return false;
 
 		  int p = PaintList.size();					// Set the current paint as this object's paint
 		  aBundle.putInt("paint", p-1);
 		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
 		  DisplayListAdd(aBundle);
 		  return true;
-	  }
-	  
-	  private boolean execute_gr_oval(){
+	}
+
+	private boolean execute_gr_oval(){
 		  Bundle aBundle = new Bundle();
 		  aBundle.putInt("type", GR.dOval);
 		  aBundle.putInt("hide", 0);
 
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		if (!getNVar()) return false;										// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		   if (!evalNumericExpression())return false;							// Get left
-		  double d = EvalNumericExpressionValue;
-		  aBundle.putInt("left", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get top
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("top", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get right
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("right", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		if (!evalNumericExpression()) return false;							// Get left
+		aBundle.putInt("left", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get bottom
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("bottom", (int) d);
+		if (!evalNumericExpression()) return false;							// Get top
+		aBundle.putInt("top", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get right
+		aBundle.putInt("right", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get bottom
+		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
+		if (!checkEOL()) return false;
 
 		  int p = PaintList.size();						// Set the current paint as this object's paint
 		  aBundle.putInt("paint", p-1);
 		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-		  
 		  DisplayListAdd(aBundle);
 		  return true;
-	  }
-	  
+	}
+
 	  private double gr_collide(int Object1, int Object2){
 
 		  double fail = -1;
@@ -9981,7 +9916,7 @@ private boolean doUserFunction(){
 			  return fail;
 		  }
 		  Bundle b1 = DisplayList.get(Object1);									// Get the bundle to change
-		  if (b1.getInt("hide") != 0)  return xfalse;								// If hidden then no collide
+		  if (b1.getInt("hide") != 0) return xfalse;								// If hidden then no collide
 		  Rect r1 = gr_getRect(b1);
 		  if (r1 == null) return fail;
 		  
@@ -10053,40 +9988,46 @@ private boolean doUserFunction(){
 		  return true;
 	  }
 
-	  private boolean execute_gr_hide(){
-		 if (!evalNumericExpression())return false;							// Get Object Number
-	     double d = EvalNumericExpressionValue;
-			if (!checkEOL()) return false;
-	     if (d<0 || d>= DisplayList.size()){
+	private boolean execute_gr_hide(){
+		if (!evalNumericExpression()) return false;							// Get Object Number
+		if (!checkEOL()) return false;
+		int obj = EvalNumericExpressionValue.intValue();
+		if (obj < 0 || obj >= DisplayList.size()) {
 			return RunTimeError("Hide parameter out of range");
-	     }
-	     Bundle b = DisplayList.get((int) d);			// Get the specified display object
-	     b.putInt("hide", 1);							// Set hide to true
-	     DisplayList.set((int) d, b);					// put the modified object back
-		  return true;
-	  }
+		}
+		Bundle b = DisplayList.get(obj);				// Get the specified display object
+		b.putInt("hide", 1);							// Set hide to true
+		DisplayList.set(obj, b);						// put the modified object back
+		return true;
+	}
 
-	  private boolean execute_gr_show(){
-			 if (!evalNumericExpression())return false;							// Get Object Number
-		     double d = EvalNumericExpressionValue;
-		     if (d<0 || d>= DisplayList.size()){
-				return RunTimeError("Show parameter out of range");
-		     }
-				if (!checkEOL()) return false;
-		     Bundle b = DisplayList.get((int) d);     // Get the specified display object
-		     b.putInt("hide", 0);					  // Set hide to false
-		     DisplayList.set((int) d, b);			  // put the modified object back
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_get_position(){
-			 if (!evalNumericExpression())return false;							// Get Object Number
-		     double d = EvalNumericExpressionValue;
-		     if (d<0 || d>= DisplayList.size()){
-				return RunTimeError("Object out of range");
-		     }
-		     Bundle b = DisplayList.get((int) d);     // Get the specified display object
-		     
+	private boolean execute_gr_show(){
+		if (!evalNumericExpression()) return false;							// Get Object Number
+		if (!checkEOL()) return false;
+		int obj = EvalNumericExpressionValue.intValue();
+		if (obj < 0 || obj >= DisplayList.size()) {
+			return RunTimeError("Show parameter out of range");
+		}
+		Bundle b = DisplayList.get(obj);				// Get the specified display object
+		b.putInt("hide", 0);							// Set hide to false
+		DisplayList.set(obj, b);						// put the modified object back
+		return true;
+	}
+
+	private boolean execute_gr_get_position(){
+		if (!evalNumericExpression()) return false;							// Get Object Number
+		int obj = EvalNumericExpressionValue.intValue();
+		if (obj < 0 || obj >= DisplayList.size()) {
+			return RunTimeError("Object out of range");
+		}
+		Bundle b = DisplayList.get(obj);				// Get the specified display object
+
+		if (!isNext(',') || !getNVar()) return false;
+		int xIndex = theValueIndex;
+		if (!isNext(',') || !getNVar()) return false;
+		int yIndex = theValueIndex;
+		if (!checkEOL()) return false;
+
 		     int x = 0;									// get the position value
 		     int y = 0;
 		     if (b.containsKey("x")) x = b.getInt("x");
@@ -10094,82 +10035,54 @@ private boolean doUserFunction(){
 		     if (b.containsKey("y")) y = b.getInt("y");
 		     else y = b.getInt("top");
 
-			 if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		     ++LineIndex;
-		     if (!getNVar()) return false;
-		  	 NumericVarValues.set(theValueIndex, (double) x);
+		NumericVarValues.set(xIndex, (double) x);
+		NumericVarValues.set(yIndex, (double) y);
 
-			 if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		     ++LineIndex;
-		     if (!getNVar()) return false;
-		  	 NumericVarValues.set(theValueIndex, (double) y);
+		return true;
+	}
 
-			 if (!checkEOL()) return false;
+	private boolean execute_gr_get_value(){
+		if (!evalNumericExpression()) return false;						// Get Object Number
+		int obj = EvalNumericExpressionValue.intValue();
+		if (obj < 0 || obj >= DisplayList.size()) {
+			return RunTimeError("Object out of range");
+		}
 
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_get_value(){
-			 if (!evalNumericExpression())return false;							// Get Object Number
-		     double d = EvalNumericExpressionValue;
-		     if (d<0 || d>= DisplayList.size()){
-				return RunTimeError("Object out of range");
-		     }
-		     Bundle b = DisplayList.get((int) d);     // Get the specified display object
-		     
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;							// get the parameter string
+		String parm = StringConstant;
 
-			  if (!evalStringExpression()) return false;							// get the parameter string
-			  if (SEisLE) return false;
+		Bundle b = DisplayList.get(obj);							// Get the specified display object
+		if (!b.containsKey(parm)) {
+			return RunTimeError("Object does not contain " + parm);
+		}
 
-			  String parm = StringConstant;
-			  
-			  if (!b.containsKey(parm)){
-				  RunTimeError("Object does not contain " + parm);
-				  return false;
-			  }
+		if (!isNext(',') || !getVar() || !checkEOL()) return false;
+		if (VarIsNumeric == parm.equals("text")) {					// error if numeric var and "text" tag
+			return RunTimeError("Wrong var type for tag: " + parm);	// or string var and not "text" tag
+		}
+		if (VarIsNumeric) {
+			int value = b.getInt(parm);
+			NumericVarValues.set(theValueIndex, (double) value);
+		} else {
+			String theText = b.getString(parm);
+			StringVarValues.set(theValueIndex, theText);
+		}
+		return true;
+	}
 
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (getNVar()){
-//				  if (!checkEOL()) return false;
-				  int value = b.getInt(parm);
-				  NumericVarValues.set(theValueIndex, (double) value);
-				  return true;
-			  }
-			  
-			  if (!parm.equals("text")){
-				  RunTimeError("Invalid tag: " + parm);
-			  }
-			  
-			  if (!getSVar()) return false;
-			  if (!checkEOL()) return false;
+	private boolean execute_gr_touch(int p){
+		if (!getNVar()) return false;							// Graphic boolean Variable
+		int SaveBooleanIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-			  String theText = b.getString(parm);
-			  StringVarValues.set(theValueIndex, theText);
+		if (!getNVar()) return false;							// Graphic X variable
+		int SaveXIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_touch(int p){
-		   if (!getVar())return false;							// Graphic boolean Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveBooleanIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-
-		   if (!getVar())return false;							// Graphic X variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveXIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-
-		   if (!getVar())return false;							// Graphic Y variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveYIndex = theValueIndex;
-			if (!checkEOL()) return false;
+		if (!getNVar()) return false;							// Graphic Y variable
+		int SaveYIndex = theValueIndex;
+		if (!checkEOL()) return false;
 
 		   double flag = 0.0;
 		   if (NewTouch[p]) {					// If touched
@@ -10181,35 +10094,28 @@ private boolean doUserFunction(){
 		   NumericVarValues.set(SaveXIndex, TouchX[p]);
 		   NumericVarValues.set(SaveYIndex, TouchY[p]);
 		   return true;
-	  }
-	  
-	  private boolean execute_gr_bound_touch(int p){
-		  
-		   if (!getVar())return false;							// Graphic boolean Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveBooleanIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   
-		   	  if (!evalNumericExpression())return false;							// Get left
-			  double left = EvalNumericExpressionValue;
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (!evalNumericExpression())return false;							// Get top
-			  double top = EvalNumericExpressionValue;
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (!evalNumericExpression())return false;							// Get right
-			  double right = EvalNumericExpressionValue;
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
+	}
 
-			  if (!evalNumericExpression())return false;							// Get bottom
-			  double bottom = EvalNumericExpressionValue;
+	private boolean execute_gr_bound_touch(int p){
+		if (!getNVar()) return false;							// Graphic boolean Variable
+		int SaveBooleanIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-			  if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;				// Get left
+		double left = EvalNumericExpressionValue;
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;				// Get top
+		double top = EvalNumericExpressionValue;
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;				// Get right
+		double right = EvalNumericExpressionValue;
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;				// Get bottom
+		double bottom = EvalNumericExpressionValue;
+		if (!checkEOL()) return false;
 
 			   boolean flag = false;
 			   if (NewTouch[p]) {					// If touched
@@ -10225,53 +10131,44 @@ private boolean doUserFunction(){
 			   if (TouchX[p] >= left && TouchX[p] <= right &&      // If the touch was in the bounding rect
 			       TouchY[p] >= top  && TouchY[p] <= bottom) {
 				   NumericVarValues.set(SaveBooleanIndex, 1.0);    // Return the true boolean to the user
-			   }else NumericVarValues.set(SaveBooleanIndex, 0.0);  // else retrun the false boolean to the user
-			   
-		  return true;
-	  }
+			   } else NumericVarValues.set(SaveBooleanIndex, 0.0); // else return the false boolean to the user
 
-	  private boolean execute_gr_text_draw(){
+		return true;
+	}
+
+	private boolean execute_gr_text_draw(){
 		  Bundle aBundle = new Bundle();       // Create a new object of type text
 		  aBundle.putInt("type", GR.dText);
 		  aBundle.putInt("hide", 0);
 
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		if (!getNVar()) return false;										// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		   if (!evalNumericExpression())return false;							// Get x
-		  double d = EvalNumericExpressionValue;
-		  aBundle.putInt("x", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get y
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("y", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalStringExpression()) return false;							// Get the text
-		  if (SEisLE) return false;
-		  aBundle.putString("text", StringConstant);
-		  
-		  if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get x
+		aBundle.putInt("x", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get y
+		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!getStringArg()) return false;									// Get the text
+		aBundle.putString("text", StringConstant);
+		if (!checkEOL()) return false;
 
 		  int p = PaintList.size();												// Set the current paint	
 		  aBundle.putInt("paint", p-1);											// as the text paint
 
 		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
 		  DisplayListAdd(aBundle);
-		  
-		  
-		  return true;
-	  }
 
-	  private boolean execute_gr_text_align(){
+		return true;
+	}
+
+	private boolean execute_gr_text_align(){
 		  Paint tPaint = newPaint(aPaint);										// Clone the current paint
-		  if (!evalNumericExpression())return false;							// Get Align parameter
+		  if (!evalNumericExpression()) return false;							// Get Align parameter
 			  double d = EvalNumericExpressionValue;
 			  if (d == 1){ tPaint.setTextAlign(Paint.Align.LEFT);}              // Set the paint align value
 			  else if (d == 2){ tPaint.setTextAlign(Paint.Align.CENTER);}
@@ -10284,11 +10181,11 @@ private boolean doUserFunction(){
 			  aPaint = newPaint(tPaint);				// Set the new current paint
 		      PaintListAdd(aPaint);						// and add it to the paint list
 			  return true;
-	  }
-	  
-	  private boolean execute_gr_text_size(){
+	}
+
+	private boolean execute_gr_text_size(){
 			Paint tPaint = newPaint(aPaint);            // Clone the current paint
-			if (!evalNumericExpression())return false;   // Get desired size
+			if (!evalNumericExpression()) return false; // Get desired size
 			double d = EvalNumericExpressionValue;
 			if (!checkEOL()) return false;
 			if (d < 1){
@@ -10299,11 +10196,11 @@ private boolean doUserFunction(){
 			 aPaint = newPaint(tPaint);				// Clone the temp paint into current paint
 			 PaintListAdd(aPaint);						// Add current paint to the paint list
 			 return true;
-		  }
+	}
 
-	  private boolean execute_gr_text_underline(){
+	private boolean execute_gr_text_underline(){
 			Paint tPaint = newPaint(aPaint);
-			if (!evalNumericExpression())return false;							// Get boolean
+			if (!evalNumericExpression()) return false;							// Get boolean
 			if (!checkEOL()) return false;
 			double d = EvalNumericExpressionValue;
 			if (d==0) tPaint.setUnderlineText(false);
@@ -10312,22 +10209,22 @@ private boolean doUserFunction(){
 			 aPaint = newPaint(tPaint);
 			 PaintListAdd(aPaint);
 			 return true;
-		  }
+	}
 
-	  private boolean execute_gr_text_skew(){
+	private boolean execute_gr_text_skew(){
 			Paint tPaint = newPaint(aPaint);
-			if (!evalNumericExpression())return false;							// Get Skew
+			if (!evalNumericExpression()) return false;							// Get Skew
 			double d = EvalNumericExpressionValue;
 			if (!checkEOL()) return false;
 			tPaint.setTextSkewX((float)d);
 			 aPaint = newPaint(tPaint);
 			 PaintListAdd(aPaint);
 			 return true;
-		  }
-	  
-	  private boolean execute_gr_text_bold(){
+	}
+
+	private boolean execute_gr_text_bold(){
 			Paint tPaint = newPaint(aPaint);
-			if (!evalNumericExpression())return false;							// Get boolean 
+			if (!evalNumericExpression()) return false;							// Get boolean 
 			double d = EvalNumericExpressionValue;
 			if (!checkEOL()) return false;
 			int flag = tPaint.getFlags();
@@ -10338,11 +10235,11 @@ private boolean doUserFunction(){
 			aPaint = newPaint(tPaint);
 			 PaintListAdd(aPaint);
 			 return true;
-		  }
+	}
 
-	  private boolean execute_gr_text_strike(){
+	private boolean execute_gr_text_strike(){
 			Paint tPaint = newPaint(aPaint);
-			if (!evalNumericExpression())return false;							// Get boolean 
+			if (!evalNumericExpression()) return false;							// Get boolean 
 			double d = EvalNumericExpressionValue;
 			if (!checkEOL()) return false;
 			int flag = tPaint.getFlags();
@@ -10353,24 +10250,22 @@ private boolean doUserFunction(){
 			aPaint = newPaint(tPaint);
 			 PaintListAdd(aPaint);
 			 return true;
-		  }
+	}
 
-	  private boolean execute_gr_text_width(){
-		   if (!getVar())return false;							// Width return  Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   
-		   if (!evalStringExpression()) return false;			// Get the string
-			if (!checkEOL()) return false;
-		   
+	private boolean execute_gr_text_width(){
+		if (!getNVar()) return false;							// Width return  Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
+
+		if (!getStringArg()) return false;						// Get the string
+		if (!checkEOL()) return false;
+
 		   float w = aPaint.measureText(StringConstant);        // Get the strings width
 		   NumericVarValues.set(SaveValueIndex, (double) w);    // Save the width into the var
-		   
-		  return true;
-	  }
-	  
+
+		return true;
+	}
+
 	private String getAlternateRawFileName(String input) {
 		// Converts a file name with upper and lower case characters to a lower case filename.
 		// The dot extension is appended to the end of the filename preceeded by "_".
@@ -10450,10 +10345,10 @@ private boolean doUserFunction(){
 		   BitmapList.add(aBitmap); // Add the new bit map to the bitmap list
 		   
 		   return true;
-	  }
-	  
-	  private boolean execute_gr_bitmap_delete(){
-		   if (!evalNumericExpression()) return false;					// 
+	}
+
+	private boolean execute_gr_bitmap_delete(){
+		   if (!evalNumericExpression()) return false; 
 		   if (!checkEOL()) return false;
 		   int q = EvalNumericExpressionValue.intValue();
 		   if (q<1 | q >= BitmapList.size()){
@@ -10466,144 +10361,112 @@ private boolean doUserFunction(){
 		   BitmapList.set(q, null);
 		   System.gc();
 		  return true;
-	  }
-	  
-	  private boolean execute_gr_bitmap_scale(){
+	}
 
-		  if (!getVar())return false;							// Graphic Destination Bitmap Pointer Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+	private boolean execute_gr_bitmap_scale(){
 
-			if (!evalNumericExpression())return false;			// Get Source Bitmap
-		   double d = EvalNumericExpressionValue;
-		   int q = (int) d;
-		   if (q<1 | q >= BitmapList.size()){
-			   RunTimeError("Invalid Bitmap Pointer");
-			   return false;			   
-		   }
-		   
-		   Bitmap SrcBitMap = BitmapList.get(q);
-		   if (SrcBitMap == null){
-			   RunTimeError("Bitmap was deleted");
-			   return false;
-		   }
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   
-			if (!evalNumericExpression())return false;							// Get Width 
-			d = EvalNumericExpressionValue;
-			int Width = (int) d;
-			
-			if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			++LineIndex;
-			   
-			if (!evalNumericExpression())return false;							// Get Height
-			d = EvalNumericExpressionValue;
-			int Height = (int) d;
-			
-			boolean parm = true;
-			if (ExecutingLineBuffer.charAt(LineIndex) == ','){					// optional scale paramter
-				++LineIndex;
-				if (!evalNumericExpression())return false;
-				if (EvalNumericExpressionValue == 0.0) parm = false;
-			}
-			if (!checkEOL()) return false;
+		if (!getNVar()) return false;							// Graphic Destination Bitmap Pointer Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-			if (Width == 0 || Height == 0){
-				RunTimeError("Width and Height must not be zero");
-				   return false;
-			}
-			
-			try {aBitmap = Bitmap.createScaledBitmap(SrcBitMap, Width, Height, parm);}
-			   catch (Exception e){
-				   return RunTimeError(e);
-			   }
-			   
-			System.gc();   
+		if (!evalNumericExpression()) return false;				// Get Source Bitmap
+		int q = EvalNumericExpressionValue.intValue();
+		if (q < 1 | q >= BitmapList.size()) {
+			return RunTimeError("Invalid Bitmap Pointer");
+		}
+
+		Bitmap SrcBitMap = BitmapList.get(q);
+		if (SrcBitMap == null){
+			return RunTimeError("Bitmap was deleted");
+		}
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get Width
+		int Width = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get Height
+		int Height = EvalNumericExpressionValue.intValue();
+
+		boolean parm = true;
+		if (isNext(',')) {													// optional scale paramter
+			if (!evalNumericExpression()) return false;
+			if (EvalNumericExpressionValue == 0.0) parm = false;
+		}
+		if (!checkEOL()) return false;
+
+		if (Width == 0 || Height == 0) {
+			return RunTimeError("Width and Height must not be zero");
+		}
+
+		try { aBitmap = Bitmap.createScaledBitmap(SrcBitMap, Width, Height, parm); }
+		catch (Exception e) { return RunTimeError(e); }
+
+			System.gc();
 			NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
 			System.gc();
 			BitmapList.add(aBitmap);
-		   
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_bitmap_size(){
-		  
-		   if (!getVar())return false;							// Graphic Source Bitmap Pointer Variable
-		   if (!VarIsNumeric)return false;						 
-		   double d = NumericVarValues.get(theValueIndex);
-		   int q = (int) d;
-		   if (q<1 | q >= BitmapList.size()){
-			   RunTimeError("Invalid Bitmap Pointer");
-			   return false;			   
-		   }
-		   Bitmap SrcBitMap = BitmapList.get(q);                // Access the bitmap
-		   
-		   if (SrcBitMap == null){
-			   RunTimeError("Bitmap was deleted");
-			   return false;
-		   }
 
+		return true;
+	}
 
-		   int w = SrcBitMap.getWidth();                 // Get the image width
-		   int h = SrcBitMap.getHeight();                // Get the image height
-		   
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   if (!getVar())return false;							// Get the height variable
-		   if (!VarIsNumeric)return false;						
-		   NumericVarValues.set(theValueIndex, (double) w);     // Set the height value
-		   
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   if (!getVar())return false;							// Get the width variable
-		   if (!VarIsNumeric)return false;						
-		   NumericVarValues.set(theValueIndex, (double) h);     // Set the width value
-			if (!checkEOL()) return false;
-		   
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_bitmap_crop(){
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+	private boolean execute_gr_bitmap_size(){
 
-		   if (!evalNumericExpression())return false;							// Get source bitmap index
-		   int SourceBitmapIndex = EvalNumericExpressionValue.intValue();
-		   if (SourceBitmapIndex < 0 || SourceBitmapIndex >= BitmapList.size()){
-			   RunTimeError("Invalid Source Bitmap Pointer");
-			   return false;
-		   }
-		   Bitmap SourceBitmap = BitmapList.get(SourceBitmapIndex);
-		   
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		if (!getNVar()) return false;							// Graphic Source Bitmap Pointer Variable
+		int q = NumericVarValues.get(theValueIndex).intValue();
+		if (q < 1 | q >= BitmapList.size()) {
+			return RunTimeError("Invalid Bitmap Pointer");
+		}
 
-		  if (!evalNumericExpression())return false;							// Get x
-		  int x = EvalNumericExpressionValue.intValue();
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get y
-		  int y = EvalNumericExpressionValue.intValue();
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get width
-		  int width = EvalNumericExpressionValue.intValue();
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		Bitmap SrcBitMap = BitmapList.get(q);					// Access the bitmap
+		if (SrcBitMap == null) {
+			return RunTimeError("Bitmap was deleted");
+		}
 
-		  if (!evalNumericExpression())return false;							// Get height
-		  int height = EvalNumericExpressionValue.intValue();
-		  if (!checkEOL()) return false;
-		  
-		  
+		int w = SrcBitMap.getWidth();							// Get the image width
+		int h = SrcBitMap.getHeight();							// Get the image height
+
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;							// Get the height variable
+		NumericVarValues.set(theValueIndex, (double) w);		// Set the height value
+
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;							// Get the width variable
+		NumericVarValues.set(theValueIndex, (double) h);		// Set the width value
+		if (!checkEOL()) return false;
+
+		return true;
+	}
+
+	private boolean execute_gr_bitmap_crop(){
+		if (!getNVar()) return false;							// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;				// Get source bitmap index
+		int SourceBitmapIndex = EvalNumericExpressionValue.intValue();
+		if (SourceBitmapIndex < 0 || SourceBitmapIndex >= BitmapList.size()) {
+			return RunTimeError("Invalid Source Bitmap Pointer");
+		}
+		Bitmap SourceBitmap = BitmapList.get(SourceBitmapIndex);
+
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression()) return false;							// Get x
+		int x = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get y
+		int y = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get width
+		int width = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get height
+		int height = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+
 		  try {
 			  aBitmap = Bitmap.createBitmap(SourceBitmap, x, y, width, height);
 		  }
@@ -10614,51 +10477,38 @@ private boolean doUserFunction(){
 		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
 		   BitmapList.add(aBitmap);
 
-		  return true;
-	  }
+		return true;
+	}
 
-	  private boolean execute_gr_bitmap_draw(){
+	private boolean execute_gr_bitmap_draw(){
 		  Bundle aBundle = new Bundle();         // Create a new display object of type bitmap
 		  aBundle.putInt("type", GR.dBitmap);
 		  aBundle.putInt("hide", 0);
-		  
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		  
 
-		   if (!evalNumericExpression())return false;							// Get Bitmap obj pointer
-		   double d = EvalNumericExpressionValue;
-		   int q = (int) d;
+		if (!getNVar()) return false;							// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		   if (q<1 | q >= BitmapList.size()){
-			   RunTimeError("Invalid Bitmap Pointer");
-			   return false;			   
-		   }
-		   
-		   if (BitmapList.get(q) == null){
-			   RunTimeError("Bitmap was deleted");
-			   return false;
-		   }
+		if (!evalNumericExpression()) return false;				// Get Bitmap obj pointer
+		int q = EvalNumericExpressionValue.intValue();
+		if (q < 1 | q >= BitmapList.size()) {
+			return RunTimeError("Invalid Bitmap Pointer");
+		}
 
+		if (BitmapList.get(q) == null) {
+			return RunTimeError("Bitmap was deleted");
+		}
+		aBundle.putInt("bitmap", q);
+		if (!isNext(',')) return false;
 
-		  aBundle.putInt("bitmap", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get x
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("x", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get y
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("y", (int) d);
-		  
-			if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get x
+		aBundle.putInt("x", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get y
+		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
+		if (!checkEOL()) return false;
+
 		  int p = PaintList.size();						// Set current paint as this circle's paint
 		  aBundle.putInt("paint", p-1);
 		  
@@ -10667,33 +10517,28 @@ private boolean doUserFunction(){
 		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
 		  DisplayListAdd(aBundle);
 
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_bitmap_create(){
-		  if (!getNVar()) return false;											// Get bitmap ptr var
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		return true;
+	}
 
-		   if (!evalNumericExpression()) return false;							// Get the width
-		   int width = EvalNumericExpressionValue.intValue();
-		   if (width <= 0 ){
-			   RunTimeError("Width must be >= 0");
-			   return false;
-		   }
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+	private boolean execute_gr_bitmap_create(){
+		if (!getNVar()) return false;										// Get bitmap ptr var
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		   if (!evalNumericExpression()) return false;							// Get the height
-		   int height = EvalNumericExpressionValue.intValue();
-		   if (height <= 0 ){
-			   RunTimeError("Height must be >= 0");
-			   return false;
-		   }
-		   
-		   if (!checkEOL()) return false;
-		   
+		if (!evalNumericExpression()) return false;							// Get the width
+		int width = EvalNumericExpressionValue.intValue();
+		if (width <= 0) {
+			return RunTimeError("Width must be >= 0");
+		}
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get the height
+		int height = EvalNumericExpressionValue.intValue();
+		if (height <= 0) {
+			return RunTimeError("Height must be >= 0");
+		}
+		if (!checkEOL()) return false;
+
 		   try{
 			   aBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
 		   }
@@ -10704,131 +10549,104 @@ private boolean doUserFunction(){
 		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
 		   BitmapList.add(aBitmap);
 		   		  
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_rotate_start(){
-		  
+		return true;
+	}
+
+	private boolean execute_gr_rotate_start(){
+
 		  Bundle aBundle = new Bundle();            // Create a new display list object of type rotate
 		  aBundle.putInt("type", GR.dRotate_Start);
 		  aBundle.putInt("hide", 0);
 
+		if (!evalNumericExpression()) return false;							// Get angle
+		aBundle.putInt("angle", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get angle
-			  double d = EvalNumericExpressionValue;
-			  aBundle.putInt("angle", (int) d);
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (!evalNumericExpression())return false;							// Get x
-			   d = EvalNumericExpressionValue;
-			  aBundle.putInt("x", (int) d);
-			  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			  ++LineIndex;
-			  
-			  if (!evalNumericExpression())return false;							// Get y
-			   d = EvalNumericExpressionValue;
-			  aBundle.putInt("y", (int) d);
+		if (!evalNumericExpression()) return false;							// Get x
+		aBundle.putInt("x", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-			  if (ExecutingLineBuffer.charAt(LineIndex) == ','){
-				  ++LineIndex;
-				  if (!getVar()) return false;
-				  if (!VarIsNumeric) return false;
-				  NumericVarValues.set(theValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
-			  }
-				if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get y
+		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
 
-			  DisplayListAdd(aBundle);          // Put the new object into the display list
+		if (isNext(',')) {
+			if (!getNVar()) return false;
+			NumericVarValues.set(theValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
+		}
+		if (!checkEOL()) return false;
 
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_rotate_end(){
+		DisplayListAdd(aBundle);					// Put the new object into the display list
+
+		return true;
+	}
+
+	private boolean execute_gr_rotate_end(){
 		  Bundle aBundle = new Bundle();           // Create a new object of type Rotate end
 		  aBundle.putInt("type", GR.dRotate_End); 
 		  aBundle.putInt("hide", 0);
-		  
-		  if (getVar()){
-			  if (!VarIsNumeric) return false;
-			  NumericVarValues.set(theValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
-		  }
+
+		if (!isEOL()) {
+			if (!getNVar()) return false; 
+			NumericVarValues.set(theValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
 			if (!checkEOL()) return false;
-		  
+		}
+
 		  DisplayListAdd(aBundle);					// add the object to the display list
 		  return true;
-	  }
-	  
-	  private boolean execute_gr_modify(){
-		  
-		  if (!evalNumericExpression())return false;							// Get Object Number
-		  double d = EvalNumericExpressionValue;
-		  int index = (int) d;
-		  if (index <0 || index >= DisplayList.size()){
-			  RunTimeError("Object Number out of range");
-			  return false;
-		  }
-		  Bundle b = DisplayList.get(index);									// Get the bundle to change
-		  
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalStringExpression()) return false;							// get the parameter string
-		  if (SEisLE) return false;
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  String parm = StringConstant;
-		  int value = 0;
-		  
-		  if (!b.containsKey(parm)){
-			  RunTimeError("Object does not contain: " + parm);
-			  return false;
-		  }
-		  
-		  
-		  if (StringConstant.equals("text")){
-			  parm = StringConstant;
-			  if (!evalStringExpression()) return false;							// get the parameter string
-			  if (SEisLE) return false;
-			  b.putString(parm, StringConstant);
-		  }else{
-			  if (!evalNumericExpression())return false;							// Get paramter value
-			  d = EvalNumericExpressionValue;
-			  value = (int) d;
-			  if (parm.equals("bitmap")){
-				  if (value <0 | value >= BitmapList.size()){
-					  RunTimeError("Bitmap pointer out of range");
-					  return false;
-				  }
-			  }
-			  if (parm.equals("paint")){
-				  if (value < 1 || value >= PaintList.size()){
-					  RunTimeError ("Invalid Paint object number");
-					  return false;
-				  }
-			  }
+	}
 
-			  b.putInt(parm, value);
-		  }
+	private boolean execute_gr_modify(){
+
+		if (!evalNumericExpression()) return false;							// Get Object Number
+		int index = EvalNumericExpressionValue.intValue();
+		if (index < 0 || index >= DisplayList.size()) {
+			return RunTimeError("Object Number out of range");
+		}
+
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;									// get the parameter string
+		if (!isNext(',')) return false;
+		String parm = StringConstant;
+
+		Bundle b = DisplayList.get(index);									// Get the bundle to change
+		if (!b.containsKey(parm)) {
+			return RunTimeError("Object does not contain: " + parm);
+		}
+
+		if (parm.equals("text")) {
+			if (!getStringArg()) return false;								// get the parameter string
 			if (!checkEOL()) return false;
-
-		  DisplayList.set(index, b);
-
-		  return true;
-		  
-	  }
-	  
-	  private boolean execute_gr_orientation(){
-
-		  if (!evalNumericExpression())return false; // get the mode (landscape or portrait)							
+			b.putString(parm, StringConstant);
+		} else {
+			if (!evalNumericExpression()) return false;						// Get paramter value
 			if (!checkEOL()) return false;
-		  int mode = EvalNumericExpressionValue.intValue();
-		  GR.drawView.SetOrientation(mode);
-		  return true;
-	  }
-	  
+			int value = EvalNumericExpressionValue.intValue();
+			if (parm.equals("bitmap")) {
+				if (value < 0 | value >= BitmapList.size()) {
+					return RunTimeError("Bitmap pointer out of range");
+				}
+			} else if (parm.equals("paint")) {
+				if (value < 1 || value >= PaintList.size()) {
+					return RunTimeError ("Invalid Paint object number");
+				}
+			}
+			b.putInt(parm, value);
+		}
+
+		DisplayList.set(index, b);
+		return true;
+	}
+
+	private boolean execute_gr_orientation(){
+		if (!evalNumericExpression()) return false;		// get the mode (landscape or portrait)
+		if (!checkEOL()) return false;
+		int mode = EvalNumericExpressionValue.intValue();
+		GR.drawView.SetOrientation(mode);
+		return true;
+	}
+
 	  private boolean execute_gr_screen(){
-		   if (!getNVar()) return false;						// Width variable 
+		   if (!getNVar()) return false;						// Width variable
 		   NumericVarValues.set(theValueIndex,(double) GR.Width); 
 		   if (!isNext(',')) return false;
 
@@ -10844,22 +10662,22 @@ private boolean doUserFunction(){
 
 		  return true;
 	  }
-	  
-	  private boolean execute_gr_front(){
-		  if (!evalNumericExpression())return false;							// Get y
-		  if (EvalNumericExpressionValue == 0){
+
+	private boolean execute_gr_front(){
+		if (!evalNumericExpression()) return false;						// Get flag
+		if (EvalNumericExpressionValue == 0) {
 			  Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
 			  startActivity(Basic.theProgramRunner);
 			  GRFront = false;
-		  }else{
+		} else {
 			  GRclass.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 			  startActivity(GRclass);
 			  GRFront = true;
-		  }
-			if (!checkEOL()) return false;
-		  try {Thread.sleep(100);}catch(InterruptedException e){}
-		  return true;
-	  }
+		}
+		if (!checkEOL()) return false;
+		try {Thread.sleep(100);}catch(InterruptedException e){}
+		return true;
+	}
 
 	private boolean execute_gr_set_pixels(){
 
@@ -10867,9 +10685,8 @@ private boolean doUserFunction(){
 		int SaveValueIndex = theValueIndex;
 
 		if (!isNext(',')) return false;
-		if (!getArrayVarForRead())  return false;				// Get the array variable
+		if (!getArrayVarForRead()) return false;				// Get the array variable
 		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); }
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
 
 		int x = 0;
@@ -10955,60 +10772,47 @@ private boolean doUserFunction(){
 			}
 		}
 
-		private boolean getTheBMpixel(Bitmap b){
+	private boolean getTheBMpixel(Bitmap b){
 
-			int pixel = 0;
+		if (!evalNumericExpression()) return false;						// Get x
+		int x = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
 
-			if (!evalNumericExpression())return false;							// Get x
-			double d = EvalNumericExpressionValue;
-			int x = (int)d;
-			if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			++LineIndex;
-				  
-			if (!evalNumericExpression())return false;							// Get y
-			d = EvalNumericExpressionValue;
-			int y = (int)d;
-			if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			++LineIndex;
+		if (!evalNumericExpression()) return false;						// Get y
+		int y = EvalNumericExpressionValue.intValue();
+		if (!isNext(',')) return false;
 
-			int w = b.getWidth();                 // Get the image width
-			   int h = b.getHeight();                // Get the image height
-			   
-			   if (x<0 || x>=w || y<0 || y>=h){
-				   RunTimeError("x or y exceeds size of screen");
-				   return false;
-			   }
-			
-			
-			if (b != null) pixel = b.getPixel(x, y);					// get the pixel from the bitmap
+		int w = b.getWidth();											// Get the image width
+		int h = b.getHeight();											// Get the image height
+		if (x < 0 || x >= w || y < 0 || y >= h) {
+			return RunTimeError("x or y exceeds size of screen");
+		}
 
-			
-	  		int alpha = Color.alpha(pixel);								// get the components of the pixel
-	  		int red = Color.red(pixel);
-	  		int green = Color.green(pixel);
-	  		int blue = Color.blue(pixel);
-	  		
-	  		if (!getNVar())return false;									// Alpha Var
-	  		NumericVarValues.set(theValueIndex, (double) alpha);
-	  		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-	  		++LineIndex;
+		int pixel = (b == null) ? 0 : b.getPixel(x, y);					// get the pixel from the bitmap
 
-	  		if (!getNVar())return false;									// Red Var
-	  		NumericVarValues.set(theValueIndex, (double) red);
-	  		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-	  		++LineIndex;
+		int alpha = Color.alpha(pixel);									// get the components of the pixel
+		int red = Color.red(pixel);
+		int green = Color.green(pixel);
+		int blue = Color.blue(pixel);
 
-	  		if (!getNVar())return false;									// Blue Green
-	  		NumericVarValues.set(theValueIndex, (double) green);
-	  		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-	  		++LineIndex;
+		if (!getNVar()) return false;									// Alpha Var
+		NumericVarValues.set(theValueIndex, (double) alpha);
+		if (!isNext(',')) return false;
 
-	  		if (!getNVar())return false;									// Green Blue
-	  		NumericVarValues.set(theValueIndex, (double) blue);
-			if (!checkEOL()) return false;
-		  
-		  return true;
-	  }
+		if (!getNVar()) return false;									// Red Var
+		NumericVarValues.set(theValueIndex, (double) red);
+		if (!isNext(',')) return false;
+
+		if (!getNVar()) return false;									// Blue Green
+		NumericVarValues.set(theValueIndex, (double) green);
+		if (!isNext(',')) return false;
+
+		if (!getNVar()) return false;									// Green Blue
+		NumericVarValues.set(theValueIndex, (double) blue);
+		if (!checkEOL()) return false;
+
+		return true;
+	}
 
 	private boolean writeBitmapToFile(Bitmap b, String fn, int quality) {
 		CompressFormat format = CompressFormat.PNG;						// Assume png
@@ -11033,27 +10837,25 @@ private boolean doUserFunction(){
 		return true;
 	}
 
-	  private boolean execute_gr_save(){
-		  
-		  	if (!evalStringExpression()) return false;					// Get the filename
-		  	String fn = StringConstant;
-		  	
-		  	int quality = 50;											// set default jpeg quality
+	private boolean execute_gr_save(){
+
+		if (!getStringArg()) return false;							// Get the filename
+		String fn = StringConstant;
+
+			int quality = 50;											// set default jpeg quality
 			if (isNext(','))											// if there is an optional quality parm
 			{
-				if (!evalNumericExpression())return false;				// evaluate it
+				if (!evalNumericExpression()) return false;				// evaluate it
 				quality = EvalNumericExpressionValue.intValue();
-				if (quality < 0 || quality >100){
-					RunTimeError("Quality must be between 0 and 100");
-					return false;
-					}
+				if (quality < 0 || quality > 100) {
+					return RunTimeError("Quality must be between 0 and 100");
+				}
 			}
-			
 			if (!checkEOL()) return false;
-			
-            boolean retval = true;
+
+			boolean retval = true;
 			Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
-			if (b==null){
+			if (b == null) {
 				RunTimeError("Problem creating bitmap");
 				retval = false;
 			} else {
@@ -11066,16 +10868,16 @@ private boolean doUserFunction(){
 			GR.drawView.destroyDrawingCache();							// clean up DrawingCache
 			System.gc();
 			return retval;
-	  }
-	  
-	  private boolean  execute_screen_to_bitmap(){
-		  if (!getNVar()) return false;
-          boolean retval = true;
-		  Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
-		  if (b == null) {
-			  RunTimeError("Could not capture screen bitmap. Sorry.");
-			  retval = false;
-		  } else {
+	}
+
+	private boolean  execute_screen_to_bitmap(){
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+		boolean retval = true;
+		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
+		if (b == null) {
+			return RunTimeError("Could not capture screen bitmap. Sorry.");
+		} else {
 
 			  NumericVarValues.set(theValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
 			  BitmapList.add(b.copy(Bitmap.Config.ARGB_8888 , true));			
@@ -11087,34 +10889,32 @@ private boolean doUserFunction(){
 		  GR.drawView.destroyDrawingCache();							// clean up DrawingCache
 		  System.gc();
 		  return retval;
-	  }
+	}
 
-	  private boolean execute_gr_get_texbounds(){
-		  if (!evalStringExpression()) return false;
+	private boolean execute_gr_get_texbounds(){
+		if (!getStringArg()) return false;
+		String text = StringConstant;
 
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  if (!getNVar()) return false;
-		  int leftIndex = theValueIndex;
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;
+		int leftIndex = theValueIndex;
 
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  if (!getNVar()) return false;
-		  int topIndex = theValueIndex;
-		  
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  if (!getNVar()) return false;
-		  int rightIndex = theValueIndex;
-		  
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  if (!getNVar()) return false;
-		  int bottomIndex = theValueIndex;
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;
+		int topIndex = theValueIndex;
+
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;
+		int rightIndex = theValueIndex;
+
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;
+		int bottomIndex = theValueIndex;
+		if (!checkEOL()) return false;
 
 		  Rect bounds = new Rect();
 		  
-		  aPaint.getTextBounds(StringConstant, 0, StringConstant.length(), bounds);
+		  aPaint.getTextBounds(text, 0, text.length(), bounds);
 		  
 		  int left = bounds.left;
 		  int top = bounds.top;
@@ -11127,51 +10927,41 @@ private boolean doUserFunction(){
 		  NumericVarValues.set(rightIndex, (double) right);
 		  
 		  return true;
-	  
-	  
-	  }
-	  
-	  private boolean execute_bitmap_save(){
-		  
-			if (!evalNumericExpression())return false;			// Get Source Bitmap
-			   double d = EvalNumericExpressionValue;
-			   int q = (int) d;
-			   if (q<1 | q >= BitmapList.size()){
-				   RunTimeError("Invalid Bitmap Pointer");
-				   return false;			   
-			   }
-			   
-			   Bitmap SrcBitMap = BitmapList.get(q);
-			   if (SrcBitMap == null){
-				   RunTimeError("Bitmap was deleted");
-				   return false;
-			   }
-			   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-			   ++LineIndex;
+	}
 
-			if (!evalStringExpression()) return false;					// Get the filename
-		  	String fn = StringConstant;
-		  	
-		  	int quality = 50;											// set default jpeg quality
-			if (ExecutingLineBuffer.charAt(LineIndex) == ',')			// if there is an optional quality parm
-			{
-				++LineIndex;
-				if (!evalNumericExpression())return false;				// evaluate it
-				quality = EvalNumericExpressionValue.intValue();
-				if (quality < 0 || quality >100){
-					RunTimeError("Quality must be between 0 and 100");
-					return false;
-					}
+	private boolean execute_bitmap_save(){
+
+		if (!evalNumericExpression()) return false;			// Get Source Bitmap
+		int q = EvalNumericExpressionValue.intValue();
+		if (q < 1 | q >= BitmapList.size()) {
+			return RunTimeError("Invalid Bitmap Pointer");
+		}
+
+		Bitmap SrcBitMap = BitmapList.get(q);
+		if (SrcBitMap == null) {
+			return RunTimeError("Bitmap was deleted");
+		}
+		if (!isNext(',')) return false;
+
+		if (!getStringArg()) return false;					// Get the filename
+		String fn = StringConstant;
+
+		int quality = 50;									// set default jpeg quality
+		if (isNext(',')) {									// if there is an optional quality parm
+			if (!evalNumericExpression()) return false;		// evaluate it
+			quality = EvalNumericExpressionValue.intValue();
+			if (quality < 0 || quality > 100) {
+				return RunTimeError("Quality must be between 0 and 100");
 			}
-			
-			if (!checkEOL()) return false;
-			
+		}
+		if (!checkEOL()) return false;
+
 			boolean retval = writeBitmapToFile(SrcBitMap, fn, quality);
 
 		    SrcBitMap = null;
 		    System.gc();
 			return retval;
-	  }
+	}
 
 	private boolean execute_gr_scale(){
 
@@ -11179,7 +10969,7 @@ private boolean doUserFunction(){
 		double x = EvalNumericExpressionValue;
 
 		if (!isNext(',')) return false;
-		if (!evalNumericExpression())return false;								// Get y
+		if (!evalNumericExpression()) return false;								// Get y
 		double y = EvalNumericExpressionValue;
 		if (!checkEOL()) return false;
 
@@ -11189,53 +10979,40 @@ private boolean doUserFunction(){
 		return true;
 	}
 
-	  private boolean execute_gr_clip(){
-		  
+	private boolean execute_gr_clip(){
+
 		  Bundle aBundle = new Bundle();
 		  aBundle.putInt("type", GR.dClip);
 		  aBundle.putInt("hide", 0);
 
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
+		if (!getNVar()) return false;							// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-		   if (!evalNumericExpression())return false;							// Get left
-		  double d = EvalNumericExpressionValue;
-		  aBundle.putInt("left", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get top
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("top", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
-		  
-		  if (!evalNumericExpression())return false;							// Get right
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("right", (int) d);
-		  if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		  ++LineIndex;
+		if (!evalNumericExpression()) return false;							// Get left
+		aBundle.putInt("left", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression())return false;							// Get bottom
-		   d = EvalNumericExpressionValue;
-		  aBundle.putInt("bottom", (int) d);
-		  
-		  int RegionOp = 0 ;
-		  if (ExecutingLineBuffer.charAt(LineIndex) == ','){
-			  ++LineIndex;
-			  if (!evalNumericExpression())return false;
-			  d = EvalNumericExpressionValue;
-			  if (d<0 || d>5){
-				  RunTimeError("Region Operator not 0 to 5");
-				  return false;
-			  }
-			  aBundle.putInt("RO", (int) d);
-		  }
-		  if (!checkEOL()) return false;
+		if (!evalNumericExpression()) return false;							// Get top
+		aBundle.putInt("top", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
 
+		if (!evalNumericExpression()) return false;							// Get right
+		aBundle.putInt("right", EvalNumericExpressionValue.intValue());
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;							// Get bottom
+		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
+
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			int RegionOp = EvalNumericExpressionValue.intValue();
+			if (RegionOp < 0 || RegionOp > 5) {
+				return RunTimeError("Region Operator not 0 to 5");
+			}
+			aBundle.putInt("RO", RegionOp);
+		}
+		if (!checkEOL()) return false;
 
 		  int p = PaintList.size();						// Set current paint as this circle's paint
 		  aBundle.putInt("paint", p-1);
@@ -11243,56 +11020,48 @@ private boolean doUserFunction(){
 
 		  DisplayListAdd(aBundle);
 		  return true;
-	  }
-		  
-	  private boolean execute_gr_poly(){
+	}
+
+	private boolean execute_gr_poly(){
 		  Bundle aBundle = new Bundle();
 		  aBundle.putInt("type", GR.dPoly);
 		  aBundle.putInt("hide", 0);
 
-		  if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   int SaveValueIndex = theValueIndex;
-		   if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		   ++LineIndex;
-		   
-		   if (!evalNumericExpression())return false;
-		   int theListIndex = EvalNumericExpressionValue.intValue();
-		   if (theListIndex <1 || theListIndex>= theLists.size()){
-			   RunTimeError("Invalid list pointer");
-			   return false;
-		   }
-		   if (theListsType.get(theListIndex) != list_is_numeric){
-			   RunTimeError("List must be numeric");
-			   return false;
-		   }
-		   
-		   ArrayList<Double> thisList = theLists.get(theListIndex);
-		   if (thisList.size()<6){
-			   RunTimeError("List must have at least three points");
-			   return false;
-		   }
-		   
-		   int r = thisList.size() % 2;
-		   if (r !=0 ) {
-			   RunTimeError("List must have even number of elements");
-			   return false;
-		   }
-		   aBundle.putInt("list", theListIndex);
-		   
-			int x = 0;
-			int y = 0;
-	  		if (ExecutingLineBuffer.charAt(LineIndex) == ','){
-	  			++LineIndex;
+		if (!getNVar()) return false;							// Graphic Object Variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
-	  			if (!evalNumericExpression()) return false;
-	  			x = EvalNumericExpressionValue.intValue();
-	  			if (ExecutingLineBuffer.charAt(LineIndex) != ',') return false;
-	  			++LineIndex;
-	  			if (!evalNumericExpression()) return false;
-	  			y =  EvalNumericExpressionValue.intValue();
-	  		}
-	  		
+		if (!evalNumericExpression()) return false;
+		int theListIndex = EvalNumericExpressionValue.intValue();
+		if (theListIndex < 1 || theListIndex >= theLists.size()) {
+			return RunTimeError("Invalid list pointer");
+		}
+		if (theListsType.get(theListIndex) != list_is_numeric){
+			return RunTimeError("List must be numeric");
+		}
+
+		ArrayList<Double> thisList = theLists.get(theListIndex);
+		if (thisList.size() < 6) {
+			return RunTimeError("List must have at least three points");
+		}
+
+		int r = thisList.size() % 2;
+		if (r != 0) {
+			return RunTimeError("List must have even number of elements");
+		}
+		aBundle.putInt("list", theListIndex);
+
+		int x = 0;
+		int y = 0;
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			x = EvalNumericExpressionValue.intValue();
+			if (!isNext(',')) return false;
+			if (!evalNumericExpression()) return false;
+			y = EvalNumericExpressionValue.intValue();
+		}
+		if (!checkEOL()) return false;
+
 	  		aBundle.putInt("x", x);
 	  		aBundle.putInt("y", y);
 
@@ -11303,11 +11072,10 @@ private boolean doUserFunction(){
 
 		   DisplayListAdd(aBundle);
 
-
 		  return true;
-	  }
+	}
 
-		private static int getNumberOfCameras() {
+	private static int getNumberOfCameras() {
 
 			int cameraCount;
 			int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
@@ -11319,7 +11087,7 @@ private boolean doUserFunction(){
 				cameraCount = Camera.getNumberOfCameras();				// May be more than one camera
 			}
 			return cameraCount;
-		}
+	}
 
 	private boolean execute_gr_camera_select(){
 
@@ -11387,47 +11155,47 @@ private boolean doUserFunction(){
 		cameraIntent.putExtra(CameraView.EXTRA_FOCUS_MODE, focusMode);
 		try {
 			startActivityForResult(cameraIntent, BASIC_GENERAL_INTENT);
-		} catch (Exception e){
+		} catch (Exception e) {
 			return RunTimeError(e);
 		}
 		while (!CameraDone) Thread.yield();
 
-			if (CameraBitmap != null){
+			if (CameraBitmap != null) {
 			   NumericVarValues.set(saveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
 			   BitmapList.add(CameraBitmap);
-			}else{
+			} else {
 			   NumericVarValues.set(saveValueIndex, (double) 0); // Save the GR Object index into the var
 			}
 			CameraBitmap = null;
 		    System.gc();
 
 			return true;
-		}
-		
-	  
-	  private boolean execute_statusbar_show(){
-		  Show("This command deprecated.");
-		  Show("To show status bar, use:");
-		  Show("gr.open alpha, red, green, blue, 1");
-		  SyntaxError = true;
-		  return false;
-	  }
-	  
-	  private boolean execute_brightness(){
-		  if (!evalNumericExpression()) return false;
-		  double value = EvalNumericExpressionValue;
-		  if (value < 0.01) value = 0.01;
-		  if (value > 1.0) value = 1.0;
-		  GR.Brightness = (float) value;
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_text_typeface(){
-		   if (!evalNumericExpression())return false;							// Get type
-		   int face = EvalNumericExpressionValue.intValue();
+	}
 
-			if (!checkEOL()) { return false; }
-			
+	private boolean execute_statusbar_show(){
+		String[] msg = {
+			"This command deprecated.",							// First line is base of errorMsg
+			"To show status bar, use:",
+			"gr.open alpha, red, green, blue, 1"
+		};
+		return RunTimeError(msg);
+	}
+
+	private boolean execute_brightness(){
+		if (!evalNumericExpression()) return false;
+		if (!checkEOL()) return false;
+		double value = EvalNumericExpressionValue;
+		if (value < 0.01) value = 0.01;
+		if (value > 1.0) value = 1.0;
+		GR.Brightness = (float) value;
+		return true;
+	}
+
+	private boolean execute_gr_text_typeface(){
+		if (!evalNumericExpression()) return false;							// Get type
+		if (!checkEOL()) { return false; }
+		int face = EvalNumericExpressionValue.intValue();
+
 			int style = Typeface.NORMAL;	
 
 			Typeface tf ;														// Interpret typeface
@@ -11440,8 +11208,7 @@ private boolean doUserFunction(){
 			else if (face == 4)
 				tf = Typeface.create(Typeface.SERIF, style);
 			else {
-				RunTimeError("Typface must be 1, 2. 3 or 4");
-				return false;
+				return RunTimeError("Typface must be 1, 2, 3 or 4");
 			}
 			
 			Paint tPaint = newPaint(aPaint);						// Put the typeface into Paint
@@ -11450,16 +11217,15 @@ private boolean doUserFunction(){
 		    PaintListAdd(aPaint);								// Add the newPaint to the Paint List
 			
 		  return true;
-	  }
-	  
-	  private boolean execute_gr_touch_resume(){
-		  if (interruptResume == -1) {
-			  RunTimeError("No onTouch Interrupt");
-			  return false;
-		  }
-		  return doResume();
-	  }
-	  	  
+	}
+
+	private boolean execute_gr_touch_resume(){
+		if (interruptResume == -1) {
+			return RunTimeError("No onTouch Interrupt");
+		}
+		return doResume();
+	}
+
 //*************************************************************  Audio  ******************************************
 	  private boolean executeAUDIO(){
 	    	if (!GetAudioKeyWord()){
@@ -11904,9 +11670,7 @@ private boolean doUserFunction(){
 	  		}
 
 		private boolean execute_sensors_list(){
-			if (!getArrayVarForWrite()) { return false; }				// Get the array variable
-			if (VarIsNumeric) { return RunTimeError("Not string array"); }
-			if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+			if (!getArrayVarForWrite(TYPE_STRING)) { return false; }	// Get the array variable
 			if (!checkEOL()) { return false; }							// line must end with ']'
 			int theVarNumber = VarNumber;
 
@@ -11954,7 +11718,7 @@ private boolean doUserFunction(){
 				return RunTimeError("Sensors not opened at:");
 			}
 
-			if (!evalNumericExpression())return false;			// Get Sensor Type
+			if (!evalNumericExpression()) return false;			// Get Sensor Type
 			int type = EvalNumericExpressionValue.intValue();
 			if (!isNext(',')) return false;
 
@@ -11963,15 +11727,15 @@ private boolean doUserFunction(){
 			}
 
 			int[] valueIndex = new int[4];
-			if (!getNVar())return false;						// Sensor Variable
+			if (!getNVar()) return false;						// Sensor Variable
 			valueIndex[1] = theValueIndex;
 			if (!isNext(',')) return false;
 
-			if (!getNVar())return false;						// Sensor Variable
+			if (!getNVar()) return false;						// Sensor Variable
 			valueIndex[2] = theValueIndex;
 			if (!isNext(',')) return false;
 
-			if (!getNVar())return false;						// Sensor Variable
+			if (!getNVar()) return false;						// Sensor Variable
 			valueIndex[3] = theValueIndex;
 			if (!checkEOL()) return false;
 
@@ -11982,58 +11746,56 @@ private boolean doUserFunction(){
 			return true;
 		}
 
-	  private boolean execute_sensors_rotate(){
-		  
-		  /* This is a test. 
-		   * It has failed so far
-		   * This command has not been exposed to the users.
-		   * Someday....?
-		   */
-		  
-		  float mOrientation[] = new float[3];
-		  double SensorValues[];
+	private boolean execute_sensors_rotate(){
 
-		  SensorValues = theSensors.getValues(1);
-		  float g[] = new float[3];
-		  g[0] = (float) SensorValues[1];
-		  g[1] = (float) SensorValues[2];
-		  g[2] = (float) SensorValues[3];
-		  
-		  SensorValues = theSensors.getValues(1);
-		  float m[] = new float[3];
-		  m[0] = (float) SensorValues[1];
-		  m[1] = (float) SensorValues[2];
-		  m[2] = (float) SensorValues[3];
-		  
-		  float r[] = new float[16];
-		  float R[] = new float[16];
-		  float i[] = new float[16];
+		/* This is a test. 
+		 * It has failed so far
+		 * This command has not been exposed to the users.
+		 * Someday....?
+		 */
 
-		  SensorManager.getRotationMatrix (r, i, g, m);
-/*		  SensorManager.remapCoordinateSystem(R,
-				  SensorManager.AXIS_X,
-				  SensorManager.AXIS_Z, r);*/
-		  
-	      SensorManager.getOrientation(r, mOrientation);
-	      
-          final float rad2deg = (float)(180.0f/Math.PI);
-          
-		   if (!getNVar())return false;							// Graphic Object Variable
-		   NumericVarValues.set(theValueIndex, (double) mOrientation[0]);
-		   if (!isNext(',')) return false;
+		float mOrientation[] = new float[3];
+		double SensorValues[];
 
-		   if (!getNVar())return false;							// Graphic Object Variable
-		   NumericVarValues.set(theValueIndex, (double) mOrientation[1]); 
-		   if (!isNext(',')) return false;
+		SensorValues = theSensors.getValues(1);
+		float g[] = new float[3];
+		g[0] = (float) SensorValues[1];
+		g[1] = (float) SensorValues[2];
+		g[2] = (float) SensorValues[3];
 
-		   if (!getVar())return false;							// Graphic Object Variable
-		   if (!VarIsNumeric)return false;						// 
-		   NumericVarValues.set(theValueIndex, (double) mOrientation[2]); 
+		SensorValues = theSensors.getValues(1);
+		float m[] = new float[3];
+		m[0] = (float) SensorValues[1];
+		m[1] = (float) SensorValues[2];
+		m[2] = (float) SensorValues[3];
 
-			if (!checkEOL()) return false;
+		float r[] = new float[16];
+		float R[] = new float[16];
+		float i[] = new float[16];
 
-		  return true;
-	  }
+		SensorManager.getRotationMatrix (r, i, g, m);
+/*		SensorManager.remapCoordinateSystem(R,
+				SensorManager.AXIS_X,
+				SensorManager.AXIS_Z, r);*/
+
+		SensorManager.getOrientation(r, mOrientation);
+
+		final float rad2deg = (float)(180.0f/Math.PI);
+
+		if (!getNVar()) return false;
+		NumericVarValues.set(theValueIndex, (double) mOrientation[0]);
+		if (!isNext(',')) return false;
+
+		if (!getNVar()) return false;
+		NumericVarValues.set(theValueIndex, (double) mOrientation[1]);
+		if (!isNext(',')) return false;
+
+		if (!getNVar()) return false;
+		NumericVarValues.set(theValueIndex, (double) mOrientation[2]);
+		if (!checkEOL()) return false;
+
+		return true;
+	}
 
 		private boolean execute_sensors_close(){
 			if (!checkEOL()) return false;
@@ -12128,72 +11890,65 @@ private boolean doUserFunction(){
 		}
 		return true;
 	}
-	  
-	  private boolean execute_gps_altitude(){
-		   if (!getVar())return false;							// Sensor Variable
-		   if (!VarIsNumeric)return false;
-		   NumericVarValues.set(theValueIndex, GPS.Altitude);   // Set value into variable
-			if (!checkEOL()) return false;
-		  return true;
-	  }
-	  
-	  private boolean execute_gps_latitude(){
-		   if (!getVar())return false;							// Sensor Variable
-		   if (!VarIsNumeric)return false;
-		   NumericVarValues.set(theValueIndex, GPS.Latitude); 
-			if (!checkEOL()) return false;
-		  return true;
-	  }
 
-	  private boolean execute_gps_longitude(){
-		   if (!getVar())return false;							// Sensor Variable
-		   if (!VarIsNumeric)return false;
-		   NumericVarValues.set(theValueIndex, GPS.Longitude); 
-			if (!checkEOL()) return false;
-		  return true;
-	  }
+	private boolean execute_gps_altitude(){
+		if (!getNVar()) return false;							// Sensor Variable
+		if (!checkEOL()) return false;
+		NumericVarValues.set(theValueIndex, GPS.Altitude);		// Set value into variable
+		return true;
+	}
 
-	  private boolean execute_gps_bearing(){
-		   if (!getVar())return false;							// Sensor Variable
-		   if (!VarIsNumeric)return false;
-		   NumericVarValues.set(theValueIndex, (double) GPS.Bearing); 
-			if (!checkEOL()) return false;
-		  return true;
-	  }
+	private boolean execute_gps_latitude(){
+		if (!getNVar()) return false;							// Sensor Variable
+		if (!checkEOL()) return false;
+		NumericVarValues.set(theValueIndex, GPS.Latitude);
+		return true;
+	}
 
-	  private boolean execute_gps_accuracy(){
-		   if (!getVar())return false;							// Sensor Variable
-		   if (!VarIsNumeric)return false;
-		   NumericVarValues.set(theValueIndex, (double) GPS.Accuracy); 
-			if (!checkEOL()) return false;
-		  return true;
-	  }
+	private boolean execute_gps_longitude(){
+		if (!getNVar()) return false;							// Sensor Variable
+		if (!checkEOL()) return false;
+		NumericVarValues.set(theValueIndex, GPS.Longitude);
+		return true;
+	}
 
-	  private boolean execute_gps_speed(){
-		   if (!getVar())return false;							// Sensor Variable
-		   if (!VarIsNumeric)return false;
-		   NumericVarValues.set(theValueIndex,(double) GPS.Speed); 
-			if (!checkEOL()) return false;
-		  return true;
-	  }
+	private boolean execute_gps_bearing(){
+		if (!getNVar()) return false;							// Sensor Variable
+		if (!checkEOL()) return false;
+		NumericVarValues.set(theValueIndex, (double) GPS.Bearing);
+		return true;
+	}
 
-	  private boolean execute_gps_time(){
-		   if (!getVar())return false;							// Sensor Variable
-		   if (!VarIsNumeric)return false;
-		   NumericVarValues.set(theValueIndex,(double) GPS.Time); 
-			if (!checkEOL()) return false;
-		  return true;
-	  }
+	private boolean execute_gps_accuracy(){
+		if (!getNVar()) return false;							// Sensor Variable
+		if (!checkEOL()) return false;
+		NumericVarValues.set(theValueIndex, (double) GPS.Accuracy);
+		return true;
+	}
 
+	private boolean execute_gps_speed(){
+		if (!getNVar()) return false;							// Sensor Variable
+		if (!checkEOL()) return false;
+		NumericVarValues.set(theValueIndex,(double) GPS.Speed);
+		return true;
+	}
 
-	  private boolean execute_gps_provider(){
-		  if (!getVar() || VarIsNumeric) { return false; }
-		  String provider = GPS.Provider;
-		  if (provider == null) { provider = ""; }
-		  StringVarValues.set(theValueIndex, provider);
-		  return checkEOL();
-	  }
-	  
+	private boolean execute_gps_time(){
+		if (!getNVar()) return false;							// Sensor Variable
+		if (!checkEOL()) return false;
+		NumericVarValues.set(theValueIndex,(double) GPS.Time);
+		return true;
+	}
+
+	private boolean execute_gps_provider(){
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+		String provider = GPS.Provider;
+		if (provider == null) { provider = ""; }
+		StringVarValues.set(theValueIndex, provider);
+		return true;
+	}
+
 // ********************************************  Array Package  ***************************************
 	  
 	  private boolean executeARRAY(){
@@ -12287,7 +12042,6 @@ private boolean doUserFunction(){
 
 		if (!isNext(',')) { return false; }
 		if (!getArrayVarForRead()) { return false; }				// Get the array variable
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
@@ -12301,7 +12055,6 @@ private boolean doUserFunction(){
 	private boolean execute_array_load(){
 
 		if (!getArrayVarForWrite()) { return false; }			// get the array var name as a new array
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		int theVarNumber = VarNumber;
 		if (!isNext(',')) { return false; }						// Comma before the list
 
@@ -12355,34 +12108,33 @@ private boolean doUserFunction(){
 		// This method implements several array commands
 
 		if (!getArrayVarForRead()) { return false; }				// Get the array variable
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array   
 			int length = ArrayEntry.getInt("length");               // get the array length
 			int base = ArrayEntry.getInt("base");                   // and the start of values in the value space
-			
+
 			if (VarIsNumeric){											// Numeric Array
 				ArrayList <Double> Values = new ArrayList<Double>();    // Create a list to copy array values into
-				
+
 				for (int i =0; i<length; ++i){                          // Copy the array values into that list
 					Values.add(NumericVarValues.get(base+i));
 				}
 																		// Execute the command specific procedure
 				if (DoReverse)Collections.reverse(Values);				// Reverse
-				else if (DoSort) Collections.sort(Values);				// Sport
+				else if (DoSort) Collections.sort(Values);				// Sort
 				else if (DoShuffle) Collections.shuffle(Values);		// Shuffle
-				
-				for (int i =0; i<length; ++i){							// Couple the results back to the array
+
+				for (int i =0; i<length; ++i){							// Copy the results back to the array
 					NumericVarValues.set(base+i, Values.get(i));
 				}
-				
+
 			}else{														// Do the same stuff for a string array
 				ArrayList <String> Values = new ArrayList<String>();
 				for (int i =0; i<length; ++i){
 					Values.add(StringVarValues.get(base+i));
 				}
-				
+
 				if (DoReverse)Collections.reverse(Values);
 				else if (DoSort) Collections.sort(Values);
 				else if (DoShuffle) Collections.shuffle(Values);
@@ -12390,15 +12142,11 @@ private boolean doUserFunction(){
 				for (int i =0; i<length; ++i){
 					StringVarValues.set(base+i, Values.get(i));
 				}
-				
 			}
 
 		return true;
 	}
-	
-	
-	
-	
+
 	private boolean execute_array_sum(){
 
 		if (!getNVar()) { return false; }							// The value return variable
@@ -12407,24 +12155,23 @@ private boolean doUserFunction(){
 		if (!isNext(',')) { return false; }
 		if (!getArrayVarForRead()) { return false; }				// Get the array variable
 		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); }
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
 			int length = ArrayEntry.getInt("length");				// get the array length
 			int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
-			
+
 			double Sum = 0;
 			double Min = NumericVarValues.get(base);
 			double Max = NumericVarValues.get(base);
-			
+
 			for (int i = 0; i <length; ++i){						// Loop through the array values
 				double d = NumericVarValues.get(base+i);			// Pick up the elements value
 				Sum = Sum + d;										// build the Sum
 				if (d < Min) Min = d;								// find the minimum value
 				if (d > Max) Max = d;								// and the maxium value
 			}
-			
+
 			double Average = Sum / length;							// Calculate the average
 																			// Set the return value according to the command
 			if (DoAverage) NumericVarValues.set(SaveValueIndex, Average);
@@ -12447,18 +12194,12 @@ private boolean doUserFunction(){
 
 		return true;
 	}
-	
+
 	private boolean execute_array_copy(){
 															// **** Source Array ****
-		
-		doingDim = false;											// Get the array variable
-		SkipArrayValues = true;										// Tells getVar not to look at the indices
-		if (!getVar()) { SkipArrayValues = false; return false; }
-		SkipArrayValues = false;
-		doingDim = false;
-
-		if (!VarIsArray) { return RunTimeError("Source not array"); }
-		if (VarIsNew) { return RunTimeError("Source array not DIMed"); }
+		if (getVarAndType() == null)			{ return false; }	// Get the array variable
+		if (!VarIsArray)						{ return RunTimeError("Source not array"); }
+		if (VarIsNew) 							{ return RunTimeError("Source array not DIMed"); }
 		boolean SourceArrayNumeric = VarIsNumeric;
 
 		Bundle SourceArray = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
@@ -12467,16 +12208,16 @@ private boolean doUserFunction(){
 		int SourceCopyLimit = SourceBase + SourceLength;
 
 		if (!isNext(']')) {
-			if (!evalNumericExpression()) return false;				// get user's source start index
+			if (!evalNumericExpression())		{ return false; }	// get user's source start index
 			int usi = EvalNumericExpressionValue.intValue();
 			if (usi > 1) { SourceBase += usi - 1; }					// convert to 0-based index
 
 			if (isNext(',')) {
-				if (!evalNumericExpression()) return false;			// get user's length to copy
+				if (!evalNumericExpression())	{ return false; }	// get user's length to copy
 				SourceLength = EvalNumericExpressionValue.intValue();
-				if (SourceLength < 0) { return RunTimeError("Length must be positive"); }
+				if (SourceLength < 0)			{ return RunTimeError("Length must be positive"); }
 			}
-			if (!isNext(']')) { return false; }
+			if (!isNext(']'))					{ return false; }
 
 			if (SourceBase + SourceLength > SourceCopyLimit) {
 				SourceLength = SourceCopyLimit - SourceBase;		// don't go past end of source array
@@ -12490,22 +12231,20 @@ private boolean doUserFunction(){
 		if (!isNext(',')) { return false; }
 															// *** Destination Array ***
 
-		doingDim = true;											// get the array var name as a new array
-		if (!getVar()) { doingDim = false; return false; }
-		doingDim = false;
-		if (!VarIsArray) { return RunTimeError("Destination not array"); }
-		if (!VarIsNew) { return RunTimeError("Destination array previously DIMed"); }
-
-		if (SourceArrayNumeric != VarIsNumeric) { return RunTimeError("Arrays not of same type"); }
-		int DestVarNumber = VarNumber;
+		String DestVar = getVarAndType();							// Get the array variable
+		if (DestVar == null)					{ return false; }
+		if (!VarIsArray)						{ return RunTimeError("Destination not array"); }
+		if (!VarIsNew)							{ return RunTimeError("Destination array previously DIMed"); }
+		if (SourceArrayNumeric != VarIsNumeric)	{ return RunTimeError("Arrays not of same type"); }
+		int DestVarNumber = createNewVar(DestVar);
 
 		int Extras = 0;												// Get the extras parameter
 		if (!isNext(']')) {
-			if (!evalNumericExpression()) { return false; }
-			if (!isNext(']')) { return false; }
+			if (!evalNumericExpression())		{ return false; }
+			if (!isNext(']'))					{ return false; }
 			Extras = EvalNumericExpressionValue.intValue();
 		}
-		if (!checkEOL()) { return false; }
+		if (!checkEOL())						{ return false; }
 
 		int totalLength = SourceLength + Math.abs(Extras);			// Go build an array of the proper size and type
 		if (!BuildBasicArray(DestVarNumber, SourceArrayNumeric, totalLength)) { return false; }
@@ -12533,80 +12272,46 @@ private boolean doUserFunction(){
 		  }
 		return true;
 	}
-	
+
 //***********************************  List Package ************************************************
-	
+
 	private boolean executeLIST(){
-		if (!GetListKeyWord()){ return false;}
-
-		switch (KeyWordValue){
-  	  	case list_new:
-  	  		if (!execute_LIST_NEW()) return false;
-  	  		break;
-  	  	case list_addarray:
-  	  		if (!execute_LIST_ADDARRAY()) return false;
-  	  		break;
-  	  	case list_addlist:
-  	  		if (!execute_LIST_ADDLIST()) return false;
-  	  		break;
-  	  	case list_add:
-  	  		if (!execute_LIST_ADD()) return false;
-  	  		break;
-  	  	case list_set:
-  	  		if (!execute_LIST_SET()) return false;
-  	  		break;
-  	  	case list_get:
-  	  		if (!execute_LIST_GET()) return false;
-  	  		break;
-  	  	case list_gettype:
-  	  		if (!execute_LIST_GETTYPE()) return false;
-  	  		break;
-  	  	case list_clear:
-  	  		if (!execute_LIST_CLEAR()) return false;
-  	  		break;
-  	  	case list_remove:
-  	  		if (!execute_LIST_REMOVE()) return false;
-  	  		break;
-  	  	case list_insert:
-  	  		if (!execute_LIST_INSERT()) return false;
-  	  		break;
-  	  	case list_size:
-  	  		if (!execute_LIST_SIZE()) return false;
-  	  		break;
-  	  	case list_contains:
-  	  		if (!execute_LIST_CONTAINS()) return false;
-  	  		break;
-  	  	case list_toarray:
-  	  		if (!execute_LIST_TOARRAY()) return false;
-  	  		break;
-  	  	case list_search:
-  	  		if (!execute_LIST_SEARCH()) return false;
-  	  		break;
-
-  	  	default:
-  	  		return false;
-  	  	}
-		return true;
-		
+		if (GetListKeyWord()) {
+			switch (KeyWordValue) {
+				case list_new:		return execute_LIST_NEW();
+				case list_addarray:	return execute_LIST_ADDARRAY();
+				case list_addlist:	return execute_LIST_ADDLIST();
+				case list_add:		return execute_LIST_ADD();
+				case list_set:		return execute_LIST_SET();
+				case list_get:		return execute_LIST_GET();
+				case list_gettype:	return execute_LIST_GETTYPE();
+				case list_clear:	return execute_LIST_CLEAR();
+				case list_remove:	return execute_LIST_REMOVE();
+				case list_insert:	return execute_LIST_INSERT();
+				case list_size:		return execute_LIST_SIZE();
+				case list_contains:	return execute_LIST_CONTAINS();
+				case list_toarray:	return execute_LIST_TOARRAY();
+				case list_search:	return execute_LIST_SEARCH();
+				default: break;
+			}
+		}
+		return false;
 	}
-	
-	
+
 	private  boolean GetListKeyWord(){						// Get a Basic key word if it is there
 		// is the current line index at a key word?
 		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		int i = 0;
-		for (i = 0; i<List_KW.length; ++i){				// loop through the key word list
+		for (int i = 0; i<List_KW.length; ++i){				// loop through the key word list
 			if (Temp.startsWith(List_KW[i])){    			// if there is a match
 				KeyWordValue = i;							// set the key word number
 				LineIndex = LineIndex + List_KW[i].length(); // move the line index to end of key word
 				return true;								// and report back
-				}
+			}
 		}
 		KeyWordValue = list_none;						// no key word found
 		return false;										// report fail
-
 	}
-	
+
 	private boolean execute_LIST_NEW(){
 		char c = ExecutingLineBuffer.charAt(LineIndex);    // Get the type, s or n
 		++LineIndex;
@@ -12621,9 +12326,9 @@ private boolean doUserFunction(){
 
 		if (!isNext(',')) { return false; }
 		
-		   if (!(getVar() && VarIsNumeric)) { return false; }	// List pointer variable
-		   int SaveValueIndex = theValueIndex;
-	
+		if (!getNVar()) { return false; }								// List pointer variable
+		int SaveValueIndex = theValueIndex;
+
 		if (!checkEOL()) { return false; }
 
 		int theIndex = createNewList(type);								// Try to create list
@@ -12647,44 +12352,51 @@ private boolean doUserFunction(){
 		return index;
 	}
 
-	private boolean execute_LIST_ADDARRAY(){
-		if (!evalNumericExpression()) return false;					// Get the destination list pointer
-		int destListIndex = EvalNumericExpressionValue.intValue();
-		if (destListIndex < 1 || destListIndex >= theLists.size()){
-			return RunTimeError("Invalid Destination List Pointer");
+	private int getListArg() {											// Get the List pointer
+		return getListArg("Invalid List Pointer");
+	}
+
+	private int getListArg(String errorMsg) {							// Get the List pointer
+		if (evalNumericExpression()) {
+			int listIndex = EvalNumericExpressionValue.intValue();
+			if ((listIndex > 0) && (listIndex < theLists.size())) {
+				return listIndex;
+			}
+			RunTimeError(errorMsg);
 		}
+		return 0;
+	}
+
+	private boolean execute_LIST_ADDARRAY(){
+		int listIndex = getListArg();								// Get the list pointer
+		if (listIndex == 0) return false;
+
 		if (!isNext(',')) return false;
 		if (!getArrayVarForRead()) return false;					// Get the array variable
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
 		if (!checkEOL()) return false;
 
-		boolean isListNumeric = (theListsType.get(destListIndex) == list_is_numeric);
+		boolean isListNumeric = (theListsType.get(listIndex) == list_is_numeric);
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
 
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
 		int size = ArrayEntry.getInt("length");						// get the array length
 		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
 
-		ArrayList destList = theLists.get(destListIndex);
+		ArrayList destList = theLists.get(listIndex);
 		ArrayList sourceList = (isListNumeric) ? NumericVarValues : StringVarValues;
-		for (int i = 0; i < size; ++i ){							// Copy array to list
+		for (int i = 0; i < size; ++i ) {							// Copy array to list
 			destList.add(sourceList.get(base + i));
 		}
 		return true;
 	}
-	
+
 	private boolean execute_LIST_ADDLIST(){
-		if (!evalNumericExpression()) return false;					// Get the destination list pointer
-		int destListIndex = EvalNumericExpressionValue.intValue();
-		if (destListIndex < 1 || destListIndex >= theLists.size()){
-			return RunTimeError("Invalid Destination List Pointer");
-		}
+		int destListIndex = getListArg("Invalid Destination List Pointer");	// Get the destination list pointer
+		if (destListIndex == 0) return false;
 		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;					// Get the source list pointer
-		int sourceListIndex = EvalNumericExpressionValue.intValue();
-		if (sourceListIndex < 1 || sourceListIndex >= theLists.size()){
-			return RunTimeError("Invalid Source List Pointer");
-		}
+
+		int sourceListIndex = getListArg("Invalid Source List Pointer");	// Get the source list pointer
+		if (sourceListIndex == 0) return false;
 		if (!checkEOL()) return false;
 
 		boolean isDestNumeric = (theListsType.get(destListIndex) == list_is_numeric);
@@ -12694,16 +12406,11 @@ private boolean doUserFunction(){
 		theLists.get(destListIndex).addAll(theLists.get(sourceListIndex));
 		return true;
 	}
-	
+
 	private boolean execute_LIST_SEARCH(){
-		
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
-		if (!isNext(',')) return false;										// move to the value
+		int listIndex = getListArg();									// Get the list pointer
+		if (listIndex == 0) return false;
+		if (!isNext(',')) return false;									// move to the value
 
 		int found = -1;
 		int savedVarIndex = 0;
@@ -12715,7 +12422,7 @@ private boolean doUserFunction(){
 			ArrayList<String> SValues = theLists.get(listIndex);		 // Get the string list
 			if (!getStringArg()) return false;							 // values may be expressions
 			String sfind = StringConstant;
-			
+
 			if (!isNext(',')) return false;								 // move to the result var
 			if (!getNVar()) return false;
 			savedVarIndex = theValueIndex;
@@ -12726,7 +12433,7 @@ private boolean doUserFunction(){
 				if (--start < 0) { start = 0; }						// convert to zero-based index
 			}
 			if (!checkEOL()) return false;
-			
+
 			for (int i = start; i < SValues.size(); ++i){			// Search the list for a match
 				if (sfind.equals(SValues.get(i))){
 					found = i;
@@ -12734,9 +12441,8 @@ private boolean doUserFunction(){
 				}
 			}
 			break;
-			
+
 		case list_is_numeric:
-			
 			ArrayList<Double> NValues = theLists.get(listIndex);	// Get the numeric list
 			if (!evalNumericExpression()) return false;             // values may be expressions
 			double nfind = EvalNumericExpressionValue;
@@ -12751,7 +12457,7 @@ private boolean doUserFunction(){
 				if (--start < 0) { start = 0; }						// convert to zero-based index
 			}
 			if (!checkEOL()) return false;
-			
+
 			for (int i = start; i < NValues.size(); ++i){           // Search the list for a match
 				if (nfind == (NValues.get(i))){
 					found = i;
@@ -12759,25 +12465,20 @@ private boolean doUserFunction(){
 				}
 			}
 			break;
-						
+
 		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
+			return RunTimeError("Internal problem. Notify developer");
 		}
-		
+
 		++found;// Found is ones based
 
 		NumericVarValues.set(savedVarIndex, (double) found);
 		return true;
 	}
-	
+
 	private boolean execute_LIST_ADD(){
-		if (!evalNumericExpression()) return false;					// Get the List pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
+		int listIndex = getListArg();								// Get the list pointer
+		if (listIndex == 0) return false;
 		if (!isNext(',')) return false;								// move to the result value
 
 		boolean isListNumeric = (theListsType.get(listIndex) == list_is_numeric);
@@ -12790,14 +12491,10 @@ private boolean doUserFunction(){
 		}
 		return checkEOL();
 	}
-	
+
 	private boolean execute_LIST_SET(){
-		if (!evalNumericExpression()) return false;					// Get the list pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
+		int listIndex = getListArg();								// Get the list pointer
+		if (listIndex == 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// Get the index to get
@@ -12810,49 +12507,38 @@ private boolean doUserFunction(){
 		{
 		case list_is_string:										// String
 			if (!evalStringExpression()) {
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
 			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
 			if (getIndex < 0 || getIndex >= thisStringList.size()){		
-				RunTimeError("Index out of bounds");
-				return false;
+				return RunTimeError("Index out of bounds");
 			}
 			thisStringList.set(getIndex, StringConstant);
 			break;
-			
+
 		case list_is_numeric:												// Number
 			if (!evalNumericExpression()){
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
 			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
 			if (getIndex < 0 || getIndex >= thisNumericList.size()){
-				RunTimeError("Index out of bounds");
-				return false;
+				return RunTimeError("Index out of bounds");
 			}
 			thisNumericList.set(getIndex, EvalNumericExpressionValue);
 			break;
-			
+
 		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
+			return RunTimeError("Internal problem. Notify developer");
 		}
-		
+
 		return true;
 	}
-	
+
 	private boolean execute_LIST_GET(){
-		
-		if (!evalNumericExpression()) return false;					// Get the list pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
+		int listIndex = getListArg();								// Get the list pointer
+		if (listIndex == 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// Get the index to get
@@ -12870,42 +12556,35 @@ private boolean doUserFunction(){
 		switch (listType)
 		{
 		case list_is_string:										// String
-			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
-			if (getIndex < 0 || getIndex >= thisStringList.size()){		
-				RunTimeError("Index out of bounds");
-				return false;
+			ArrayList<String> thisStringList = theLists.get(listIndex);		// Get the string list
+			if (getIndex < 0 || getIndex >= thisStringList.size()){
+				return RunTimeError("Index out of bounds");
 			}
-			String thisString = thisStringList.get(getIndex);			//Get the requested string
+			String thisString = thisStringList.get(getIndex);				// Get the requested string
 			StringVarValues.set(theValueIndex, thisString);
 			break;
-			
-		case list_is_numeric:												// Number
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
+
+		case list_is_numeric:										// Number
+			ArrayList<Double> thisNumericList = theLists.get(listIndex);	// Get the numeric list
 			if (getIndex < 0 || getIndex >= thisNumericList.size()){
-				RunTimeError("Index out of bounds");
-				return false;
+				return RunTimeError("Index out of bounds");
 			}
 			Double thisNumber = thisNumericList.get(getIndex);				// Get the requested number
 			NumericVarValues.set(theValueIndex, thisNumber);
 			break;
-			
+
 		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
+			return RunTimeError("Internal problem. Notify developer");
 		}
 		
 		return true;
 	}
-	
+
 	private boolean execute_LIST_GETTYPE(){
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
+		int listIndex = getListArg();								// Get the list pointer
+		if (listIndex == 0) return false;
 		if (!isNext(',')) return false;
+
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
 		
@@ -12914,63 +12593,49 @@ private boolean doUserFunction(){
 		case list_is_string:										// String
 			StringVarValues.set(theValueIndex, "S");
 			break;
-			
-		case list_is_numeric:												// Number
+
+		case list_is_numeric:										// Number
 			StringVarValues.set(theValueIndex, "N");
 			break;
-			
-		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
-		}
 
+		default:
+			return RunTimeError("Internal problem. Notify developer");
+		}
 		return true;
 	}
-	
+
 	private boolean execute_LIST_CLEAR(){
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
+		int listIndex = getListArg();								// Get the list pointer
+		if (listIndex == 0) return false;
 		if (!checkEOL()) return false;
 		theLists.get(listIndex).clear();
 		return true;
 	}
-	
+
 	private boolean execute_LIST_REMOVE(){
-		if (!evalNumericExpression()) return false;					// Get the list pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
+		int listIndex = getListArg();								// Get the list pointer
+		if (listIndex == 0) return false;
 		if (!isNext(',')) return false;
+
 		if (!evalNumericExpression()) return false;					// Get the index to remove
 		if (!checkEOL()) return false;
+
 		int getIndex = EvalNumericExpressionValue.intValue();
 		--getIndex;													// Ones based for Basic user
 
 		ArrayList theList = theLists.get(listIndex);				// Get the  list
-		if (getIndex < 0 || getIndex >= theList.size()) {		
-			RunTimeError("Index out of bounds");
-			return false;
+		if (getIndex < 0 || getIndex >= theList.size()) {
+			return RunTimeError("Index out of bounds");
 		}
 		theList.remove(getIndex);
 		return true;
 	}
 
 	private boolean execute_LIST_INSERT(){
-		
-		if (!evalNumericExpression()) return false;					// Get the list pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
+		int listIndex = getListArg();								// Get the list pointer
+		if (listIndex == 0) return false;
 		if (!isNext(',')) return false;
+
 		if (!evalNumericExpression()) return false;					// Get the index insert at
 		int getIndex = EvalNumericExpressionValue.intValue();
 		--getIndex;													// Ones based for Basic user
@@ -12981,77 +12646,63 @@ private boolean doUserFunction(){
 		{
 		case list_is_string:											 // String
 			if (!getStringArg()) {
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
 
-			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
+			ArrayList<String> thisStringList = theLists.get(listIndex);	// Get the string list
 			if (getIndex < 0 || getIndex > thisStringList.size()) {		// if index == size element goes at end of list
-				RunTimeError("Index out of bounds");
-				return false;
+				return RunTimeError("Index out of bounds");
 			}
 			thisStringList.add(getIndex, StringConstant);
 			break;
-			
-		case list_is_numeric:												// Number
+
+		case list_is_numeric:											// Number
 			if (!evalNumericExpression()){
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
 
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
+			ArrayList<Double> thisNumericList = theLists.get(listIndex);	// Get the numeric list
 			if (getIndex < 0 || getIndex > thisNumericList.size()) {	// if index == size element goes at end of list
-				RunTimeError("Index out of bounds");
-				return false;
+				return RunTimeError("Index out of bounds");
 			}
 			thisNumericList.add(getIndex, EvalNumericExpressionValue);
 			break;
-			
+
 		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
+			return RunTimeError("Internal problem. Notify developer");
 		}
 
 		return true;
 	}
 
 	private boolean execute_LIST_SIZE(){
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
-		if (!isNext(',')) return false;										// move to the return var
+		int listIndex = getListArg();									// Get the list pointer
+		if (listIndex == 0) return false;
+		if (!isNext(',')) return false;									// move to the return var
+
 		if (!getNVar()) return false;
 		if (!checkEOL()) return false;
 		
 		int size = theLists.get(listIndex).size();
 		NumericVarValues.set(theValueIndex, (double) size);
-		
+
 		return true;
 	}
-		
+
 	private boolean execute_LIST_CONTAINS(){
 		return false;
 	}
 
-
 	private boolean execute_LIST_TOARRAY(){
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int listIndex = EvalNumericExpressionValue.intValue();
-		if (listIndex < 1 || listIndex >= theLists.size()){
-			RunTimeError("Invalid List Pointer");
-			return false;
-		}
-		if (!isNext(',')) return false;										// move to the array var
-		if (!getArrayVarForWrite()) return false;							// Get the array name var
-		if (!isNext(']')) { return RunTimeError("Expected '[]'"); }	// Array must not have any indices
+		int listIndex = getListArg();									// Get the list pointer
+		if (listIndex == 0) return false;
+		if (!isNext(',')) return false;									// move to the array var
+
+		if (!getArrayVarForWrite()) return false;						// Get the array name var
 		if (!checkEOL()) return false;
-		int svn = VarNumber;										// save the array variable table number
+		int svn = VarNumber;											// save the array variable table number
 
 		int listType = theListsType.get(listIndex);						// Get this lists type
 		boolean isListNumeric = (listType == list_is_numeric);
@@ -13065,211 +12716,158 @@ private boolean doUserFunction(){
 			return ListToBasicStringArray(svn, Values, Values.size());	// Copy the list to a BASIC! array
 		}
 	}
-	
+
 // ***************************************Bundle Commands *******************************************
-	
+
 	private boolean executeBUNDLE(){
-		if (!GetBundleKeyWord()){ return false;}
-		switch (KeyWordValue){
-		case bundle_create:
-  	  		if (!execute_BUNDLE_CREATE()) return false;
-  	  		break;
-		case bundle_put:
-  	  		if (!execute_BUNDLE_PUT()) return false;
-  	  		break;
-		case bundle_get:
-  	  		if (!execute_BUNDLE_GET()) return false;
-  	  		break;
-		case bundle_type:
-  	  		if (!execute_BUNDLE_TYPE()) return false;
-  	  		break;
-		case bundle_keyset:
-  	  		if (!execute_BUNDLE_KEYSET()) return false;
-  	  		break;
-		case bundle_copy:
-  	  		if (!execute_BUNDLE_COPY()) return false;
-  	  		break;
-		case bundle_clear:
-  	  		if (!execute_BUNDLE_CLEAR()) return false;
-  	  		break;
-		case bundle_contain:               // Condor
-			if (!execute_BUNDLE_CONTAIN()) return false;   // Condor
-			break;                     // Condor             
-  	  	default:
-  	  		return false;
-  	  	
+		if (GetBundleKeyWord()) {
+			switch (KeyWordValue) {
+				case bundle_create:	return execute_BUNDLE_CREATE();
+				case bundle_put:	return execute_BUNDLE_PUT();
+				case bundle_get:	return execute_BUNDLE_GET();
+				case bundle_type:	return execute_BUNDLE_TYPE();
+				case bundle_keyset:	return execute_BUNDLE_KEYSET();
+				case bundle_copy:	return execute_BUNDLE_COPY();
+				case bundle_clear:	return execute_BUNDLE_CLEAR();
+				case bundle_contain:return execute_BUNDLE_CONTAIN();	// Condor
+				default: break;
+			}
 		}
-		return true;
+		return false;
 	}
-	
+
 	private  boolean GetBundleKeyWord(){						// Get a Basic key word if it is there
 		// is the current line index at a key word?
 		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		int i = 0;
-		for (i = 0; i<Bundle_KW.length; ++i){				// loop through the key word list
-			if (Temp.startsWith(Bundle_KW[i])){    			// if there is a match
-				KeyWordValue = i;							// set the key word number
-				LineIndex = LineIndex + Bundle_KW[i].length(); // move the line index to end of key word
-				return true;								// and report back
-				}
+		for (int i = 0; i < Bundle_KW.length; ++i) {			// loop through the key word list
+			if (Temp.startsWith(Bundle_KW[i])) {				// if there is a match
+				KeyWordValue = i;								// set the key word number
+				LineIndex += Bundle_KW[i].length();				// move the line index to end of key word
+				return true;									// and report back
+			}
 		}
-		KeyWordValue = list_none;						// no key word found
-		return false;										// report fail
+		KeyWordValue = list_none;								// no key word found
+		return false;											// report fail
 
 	}
 
 	private boolean execute_BUNDLE_CREATE(){
-		
-		   if (!getVar())return false;							// List pointer variable
-		   if (!VarIsNumeric)return false;
-		   int SaveValueIndex = theValueIndex;
-		   Bundle b = new Bundle();
 
-		   int bundleIndex = theBundles.size();
-		   theBundles.add(b);
-		   
-		   NumericVarValues.set(SaveValueIndex, (double) bundleIndex);
-		   
+		if (!getNVar()) return false;							// Bundle pointer variable
+		if (!checkEOL()) return false;
+		int SaveValueIndex = theValueIndex;
+		Bundle b = new Bundle();
+
+		int bundleIndex = theBundles.size();
+		theBundles.add(b);
+
+		NumericVarValues.set(SaveValueIndex, (double) bundleIndex);
+
 		return true;
 	}
-	
+
+	private int getBundleArg() {										// Get the Bundle pointer
+		if (evalNumericExpression()) {
+			int bundleIndex = EvalNumericExpressionValue.intValue();
+			if ((bundleIndex > 0) && (bundleIndex < theBundles.size())) {
+				return bundleIndex;
+			}
+			RunTimeError("Invalid Bundle Pointer");
+		}
+		return 0;
+	}
+
 	private boolean execute_BUNDLE_PUT(){
-		
-		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = EvalNumericExpressionValue.intValue();
-		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-			RunTimeError("Invalid Bundle Pointer");
-			return false;
-		}
-		
-	    Bundle b = theBundles.get(bundleIndex);
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the tag
-		if ( c != ',') return false;
-		++LineIndex;
-		
-		if (!evalStringExpression()) return false;
-		String tag = StringConstant;
-		
-		c = ExecutingLineBuffer.charAt(LineIndex);							// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-		
-		int LI = LineIndex;
-		if (evalNumericExpression()){
-			b.putDouble(tag, EvalNumericExpressionValue);
-			b.putBoolean("@@@N."+tag, true);
-			return true;			
-		}
-		LineIndex = LI;
+		int bundleIndex = getBundleArg();								// Get the Bundle pointer
+		if (bundleIndex == 0) return false;
 
-		if (!evalStringExpression()) return false;
-		b.putString(tag, StringConstant);
-		b.putBoolean("@@@N."+tag, false);
-		
+		if (!isNext(',')) return false;									// move to the tag
+		if (!getStringArg()) return false;
+		String tag = StringConstant;
+
+		if (!isNext(',')) return false;									// move to the value
+
+		Bundle b = theBundles.get(bundleIndex);
+
+		int LI = LineIndex;
+		if (evalNumericExpression()) {
+			if (!checkEOL()) return false;
+			b.putDouble(tag, EvalNumericExpressionValue);
+			b.putBoolean("@@@N." + tag, true);
+		} else {
+			LineIndex = LI;
+			if (!getStringArg()) return false;
+			if (!checkEOL()) return false;
+			b.putString(tag, StringConstant);
+			b.putBoolean("@@@N." + tag, false);
+		}
 		return true;
 	}
-	
-	private boolean execute_BUNDLE_GET(){
-		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = EvalNumericExpressionValue.intValue();
-		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-			RunTimeError("Invalid Bundle Pointer");
-			return false;
-		}
-		
-	    Bundle b = theBundles.get(bundleIndex);
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the tag
-		if ( c != ',') return false;
-		++LineIndex;
-		
-		if (!evalStringExpression()) return false;
-		String tag = StringConstant;
-		
-		if (!b.containsKey(tag)) {
-			RunTimeError(tag +" not in bundle");
-			return false;
-		}
-		
-		c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
 
-		
-		boolean isNumeric = b.getBoolean("@@@N."+tag);
-		
+	private boolean execute_BUNDLE_GET(){
+		int bundleIndex = getBundleArg();								// Get the Bundle pointer
+		if (bundleIndex == 0) return false;
+
+		if (!isNext(',')) return false;									// move to the tag
+		if (!getStringArg()) return false;
+		String tag = StringConstant;
+
+		if (!isNext(',')) return false;									// move to the value
 		if (!getVar()) return false;
-		
+		if (!checkEOL()) return false;
+
+		Bundle b = theBundles.get(bundleIndex);
+		if (!b.containsKey(tag)) {
+			return RunTimeError(tag + " not in bundle");
+		}
+
+		boolean isNumeric = b.getBoolean("@@@N." + tag);
 		if (isNumeric) {
-			if (!VarIsNumeric){
-				RunTimeError(tag + " is not a string");
-				return false;
+			if (!VarIsNumeric) {
+				return RunTimeError(tag + " is not a string");
 			}
 			NumericVarValues.set(theValueIndex, b.getDouble(tag));
-			return true;
+		} else {
+			if (VarIsNumeric) {
+				return RunTimeError(tag + " is not numeric");
+			}
+			StringVarValues.set(theValueIndex, b.getString(tag));
 		}
-		
-		if (VarIsNumeric) {
-			RunTimeError(tag + " is not numeric");
-			return false;
-		}
-		
-		StringVarValues.set(theValueIndex, b.getString(tag));
 		return true;
 	}
-	
-	private boolean execute_BUNDLE_TYPE(){
-		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = EvalNumericExpressionValue.intValue();
-		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-			RunTimeError("Invalid Bundle Pointer");
-			return false;
-		}
-		
-	    Bundle b = theBundles.get(bundleIndex);
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the tag
-		if ( c != ',') return false;
-		++LineIndex;
-		
-		if (!evalStringExpression()) return false;
-		String tag = StringConstant;
-		
-		if (!b.containsKey(tag)) {
-			RunTimeError(tag +" not in bundle");
-			return false;
-		}
-		
-		c = ExecutingLineBuffer.charAt(LineIndex);						// move to the tag
-		if ( c != ',') return false;
-		++LineIndex;
 
-		
-		boolean isNumeric = b.getBoolean("@@@N."+tag);
-		String type = "S";
-		if (isNumeric) type = "N";
-		
+	private boolean execute_BUNDLE_TYPE(){
+		int bundleIndex = getBundleArg();								// Get the Bundle pointer
+		if (bundleIndex == 0) return false;
+
+		if (!isNext(',')) return false;									// move to the tag
+		if (!getStringArg()) return false;
+		String tag = StringConstant;
+
+		if (!isNext(',')) return false;									// move to the result var
 		if (!getSVar()) return false;
-		
+		if (!checkEOL()) return false;
+
+		Bundle b = theBundles.get(bundleIndex);
+		if (!b.containsKey(tag)) {
+			return RunTimeError(tag + " not in bundle");
+		}
+
+		boolean isNumeric = b.getBoolean("@@@N." + tag);
+		String type = (isNumeric) ? "N" : "S";
+
 		StringVarValues.set(theValueIndex, type);
 		return true;
-		
 	}
-	
+
 	private boolean execute_BUNDLE_KEYSET(){
-		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = EvalNumericExpressionValue.intValue();
-		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-			RunTimeError("Invalid Bundle Pointer");
-			return false;
-		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the tag
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		int bundleIndex = getBundleArg();								// Get the Bundle pointer
+		if (bundleIndex == 0) return false;
+
+		if (!isNext(',')) return false;									// move to the list var
 		if (!getNVar()) return false;
-		
+		if (!checkEOL()) return false;
+
 		 ArrayList<String> theStringList = new ArrayList <String>();
 		 int theIndex = theLists.size();
 		 theLists.add(theStringList);
@@ -13285,93 +12883,63 @@ private boolean doUserFunction(){
 
 		return true;
 	}
-	
+
 	private boolean execute_BUNDLE_COPY(){
 		return false;
 	}
-	
+
 	private boolean execute_BUNDLE_CLEAR(){
-		if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-		int bundleIndex = EvalNumericExpressionValue.intValue();
-		if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-			RunTimeError("Invalid Bundle Pointer");
-			return false;
-		}
-		
-	    Bundle b = theBundles.get(bundleIndex);
-	    b.clear();
+		int bundleIndex = getBundleArg();								// Get the Bundle pointer
+		if (bundleIndex == 0) return false;
+		if (!checkEOL()) return false;
+
+		Bundle b = theBundles.get(bundleIndex);
+		b.clear();
 		return true;
 	}
-	
+
 	private boolean execute_BUNDLE_CONTAIN(){
-		   if (!evalNumericExpression()) return false;                  // Get the Bundle pointer
-		   int bundleIndex = EvalNumericExpressionValue.intValue();
-		   if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-		      RunTimeError("Invalid Bundle Pointer");
-		      return false;
-		   }      
-		   Bundle b = theBundles.get(bundleIndex);      
+		int bundleIndex = getBundleArg();								// Get the Bundle pointer
+		if (bundleIndex == 0) return false;
 
-		   char c = ExecutingLineBuffer.charAt(LineIndex);               // move to the tag
-		   if ( c != ',') return false;
-		   ++LineIndex;      
+		if (!isNext(',')) return false;									// move to the tag
+		if (!getStringArg()) return false;
+		String tag = StringConstant;
 
-		   if (!evalStringExpression()) return false;
-		   String tag = StringConstant;      
+		if (!isNext(',')) return false;									// move to the result var
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
 
-		   double thereis = (!b.containsKey(tag)) ? 0.0:1.0;      
+		Bundle b = theBundles.get(bundleIndex);
+		double thereis = (b.containsKey(tag)) ? 1.0 : 0.0;
+		NumericVarValues.set(theValueIndex, thereis);
 
-		   c = ExecutingLineBuffer.charAt(LineIndex);                  // move to the value
-		   if ( c != ',') return false;
-		   ++LineIndex;
-
-		   if (!getNVar()) return false;
-		   NumericVarValues.set(theValueIndex,thereis);
-
-		   return true;
-		}
+		return true;
+	}
 
 // ************************************** Stack Commands ********************************************
-	
-	private boolean executeSTACK(){
-		if (!GetStackKeyWord()){ return false;}
-		switch (KeyWordValue){
-		case stack_create:
-  	  		if (!execute_STACK_CREATE()) return false;
-  	  		break;
-		case stack_push:
-  	  		if (!execute_STACK_PUSH()) return false;
-  	  		break;
-		case stack_pop:
-  	  		if (!execute_STACK_POP()) return false;
-  	  		break;
-		case stack_peek:
-  	  		if (!execute_STACK_PEEK()) return false;
-  	  		break;
-		case stack_type:
-  	  		if (!execute_STACK_TYPE()) return false;
-  	  		break;
-		case stack_isempty:
-  	  		if (!execute_STACK_ISEMPTY()) return false;
-  	  		break;
-		case stack_clear:
-  	  		if (!execute_STACK_CLEAR()) return false;
-  	  		break;
-  	  	default:
-  	  		return false;
-  	  	
-		}
-		return true;
-	}
-	
 
-	
+	private boolean executeSTACK(){
+		if (GetStackKeyWord()) {
+			switch (KeyWordValue) {
+				case stack_create:	return execute_STACK_CREATE();
+				case stack_push:	return execute_STACK_PUSH();
+				case stack_pop:		return execute_STACK_POP();
+				case stack_peek:	return execute_STACK_PEEK();
+				case stack_type:	return execute_STACK_TYPE();
+				case stack_isempty:	return execute_STACK_ISEMPTY();
+				case stack_clear:	return execute_STACK_CLEAR();
+				default: break;
+			}
+		}
+		return false;
+	}
+
 	private  boolean GetStackKeyWord(){						// Get a Basic key word if it is there
 		// is the current line index at a key word?
 		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		int i = 0;
-		for (i = 0; i<Stack_KW.length; ++i){				// loop through the key word list
-			if (Temp.startsWith(Stack_KW[i])){    			// if there is a match
+		for (int i = 0; i<Stack_KW.length; ++i) {			// loop through the key word list
+			if (Temp.startsWith(Stack_KW[i])) {				// if there is a match
 				KeyWordValue = i;							// set the key word number
 				LineIndex = LineIndex + Stack_KW[i].length(); // move the line index to end of key word
 				return true;								// and report back
@@ -13379,9 +12947,8 @@ private boolean doUserFunction(){
 		}
 		KeyWordValue = list_none;						// no key word found
 		return false;										// report fail
-
 	}
-	
+
 	private boolean execute_STACK_CREATE(){
 		char c = ExecutingLineBuffer.charAt(LineIndex);    // Get the type, s or n
 		++LineIndex;
@@ -13396,237 +12963,190 @@ private boolean doUserFunction(){
 
 		if (!isNext(',')) { return false; }
 
-		   if (!(getVar() && VarIsNumeric)) { return false; }	// Stack pointer variable
-		   int SaveValueIndex = theValueIndex;
-	
+		if (!getNVar()) { return false; }								// Stack pointer variable
+		int SaveValueIndex = theValueIndex;
+
 		if (!checkEOL()) { return false; }
-		   
+
 	 Stack theStack = new Stack();
 	 int theIndex = theStacks.size();
 	 theStacks.add(theStack);
-	 
+
 	   theStacksType.add(type);											// add the type
 	   NumericVarValues.set(SaveValueIndex, (double) theIndex);   		// Return the stack pointer    
-		
+
 		return true;
 	}
 
-	private boolean execute_STACK_PUSH(){
-
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int stackIndex = EvalNumericExpressionValue.intValue();
-		if (stackIndex < 1 || stackIndex >= theStacks.size()){
+	private int getStackIndexArg() {									// Get the Stack pointer
+		if (evalNumericExpression()) {
+			int stackIndex = EvalNumericExpressionValue.intValue();
+			if ((stackIndex > 0) && (stackIndex < theStacks.size())) {
+				return stackIndex;
+			}
 			RunTimeError("Invalid Stack Pointer");
-			return false;
 		}
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-		
+		return 0;
+	}
+
+	private boolean execute_STACK_PUSH(){
+		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		if (stackIndex == 0) return false;
+		if (!isNext(',')) return false;										// move to the value
+
+		Stack thisStack = theStacks.get(stackIndex);						// Get the stack
 		switch (theStacksType.get(stackIndex))
 		{
-		case stack_is_string:												// String type list
-			if (!evalStringExpression()) {
-				RunTimeError("Type mismatch");
-				return false;
+		case stack_is_string:												// String type stack
+			if (!getStringArg()) {
+				return RunTimeError("Type mismatch");
 			}
-			Stack thisStack = theStacks.get(stackIndex);		        // Get the string list
-			thisStack.push(StringConstant);								// Add the string to the list
+			if (!checkEOL()) return false;
+			thisStack.push(StringConstant);									// Add the string to the stack
 			break;
-			
+
 		case stack_is_numeric:
 			if (!evalNumericExpression()){
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
-			thisStack = theStacks.get(stackIndex);		        // Get the string list
-			thisStack.push(EvalNumericExpressionValue);								// Add the string to the list
+			if (!checkEOL()) return false;
+			thisStack.push(EvalNumericExpressionValue);						// Add the value to the stack
 			break;
-			
+
 		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
+			return RunTimeError("Internal problem. Notify developer");
 		}
-		
 		return true;
 	}
 
 	private boolean execute_STACK_POP(){
-		if (!evalNumericExpression()) return false;							// Get the List pointer
-		int stackIndex = EvalNumericExpressionValue.intValue();
-		if (stackIndex < 1 || stackIndex >= theStacks.size()){
-			RunTimeError("Invalid Stack Pointer");
-			return false;
+		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		if (stackIndex == 0) return false;
+		if (!isNext(',')) return false;										// move to the value
+
+		Stack thisStack = theStacks.get(stackIndex);		 				// Get the Stack
+		if (thisStack.isEmpty()){
+			return RunTimeError("Stack is empty");
 		}
 
-		Stack thisStack = theStacks.get(stackIndex);		        // Get the string list
-		if (thisStack.isEmpty()){
-			RunTimeError("Stack is empty");
-			return false;
-		}
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-		
 		switch (theStacksType.get(stackIndex))
 		{
-		case stack_is_string:												// String type list
+		case stack_is_string:												// String type stack
 			if (!getSVar()) {
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
+			if (!checkEOL()) return false;
 			String thisString = (String) thisStack.pop();
 			StringVarValues.set(theValueIndex, thisString);
 			break;
-			
+
 		case stack_is_numeric:
 			if (!getNVar()) {
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
+			if (!checkEOL()) return false;
 			Double thisNumber = (Double) thisStack.pop();
 			NumericVarValues.set(theValueIndex, thisNumber);
 			break;
-			
+
 		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
+			return RunTimeError("Internal problem. Notify developer");
 		}
-		
 		return true;
 	}
 
 	private boolean execute_STACK_PEEK(){
-		if (!evalNumericExpression()) return false;							// Get the Stack pointer
-		int stackIndex = EvalNumericExpressionValue.intValue();
-		if (stackIndex < 1 || stackIndex >= theStacks.size()){
-			RunTimeError("Invalid Stack Pointer");
-			return false;
+		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		if (stackIndex == 0) return false;
+		if (!isNext(',')) return false;										// move to the value
+
+		Stack thisStack = theStacks.get(stackIndex);						// Get the Stack
+		if (thisStack.isEmpty()){
+			return RunTimeError("Stack is empty");
 		}
 
-		Stack thisStack = theStacks.get(stackIndex);		               // Get the Stack
-		if (thisStack.isEmpty()){
-			RunTimeError("Stack is empty");
-			return false;
-		}
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-		
 		switch (theStacksType.get(stackIndex))
 		{
-		case stack_is_string:												// String type list
+		case stack_is_string:												// String type stack
 			if (!getSVar()) {
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
+			if (!checkEOL()) return false;
 			String thisString = (String) thisStack.peek();
 			StringVarValues.set(theValueIndex, thisString);
 			break;
-			
+
 		case stack_is_numeric:
 			if (!getNVar()) {
-				RunTimeError("Type mismatch");
-				return false;
+				return RunTimeError("Type mismatch");
 			}
+			if (!checkEOL()) return false;
 			Double thisNumber = (Double) thisStack.peek();
 			NumericVarValues.set(theValueIndex, thisNumber);
 			break;
-			
+
 		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-	
+			return RunTimeError("Internal problem. Notify developer");
 		}
 		return true;
 	}
 
 	private boolean execute_STACK_TYPE(){
-		if (!evalNumericExpression()) return false;							// Get the Stack pointer
-		int stackIndex = EvalNumericExpressionValue.intValue();
-		if (stackIndex < 1 || stackIndex >= theStacks.size()){
-			RunTimeError("Invalid Stack Pointer");
-			return false;
-		}
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-
+		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		if (stackIndex == 0) return false;
+		if (!isNext(',')) return false;										// move to the value
 		if (!getSVar()) return false;
-		
+		if (!checkEOL()) return false;
+
 		switch (theStacksType.get(stackIndex))						// Get this Stack type
 		{
 		case stack_is_string:										// String
 			StringVarValues.set(theValueIndex, "S");
 			break;
-			
+
 		case stack_is_numeric:												// Number
 			StringVarValues.set(theValueIndex, "N");
 			break;
-			
-		default:
-			RunTimeError("Internal problem. Notify developer");
-			return false;
-		}
 
-		
+		default:
+			return RunTimeError("Internal problem. Notify developer");
+		}
 		return true;
 	}
 
 	private boolean execute_STACK_ISEMPTY(){
-		if (!evalNumericExpression()) return false;							// Get the Stack pointer
-		int stackIndex = EvalNumericExpressionValue.intValue();
-		if (stackIndex < 1 || stackIndex >= theStacks.size()){
-			RunTimeError("Invalid Stack Pointer");
-			return false;
-		}
-		
-		char c = ExecutingLineBuffer.charAt(LineIndex);						// move to the value
-		if ( c != ',') return false;
-		++LineIndex;
-
+		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		if (stackIndex == 0) return false;
+		if (!isNext(',')) return false;
 		if (!getNVar()) return false;
-		
-		double empty = 0;
-		Stack thisStack = theStacks.get(stackIndex);		               // Get the Stack
-		if (thisStack.isEmpty()){
-			empty = 1;
-		}
-		
+		if (!checkEOL()) return false;
+
+		Stack thisStack = theStacks.get(stackIndex);						// Get the Stack
+		double empty = thisStack.isEmpty() ? 1 : 0;
 		NumericVarValues.set(theValueIndex, empty);
-		
+
 		return true;
 	}
 
 	private boolean execute_STACK_CLEAR(){
-		if (!evalNumericExpression()) return false;							// Get the Stack pointer
-		int stackIndex = EvalNumericExpressionValue.intValue();
-		if (stackIndex < 1 || stackIndex >= theStacks.size()){
-			RunTimeError("Invalid Stack Pointer");
-			return false;
-		}
-		
-		Stack thisStack = theStacks.get(stackIndex);		               // Get the Stack
+		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		if (stackIndex == 0) return false;
+		if (!checkEOL()) return false;
 
-		while (!thisStack.isEmpty()){thisStack.pop();}
+		Stack thisStack = theStacks.get(stackIndex);						// Get the Stack
+		while (!thisStack.isEmpty()) { thisStack.pop(); }
 
 		return true;
 	}
 
-	
+
 	//*********************************** Clipboard Commands *****************************************
 
 	/*
 	// This code does not work on devices with API level < 11
 	 
 	private boolean executeCLIPBOARD_GET(){
-		  if (!getVar()) return false;						// get the var to put the clip into
-		  if (VarIsNumeric) return false;
+		  if (!getSVar()) return false;						// get the var to put the clip into
 			ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 		  String data = "";
 		  if (clipboard.hasPrimaryClip()){                        // If clip board has text
@@ -13641,8 +13161,7 @@ private boolean doUserFunction(){
 	
 	private boolean executeCLIPBOARD_PUT(){
 		int v = Integer.valueOf(android.os.Build.VERSION.SDK);
-		if (!evalStringExpression()) return false;          // Get the string to put into the clipboard
-		if (SEisLE) return false;
+		if (!getStringArg()) return false;          // Get the string to put into the clipboard
 		ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 		CharSequence cs = StringConstant;
 		ClipData clip = ClipData.newPlainText("simple text",cs);
@@ -13653,23 +13172,21 @@ private boolean doUserFunction(){
 	*/
 	
 	private boolean executeCLIPBOARD_GET(){
-		  if (!getVar()) return false;						// get the var to put the clip into
-		  if (VarIsNumeric) return false;
+		if (!getSVar()) return false;						// get the var to put the clip into
+		if (!checkEOL()) return false;
 		  String data;
 		  if (clipboard.hasText()){                        // If clip board has text
 			  CharSequence data1 = clipboard.getText();    // Get the clip
 			  data = data1.toString();       
 		  }else data ="";									// If no clip, set data to null
 		  StringVarValues.set(theValueIndex, data);         // Return the result to user
-			if (!checkEOL()) return false;
 		return true;
 	}
 	
 	private boolean executeCLIPBOARD_PUT(){
-		if (!evalStringExpression()) return false;          // Get the string to put into the clipboard
-		if (SEisLE) return false;
-		clipboard.setText(StringConstant);                  // Put the user expression into the clipboard
+		if (!getStringArg()) return false;					// Get the string to put into the clipboard
 		if (!checkEOL()) return false;
+		clipboard.setText(StringConstant);                  // Put the user expression into the clipboard
 		return true;
 	}
 	
@@ -13679,24 +13196,17 @@ private boolean doUserFunction(){
 /*************************************  Cypher Commands  *****************************************/
 	
 	private boolean executeENCRYPT(){
-		int q = 0;
-		q = 1;
-		if (!evalStringExpression()) return false;          // Get the Pass Word
-		if (SEisLE) return false;
+		if (!getStringArg()) return false;					// Get the Pass Word
 		String PW = StringConstant;
-		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		++LineIndex;
+		if (!isNext(',')) return false;
 
-		if (!evalStringExpression()) return false;          // Get the Src string
-		if (SEisLE) return false;
+		if (!getStringArg()) return false;					// Get the Src string
 		String Src = StringConstant;
-		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		++LineIndex;
-		
-		if (!getVar())return false;							// Get the destination Var string
-		if (VarIsNumeric)return false;
+		if (!isNext(',')) return false;
+
+		if (!getSVar()) return false;						// Get the destination Var string
 		if (!checkEOL()) return false;
-		
+
 	    // 8-byte Salt
 	    byte[] salt = {
 	        (byte)0xA9, (byte)0x9B, (byte)0xC8, (byte)0x32,
@@ -13742,22 +13252,17 @@ private boolean doUserFunction(){
 	
 
 	private boolean executeDECRYPT(){
-		if (!evalStringExpression()) return false;          // Get the Pass Word
-		if (SEisLE) return false;
+		if (!getStringArg()) return false;					// Get the Pass Word
 		String PW = StringConstant;
-		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		++LineIndex;
+		if (!isNext(',')) return false;
 
-		if (!evalStringExpression()) return false;          // Get the Src string
-		if (SEisLE) return false;
+		if (!getStringArg()) return false;					// Get the Src string
 		String Src = StringConstant;
-		if (ExecutingLineBuffer.charAt(LineIndex) != ',')return false;
-		++LineIndex;
-		
-		if (!getVar())return false;							// Get the destination Var string
-		if (VarIsNumeric)return false;
+		if (!isNext(',')) return false;
+
+		if (!getSVar()) return false;						// Get the destination Var string
 		if (!checkEOL()) return false;
-		
+
 	    // 8-byte Salt
 	    byte[] salt = {
 	        (byte)0xA9, (byte)0x9B, (byte)0xC8, (byte)0x32,
@@ -15950,7 +15455,7 @@ private boolean doUserFunction(){
 		String url = StringConstant;
 
 		if (!isNext(',')) return false; 
-		if (!evalNumericExpression())return false;
+		if (!evalNumericExpression()) return false;
 		if (!checkEOL()) return false;
 
 		int theListIndex = EvalNumericExpressionValue.intValue();
