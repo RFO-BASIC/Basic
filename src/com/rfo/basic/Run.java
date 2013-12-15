@@ -12197,6 +12197,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean execute_array_copy(){
 															// **** Source Array ****
+
 		if (getVarAndType() == null)			{ return false; }	// Get the array variable
 		if (!VarIsArray)						{ return RunTimeError("Source not array"); }
 		if (VarIsNew) 							{ return RunTimeError("Source array not DIMed"); }
@@ -12208,68 +12209,89 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		int SourceCopyLimit = SourceBase + SourceLength;
 
 		if (!isNext(']')) {
-			if (!evalNumericExpression())		{ return false; }	// get user's source start index
-			int usi = EvalNumericExpressionValue.intValue();
-			if (usi > 1) { SourceBase += usi - 1; }					// convert to 0-based index
-
-			if (isNext(',')) {
+			int usi = 0;
+			boolean isComma = isNext(',');							// Experiment: make both source start and
+			boolean isBracket;										// source length args optional
+			if (!isComma) {
+				if (!evalNumericExpression())	{ return false; }	// get user's source start index
+				usi = EvalNumericExpressionValue.intValue();
+				if (usi > 1) { SourceBase += usi - 1; }				// convert to 0-based index, ignore if less than 1
+				isComma = isNext(',');
+			}
+			isBracket = isNext(']');
+			if (isComma && !isBracket) {
 				if (!evalNumericExpression())	{ return false; }	// get user's length to copy
 				SourceLength = EvalNumericExpressionValue.intValue();
-				if (SourceLength < 0)			{ return RunTimeError("Length must be positive"); }
+				if (SourceLength < 0) { SourceLength = 0; }			// eliminate negative input
+				isBracket = isNext(']');
 			}
-			if (!isNext(']'))					{ return false; }
+			if (!isBracket)						{ return false; }
 
 			if (SourceBase + SourceLength > SourceCopyLimit) {
 				SourceLength = SourceCopyLimit - SourceBase;		// don't go past end of source array
-			} else {
-				SourceCopyLimit = SourceBase + SourceLength;		// range may not include end of array
-			}
-			if (SourceBase >= SourceCopyLimit) {
-				return RunTimeError("Source array start > length");
 			}
 		}
 		if (!isNext(',')) { return false; }
 															// *** Destination Array ***
 
-		String DestVar = getVarAndType();							// Get the array variable
-		if (DestVar == null)					{ return false; }
+		String destVar = getVarAndType();							// Get the array variable
+		if (destVar == null)					{ return false; }
 		if (!VarIsArray)						{ return RunTimeError("Destination not array"); }
-		if (!VarIsNew)							{ return RunTimeError("Destination array previously DIMed"); }
 		if (SourceArrayNumeric != VarIsNumeric)	{ return RunTimeError("Arrays not of same type"); }
-		int DestVarNumber = createNewVar(DestVar);
+		boolean destIsNew = VarIsNew;
+		int destVarNumber = VarNumber;								// Not valid if VarIsNew!
 
-		int Extras = 0;												// Get the extras parameter
+		int extras = 0;												// Get the extras parameter
 		if (!isNext(']')) {
 			if (!evalNumericExpression())		{ return false; }
 			if (!isNext(']'))					{ return false; }
-			Extras = EvalNumericExpressionValue.intValue();
+			extras = EvalNumericExpressionValue.intValue();
 		}
 		if (!checkEOL())						{ return false; }
 
-		int totalLength = SourceLength + Math.abs(Extras);			// Go build an array of the proper size and type
-		if (!BuildBasicArray(DestVarNumber, SourceArrayNumeric, totalLength)) { return false; }
+		int destStart = 0;
+		int totalLength = 0;
+		if (destIsNew) {											// copy to new array, optional extras arg adds element(s)
+
+			if (extras == 0) {										// check for cases that would create empty array
+				if (SourceBase >= SourceCopyLimit)
+												{ return RunTimeError("Source array start > length"); }
+				if (SourceLength < 1)			{ return RunTimeError("Length must be positive"); }
+			}
+			destVarNumber = createNewVar(destVar);
+			totalLength = SourceLength + Math.abs(extras);			// go build an array of the proper size and type
+			if (!BuildBasicArray(destVarNumber, SourceArrayNumeric, totalLength)) { return false; }
+			destStart = ArrayValueStart;
+			if (extras < 0) { destStart -= extras; }				// if negative extras, add absolute value to start index
+
+		} else {													// copy over old array, optional extras arg is start index
+			if (SourceLength < 1)				{ return true; }	// nothing to do
+
+			Bundle ArrayEntry = ArrayTable.get(VarIndex.get(destVarNumber)); // Get the array table bundle for this array
+			int destBase = ArrayEntry.getInt("base");				// and the start of the array in the variable space
+			int destLength = ArrayEntry.getInt("length");			// get the destination array length
+			if (extras > destLength)			{ return true; }	// dest start is past end of array, nothing to do
+
+			if (--extras < 0) { extras = 0; }						// convert to 0-based index, ignore if less than 1
+			if (extras + SourceLength > destLength) {				// start index + length to copy > space available
+				SourceLength = destLength - extras;					// limit copy
+			} else {
+				destLength = extras + SourceLength;
+				// ArrayEntry.putInt("length", destLength);			// shorten destination array
+			}
+			destStart = destBase + extras;
+			totalLength = destLength - extras;
+		}
 
 		if (SourceArrayNumeric) {									// Do numeric array
-			  for (int i = Extras; i < 0; ++i) {					// if Extras < 0, add to front
-				  NumericVarValues.set(ArrayValueStart++, 0.0);
-			  }
-			  for (int i = SourceBase; i < SourceCopyLimit; ++i) {	// Copy the source array values
-				  NumericVarValues.set(ArrayValueStart++, NumericVarValues.get(i));
-			  }
-			  for (int i = 0; i < Extras; ++i) {					// if Extras > 0, add to back
-				  NumericVarValues.set(ArrayValueStart++, 0.0);
-			  }
-		  } else {													// Do String array
-			  for (int i = Extras; i < 0; ++i) {					// if Extras < 0, add to front
-				  StringVarValues.set(ArrayValueStart++, "");
-			  }
-			  for (int i = SourceBase; i < SourceCopyLimit; ++i) {	// Copy the source array values
-				  StringVarValues.set(ArrayValueStart++, StringVarValues.get(i));
-			  }
-			  for (int i = 0; i < Extras; ++i) {					// if Extras > 0, add to back
-				  StringVarValues.set(ArrayValueStart++, "");
-			  }
-		  }
+			for (int i = 0; i < SourceLength; ++i) {				// Copy the source array values
+				NumericVarValues.set(destStart++, NumericVarValues.get(SourceBase + i));
+			}
+		} else {													// Do String array
+			for (int i = 0; i < SourceLength; ++i) {				// Copy the source array values
+				StringVarValues.set(destStart++, StringVarValues.get(SourceBase + i));
+			}
+		}
 		return true;
 	}
 
