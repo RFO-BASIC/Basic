@@ -32,9 +32,6 @@ This file is part of BASIC! for Android
     
 	*************************************************************************************************/
 
-
-
-
 package com.rfo.basic;
 
 //Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
@@ -150,7 +147,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -183,6 +179,7 @@ import android.graphics.Typeface;
 import org.apache.commons.net.ftp.*;
 import android.widget.AdapterView.OnItemClickListener;
 
+
 /* Executes the Basic program. Run splits into two parts.
  * The UI thread part and the background thread part.
  * 
@@ -195,9 +192,9 @@ import android.widget.AdapterView.OnItemClickListener;
 public class Run extends ListActivity {
 
 	public static boolean isOld = false;
-    private static final String LOGTAG = "Run";
-    private static final String CLASSTAG = Run.class.getSimpleName();
-//  Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
+	private static final String LOGTAG = "Run";
+	private static final String CLASSTAG = Run.class.getSimpleName();
+//	Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
 	// ********************* Message types for the Handler *********************
 																// message numbers < 256 are in "default" group 0
@@ -297,168 +294,167 @@ public class Run extends ListActivity {
     	"onconsoletouch", "consoletouch.resume"
     	
     };
-    
 
-    public static final int BKWrem  = 0;		// Enumerated names for the key words
-    public static final int BKWdim = 1;
-    public static final int BKWlet = 2;
-    public static final int BKWelseif = 3;
-    public static final int BKWendif = 4;
+    private static final int BKWrem  = 0;		// Enumerated names for the key words
+    private static final int BKWdim = 1;
+    private static final int BKWlet = 2;
+    private static final int BKWelseif = 3;
+    private static final int BKWendif = 4;
 
-    public static final int BKWprint = 5;
-    public static final int BKWinput = 6;
+    private static final int BKWprint = 5;
+    private static final int BKWinput = 6;
 
-    public static final int BKWif = 7;
-    public static final int BKWonerror = 8;
-    public static final int BKWelse = 9;
-    public static final int BKWend = 10;
+    private static final int BKWif = 7;
+    private static final int BKWonerror = 8;
+    private static final int BKWelse = 9;
+    private static final int BKWend = 10;
 
-    public static final int BKWfor = 11;
-    public static final int BKWinclude = 12;
-    public static final int BKWstep = 13;
-    public static final int BKWnext = 14;
+    private static final int BKWfor = 11;
+    private static final int BKWinclude = 12;
+    private static final int BKWstep = 13;
+    private static final int BKWnext = 14;
 
-    public static final int BKWgoto = 15;
-    public static final int BKWgosub = 16;
-    public static final int BKWreturn = 17;
-    public static final int BKWtext_open = 18;
-    public static final int BKWtext_close = 19;
-    public static final int BKWtext_readln = 20;
-    public static final int BKWtext_writeln = 21;
-    public static final int BKWwhile = 22;
-    public static final int BKWrepeat = 23;
-    public static final int BKWdo = 24;
-    public static final int BKWuntil = 25;
-    public static final int BKWonbreak = 26;
-    public static final int BKWdir = 27;
-    public static final int BKWmkdir = 28;
-    public static final int BKWrename = 29;
-    public static final int BKWdelete = 30;
-    public static final int BKWsql = 31;
-    public static final int BKWnull32 = 32;             // Time moved to after Timer
-    public static final int BKWgr = 33;
-    public static final int BKWpause = 34;
-    public static final int BKWbrowse = 35;
-    public static final int BKWinkey = 36;
-    public static final int BKWaudio = 37;
-    public static final int BKWpopup = 38;
-    public static final int BKWsensors = 39;
-    public static final int BKWgps = 40;
-    public static final int BKWcls = 41;
-    public static final int BKWarray = 42;
-    public static final int BKWselect = 43;
-    public static final int BKWexit =44;
-    public static final int BKWclipboard_get =45;
-    public static final int BKWclipboard_put =46;
-    public static final int BKWencrypt =47;
-    public static final int BKWdecrypt =48;
-    public static final int BKWsplit_all =49;
-    public static final int BKWsplit =50;
-    public static final int BKWbyte_open =51;
-    public static final int BKWbyte_close =52;
-    public static final int BKWbyte_read_byte =53;
-    public static final int BKWbyte_write_byte =54;
-    public static final int BKWgraburl = 55;
-    public static final int BKWfn_def = 56;
-    public static final int BKWfn_rtn = 57;
-    public static final int BKWfn_end = 58;
-    public static final int BKWbyte_copy = 59;
-    public static final int BKWsw_begin = 60;
-    public static final int BKWsw_case = 61;
-    public static final int BKWsw_break = 62;
-    public static final int BKWsw_default = 63;
-    public static final int BKWsw_end = 64;
-    public static final int BKWvibrate = 65;
-    public static final int BKWkbshow = 66;
-    public static final int BKWkbhide = 67;
-    public static final int BKWecho_on = 68;
-    public static final int BKWecho_off = 69;
-    public static final int BKWtext_input = 70;
-    public static final int BKWfile_size = 71;
-    public static final int BKWfile_dir = 72;
-    public static final int BKWfile_mkdir = 73;
-    public static final int BKWfile_rename = 74;
-    public static final int BKWfile_roots = 75;
-    public static final int BKWfile_exists = 76;
-    public static final int BKWgrabfile = 77;
-    public static final int BKWwakelock = 78;
-    public static final int BKWtone = 79;
-    public static final int BKWlist = 80;
-    public static final int BKWbundle = 81;
-    public static final int BKWstack = 82;
-    public static final int BKWsocket = 83;
-    public static final int BKWhttp_post = 84;
-    public static final int BKWdevice = 85;
-    public static final int BKWdebug = 86;
-    public static final int BKWconsole = 87;
-    public static final int BKWtts = 88;					// TTS commands moved to tts_cmd
-    public static final int BKWftp = 89;
-    public static final int BKWbt = 90;
-    public static final int BKWnull91 = 91;
-    public static final int BKWnull92 = 92;
-    public static final int BKWnull93 = 93;
-    public static final int BKWcall = 94;
-    public static final int BKWsu = 95;
-    public static final int BKWsystem = 96;
-    public static final int BKWundim = 97;
-    public static final int BKWtget = 98;
-    public static final int BKWf_n_break = 99;
-    public static final int BKWw_r_break = 100;
-    public static final int BKWd_u_break = 101;
-    public static final int BKWtext_position_get = 102;
-    public static final int BKWtext_position_set = 103;
-    public static final int BKWbyte_position_get = 104;
-    public static final int BKWbyte_position_set = 105;
-    public static final int BKWbyte_read_buffer = 106;
-    public static final int BKWbyte_write_buffer = 107;
-    public static final int BKWsound_pool = 108;
-    public static final int BKWmy_phone_number = 109;
-    public static final int BKWheadset = 110;
-    public static final int BKWsms_send = 111;
-    public static final int BKWphone_call = 112;
-    public static final int BKWemail_send = 113;
-    public static final int BKWhtml = 114;
-    public static final int BKWrun = 115;
-    public static final int BKWempty_program = 116;
-    public static final int BKWback_resume = 117;
-    public static final int BKWnotify = 118;
-    public static final int BKWswap = 119;
-    public static final int BKWsms_rcv_init = 120;
-    public static final int BKWsms_rcv_next = 121;
-    public static final int BKWstt_listen = 122;
-    public static final int BKWstt_results = 123;
-    public static final int BKWtimer = 124;
-    public static final int BKWtimezone = 125;
-    public static final int BKWtime = 126;             // Timer commands moved to Timer_cmd
-    public static final int BKWnull127 = 127;
-    public static final int BKWonkey_resume = 128;
-    public static final int BKWmenukey_resume = 129;
-    
+    private static final int BKWgoto = 15;
+    private static final int BKWgosub = 16;
+    private static final int BKWreturn = 17;
+    private static final int BKWtext_open = 18;
+    private static final int BKWtext_close = 19;
+    private static final int BKWtext_readln = 20;
+    private static final int BKWtext_writeln = 21;
+    private static final int BKWwhile = 22;
+    private static final int BKWrepeat = 23;
+    private static final int BKWdo = 24;
+    private static final int BKWuntil = 25;
+    private static final int BKWonbreak = 26;
+    private static final int BKWdir = 27;
+    private static final int BKWmkdir = 28;
+    private static final int BKWrename = 29;
+    private static final int BKWdelete = 30;
+    private static final int BKWsql = 31;
+    private static final int BKWnull32 = 32;             // Time moved to after Timer
+    private static final int BKWgr = 33;
+    private static final int BKWpause = 34;
+    private static final int BKWbrowse = 35;
+    private static final int BKWinkey = 36;
+    private static final int BKWaudio = 37;
+    private static final int BKWpopup = 38;
+    private static final int BKWsensors = 39;
+    private static final int BKWgps = 40;
+    private static final int BKWcls = 41;
+    private static final int BKWarray = 42;
+    private static final int BKWselect = 43;
+    private static final int BKWexit =44;
+    private static final int BKWclipboard_get =45;
+    private static final int BKWclipboard_put =46;
+    private static final int BKWencrypt =47;
+    private static final int BKWdecrypt =48;
+    private static final int BKWsplit_all =49;
+    private static final int BKWsplit =50;
+    private static final int BKWbyte_open =51;
+    private static final int BKWbyte_close =52;
+    private static final int BKWbyte_read_byte =53;
+    private static final int BKWbyte_write_byte =54;
+    private static final int BKWgraburl = 55;
+    private static final int BKWfn_def = 56;
+    private static final int BKWfn_rtn = 57;
+    private static final int BKWfn_end = 58;
+    private static final int BKWbyte_copy = 59;
+    private static final int BKWsw_begin = 60;
+    private static final int BKWsw_case = 61;
+    private static final int BKWsw_break = 62;
+    private static final int BKWsw_default = 63;
+    private static final int BKWsw_end = 64;
+    private static final int BKWvibrate = 65;
+    private static final int BKWkbshow = 66;
+    private static final int BKWkbhide = 67;
+    private static final int BKWecho_on = 68;
+    private static final int BKWecho_off = 69;
+    private static final int BKWtext_input = 70;
+    private static final int BKWfile_size = 71;
+    private static final int BKWfile_dir = 72;
+    private static final int BKWfile_mkdir = 73;
+    private static final int BKWfile_rename = 74;
+    private static final int BKWfile_roots = 75;
+    private static final int BKWfile_exists = 76;
+    private static final int BKWgrabfile = 77;
+    private static final int BKWwakelock = 78;
+    private static final int BKWtone = 79;
+    private static final int BKWlist = 80;
+    private static final int BKWbundle = 81;
+    private static final int BKWstack = 82;
+    private static final int BKWsocket = 83;
+    private static final int BKWhttp_post = 84;
+    private static final int BKWdevice = 85;
+    private static final int BKWdebug = 86;
+    private static final int BKWconsole = 87;
+    private static final int BKWtts = 88;					// TTS commands moved to tts_cmd
+    private static final int BKWftp = 89;
+    private static final int BKWbt = 90;
+    private static final int BKWnull91 = 91;
+    private static final int BKWnull92 = 92;
+    private static final int BKWnull93 = 93;
+    private static final int BKWcall = 94;
+    private static final int BKWsu = 95;
+    private static final int BKWsystem = 96;
+    private static final int BKWundim = 97;
+    private static final int BKWtget = 98;
+    private static final int BKWf_n_break = 99;
+    private static final int BKWw_r_break = 100;
+    private static final int BKWd_u_break = 101;
+    private static final int BKWtext_position_get = 102;
+    private static final int BKWtext_position_set = 103;
+    private static final int BKWbyte_position_get = 104;
+    private static final int BKWbyte_position_set = 105;
+    private static final int BKWbyte_read_buffer = 106;
+    private static final int BKWbyte_write_buffer = 107;
+    private static final int BKWsound_pool = 108;
+    private static final int BKWmy_phone_number = 109;
+    private static final int BKWheadset = 110;
+    private static final int BKWsms_send = 111;
+    private static final int BKWphone_call = 112;
+    private static final int BKWemail_send = 113;
+    private static final int BKWhtml = 114;
+    private static final int BKWrun = 115;
+    private static final int BKWempty_program = 116;
+    private static final int BKWback_resume = 117;
+    private static final int BKWnotify = 118;
+    private static final int BKWswap = 119;
+    private static final int BKWsms_rcv_init = 120;
+    private static final int BKWsms_rcv_next = 121;
+    private static final int BKWstt_listen = 122;
+    private static final int BKWstt_results = 123;
+    private static final int BKWtimer = 124;
+    private static final int BKWtimezone = 125;
+    private static final int BKWtime = 126;             // Timer commands moved to Timer_cmd
+    private static final int BKWnull127 = 127;
+    private static final int BKWonkey_resume = 128;
+    private static final int BKWmenukey_resume = 129;
+
     public static final int BKWonmenukey = BKWonerror;			//130    Dummy entries for Format
     public static final int BKWontimer = BKWonerror;			//131
     public static final int BKWonkeypress = BKWonerror;			//132
     public static final int BKWontouch = BKWonerror;			//133
     public static final int BKWonbtreadready = BKWonerror;		//134
     
-    public static final int BKWhome = 135;
-    public static final int BKWbackground_resume = 136;
-    public static final int BKWonbackground = BKWonerror;		//137
-    public static final int BKWphone_rcv_init = 138;
-    public static final int BKWphone_rcv_next = 139;
-    public static final int BKWread_data = 140;
-    public static final int BKWread_next = 141;
-    public static final int BKWread_from = 142;
-    public static final int BKWonconsoletouch = BKWonerror;     //143
-    public static final int BKWconsole_resume = 144;
-    
-    public static final int BKWnone= 198;
-    public static final int SKIP = 199;
-    
-    public static int KeyWordValue = 0;            	// Will contain an enumerated key word value
-    public static String PossibleKeyWord = "";	// Used when TO, STEP, THEN are expected
+    private static final int BKWhome = 135;
+    private static final int BKWbackground_resume = 136;
+    private static final int BKWonbackground = BKWonerror;		//137
+    private static final int BKWphone_rcv_init = 138;
+    private static final int BKWphone_rcv_next = 139;
+    private static final int BKWread_data = 140;
+    private static final int BKWread_next = 141;
+    private static final int BKWread_from = 142;
+    private static final int BKWonconsoletouch = BKWonerror;     //143
+    private static final int BKWconsole_resume = 144;
+
+    private static final int BKWnone= 198;
+    private static final int SKIP = 199;
+
+    private static int KeyWordValue = 0;            	// Will contain an enumerated key word value
+    private static String PossibleKeyWord = "";	// Used when TO, STEP, THEN are expected
 
     // **************** The variables for the math function names ************************
-    
+
     public static final String MathFunctions[] = {
     	"sin(", "cos(", "tan(",
     	"sqr(", "abs(", "rnd(",
@@ -477,53 +473,53 @@ public class Run extends ListActivity {
     	"sinh(", "pow(", "log10(",
     	"ucode(", "pi(", "min(", "max(",		// pi, min, max: new/2013-07-29 gt
     };
-    
-    public static final int MFsin = 0;			// Enumerated name for the Match Functions
-    public static final int MFcos = 1;
-    public static final int MFtan = 2;
-    public static final int MFsqr = 3;
-    public static final int MFabs = 4;
-    public static final int MFrnd = 5;
-    public static final int MFval = 6;
-    public static final int MFlen = 7;
-    public static final int MFacos = 8;
-    public static final int MFasin = 9;
-    public static final int MFatan2 = 10;
-    public static final int MFceil = 11;
-    public static final int MFfloor = 12;
-    public static final int MFmod = 13;
-    public static final int MFlog = 14;
-    public static final int MFround = 15;
-    public static final int MFtoradians = 16;
-    public static final int MFtodegrees = 17;
-    public static final int MFtime = 18;
-    public static final int MFexp = 19;
-    public static final int MFis_in = 20;
-    public static final int MFclock = 21;
-    public static final int MFbor = 22;
-    public static final int MFband = 23;
-    public static final int MFbxor = 24;
-    public static final int MFcollision = 25;
-    public static final int MFascii = 26;
-    public static final int MFstarts_with = 27;
-    public static final int MFends_with = 28;
-    public static final int MFhex = 29;
-    public static final int MFoct = 30;
-    public static final int MFbin = 31;
-    public static final int MFshift = 32;
-    public static final int MFrandomize = 33;
-    public static final int MFbackground = 34;
-    public static final int MFatan = 35;
-    public static final int MFcbrt = 36;
-    public static final int MFcosh = 37;
-    public static final int MFhypot = 38;
-    public static final int MFsinh = 39;
-    public static final int MFpow = 40;
-    public static final int MFlog10 = 41;
-    public static final int MFucode = 42;
-    public static final int MFpi = 43;				// pi new/2013-07-29 gt
-    public static final int MFmin = 44;				// min new/2013-07-29 gt
-    public static final int MFmax = 45;				// max new/2013-07-29 gt
+
+    private static final int MFsin = 0;			// Enumerated name for the Match Functions
+    private static final int MFcos = 1;
+    private static final int MFtan = 2;
+    private static final int MFsqr = 3;
+    private static final int MFabs = 4;
+    private static final int MFrnd = 5;
+    private static final int MFval = 6;
+    private static final int MFlen = 7;
+    private static final int MFacos = 8;
+    private static final int MFasin = 9;
+    private static final int MFatan2 = 10;
+    private static final int MFceil = 11;
+    private static final int MFfloor = 12;
+    private static final int MFmod = 13;
+    private static final int MFlog = 14;
+    private static final int MFround = 15;
+    private static final int MFtoradians = 16;
+    private static final int MFtodegrees = 17;
+    private static final int MFtime = 18;
+    private static final int MFexp = 19;
+    private static final int MFis_in = 20;
+    private static final int MFclock = 21;
+    private static final int MFbor = 22;
+    private static final int MFband = 23;
+    private static final int MFbxor = 24;
+    private static final int MFcollision = 25;
+    private static final int MFascii = 26;
+    private static final int MFstarts_with = 27;
+    private static final int MFends_with = 28;
+    private static final int MFhex = 29;
+    private static final int MFoct = 30;
+    private static final int MFbin = 31;
+    private static final int MFshift = 32;
+    private static final int MFrandomize = 33;
+    private static final int MFbackground = 34;
+    private static final int MFatan = 35;
+    private static final int MFcbrt = 36;
+    private static final int MFcosh = 37;
+    private static final int MFhypot = 38;
+    private static final int MFsinh = 39;
+    private static final int MFpow = 40;
+    private static final int MFlog10 = 41;
+    private static final int MFucode = 42;
+    private static final int MFpi = 43;				// pi new/2013-07-29 gt
+    private static final int MFmin = 44;			// min new/2013-07-29 gt
+    private static final int MFmax = 45;			// max new/2013-07-29 gt
 
     public static  int MFNumber = 0;				// Will contain a math function's enumerated name value
     
@@ -536,35 +532,35 @@ public class Run extends ListActivity {
     	")", "=", "+", "-"," ",
     	"\n"
     	};
-    	
-    public static final int LE = 0;					// Enumerated names of operators
-    public static final int NE = 1;
-    public static final int GE = 2;
-    public static final int GT = 3;
-    public static final int LT = 4;
 
-    public static final int LEQ = 5;
-    public static final int EXP = 6;
-    public static final int MUL = 7;
-    public static final int PLUS = 8;
-    public static final int MINUS = 9;
+    private static final int LE = 0;					// Enumerated names of operators
+    private static final int NE = 1;
+    private static final int GE = 2;
+    private static final int GT = 3;
+    private static final int LT = 4;
+
+    private static final int LEQ = 5;
+    private static final int EXP = 6;
+    private static final int MUL = 7;
+    private static final int PLUS = 8;
+    private static final int MINUS = 9;
     
-    public static final int DIV = 10;
-    public static final int NOT = 11;
-    public static final int OR = 12;
-    public static final int AND = 13;
-    public static final int LPRN = 14;
+    private static final int DIV = 10;
+    private static final int NOT = 11;
+    private static final int OR = 12;
+    private static final int AND = 13;
+    private static final int LPRN = 14;
     
-    public static final int RPRN = 15;
-    public static final int ASSIGN = 16;
-    public static final int UPLUS = 17;
-    public static final int UMINUS = 18;
+    private static final int RPRN = 15;
+    private static final int ASSIGN = 16;
+    private static final int UPLUS = 17;
+    private static final int UMINUS = 18;
 
-    public static final int SOE = 19;
-    public static final int EOL = 20;
-    public static final int FLPRN = 21;
+    private static final int SOE = 19;
+    private static final int EOL = 20;
+    private static final int FLPRN = 21;
 
-    public static final int GoesOnPrecedence[]={     // Precedence for going onto stack
+    private static final int GoesOnPrecedence[] = {		// Precedence for going onto stack
         8,  8,  8, 8, 8,
         8, 12, 10, 9,  9,
         10, 7,  5,  6, 15,
@@ -575,9 +571,9 @@ public class Run extends ListActivity {
         15, 15, 15, 15,
         15, 15, 15, 15,
         15, 15, 15, 15,
-        15, 15, 15};
-    
-    public static final int ComesOffPrecedence[]={		// Precedence for coming off stack
+        15, 15, 15 };
+
+    private static final int ComesOffPrecedence[] = {	// Precedence for coming off stack
     	8, 8, 8, 8, 8,
     	8, 12, 10, 9, 9, 
     	10, 7, 5, 6, 2, 
@@ -590,10 +586,10 @@ public class Run extends ListActivity {
         13, 13, 13, 13,
         13, 13, 13 };
     
-    public static int OperatorValue = 0 ;           // Will hold enumerated operator name value
-    
+    private int OperatorValue = 0;						// Will hold enumerated operator name value
+
     //**********************  The variables for the string functions  *******************
-    
+
     public static final String StringFunctions[] = {
     	"left$(", "mid$(", "right$(",
     	"str$(", "upper$(", "lower$(",
@@ -601,73 +597,72 @@ public class Run extends ListActivity {
     	"replace$(", "hex$(", "oct$(",
     	"bin$(", "geterror$(", "word$("
     };
-    public static  int SFNumber = 0;					// Will hold enumerated string function name value
-    
-    public static final int SFleft = 0;					// Enumerated string function name values
-    public static final int SFmid = 1;
-    public static final int SFright = 2;
-    public static final int SFstr = 3;
-    public static final int SFupper = 4;
-    public static final int SFlower = 5;
-    public static final int SFformat = 6;
-    public static final int SFchr = 7;
-    public static final int SFversion = 8;
-    public static final int SFreplace = 9;
-    public static final int SFhex = 10;
-    public static final int SFoct= 11;
-    public static final int SFbin =12;
-    public static final int SFgeterror =13;
-    public static final int SFword =14;
-    
+    private int SFNumber = 0;							// Will hold enumerated string function name value
+
+    private static final int SFleft = 0;				// Enumerated string function name values
+    private static final int SFmid = 1;
+    private static final int SFright = 2;
+    private static final int SFstr = 3;
+    private static final int SFupper = 4;
+    private static final int SFlower = 5;
+    private static final int SFformat = 6;
+    private static final int SFchr = 7;
+    private static final int SFversion = 8;
+    private static final int SFreplace = 9;
+    private static final int SFhex = 10;
+    private static final int SFoct= 11;
+    private static final int SFbin =12;
+    private static final int SFgeterror =13;
+    private static final int SFword =14;
+
     // *****************************   Various execution control variables *********************
-    
+
     public static final int BASIC_GENERAL_INTENT = 255;
-    public static Random randomizer;
+    private Random randomizer;
     public static boolean background = false;
-    public static String errorMsg;
-    public static boolean kbShown = false;
-    
-    public static int OnErrorLine =0 ;              // Line number for OnError: label
-    public static int OnBackKeyLine=0;
+    private String errorMsg;
+    private boolean kbShown = false;
+
+    public static int OnErrorLine = 0;					// Line number for OnError: label
+    public static int OnBackKeyLine = 0;
     public static boolean BackKeyHit = false;
     public static int OnMenuKeyLine = 0;
     public static boolean MenuKeyHit = false;
     public static boolean bgStateChange = false;
-    public static int OnBGLine = 0;
-    public static int onCTLine = 0;
-    public static boolean ConsoleTouched = false;
-    public static int interruptResume = -1 ;
+    private int OnBGLine = 0;
+    private int onCTLine = 0;
+    private boolean ConsoleTouched = false;
+    private int interruptResume = -1;
  
-	
-    public static int LineIndex = 0;				// Current displacement into ExecutingLineBuffer
-    public static String ExecutingLineBuffer ="";		// Holds the current line being executed
-    public static int ExecutingLineIndex = 0;		// Points to the current line in Basic.lines
-    public static boolean SEisLE = false;				// If a String expression result is a logical expression
+    private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer
+    private String ExecutingLineBuffer ="";				// Holds the current line being executed
+    private int ExecutingLineIndex = 0;					// Points to the current line in Basic.lines
+    private boolean SEisLE = false;						// If a String expression result is a logical expression
 
-    public static Stack<Integer> GosubStack;			// Stack used for Gosub/Return
-    public static Stack<Bundle> ForNextStack;			// Stack used for For/Next
-    public static Stack<Integer> WhileStack;			// Stack used for While/Repeat
-    public static Stack<Integer> DoStack;				// Stack used for Do/Until
-    
-    public static Stack <Integer> IfElseStack;			// Stack for IF-ELSE-ENDIF operations
-    public static final Integer IEskip1 = 1;			// Skip statements until ELSE, ELSEIF or ENDIF
-    public static final Integer IEskip2 = 2;			// Skip to until ENDIF
-    public static final Integer IEexec = 3;				// Execute to ELSE, ELSEIF or ENDIF
-    public static final Integer IEinterrupt = 4;
-   
-    public static Double GetNumberValue = (double)0;				// Return value from GetNumber()
-    public static Double EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
-    Vibrator myVib;
+    private Stack<Integer> GosubStack;					// Stack used for Gosub/Return
+    private Stack<Bundle> ForNextStack;					// Stack used for For/Next
+    private Stack<Integer> WhileStack;					// Stack used for While/Repeat
+    private Stack<Integer> DoStack;						// Stack used for Do/Until
 
-    public  static ListView lv ;							// The output screen list view
+    private Stack <Integer> IfElseStack;				// Stack for IF-ELSE-ENDIF operations
+    private static final Integer IEskip1 = 1;				// Skip statements until ELSE, ELSEIF or ENDIF
+    private static final Integer IEskip2 = 2;				// Skip to until ENDIF
+    private static final Integer IEexec = 3;				// Execute to ELSE, ELSEIF or ENDIF
+    private static final Integer IEinterrupt = 4;
+
+    private Double GetNumberValue = (double)0;				// Return value from GetNumber()
+    private Double EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
+    private Vibrator myVib;
+
     public static ArrayList<String> output;					// The output screen text lines
-    public static ColoredTextAdapter AA;					// The output screen array adapter
-    public static final int MaxTempOutput = 500;
-    public static String TempOutput[] = new String[MaxTempOutput];	// Holds waiting output screen line
-    public static int TempOutputIndex = 0;					// Index to next available TempOutput entry
+    private Basic.ColoredTextAdapter AA;					// The output screen array adapter
+    private ListView lv;									// The output screen list view
+    private static final int MaxTempOutput = 500;
+    private static String TempOutput[] = new String[MaxTempOutput];	// Holds waiting output screen line
+    private static int TempOutputIndex = 0;					// Index to next available TempOutput entry
 
-    public static Background theBackground;					// Background task ID
-    public static boolean SyntaxError = false;		        // Set true when Syntax Error message has been output		
+    private Background theBackground;						// Background task ID
+    private boolean SyntaxError = false;					// Set true when Syntax Error message has been output
 
     private boolean ProgressPending = false;
 	
@@ -716,8 +711,8 @@ public class Run extends ListActivity {
 	private String PrintLine = "";						// Hold the Print line currently being built
 	private String textPrintLine = "";					// Hold the TextPrint line currently being built
 	private boolean PrintLineReady = false;				// Signals a line is ready to print or write
-    
-    public static InputMethodManager IMM;
+
+	private InputMethodManager IMM;
 	private ArrayList<String> LabelNames;				// A list of all the label names found in the program
 	private ArrayList<Integer> LabelValues;				// The line numbers associated with Label Names
 
@@ -1536,54 +1531,6 @@ public class Run extends ListActivity {
     }
     private BroadcastsHandler headsetBroadcastReceiver = null;
 
-/*************************************** Colored Text Adapter ********************************/
-    
-    
-    public class ColoredTextAdapter extends ArrayAdapter<String> {
-        Activity context;
-        ArrayList<String> list;
-        int textColor;
-        int backgroundColor;
-
-        public ColoredTextAdapter(Activity aContext, ArrayList<String> alist) {
-                super(aContext, Settings.getLOadapter(aContext), alist);
-                context = aContext;
-                this.list = alist;
-                if (Settings.getEditorColor(context).equals("BW")){
-              	  textColor = 0xff000000;
-              	  backgroundColor = 0xffffffff;
-                } else
-                  if (Settings.getEditorColor(context).equals("WB")){
-                	  textColor = (0xffffffff);
-                	  backgroundColor = 0xff000000;
-                } else
-                   if (Settings.getEditorColor(context).equals("WBL")){
-                	   textColor =  (0xffffffff);
-                	   backgroundColor = 0xff006478;
-                }  
-
-        }
-
-        public View getView(int position, View convertView, ViewGroup parent) {
-
-                View row = convertView;
-                if (row == null) {
-                        LayoutInflater inflater = (LayoutInflater) context
-                                        .getLayoutInflater();
-                        row = inflater.inflate(Settings.getLOadapter(context), null);
-
-                }
-                TextView text = (TextView) row.findViewById(R.id.the_text);
-                text.setTypeface(Settings.getConsoleTypeface(context));
-                text.setTextColor(textColor);
-                text.setText(list.get(position));
-                text.setBackgroundColor(backgroundColor);
-
-                return row;
-        }
-        
-    }
-
 /*  ***********************************  Start of Basic's run program code **********************
  * 
  * The code is organized (?) as follows:
@@ -1931,7 +1878,7 @@ public void onCreate(Bundle savedInstanceState) {
 	
 	if (Basic.lines == null){
 		Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
-		Intent intent = new Intent(this, Basic.class);
+		Intent intent = new Intent(getApplicationContext(), Basic.class);
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		startActivity(intent);
 		finish();
@@ -1952,33 +1899,19 @@ public void onCreate(Bundle savedInstanceState) {
 //	Log.v(LOGTAG, CLASSTAG + " On Create 2 " + ExecutingLineIndex );
 
 	myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
-	AA= new ColoredTextAdapter(this,  output);
-//	AA=new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);  // Establish the output screen
+	AA = new Basic.ColoredTextAdapter(this, output, Settings.getConsoleTypeface(this)); // Establish the output screen
 	setListAdapter(AA);
-	  lv = getListView();
-	  lv.setTextFilterEnabled(false);
-	  lv.setSelection(0);
-	  
-	  if (!Settings.getLinedConsole(this))lv.setDividerHeight(0);
-	  
+	lv = getListView();
+	lv.setTextFilterEnabled(false);
+	lv.setSelection(0);
+	lv.setBackgroundColor(AA.backgroundColor);
+	if (!Settings.getLinedConsole(this))lv.setDividerHeight(0);
+
 //	  IMM.restartInput(lv);
 	  executeKBHIDE();
 	  setVolumeControlStream(AudioManager.STREAM_MUSIC);
 	  setRequestedOrientation(Settings.getSreenOrientation(this));
 	  mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-	  
-//	  lv.setBackgroundColor(0xff006478);  // Set the Console Background color
-//	  lv.setTextColor(0xffffffff);        // Set the Console Text color
-	  
-      if (Settings.getEditorColor(this).equals("BW")){
-    	    lv.setBackgroundColor(0xffffffff);
-      } else
-        if (Settings.getEditorColor(this).equals("WB")){
-      	  lv.setBackgroundColor(0xff000000);
-      } else
-          if (Settings.getEditorColor(this).equals("WBL")){
-          	  lv.setBackgroundColor(0xff006478);
-      }             	
 
       headsetBroadcastReceiver = new BroadcastsHandler();
       this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
@@ -2034,14 +1967,14 @@ private void InitVars(){
     GetNumberValue = (double)0;				// Return value from GetNumber()
     EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
 
-//    lv = new ListView() ;							// The output screen list view
-    output = new ArrayList<String>() ;					// The output screen text lines
-//    AA = new ArrayAdapter<String> ;					// The output screen array adapter
+    output = new ArrayList<String>();				// The output screen text lines
+//    AA = new ArrayAdapter<String>;				// The output screen array adapter
+//    lv = new ListView();							// The output screen list view
    TempOutput = new String[MaxTempOutput];	// Holds waiting output screen line
     TempOutputIndex = 0;					// Index to next available TempOutput entry
 
     theBackground = null;					// Background task ID
-    SyntaxError = false;		        // Set true when Syntax Error message has been output		
+    SyntaxError = false;		        // Set true when Syntax Error message has been output
 
    ProgressPending = false;
    randomizer = null;
@@ -4718,7 +4651,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 				break;
 			
 			case SFversion:
-				StringConstant = Basic.BasicContext.getString(R.string.version);
+				StringConstant = getString(R.string.version);
 				break;
 
 			case SFgeterror:
@@ -6458,8 +6391,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	}
 
 	private Toast Toaster(CharSequence msg, int duration) {
-		Context context = getContext();
-		Toast toast = Toast.makeText(context, msg, duration);
+		Toast toast = Toast.makeText(this, msg, duration);
 		return toast;
 	}
 
@@ -11673,7 +11605,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			int theVarNumber = VarNumber;
 
 			if (theSensors == null) {
-				theSensors = new SensorActivity(Basic.BasicContext);
+				theSensors = new SensorActivity(this);
 			}
 			ArrayList<String> census = theSensors.takeCensus();
 			int nSensors = census.size();						// If no sensors reported.....
@@ -11687,7 +11619,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 		private boolean execute_sensors_open(){
 			if (theSensors == null) {
-				theSensors = new SensorActivity(Basic.BasicContext);
+				theSensors = new SensorActivity(this);
 			}
 
 			if (isEOL()) { return false; }

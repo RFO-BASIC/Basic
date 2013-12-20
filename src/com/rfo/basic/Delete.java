@@ -27,17 +27,12 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-
-
-import com.rfo.basic.LoadFile.ColoredTextAdapter;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 
 import android.app.AlertDialog;
 import android.app.ListActivity;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.Log;
@@ -47,6 +42,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.AdapterView.OnItemClickListener;
+
 
 //Log.v(Delete.LOGTAG, " " + Delete.CLASSTAG + " String Var Value =  " + d);
 
@@ -59,8 +55,7 @@ public class Delete extends ListActivity {
     private static final String LOGTAG = "Delete File";
     private static final String CLASSTAG = Delete.class.getSimpleName();
 
-    private Context mContext;
-    private ColoredTextAdapter mAdapter;
+    private Basic.ColoredTextAdapter mAdapter;
     private String FilePath = "";
     private String FL[] = null;
     private ArrayList<String> FL1 = new ArrayList<String>();
@@ -70,12 +65,11 @@ public void onCreate(Bundle savedInstanceState) {
 	
   super.onCreate(savedInstanceState);
   setRequestedOrientation(Settings.getSreenOrientation(this));
-  mContext = getApplicationContext();
 
   FilePath = Basic.AppPath;
   updateList();													// put file list in FL1
 
-  mAdapter = new ColoredTextAdapter(this, FL1);
+  mAdapter = new Basic.ColoredTextAdapter(this, FL1);
   setListAdapter(mAdapter);
   ListView lv = getListView();
   lv.setTextFilterEnabled(false);
@@ -136,7 +130,7 @@ private void updateList(){
 	FL1.addAll(files);										// copy the file list to the end of the adapter list
 
 	if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
-	LoadFile.Toaster(mContext, "Select file to Delete");
+	Basic.toaster(this, "Select file to Delete");
 }
 
 @Override

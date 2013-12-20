@@ -27,103 +27,44 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-
-
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import android.app.Activity;
 import android.app.ListActivity;
-import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
-
-import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.AdapterView.OnItemClickListener;
-import android.widget.Toast;
+import android.widget.ListView;
+
 
 //Log.v(LoadFile.LOGTAG, " " + LoadFile.CLASSTAG + " String Var Value =  " + d);
 
 // Loads a file. Called from the Editor when user selects Menu->Load
 
 public class LoadFile extends ListActivity {
-    private static final String LOGTAG = "Load File";
-    private static final String CLASSTAG = LoadFile.class.getSimpleName();
+  private static final String LOGTAG = "Load File";
+  private static final String CLASSTAG = LoadFile.class.getSimpleName();
+  private Basic.ColoredTextAdapter mAdapter;
+  private String ProgramPath = "";								// Load file directory path
+  private ArrayList<String> FL1 = new ArrayList<String>();
 
-    private Context mContext;
-    private ColoredTextAdapter mAdapter;
-    private String ProgramPath = "";								   // Load file directory path
-    private ArrayList<String> FL1 = new ArrayList<String>();
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
 
-    public static class ColoredTextAdapter extends ArrayAdapter<String> {
-        Activity context;
-        ArrayList<String> list;
-        int textColor;
-        int backgroundColor;
-
-        public ColoredTextAdapter(Activity aContext, ArrayList<String> alist) {
-                super(aContext, Settings.getLOadapter(aContext), alist);
-                context = aContext;
-                this.list = alist;
-                if (Settings.getEditorColor(context).equals("BW")){
-              	  textColor = 0xff000000;
-              	  backgroundColor = 0xffffffff;
-                } else
-                  if (Settings.getEditorColor(context).equals("WB")){
-                	  textColor = (0xffffffff);
-                	  backgroundColor = 0xff000000;
-                } else
-                   if (Settings.getEditorColor(context).equals("WBL")){
-                	   textColor =  (0xffffffff);
-                	   backgroundColor = 0xff006478;
-                }  
-
-        }
-
-        public View getView(int position, View convertView, ViewGroup parent) {
-
-                View row = convertView;
-                if (row == null) {
-                        LayoutInflater inflater = (LayoutInflater) context
-                                        .getLayoutInflater();
-                        row = inflater.inflate(Settings.getLOadapter(context), null);
-
-                }
-                TextView text = (TextView) row.findViewById(R.id.the_text);
-                text.setTextColor(textColor);
-                text.setText(list.get(position));
-                text.setBackgroundColor(backgroundColor);
-
-                return row;
-        }
-    }
-
-   
-    
-@Override
-public void onCreate(Bundle savedInstanceState) {
-	
-  super.onCreate(savedInstanceState);
-  setRequestedOrientation(Settings.getSreenOrientation(this));
-  mContext = getApplicationContext();
+    super.onCreate(savedInstanceState);
+    setRequestedOrientation(Settings.getSreenOrientation(this));
 
 	updateList();												// put file list in FL1
 
-	//setListAdapter(new ArrayAdapter<String>(this, Settings.getLOadapter(this), FL1));  // Display the list
-	mAdapter = new ColoredTextAdapter(this, FL1);
+	mAdapter = new Basic.ColoredTextAdapter(this, FL1);			// Display the list
 	setListAdapter(mAdapter);
 	ListView lv = getListView();
 	lv.setTextFilterEnabled(false);
@@ -160,8 +101,8 @@ private void updateList(){
 
 	 String[] FL = lbDir.list();									// Get the list of files in this dir
 	 if (FL == null){
-		 Toaster(mContext, "System Error. File not directory");
-		 return;
+		Basic.toaster(this, "System Error. File not directory");
+		return;
 	 }
 	 
 
@@ -190,7 +131,7 @@ private void updateList(){
 
 	if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
 
-	Toaster(mContext, "Select File To Load");				// Tell the user what to do using Toast
+	Basic.toaster(this, "Select File To Load");					// Tell the user what to do using Toast
 }
 
 @Override
@@ -319,13 +260,5 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
             Editor.mText.setText(Editor.DisplayText);
             finish();													// LoadFile is done
 	}
-
-	public static void Toaster(Context context, CharSequence msg){		// Tell the user "msg"
-  		  CharSequence text = msg;										// via toast
-  		  int duration = Toast.LENGTH_SHORT;
-  		  Toast toast = Toast.makeText(context, text, duration);
-		  toast.setGravity(Gravity.TOP|Gravity.CENTER,0 , 0);
-  		  toast.show();
-    }
 
 }

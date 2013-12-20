@@ -42,7 +42,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -221,30 +220,12 @@ public class Editor extends Activity {
 		}
 
 		private void getPreferences(Context context) {
-			setColors(Settings.getEditorColor(context));
+			Basic.ScreenColors colors = new Basic.ScreenColors();
+			mText.setTextColor(colors.textColor);
+			mText.setBackgroundColor(colors.backgroundColor);
+			mPaint.setColor(colors.lineColor);
 			setTextSize(1, Settings.getFont(context));
 			mLinesSetting = Settings.getLinedEditor(context);
-		}
-
-		private void setColors(String colorSetting) {
-			int fg = 0xff000000;						// default foreground color
-			int bg = 0xffffffff;						// default background color
-			int pc = 0x80000000;						// default paint color
-			if (colorSetting.equals("BW")) {			// use defaults
-			} else
-			if (colorSetting.equals("WB")) {
-				fg = 0xffffffff;
-				bg = 0xff000000;
-				pc = 0x80ffffff;
-			} else
-			if (colorSetting.equals("WBL")) {
-				fg = 0xffffffff;
-				bg = 0xff006478;
-				pc = 0x80000000;
-			}
-			mText.setTextColor(fg);
-			mText.setBackgroundColor(bg);
-			mPaint.setColor(pc);
 		}
     }
 
@@ -257,7 +238,7 @@ public class Editor extends Activity {
 
 		if (Basic.BasicContext == null) {							         // If we have lost context then
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Restarting BASIC!.");
-			Intent intent = new Intent(this, Basic.class);
+			Intent intent = new Intent(getApplicationContext(), Basic.class);
 			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 			startActivity(intent);
 			finish();
@@ -475,7 +456,7 @@ public class Editor extends Activity {
 				// not call Delete
 
 				if (!Basic.checkSDCARD('w')) {
-					Toaster("External storage not available or not writable.");
+					Basic.toaster(this, "External storage not available or not writable.");
 					return true;
 				}
 
@@ -494,13 +475,13 @@ public class Editor extends Activity {
 				startActivity(new Intent(this, Help.class));			// Start the help activity
 				return true;
 
-			case R.id.about:											// ABOUT
-				String version = Basic.BasicContext.getString(R.string.version);   // Get the version string
-				String url = "http://laughton.com/basic/versions/v";				  // add it to the URL
+			case R.id.about:										// ABOUT
+				String version = getString(R.string.version);			// Get the version string
+				String url = "http://laughton.com/basic/versions/v";	// add it to the URL
 				url = url + version + "/index.html";
-				Intent i = new Intent(Intent.ACTION_VIEW);						  // Go to the About web page
+				Intent i = new Intent(Intent.ACTION_VIEW);				// Go to the About web page
 				i.setData(Uri.parse(url));
-				startActivity(i);           
+				startActivity(i);
 				return true;
 
 			case R.id.settings:										// SETTINGS
@@ -618,15 +599,12 @@ public class Editor extends Activity {
 
 
     private void loadFile() {
-		if (!Basic.checkSDCARD('r')) {							// Make sure SD card is present
-			Context context = getApplicationContext();          // if SD card not available, popup
+		if (!Basic.checkSDCARD('r')) {							// Make sure SD card is present. If not, popup
 			CharSequence text = "External storage not available.";		// some toast and do not go to LoadFile
-			int duration = Toast.LENGTH_LONG;
-			Toast toast = Toast.makeText(context, text, duration);
-			toast.show();
+			Toast.makeText(this, text, Toast.LENGTH_LONG).show();
 			return;
 		} else {														// If the SD Card can be read
-    		Intent intent = new  Intent(Editor.this, LoadFile.class);	// Go to the LoadFile Activity
+    		Intent intent = new  Intent(this, LoadFile.class);			// Go to the LoadFile Activity
     		startActivity(intent);    // Now go Load
     	}
 	}
@@ -696,7 +674,7 @@ public class Editor extends Activity {
         	++k;
 
         	if (k == theFileName.length() - 1) {					    // form of xxx/ (no filename given)
-        		Toaster(theFileName + "is an invalid filename");	// tell user
+        		Basic.toaster(this, theFileName + "is an invalid filename");	// tell user
         		DirPart = "";
         		theFileName = "invalid_file_name";
         	} else if (k > 0) {											// form "xxx/yyy"
@@ -723,7 +701,7 @@ public class Editor extends Activity {
         	// First insure the SD Card is available and writable 
 
         	if (!Basic.checkSDCARD('w')) {                                      // If can't use SD card, pop up some
-        		Toaster("External Storage not available or not writeable.");    // toast,
+        		Basic.toaster(this, "External Storage not available or not writeable.");    // toast,
         	} else {
 				//Write to SD Card
 				File sdDir = new File(Basic.getBasePath());
@@ -741,7 +719,7 @@ public class Editor extends Activity {
 						try {
 							file.createNewFile();
 						} catch (Exception e) {
-							Toaster("File not saved: " + e);
+							Basic.toaster(this, "File not saved: " + e);
 						}
 						if (file.exists() && file.canWrite()) {
 							FileWriter writer = null;
@@ -753,14 +731,14 @@ public class Editor extends Activity {
 									writer.write("\n");
 								}
 							} catch (Exception e) {
-								Toaster("File not saved: " + e);
+								Basic.toaster(this, "File not saved: " + e);
 							} finally {
 								if (writer != null) {
 									try {
 										writer.flush();
 										writer.close();
 									} catch (Exception e) {
-										Toaster("File not saved: " + e);
+										Basic.toaster(this, "File not saved: " + e);
 									}
 								}
 							}
@@ -797,18 +775,6 @@ public class Editor extends Activity {
 		}
 	}
 
-    private void Toaster(CharSequence msg) {
-		Context context = getApplicationContext();
-		CharSequence text = msg;
-		int duration = Toast.LENGTH_SHORT;
-
-		Toast toast = Toast.makeText(context, text, duration);
-		toast.setGravity(Gravity.TOP | Gravity.CENTER, 0 , 0);
-
-		toast.show();
-
-    }
-    
     private void doBaseDriveChange(){
 		Settings.changeBaseDrive = false;
  

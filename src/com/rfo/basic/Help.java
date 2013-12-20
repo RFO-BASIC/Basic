@@ -33,7 +33,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 
-import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Context;
 import android.content.res.Resources;
@@ -42,95 +41,35 @@ import android.os.Bundle;
 import android.text.ClipboardManager;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.TextView;
 
 
 // Called from Editor when user selected Menu->Help
 // Displays Help text residing in res.values.strings
 
 public class Help extends ListActivity {
-	public static ColoredTextAdapter AA;
-	public  static ListView lv;
-	ArrayList <String> output = new ArrayList<String>();
-	public static final String Chars = "abcdefghijklmnopqrstuvwxyz";
-    public static InputMethodManager IMM;
-	
-    public class ColoredTextAdapter extends ArrayAdapter<String> {
-        Activity context;
-        ArrayList<String> list;
-        int textColor;
-        int backgroundColor;
+  private ListView lv;
+  private ArrayList <String> output = new ArrayList<String>();
+  private static final String Chars = "abcdefghijklmnopqrstuvwxyz";
+  private InputMethodManager IMM;
 
-        public ColoredTextAdapter(Activity aContext, ArrayList<String> alist) {
-                super(aContext, Settings.getLOadapter(aContext), alist);
-                context = aContext;
-                this.list = alist;
-                if (Settings.getEditorColor(context).equals("BW")){
-              	  textColor = 0xff000000;
-              	  backgroundColor = 0xffffffff;
-                } else
-                  if (Settings.getEditorColor(context).equals("WB")){
-                	  textColor = (0xffffffff);
-                	  backgroundColor = 0xff000000;
-                } else
-                   if (Settings.getEditorColor(context).equals("WBL")){
-                	   textColor =  (0xffffffff);
-                	   backgroundColor = 0xff006478;
-                }  
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    Basic.ColoredTextAdapter AA = new Basic.ColoredTextAdapter(this, output, Typeface.MONOSPACE);
+    lv = getListView();
+    lv.setTextFilterEnabled(false);
+    lv.setBackgroundColor(AA.backgroundColor);
 
-        }
+    setRequestedOrientation(Settings.getSreenOrientation(this));
 
-        public View getView(int position, View convertView, ViewGroup parent) {
-
-                View row = convertView;
-                if (row == null) {
-                        LayoutInflater inflater = (LayoutInflater) context
-                                        .getLayoutInflater();
-                        row = inflater.inflate(Settings.getLOadapter(context), null);
-
-                }
-                TextView text = (TextView) row.findViewById(R.id.the_text);
-                text.setTextColor(textColor);
-                text.setText(list.get(position));
-                text.setTypeface(Typeface.MONOSPACE);
-                text.setBackgroundColor(backgroundColor);
-
-                return row;
-        }
-    }
-
-
-	
-   @Override
-   protected void onCreate(Bundle savedInstanceState) {   // Help text located in R.Strings
-      super.onCreate(savedInstanceState);
-//      setContentView(R.layout.help);					  // which is pointed to from Help Layout
-      AA= new ColoredTextAdapter(this,  output);
-      lv = getListView();
-      lv.setTextFilterEnabled(false);
-      
-      if (Settings.getEditorColor(this).equals("BW")){
-    	    lv.setBackgroundColor(0xffffffff);
-    } else
-      if (Settings.getEditorColor(this).equals("WB")){
-    	  lv.setBackgroundColor(0xff000000);
-    } else
-        if (Settings.getEditorColor(this).equals("WBL")){
-        	  lv.setBackgroundColor(0xff006478);
-    }	
-	setRequestedOrientation(Settings.getSreenOrientation(this));
-
-	Resources res = getResources();
-	int ResId = res.getIdentifier("f01_commands", "raw", Basic.BasicPackage);
-	InputStream inputStream = res.openRawResource(ResId);
+    Resources res = getResources();
+    int ResId = res.getIdentifier("f01_commands", "raw", getPackageName());
+    InputStream inputStream = res.openRawResource(ResId);
     InputStreamReader inputreader = new InputStreamReader(inputStream);
     BufferedReader buffreader = new BufferedReader(inputreader, 8192);
     String line;

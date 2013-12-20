@@ -28,6 +28,8 @@ Copyright (C) 2010 - 2013 Paul Laughton
 package com.rfo.basic;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -37,19 +39,24 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.io.DataOutputStream;
-import java.io.DataInputStream;
 
+import android.app.Activity;
 import android.app.ListActivity;
-import android.util.Log;
-import android.widget.ListView;
-import android.widget.ArrayAdapter;
-
-import android.content.Intent;
 import android.content.Context;
+import android.content.Intent;
+import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 
 public class Basic extends ListActivity  {
@@ -74,8 +81,8 @@ public class Basic extends ListActivity  {
     };
 
 	public static Boolean DoAutoRun = false;
-	public static String filePath = "";
-	public static String basePath = "";
+	private static String filePath = "";
+	private static String basePath = "";
 
     private static final String LOGTAG = "Basic";
     private static final String CLASSTAG = Basic.class.getSimpleName();
@@ -94,7 +101,7 @@ public class Basic extends ListActivity  {
     
     public static Context BasicContext;			// saved so we do not have to pass it around
     public static Context theRunContext = null;
-    public static String BasicPackage = null;
+    private String BasicPackage = null;
     
     public static String DataPath = "";			// Used in RunProgram to determine where data is stored
     public static String SD_ProgramPath = "";		// Used by Load/Save
@@ -212,15 +219,15 @@ public class Basic extends ListActivity  {
 
 	if ((FileName != null) && ! FileName.equals("")) {
         	Bundle bb = new Bundle();
-        	bb.putString("fn", FileName);								  // fn is the tag for the filename parameter
-        	Intent intent = new  Intent(Basic.this, AutoRun.class);		  // in the bundle going to AutoRun
+        	bb.putString("fn", FileName);								// fn is the tag for the filename parameter
+        	Intent intent = new  Intent(BasicContext, AutoRun.class);	// in the bundle going to AutoRun
         	intent.putExtras(bb);
 		DoAutoRun = true;
         	startActivity( intent );
         	finish();
         } else if (AreSamplesLoaded()) {							// This is not a launcher short cut 
         	DoAutoRun = false;
-        	startActivity(new Intent(this, Editor.class));				// 	Goto the Editor
+        	startActivity(new Intent(BasicContext, Editor.class));		// 	Goto the Editor
         	finish();
 	} else {											// The sample files have not been loaded
 		runBackgroundLoader();							// Start the background task to load samples and graphics
@@ -362,7 +369,7 @@ public class Basic extends ListActivity  {
     	        	LoadGraphics();											// and the graphics files too
     	        	doFirstLoad();											// First load shows a first load basic program
    	            	DoAutoRun = false;
-    	            startActivity(new Intent(Basic.this, Editor.class));	// 	Goto the Editor
+    	            startActivity(new Intent(BasicContext, Editor.class));	// 	Goto the Editor
     	            finish();
     	        }
     	        
@@ -423,7 +430,7 @@ public class Basic extends ListActivity  {
     	        private void LoadGraphics(){
     	        	
     	        	// Loads the icons and audio used for the example programs
-    	        	// The files are copied form res.raw to the SD Card
+    	        	// The files are copied from res.raw to the SD Card
 
     	        	String dataPath = getDataPath("");				// get paths with trailing '/'
     	        	String databasesPath = getDataBasePath("");
@@ -607,8 +614,82 @@ public class Basic extends ListActivity  {
     	     		    
     	         }
 
-    		}
-    
-    
-    
+    } // class Background
+
+	public static class ScreenColors {
+		public int textColor;
+		public int backgroundColor;
+		public int lineColor;
+
+		public ScreenColors() {
+			// Resources res = BasicContext.getResources();
+			int black = 0xff000000;		// res.getInteger(R.integer.color_black);
+			int white = 0xffffffff;		// res.getInteger(R.integer.color_white);
+			int blue  = 0xff006478;		// res.getInteger(R.integer.color_blue);
+			String colorSetting = Settings.getEditorColor(BasicContext);
+			if (colorSetting.equals("BW")) {
+				textColor = black;
+				backgroundColor = white;
+				lineColor = textColor;
+			} else
+			if (colorSetting.equals("WB")) {
+				textColor = white;
+				backgroundColor = black;
+				lineColor = textColor;
+			} else
+			if (colorSetting.equals("WBL")) {
+				textColor = white;
+				backgroundColor = blue;
+				lineColor &= black;
+			}
+			lineColor &= 0x80ffffff;		// half alpha
+		}
+	} // class ScreenColors
+
+	public static class ColoredTextAdapter extends ArrayAdapter<String> {
+		private final Activity mActivity;
+		private final ArrayList<String> mList;
+		private Typeface mTypeface = null;
+		public int textColor;
+		public int backgroundColor;
+
+		public ColoredTextAdapter(Activity activity, ArrayList<String> alist, Typeface typeface) {
+			this(activity, alist);
+			mTypeface = typeface;
+		}
+
+		public ColoredTextAdapter(Activity activity, ArrayList<String> alist) {
+			super(activity, Settings.getLOadapter(activity), alist);
+			mActivity = activity;
+			mList = alist;
+			ScreenColors colors = new ScreenColors();
+			textColor = colors.textColor;
+			backgroundColor = colors.backgroundColor;
+		}
+
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+
+			View row = convertView;
+			if (row == null) {
+				LayoutInflater inflater = (LayoutInflater) mActivity.getLayoutInflater();
+				row = inflater.inflate(Settings.getLOadapter(mActivity), null);
+			}
+			TextView text = (TextView) row.findViewById(R.id.the_text);
+			text.setTextColor(textColor);
+			text.setText(mList.get(position));
+			if (mTypeface != null) { text.setTypeface(mTypeface); }
+			text.setBackgroundColor(backgroundColor);
+
+			return row;
+		}
+	} // class ColoredTextAdapter
+
+	public static void toaster(Context context, CharSequence msg) {		// Tell the user "msg" via Toast
+		if ((context == null) || (msg == null) || msg.equals("")) return;
+		Toast toast = Toast.makeText(context, msg, Toast.LENGTH_SHORT);
+		toast.setGravity(Gravity.TOP|Gravity.CENTER, 0, 50);			// default: short, high toast
+		toast.show();
+	}
+
 }

@@ -25,7 +25,6 @@ This file is part of BASIC! for Android
     
 	*************************************************************************************************/
 
-
 package com.rfo.basic;
 
 import android.app.Activity;
@@ -37,7 +36,6 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnKeyListener;
@@ -102,39 +100,29 @@ public class TGet extends Activity {
        Intent intent = getIntent();
        String title = intent.getStringExtra("title");
        if (title != null) setTitle(title);
-       
+
        theTextView = (EditText) findViewById(R.id.the_text);		// The text display area
-       
+
        theText = "";
-       for (int i = 0; i < Run.output.size(); ++ i){
+       for (int i = 0; i < Run.output.size(); ++ i) {
     	   theText = theText + Run.output.get(i) + '\n';
-       }   
-       
+       }
+
        theText = theText + Run.TextInputString ;
        PromptIndex = theText.length();
 
-    	   
        theTextView.setText(theText);							// The Editor's display text
        theTextView.setTypeface(Typeface.MONOSPACE);
        theTextView.setSelection(theText.length());
-       if (Settings.getEditorColor(this).equals("BW")){
-    	   theTextView.setTextColor(0xff000000);
-    	   theTextView.setBackgroundColor(0xffffffff);
-    	   theTextView.setCursorVisible(true);
-       } else
-         if (Settings.getEditorColor(this).equals("WB")){
-        	 theTextView.setTextColor(0xffffffff);
-        	 theTextView.setBackgroundColor(0xff000000);
-       } else 	
-           if (Settings.getEditorColor(this).equals("WBL")){
-        	   theTextView.setTextColor(0xffffffff);
-        	   theTextView.setBackgroundColor(0xff006478);
-             }  
-       
+
+       Basic.ScreenColors colors = new Basic.ScreenColors();	// Get text color from Settings
+       theTextView.setTextColor(colors.textColor);
+       theTextView.setBackgroundColor(colors.backgroundColor);
+       theTextView.setCursorVisible(true);
+
        theTextView.setTextSize(1, Settings.getFont(this));
-       
+
        theTextView.addTextChangedListener(inputTextWatcher);
-      
 
        theTextView.setOnKeyListener(new OnKeyListener() {
            public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -176,7 +164,5 @@ public class TGet extends Activity {
     	    	}
     	    }
     	};
-       
-    
-    
+
 }

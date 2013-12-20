@@ -32,6 +32,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -55,48 +56,38 @@ public class TextInput extends Activity {
         return super.onKeyUp(keyCode, event);
     }
 
-    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
        super.onCreate(savedInstanceState);
 
-       this.setContentView(R.layout.text_input);  // Layouts xmls exist for both landscape or portrait modes
+       setContentView(R.layout.text_input);  // Layouts xmls exist for both landscape or portrait modes
 
        Intent intent = getIntent();
        String title = intent.getStringExtra("title");
        if (title != null) setTitle(title);
 
-       this.finishedButton = (Button) findViewById(R.id.finished_button);		 // The buttons
-       
-       this.theTextView = (EditText) findViewById(R.id.the_text);		// The text display area
+       finishedButton = (Button) findViewById(R.id.finished_button);		 // The buttons
+
+       theTextView = (EditText) findViewById(R.id.the_text);				// The text display area
        theTextView.setText(Run.TextInputString);							// The Editor's display text
        theTextView.setTypeface(Typeface.MONOSPACE);
        theTextView.setSelection(Run.TextInputString.length());
-       if (Settings.getEditorColor(this).equals("BW")){
-    	   theTextView.setTextColor(0xff000000);
-    	   theTextView.setBackgroundColor(0xffffffff);
-       } else
-         if (Settings.getEditorColor(this).equals("WB")){
-        	 theTextView.setTextColor(0xffffffff);
-        	 theTextView.setBackgroundColor(0xff000000);
-       } else 
-           if (Settings.getEditorColor(this).equals("WBL")){
-        	   theTextView.setTextColor(0xffffffff);
-        	   theTextView.setBackgroundColor(0xff006478);
-             }  
-       
+
+       Basic.ScreenColors colors = new Basic.ScreenColors();				// Get text color from Settings
+       theTextView.setTextColor(colors.textColor);
+       theTextView.setBackgroundColor(colors.backgroundColor);
+
        theTextView.setTextSize(1, Settings.getFont(this));
-       
-       this.finishedButton.setOnClickListener(new OnClickListener() {		// **** Done Button ****
-           
+
+       finishedButton.setOnClickListener(new OnClickListener() {			// **** Done Button ****
+
            public void onClick(View v) {
         	   Run.TextInputString = theTextView.getText().toString();   // Grab the text that the user is seeing
-        	   Run.HaveTextInput =true;
+        	   Run.HaveTextInput = true;
         	   finish();
               return;
            	}
        	});
 
-   
     }
 }
