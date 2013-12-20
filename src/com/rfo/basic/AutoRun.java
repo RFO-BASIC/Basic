@@ -34,17 +34,12 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import com.rfo.basic.Basic;
-import com.rfo.basic.Run;
-import com.rfo.basic.Editor;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.Toast;
-import android.content.Context;
-import android.view.Gravity;
+
+
 // Called from Basic.java when Basic.java
 // is called from a launcher shortcut
 

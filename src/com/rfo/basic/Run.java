@@ -42,8 +42,6 @@ package com.rfo.basic;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
-import static com.rfo.basic.Basic.*;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
@@ -2355,7 +2353,7 @@ public void cleanUp(){
 		theGPS = null;
 	}
 
-	if (!DoAutoRun && SyntaxError){
+	if (!Basic.DoAutoRun && SyntaxError){
 		Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
 	} else Editor.SyntaxErrorDisplacement = -1;
 	
@@ -2419,7 +2417,7 @@ public boolean onTouchEvent(MotionEvent event){
 				return true;
 			}
 
-			if (DoAutoRun) Exit = true;	// If AutoRun, back key always means exit
+			if (Basic.DoAutoRun) Exit = true;	// If AutoRun, back key always means exit
 			if (!Stop) {
 				Stop = true;				// If running a program, stop it
 			}
@@ -2520,27 +2518,27 @@ public static void MenuStop() {
 
 @Override
 public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is selected
-   switch (item.getItemId()) {
+	switch (item.getItemId()) {
 
-   case R.id.stop:										// User wants to stop execution
-      MenuStop();
-      return true;
+	case R.id.stop:										// User wants to stop execution
+		MenuStop();
+		return true;
 
-   case R.id.editor:									// User pressed Editor
-    	if (!DoAutoRun && SyntaxError){
+	case R.id.editor:									// User pressed Editor
+		if (!Basic.DoAutoRun && SyntaxError) {
 			Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
-    	}
+		}
 
-   	Basic.theRunContext = null;
+		Basic.theRunContext = null;
 		if (mChatService != null) {
-				mChatService.stop();
-				mChatService = null;
-			}
+			mChatService.stop();
+			mChatService = null;
+		}
 
-	   finish();
+		finish();
 
-   }
-   return true;
+	}
+	return true;
 }
 
 @Override
@@ -7137,7 +7135,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 					int resID = getRawResourceID(fileName);				// try to load the file from a raw resource
 					if (resID == 0) { return false; }
 					try {
-						InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+						InputStream inputStream = getResources().openRawResource(resID);
 						InputStreamReader inputreader = new InputStreamReader(inputStream);
 						buf = new BufferedReader(inputreader, 8192);
 					} catch (Exception e) {
@@ -7485,7 +7483,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 						int resID = getRawResourceID(fileName);				// try to load the file from a raw resource
 						if (resID == 0) { return false; }
 						try {
-							InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+							InputStream inputStream = getResources().openRawResource(resID);
 							bis = new BufferedInputStream(inputStream, 8192);
 						} catch (Exception e) {
 							return RunTimeError(e);
@@ -7963,7 +7961,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 				int resID = getRawResourceID(fileName);
 				if (resID == 0) { return RunTimeError(fileName + " not found"); }
 				try {
-					InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+					InputStream inputStream = getResources().openRawResource(resID);
 					size = inputStream.available();
 				} catch (Exception e) {
 					return RunTimeError(e);
@@ -8075,7 +8073,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 				int resID = getRawResourceID(theFileName);				// try to load the file from a raw resource
 				if (resID == 0) { return false; }
 				try {
-					InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+					InputStream inputStream = getResources().openRawResource(resID);
 					bis = new BufferedInputStream(inputStream, 8192);
 					result = grabStream(bis, textFlag);
 				} catch (IOException e) {
@@ -10284,14 +10282,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private int getRawResourceID(String fileName) {
 		if (fileName == null) fileName = "";
-		String packageName = BasicContext.getPackageName();				// Get the package name
+		String packageName = getPackageName();							// Get the package name
 		int resID = 0;													// 0 is not a valid resource ID
 		for (int attempt = 1; (resID == 0) && (attempt <= 2); ++attempt) {
 			String rawFileName =
 				(attempt == 1) ? getAlternateRawFileName(fileName) :	// Convert conventional filename to raw resource name, BASIC!-style
 				(attempt == 2) ? Basic.getRawFileName(fileName) : "";	// If first try didn't work, try again, Android-style.
 			if (!rawFileName.equals("")) {
-				resID = BasicContext.getResources().getIdentifier(rawFileName, "raw", packageName);	// Get the resource ID
+				resID = getResources().getIdentifier(rawFileName, "raw", packageName);	// Get the resource ID
 			}
 		}
 		if (resID == 0) {
@@ -10324,7 +10322,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 				int resID = getRawResourceID(fileName);					// try to load the file from a raw resource
 				if (resID == 0) { return false; }
 				try {
-					inputStream = BasicContext.getResources().openRawResource(resID);	// Open an input stream from raw resource
+					inputStream = getResources().openRawResource(resID);	// Open an input stream from raw resource
 				} catch (Exception e) {
 					closeStream(inputStream, null);
 					return RunTimeError(e);
@@ -11328,7 +11326,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 					RunTimeError(StringConstant + "Not Found at:");
 					return false;
 				}
-				aMP = MediaPlayer.create(BasicContext, theURI);			// Create a new Media Player
+				aMP = MediaPlayer.create(Basic.BasicContext, theURI);	// Create a new Media Player
 			} catch (Exception e) {
 				return RunTimeError(e);
 			}
@@ -11336,7 +11334,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
 				resID = getRawResourceID(fileName);						// try to load the file from a raw resource
 				if (resID == 0) { return false; }
-				aMP = MediaPlayer.create(BasicContext, resID);
+				aMP = MediaPlayer.create(Basic.BasicContext, resID);
 			}															// else standard BASIC!, aMP is still null
 		}
 
@@ -11675,7 +11673,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			int theVarNumber = VarNumber;
 
 			if (theSensors == null) {
-				theSensors = new SensorActivity(BasicContext);
+				theSensors = new SensorActivity(Basic.BasicContext);
 			}
 			ArrayList<String> census = theSensors.takeCensus();
 			int nSensors = census.size();						// If no sensors reported.....
@@ -11689,7 +11687,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 		private boolean execute_sensors_open(){
 			if (theSensors == null) {
-				theSensors = new SensorActivity(BasicContext);
+				theSensors = new SensorActivity(Basic.BasicContext);
 			}
 
 			if (isEOL()) { return false; }
@@ -13894,7 +13892,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 		HashMap<String, String> params = new HashMap<String, String>();
 
-		theFileName = getDataPath(theFileName);
+		theFileName = Basic.getDataPath(theFileName);
 		theTTS.mDone = false;
 		theTTS.speakToFile(speech, params, theFileName);
 		ttsWaitForDone();										// wait for speech to complete
@@ -14886,7 +14884,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
 				int resID = getRawResourceID(fileName);					// try to load the file from a raw resource
 				if (resID == 0) { return false; }
-				SoundID = theSoundPool.load(BasicContext, resID, 1);
+				SoundID = theSoundPool.load(Basic.BasicContext, resID, 1);
 			}															// else standard BASIC!, SoundID is 0
 		}
 		NumericVarValues.set(savedIndex, (double) SoundID );

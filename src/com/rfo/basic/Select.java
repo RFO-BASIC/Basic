@@ -32,10 +32,8 @@ import java.util.ArrayList;
 import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Context;
-import android.content.pm.ActivityInfo;
 import android.os.Bundle;
-import com.rfo.basic.R;
-import com.rfo.basic.LoadFile.ColoredTextAdapter;
+import android.util.Log;
 
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -48,7 +46,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Toast;
-import android.view.View.OnLongClickListener;
 
 
 //Log.v(Select.LOGTAG, " " + Select.CLASSTAG + " String Var Value =  " + d);

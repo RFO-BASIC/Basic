@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2013 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -27,34 +27,31 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 
-import com.rfo.basic.LoadFile.ColoredTextAdapter;
-
-import android.app.ListActivity;
-
 import android.app.Activity;
+import android.app.ListActivity;
 import android.content.Context;
-import android.content.pm.ActivityInfo;
+import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.ClipboardManager;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.AdapterView.OnItemClickListener;
+
 
 // Called from Editor when user selected Menu->Help
 // Displays Help text residing in res.values.strings
@@ -131,9 +128,9 @@ public class Help extends ListActivity {
     }	
 	setRequestedOrientation(Settings.getSreenOrientation(this));
 
-	String ResName = "com.rfo.basic:raw/f01_commands";
-	int ResId = this.getResources().getIdentifier(ResName, null, null);
-    InputStream inputStream = this.getResources().openRawResource(ResId);
+	Resources res = getResources();
+	int ResId = res.getIdentifier("f01_commands", "raw", Basic.BasicPackage);
+	InputStream inputStream = res.openRawResource(ResId);
     InputStreamReader inputreader = new InputStreamReader(inputStream);
     BufferedReader buffreader = new BufferedReader(inputreader, 8192);
     String line;

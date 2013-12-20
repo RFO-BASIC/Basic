@@ -28,11 +28,11 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 
-
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.graphics.Bitmap;

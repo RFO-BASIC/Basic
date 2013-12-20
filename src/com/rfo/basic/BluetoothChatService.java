@@ -21,25 +21,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.UUID;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-
-import static com.rfo.basic.Run.STATE_NOT_ENABLED;
-import static com.rfo.basic.Run.STATE_NONE;         // we're doing nothing
-import static com.rfo.basic.Run.STATE_LISTENING;    // now listening for incoming connections
-import static com.rfo.basic.Run.STATE_CONNECTING;   // now initiating an outgoing connection
-import static com.rfo.basic.Run.STATE_CONNECTED;    // now connected to a remote device
 
 
 /**
@@ -79,7 +70,7 @@ public class BluetoothChatService {
      */
     public BluetoothChatService(Context context, Handler handler) {
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-        mState = STATE_NONE;
+        mState = Run.STATE_NONE;
         mHandler = handler;
     }
 
@@ -115,7 +106,7 @@ public class BluetoothChatService {
         if (mConnectedThread != null) 
         	{mConnectedThread.cancel(); mConnectedThread = null;}
 
-        setState(STATE_LISTENING);
+        setState(Run.STATE_LISTENING);
 
         // Start the thread to listen on a BluetoothServerSocket
         if (mSecureAcceptThread == null) {
@@ -133,7 +124,7 @@ public class BluetoothChatService {
         Log.d(TAG, "connect to: " + device);
 
         // Cancel any thread attempting to make a connection
-        if (mState == STATE_CONNECTING) {
+        if (mState == Run.STATE_CONNECTING) {
             if (mConnectThread != null) {mConnectThread.cancel(); mConnectThread = null;}
         }
 
@@ -143,7 +134,7 @@ public class BluetoothChatService {
         // Start the thread to connect with the given device
         mConnectThread = new ConnectThread(device, secure);
         mConnectThread.start();
-        setState(STATE_CONNECTING);
+        setState(Run.STATE_CONNECTING);
     }
 
     /**
@@ -182,7 +173,7 @@ public class BluetoothChatService {
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
-        setState(STATE_CONNECTED);
+        setState(Run.STATE_CONNECTED);
     }
 
     /**
@@ -210,7 +201,7 @@ public class BluetoothChatService {
             mInsecureAcceptThread.cancel();
             mInsecureAcceptThread = null;
         }
-        setState(STATE_NONE);    	
+        setState(Run.STATE_NONE);    	
     }
     
     public synchronized void disconnect() {
@@ -230,7 +221,7 @@ public class BluetoothChatService {
         ConnectedThread r;
         // Synchronize a copy of the ConnectedThread
         synchronized (this) {
-            if (mState != STATE_CONNECTED) return;
+            if (mState != Run.STATE_CONNECTED) return;
             r = mConnectedThread;
         }
         // Perform the write unsynchronized
@@ -272,7 +263,7 @@ public class BluetoothChatService {
 
 
         BluetoothChatService.this.start(Run.bt_Secure);
-//    	setState(STATE_NONE);
+//    	setState(Run.STATE_NONE);
     }
 
     /**
@@ -319,7 +310,7 @@ public class BluetoothChatService {
             BluetoothSocket socket = null;
 
             // Listen to the server socket if we're not connected
-            while (mState != STATE_CONNECTED) {
+            while (mState != Run.STATE_CONNECTED) {
                 try {
                     // This is a blocking call and will only return on a
                     // successful connection or an exception
@@ -333,14 +324,14 @@ public class BluetoothChatService {
                 if (socket != null) {
                     synchronized (BluetoothChatService.this) {
                         switch (mState) {
-                        case STATE_LISTENING:
-                        case STATE_CONNECTING:
+                        case Run.STATE_LISTENING:
+                        case Run.STATE_CONNECTING:
                             // Situation normal. Start the connected thread.
                             connected(socket, socket.getRemoteDevice(),
                                     mSocketType);
                             break;
-                        case STATE_NONE:
-                        case STATE_CONNECTED:
+                        case Run.STATE_NONE:
+                        case Run.STATE_CONNECTED:
                         	if (D) Log.i(TAG, "Listen state was connected not connecting");
                             // Either not ready or already connected. Terminate new socket.
                             try {
