@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+*********************************************************************************
+BASIC! is an implementation of the Basic programming lanuage for
+Android devices.
+
+Copyright (C) 2013 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author, Paul Laughton, at basic@laughton.com
+
+**********************************************************************************-->
+
+<resources>
+
+    <!-- Set to the path name for application directories -->
+    <string name="app_path">rfo-basic</string>
+
+    <!-- If building APK, set true -->
+    <bool name="is_apk">false</bool>
+
+    <!-- If APK needs a /data/ directory, set true -->
+    <bool name="apk_create_data_dir">true</bool>
+
+    <!-- If APK needs a /database/ directory, set true -->
+    <bool name="apk_create_database_dir">true</bool>
+
+    <!-- These are the default text and background colors selected in Preferences -->
+    <integer name="color_black">0xff000000</integer>
+    <integer name="color_white">0xffffffff</integer>
+    <integer name="color_blue">0xff006478</integer>
+
+    <!--
+        Message lines displayed on the opening screen while files are loading.
+        There must be at least one line, even if it is just an empty string.
+    -->
+    <string-array name="loading_msg">
+        <item>Standby for initial file loading.</item>
+        <item></item>
+    </string-array>
+
+    <!-- String to be displayed as a unit of progress while files are loading -->
+    <string name="progress_marker">.</string>
+
+    <!--
+        If there are any files that need to be copied from raw resources into the data directory,
+        list them here. The list must end with an empty string (<item></item>).
+        If there are not files to be copied, make one entry of an empty string.
+        Most APKs can leave their files in raw resources and not copy them.
+        The various run commands will detect the situation and read the files from the raw resources.
+        Note: If the filename has the ".db" extension, it will be loaded into the /databases/ directory.
+    -->
+    <string-array name="load_file_names">
+        <item>boing.mp3</item>
+        <item>cartman.png</item>
+        <item>meow.wav</item>
+        <item>fly.gif</item>
+        <item>galaxy.png</item>
+        <item>whee.mp3</item>
+        <item>htmldemo1.html</item>
+        <item>htmldemo2.html</item>
+        <item></item>
+    </string-array>
+
+</resources>

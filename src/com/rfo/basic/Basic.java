@@ -44,6 +44,7 @@ import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -60,25 +61,12 @@ import android.widget.Toast;
 
 
 public class Basic extends ListActivity  {
-	
-    public static String AppPath = "rfo-basic";             // Set to the path name for application directories
-    public static boolean isAPK = false;					// If building APK, set true
-    public static boolean apkCreateDataDir = true;			// If APK needs a /data/ directory, set true
-    public static boolean apkCreateDataBaseDir = true;      // If APK needs a /database/ director, set true
-    
-    // If there are any files that need to be copied from raw resources into the data directory, list them here
-    // If there are not files to be copied, make one entry of an empty string ("")
-    // Most APKs can leave their files in raw resources and not copy them.
-    // The various run commands will detect the situation and read the files from the raw resources.
-    // Note: If the filename has the ".db" extension, it will be loaded into the /databases/ directory.
-    
-    public static final String loadFileNames [] = {			
-    	
-    	"boing.mp3", "cartman.png", "meow.wav",
-    	"fly.gif", "galaxy.png", "whee.mp3",
-    	"htmldemo1.html", "htmldemo2.html",
-    	""
-    };
+
+	// These variables will be initialized from values in res/build.xml
+	public static String AppPath;							// Set to the path name for application directories
+	public static boolean isAPK;							// If building APK, set true
+	private static boolean apkCreateDataDir;				// If APK needs a /data/ directory, set true
+	private static boolean apkCreateDataBaseDir;			// If APK needs a /database/ director, set true
 
 	public static Boolean DoAutoRun = false;
 	private static String filePath = "";
@@ -112,7 +100,7 @@ public class Basic extends ListActivity  {
     
     private Background theBackground;						// Background task ID
     private ArrayAdapter<String> AA;
-    private ListView lv;							    	// The output screen list view
+    private ListView lv;									// The output screen list view
     private ArrayList<String> output;						// The output screen text lines
 
 	public static boolean checkSDCARD(char mount) {			// mount is 'w' for writable,
@@ -168,27 +156,32 @@ public class Basic extends ListActivity  {
 		return getFilePath(DATABASES_DIR, subPath);
 	}
 
-    /** Called when the activity is first created. */
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-    	
-        super.onCreate(savedInstanceState);					// Set up of fresh start
-        
-        Log.v(LOGTAG, CLASSTAG + " onCreate");
-        BasicContext = getApplicationContext();
-        BasicPackage = BasicContext.getPackageName();
+	/** Called when the activity is first created. */
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
 
-        String base = Settings.getBaseDrive(this);
-        setFilePaths(base);
+		super.onCreate(savedInstanceState);					// Set up of fresh start
 
-        if (isAPK) {
-        	createForAPK();
-        } else {
-        	createForSB();
-        }
-       
-    }
-    
+		Log.v(LOGTAG, CLASSTAG + " onCreate");
+		BasicContext = getApplicationContext();
+		BasicPackage = BasicContext.getPackageName();
+
+		Resources res = getResources();
+		AppPath = res.getString(R.string.app_path);
+		isAPK   = res.getBoolean(R.bool.is_apk);
+		apkCreateDataDir     = res.getBoolean(R.bool.apk_create_data_dir);
+		apkCreateDataBaseDir = res.getBoolean(R.bool.apk_create_database_dir);
+
+		String base = Settings.getBaseDrive(this);
+		setFilePaths(base);
+
+		if (isAPK) {
+			createForAPK();
+		} else {
+			createForSB();
+		}
+	}
+
     private void createForSB() {							// Create code for Standard Basic
         
 /* If we have entered Basic and there is a program running, then we should not
@@ -239,7 +232,7 @@ public class Basic extends ListActivity  {
     }
     
     private void runBackgroundLoader() {
-// Establish an output screen so that file load progress can be shown.        
+// Establish an output screen so that file load progress can be shown.
         
   	  	output = new ArrayList<String>();
     	AA=new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);  // Establish the output screen
@@ -348,22 +341,24 @@ public class Basic extends ListActivity  {
 		return output.substring(0, index);			// else isolate stuff in front of dot
 	}
 
-    // The loading of the sample files and graphics is done in a background, Async Task rather than the UI task
-    // Progress is shown by sending progress messages to the UI task.
+	// The loading of the sample files and graphics is done in a background, Async Task rather than the UI task
+	// Progress is shown by sending progress messages to the UI task.
  
-    public class Background extends AsyncTask<String, String, String>{
-  
-    	        @Override
-    	        protected  String doInBackground(String...str ) {
-    	        	
-    	        	if (isAPK) {
-    	        		doBGforAPK();
-    	        	} else {
-    	        		doBGforSB();
-    	        	}
-    	        	return "";
-    	        }
-    	        
+	public class Background extends AsyncTask<String, String, String>{
+
+		private String[] loadingMsg;						// Displayed while files are loading
+		private String progressMarker;						// Displayed as a unit of progress while files are loading
+
+		@Override
+		protected String doInBackground(String... str) {
+			if (isAPK) {
+				doBGforAPK();
+			} else {
+				doBGforSB();
+			}
+			return "";
+		}
+
     	        private void doBGforSB() {									// Background code for Standard Basic
     	         	LoadSamples();
     	        	LoadGraphics();											// and the graphics files too
@@ -388,13 +383,17 @@ public class Basic extends ListActivity  {
     	            finish();
 
     	        }
-    	        
-    	        @Override
-    	        protected void onPreExecute(){
-    	        	output.add("Standby for initial file loading.");  // The message that tells what we are doing.
-    	        	output.add("");
-    	        }
-    	        
+
+		@Override
+		protected void onPreExecute() {
+			Resources res = BasicContext.getResources();
+			loadingMsg = res.getStringArray(R.array.loading_msg);
+			progressMarker = res.getString(R.string.progress_marker);
+			if ((loadingMsg != null) && (loadingMsg.length != 0)) { 
+				for (String s : loadingMsg) { output.add(s); }			// The message lines that tell what we are doing.
+			}
+		}
+
     	        public double lineCount = 0;
     	        @Override    
     	        protected void onProgressUpdate(String... str ) {     // Called when publishProgress() is executed.
@@ -435,6 +434,7 @@ public class Basic extends ListActivity  {
     	        	String dataPath = getDataPath("");				// get paths with trailing '/'
     	        	String databasesPath = getDataBasePath("");
 
+    	        	String[] loadFileNames = getResources().getStringArray(R.array.load_file_names);
     	        	for (String fileName : loadFileNames) {
     	        		if (fileName.equals("")) return;
 
@@ -467,7 +467,7 @@ public class Basic extends ListActivity  {
     	        	            	 dos1.writeByte(Byte);
     	        	            	 ++count;
     	        	            	 if (count >= 4096){			// Show progress every 4k bytes
-    	        	            		 publishProgress(".");
+    	        	            		 publishProgress(progressMarker);
     	        	            		 count = 0;
     	        	            	 }
     	        	         	 } while (dis != null);
@@ -531,7 +531,7 @@ public class Basic extends ListActivity  {
     	        	
     	        	// Reads one file from res.raw and writes it to the SD Card
     	        	// into the source/help directory
-    	        	publishProgress(".");							 // Show progress for each program loaded
+    	        	publishProgress(progressMarker);				// Show progress for each program loaded
     	        	
     	        	int ResId = BasicContext.getResources().getIdentifier(theFileName, "raw", BasicPackage);
     	            InputStream inputStream = BasicContext.getResources().openRawResource(ResId);
@@ -622,10 +622,10 @@ public class Basic extends ListActivity  {
 		public int lineColor;
 
 		public ScreenColors() {
-			// Resources res = BasicContext.getResources();
-			int black = 0xff000000;		// res.getInteger(R.integer.color_black);
-			int white = 0xffffffff;		// res.getInteger(R.integer.color_white);
-			int blue  = 0xff006478;		// res.getInteger(R.integer.color_blue);
+			Resources res = BasicContext.getResources();
+			int black = res.getInteger(R.integer.color_black);
+			int white = res.getInteger(R.integer.color_white);
+			int blue  = res.getInteger(R.integer.color_blue);
 			String colorSetting = Settings.getEditorColor(BasicContext);
 			if (colorSetting.equals("BW")) {
 				textColor = black;
@@ -640,7 +640,7 @@ public class Basic extends ListActivity  {
 			if (colorSetting.equals("WBL")) {
 				textColor = white;
 				backgroundColor = blue;
-				lineColor &= black;
+				lineColor = black;
 			}
 			lineColor &= 0x80ffffff;		// half alpha
 		}
