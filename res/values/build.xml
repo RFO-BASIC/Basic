@@ -26,8 +26,12 @@ This file is part of BASIC! for Android
 **********************************************************************************-->
 
 <resources>
+    <string name="version">01.76</string>
 
-    <!-- Set to the path name for application directories -->
+    <!-- The application name displayed in the Launcher -->
+    <string name="app_name">BASIC!</string>
+
+    <!-- The path name for application directories -->
     <string name="app_path">rfo-basic</string>
 
     <!-- If building APK, set true -->
@@ -39,7 +43,11 @@ This file is part of BASIC! for Android
     <!-- If APK needs a /database/ directory, set true -->
     <bool name="apk_create_database_dir">true</bool>
 
-    <!-- These are the default text and background colors selected in Preferences -->
+    <!-- The default Console and TEXT.INPUT titles -->
+    <string name="run_name">BASIC! Program Output</string>
+    <string name="textinput_name">BASIC! Text Input</string>
+
+    <!-- The default text and background colors selected in Preferences -->
     <integer name="color_black">0xff000000</integer>
     <integer name="color_white">0xffffffff</integer>
     <integer name="color_blue">0xff006478</integer>

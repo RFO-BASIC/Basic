@@ -68,40 +68,36 @@ public class Basic extends ListActivity  {
 	private static boolean apkCreateDataDir;				// If APK needs a /data/ directory, set true
 	private static boolean apkCreateDataBaseDir;			// If APK needs a /database/ director, set true
 
-	public static Boolean DoAutoRun = false;
-	private static String filePath = "";
-	private static String basePath = "";
+	public static Boolean DoAutoRun;
+	private static String filePath;
+	private static String basePath;
 
-    private static final String LOGTAG = "Basic";
-    private static final String CLASSTAG = Basic.class.getSimpleName();
+	private static final String LOGTAG = "Basic";
+	private static final String CLASSTAG = Basic.class.getSimpleName();
 
-    private static final String SOURCE_DIR    = "source";
-    private static final String DATA_DIR      = "data";
-    private static final String DATABASES_DIR = "databases";
-    private static final String SAMPLES_DIR   = "Sample_Programs";
-    private static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
+	private static final String SOURCE_DIR    = "source";
+	private static final String DATA_DIR      = "data";
+	private static final String DATABASES_DIR = "databases";
+	public static final String SAMPLES_DIR   = "Sample_Programs";
+	private static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
 
-    public static ArrayList<String> lines;       //Program lines for execution
-    
-    public static Boolean Saved ;				// False when program has changed and not saved
-    public static int InitialProgramSize = 0;	// Used to determine if program has changed
-    public static String ProgramFileName = "";  // Set when program loaded or saved
-    
-    public static Context BasicContext;			// saved so we do not have to pass it around
-    public static Context theRunContext = null;
-    private String BasicPackage = null;
-    
-    public static String DataPath = "";			// Used in RunProgram to determine where data is stored
-    public static String SD_ProgramPath = "";		// Used by Load/Save
-    public static String IM_ProgramPath = "help";	// Used by Load/Save
-    
-    public static Intent theProgramRunner = null;
-    
-    
-    private Background theBackground;						// Background task ID
-    private ArrayAdapter<String> AA;
-    private ListView lv;									// The output screen list view
-    private ArrayList<String> output;						// The output screen text lines
+	public static ArrayList<String> lines;       //Program lines for execution
+
+	public static Boolean Saved;				// False when program has changed and not saved
+	public static int InitialProgramSize;		// Used to determine if program has changed
+	public static String ProgramFileName;		// Set when program loaded or saved
+
+	public static Context BasicContext;			// saved so we do not have to pass it around
+	public static Context theRunContext;
+	private String BasicPackage;
+
+	public static String SD_ProgramPath = "";	// Used by Load/Save
+	public static Intent theProgramRunner;
+
+	private Background theBackground;						// Background task ID
+	private ArrayAdapter<String> AA;
+	private ListView lv;									// The output screen list view
+	private ArrayList<String> output;						// The output screen text lines
 
 	public static boolean checkSDCARD(char mount) {			// mount is 'w' for writable,
 															// 'r' for either readable or writable 
@@ -156,13 +152,8 @@ public class Basic extends ListActivity  {
 		return getFilePath(DATABASES_DIR, subPath);
 	}
 
-	/** Called when the activity is first created. */
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
-
-		super.onCreate(savedInstanceState);					// Set up of fresh start
-
-		Log.v(LOGTAG, CLASSTAG + " onCreate");
+	private void initVars() {
+		// Some of these may not need initialization; if so I choose to err on the side of caution
 		BasicContext = getApplicationContext();
 		BasicPackage = BasicContext.getPackageName();
 
@@ -172,6 +163,21 @@ public class Basic extends ListActivity  {
 		apkCreateDataDir     = res.getBoolean(R.bool.apk_create_data_dir);
 		apkCreateDataBaseDir = res.getBoolean(R.bool.apk_create_database_dir);
 
+		DoAutoRun = false;
+
+		Saved = true;
+		InitialProgramSize = 0;
+		ProgramFileName = "";
+		theProgramRunner = null;
+	}
+
+	/** Called when the activity is first created. */
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);					// Set up of fresh start
+		Log.v(LOGTAG, CLASSTAG + " onCreate");
+
+		initVars();
 		String base = Settings.getBaseDrive(this);
 		setFilePaths(base);
 
@@ -182,51 +188,48 @@ public class Basic extends ListActivity  {
 		}
 	}
 
-    private void createForSB() {							// Create code for Standard Basic
-        
-/* If we have entered Basic and there is a program running, then we should not
- * Interfere with that run. We will just exit this attempt. A program running
- * is indicated by theRunContext ! = null
- */
-        
-        if (theRunContext!=null) {
-        	finish();
-        	return;
-        }
-        InitDirs();											// Initialize Basic directories every time
-        													// The user may have put in a new SD Card
-        
-        clearProgram();										// Clear the basic program
-        
-/* If Basic is entered from a launcher shortcut, then there will an Intent with a
- * bundle. The bundle will contain the shortcut launcher program name.
- * 
- * Auto run will be called with a new bundle with just the filename. 
- */
- 
-        Intent myIntent = getIntent();
-        String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // Launched by shortcut?
-        if (FileName == null) {		// Launched with a .bas as argument?
-	    if (myIntent.getData() != null) FileName = myIntent.getData().getPath();
+	private void createForSB() {							// Create code for Standard Basic
+	
+		/* If we have entered Basic and there is a program running, then we should not
+		 * interfere with that run. We will just exit this attempt. A program running
+		 * is indicated by theRunContext ! = null
+		 */
+		if (theRunContext != null) {
+			finish();
+			return;
+		}
+		InitDirs();											// Initialize Basic directories every time
+															// The user may have put in a new SD Card
+
+		clearProgram();										// Clear the basic program
+
+		/* If Basic is entered from a launcher shortcut, then there will an Intent with a
+		 * bundle. The bundle will contain the shortcut launcher program name.
+		 * Auto run will be called with a new bundle with just the filename. 
+		 */
+		Intent myIntent = getIntent();
+		String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // Launched by shortcut?
+		if (FileName == null) {								// Launched with a .bas as argument?
+			if (myIntent.getData() != null) FileName = myIntent.getData().getPath();
+		}
+
+		if ((FileName != null) && ! FileName.equals("")) {
+			Bundle bb = new Bundle();
+			bb.putString("fn", FileName);								// fn is the tag for the filename parameter
+			Intent intent = new  Intent(BasicContext, AutoRun.class);	// in the bundle going to AutoRun
+			intent.putExtras(bb);
+			DoAutoRun = true;
+			startActivity( intent );
+			finish();
+		} else if (AreSamplesLoaded()) {								// This is not a launcher short cut 
+			DoAutoRun = false;
+			startActivity(new Intent(BasicContext, Editor.class));		// 	Goto the Editor
+			finish();
+		} else {														// The sample files have not been loaded
+			runBackgroundLoader();							// Start the background task to load samples and graphics
+		}
 	}
 
-	if ((FileName != null) && ! FileName.equals("")) {
-        	Bundle bb = new Bundle();
-        	bb.putString("fn", FileName);								// fn is the tag for the filename parameter
-        	Intent intent = new  Intent(BasicContext, AutoRun.class);	// in the bundle going to AutoRun
-        	intent.putExtras(bb);
-		DoAutoRun = true;
-        	startActivity( intent );
-        	finish();
-        } else if (AreSamplesLoaded()) {							// This is not a launcher short cut 
-        	DoAutoRun = false;
-        	startActivity(new Intent(BasicContext, Editor.class));		// 	Goto the Editor
-        	finish();
-	} else {											// The sample files have not been loaded
-		runBackgroundLoader();							// Start the background task to load samples and graphics
-	}
-    }
-    
     private void createForAPK() {											// Create code for APK
     	runBackgroundLoader();
     }

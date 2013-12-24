@@ -28,15 +28,14 @@ This file is part of BASIC! for Android
 	
 
 <resources>
-    <string name="version">01.76</string>
-
+    <!-- For "app_name" and "version" see build.xml -->
     <string name="hello">Hello World, BASIC!</string>
-    <string name="app_name">BASIC!</string>
+
+    <!-- Activity labels; for "run_name" and "textinput_name" see build.xml -->
     <string name="editor_name">BASIC! Program Editor</string>
     <string name="load_name">BASIC! Load File</string>
     <string name="delete_name">BASIC! Delete File</string>
     <string name="help_name">BASIC! Commands</string>
-    <string name="run_name">BASIC! Program Output</string>
     <string name="settings_name">BASIC! Preferences</string>
     <string name="search_name">BASIC! Search</string>
     <string name="format_name">BASIC! Format</string>
@@ -46,11 +45,11 @@ This file is part of BASIC! for Android
     <string name="sensors_name">Sensors</string>
     <string name="select_name">BASIC! Select</string>
     <string name="spawn_name">Create Application</string>
-    <string name="textinput_name">BASIC! Text Input</string>
     <string name="play_sound_name"> </string>
     <string name="select_device"> Select Device</string>
     <string name="title_paired_devices">Paired Devices</string>
     <string name="title_other_devices">Other Devices</string>
+
     <string name="button_scan">Scan</string>
     <string name="none_found">None Found</string>
     <string name="scanning">Scanning</string>
