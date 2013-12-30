@@ -2416,18 +2416,20 @@ public boolean onTouchEvent(MotionEvent event){
     	KeyPressed = true;
 
 	    return true;
-		}
-	
+	}
 
-@Override
- public boolean onCreateOptionsMenu(Menu menu) {				// Called when the menu key is pressed.
-   super.onCreateOptionsMenu(menu);
-   MenuInflater inflater = getMenuInflater();
-   inflater.inflate(R.menu.run, menu);
-   MenuItem item = menu.getItem(1);
-   item.setEnabled(false);
-   return true;
-}
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {		// Called when the menu key is pressed.
+		super.onCreateOptionsMenu(menu);
+		MenuInflater inflater = getMenuInflater();
+		inflater.inflate(R.menu.run, menu);
+		MenuItem item = menu.getItem(1);
+		if (Basic.isAPK) {								// If APK, menu action is "Exit", not "Editor"
+			item.setTitle(getString(R.string.exit));
+		}
+		item.setEnabled(false);
+		return true;
+	}
 
 @Override
 public boolean onPrepareOptionsMenu(Menu menu) {   // Executed when Menu key is pressed (before onCreateOptionsMenu() above.
