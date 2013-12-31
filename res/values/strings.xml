@@ -28,10 +28,10 @@ This file is part of BASIC! for Android
 	
 
 <resources>
-    <!-- For "app_name" and "version" see build.xml -->
+    <!-- For "app_name" and "version" see setup.xml -->
     <string name="hello">Hello World, BASIC!</string>
 
-    <!-- Activity labels; for "run_name" and "textinput_name" see build.xml -->
+    <!-- Activity labels; for "run_name" and "textinput_name" see setup.xml -->
     <string name="editor_name">BASIC! Program Editor</string>
     <string name="load_name">BASIC! Load File</string>
     <string name="delete_name">BASIC! Delete File</string>

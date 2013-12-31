@@ -62,7 +62,15 @@ import android.widget.Toast;
 
 public class Basic extends ListActivity  {
 
-	// These variables will be initialized from values in res/build.xml
+	private static final String LOGTAG = "Basic";
+	private static final String CLASSTAG = Basic.class.getSimpleName();
+
+	private static final String SOURCE_DIR    = "source";
+	private static final String DATA_DIR      = "data";
+	private static final String DATABASES_DIR = "databases";
+	public  static final String SAMPLES_DIR   = "Sample_Programs";
+	private static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
+
 	public static String AppPath;							// Set to the path name for application directories
 	public static boolean isAPK;							// If building APK, set true
 	private static boolean apkCreateDataDir;				// If APK needs a /data/ directory, set true
@@ -71,15 +79,6 @@ public class Basic extends ListActivity  {
 	public static Boolean DoAutoRun;
 	private static String filePath;
 	private static String basePath;
-
-	private static final String LOGTAG = "Basic";
-	private static final String CLASSTAG = Basic.class.getSimpleName();
-
-	private static final String SOURCE_DIR    = "source";
-	private static final String DATA_DIR      = "data";
-	private static final String DATABASES_DIR = "databases";
-	public static final String SAMPLES_DIR   = "Sample_Programs";
-	private static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
 
 	public static ArrayList<String> lines;       //Program lines for execution
 
@@ -566,58 +565,56 @@ public class Basic extends ListActivity  {
     	     			}
     	     		}    
     	         }
-    	        
-    	        public   void doFirstLoad(){
-    	        	// The first load is a short program of comments that will be displayed
-    	        	// by the Editor
-    	        	    	
-    	        		   Editor.DisplayText="!!\n\n" +
-    	        		   "Welcome to BASIC!\n\n" +
-    	        		   "Press Menu->More->About to\n" +
-    	        		   "get the full information\n" +
-    	        		   "about this release.\n\n" +
-    	        		   "The BASIC! User's Manual,\n" +
-    	        		   "De Re BASIC!, can also be\n" +
-    	        		   "accessed from that location.\n\n" +
-    	        		   "Press Menu->Clear to clear\n" +
-    	        		   "this program and start \n"+
-    	        		   "editing your own BASIC!\n"+
-    	        		   "program.\n\n"+
-    	        		   "!!"
-    	        		   ;  // Initialize the Display Program Lines
-    	        	       Basic.InitialProgramSize = Editor.DisplayText.length();
-    	        	      Saved = true;
-    	        	    }
-    	        
-    	        private void LoadTheFile(){
-    	        	
-    	        	// Reads the program file from res.raw/my_program and 
-    	            // puts it into memory
-    	        	AddProgramLine APL = new AddProgramLine();
-    	        	String ResName = "my_program";
-    	        	int ResId = BasicContext.getResources().getIdentifier(ResName, "raw", BasicPackage);
-    	            InputStream inputStream = BasicContext.getResources().openRawResource(ResId);
-    	            InputStreamReader inputreader = new InputStreamReader(inputStream);
-    	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
-    	            
-    	            String line = "";
-    	            int count = 0;
-    	            
-    	             try {
-    	               while (( line = buffreader.readLine()) != null) {			 // Read and write one line at a time
-    	            	   APL.AddLine(line, false);                         		 // add the line to memory
-    	            	   ++count;
-    	            	   if (count >= 200){										 // Show progress every 250 lines.
-    	            		   publishProgress(" ");
-    	            		   count = 0;
-    	            	   }
-    	                 }
-    	             } catch (IOException e) {
-    	             }
-    	     		    
-    	         }
 
-    } // class Background
+		public   void doFirstLoad(){
+			// The first load is a short program of comments that will be displayed
+			// by the Editor
+
+			Editor.DisplayText="!!\n\n" +
+					"Welcome to BASIC!\n\n" +
+					"Press Menu->More->About to\n" +
+					"get the full information\n" +
+					"about this release.\n\n" +
+					"The BASIC! User's Manual,\n" +
+					"De Re BASIC!, can also be\n" +
+					"accessed from that location.\n\n" +
+					"Press Menu->Clear to clear\n" +
+					"this program and start\n" +
+					"editing your own BASIC!\n" +
+					"program.\n\n"+
+					"!!"
+					;  // Initialize the Display Program Lines
+			Basic.InitialProgramSize = Editor.DisplayText.length();
+			Saved = true;
+		}
+
+		private void LoadTheFile(){
+
+			// Reads the program file from res/raw and puts it into memory
+			AddProgramLine APL = new AddProgramLine();
+			Resources res = getResources();
+			String ResName = res.getString(R.string.my_program);
+			int ResId = res.getIdentifier(ResName, "raw", BasicPackage);
+			InputStream inputStream = res.openRawResource(ResId);
+			InputStreamReader inputreader = new InputStreamReader(inputStream);
+			BufferedReader buffreader = new BufferedReader(inputreader, 8192);
+
+			String line = "";
+			int count = 0;
+
+			try {
+				while ((line = buffreader.readLine()) != null) {			// Read and write one line at a time
+					APL.AddLine(line, false);								// add the line to memory
+					++count;
+					if (count >= 200) {										// Show progress every 200 lines.
+						publishProgress(progressMarker);
+						count = 0;
+					}
+				}
+			} catch (IOException e) { }
+		}
+
+	} // class Background
 
 	public static class ScreenColors {
 		public int textColor;
@@ -625,10 +622,13 @@ public class Basic extends ListActivity  {
 		public int lineColor;
 
 		public ScreenColors() {
+			// By default, color1 is solid black, color2 is solid white,
+			// and color3 is a shade of blue that Paul originally chose for "WBL".
+			// The programmer may define the colors any way she likes in res/values/setup.xml.
 			Resources res = BasicContext.getResources();
-			int black = res.getInteger(R.integer.color_black);
-			int white = res.getInteger(R.integer.color_white);
-			int blue  = res.getInteger(R.integer.color_blue);
+			int black = res.getInteger(R.integer.color1);
+			int white = res.getInteger(R.integer.color2);
+			int blue  = res.getInteger(R.integer.color3);
 			String colorSetting = Settings.getEditorColor(BasicContext);
 			if (colorSetting.equals("BW")) {
 				textColor = black;

@@ -43,14 +43,17 @@ This file is part of BASIC! for Android
     <!-- If APK needs a /database/ directory, set true -->
     <bool name="apk_create_database_dir">true</bool>
 
+    <!-- The BASIC! program to build into the APK -->
+    <string name="my_program">f99_my_program</string>
+
     <!-- The default Console and TEXT.INPUT titles -->
     <string name="run_name">BASIC! Program Output</string>
     <string name="textinput_name">BASIC! Text Input</string>
 
     <!-- The default text and background colors selected in Preferences -->
-    <integer name="color_black">0xff000000</integer>
-    <integer name="color_white">0xffffffff</integer>
-    <integer name="color_blue">0xff006478</integer>
+    <integer name="color1">0xff000000</integer>
+    <integer name="color2">0xffffffff</integer>
+    <integer name="color3">0xff006478</integer>
 
     <!--
         Message lines displayed on the opening screen while files are loading.
