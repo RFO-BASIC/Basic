@@ -43,8 +43,8 @@ This file is part of BASIC! for Android
     <!-- If APK needs a /database/ directory, set true -->
     <bool name="apk_create_database_dir">true</bool>
 
-    <!-- The BASIC! program to build into the APK -->
-    <string name="my_program">f99_my_program</string>
+    <!-- The BASIC! program in a res/raw resource to build into the APK -->
+    <string name="my_program">my_program</string>
 
     <!-- The default Console and TEXT.INPUT titles -->
     <string name="run_name">BASIC! Program Output</string>
