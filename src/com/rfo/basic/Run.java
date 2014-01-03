@@ -5,7 +5,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -46,7 +46,6 @@ import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileReader;
 import java.io.Flushable;
 import java.io.InputStream;
 import java.io.FileInputStream;
@@ -7037,12 +7036,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			++LineIndex;
 		}
 		if (!isNext(',')) { return false; }
-		if (!getNVar()){return false;}				// Next parameter is the FileNumber variable
+		if (!getNVar()) { return false; }			// Next parameter is the FileNumber variable
 		NumericVarValues.set(theValueIndex, (double) FileTable.size());
-		int saveValueIndex = theValueIndex;         // Save in case read file not found.
+		int saveValueIndex = theValueIndex;			// Save in case read file not found.
 
 		if (!isNext(',')) { return false; }
-		if (!getStringArg()) { return false; }		// Final paramter is the filename
+		if (!getStringArg()) { return false; }		// Final parameter is the filename
 		String fileName = StringConstant;
 		if (!checkEOL()) return false;
 
@@ -7057,32 +7056,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 		if (FileMode == FMR) {											// Read was selected
 			BufferedReader buf = null;
-			if (file.exists()) {
-				try {
-					buf = new BufferedReader(new FileReader(file), 8192);
-					if (buf != null) buf.mark((int) file.length());
-				} catch (Exception e) {
-					return RunTimeError(e);
-				}
-			} else {													// file does not exist
-				if (Basic.isAPK) {										// if not standard BASIC! then is user APK
-					int resID = getRawResourceID(fileName);				// try to load the file from a raw resource
-					if (resID == 0) { return false; }
-					try {
-						InputStream inputStream = getResources().openRawResource(resID);
-						InputStreamReader inputreader = new InputStreamReader(inputStream);
-						buf = new BufferedReader(inputreader, 8192);
-					} catch (Exception e) {
-						return RunTimeError(e);
-					}
+			try { buf = Basic.getBufferedReader(file.getPath()); }		// closes stream if error on mark()
+			catch (Exception e) { return RunTimeError(e); }
+			if (buf == null) {
+				if (Basic.isAPK) {
+					return false;
 				} else {												// standard BASIC!
-					NumericVarValues.set(saveValueIndex, (double) -1);	// report file does not exist
+					NumericVarValues.set(saveValueIndex, (double) -1);	// change file index to report file does not exist
 					return true;
 				}
 			}
 
 			FileEntry.putInt("stream", BRlist.size());		// The stream parm indexes
-			BRlist.add(buf);								// into the FISlist
+			BRlist.add(buf);								// into the BRlist
 			FileTable.add(FileEntry);
 		}
 
@@ -7109,7 +7095,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			}
 
 			FileEntry.putInt("stream", FWlist.size());		// The stream parm indexes
-			FWlist.add(writer);								// into the FISlist
+			FWlist.add(writer);								// into the FWlist
 			FileTable.add(FileEntry);
 		}
 		return true;													// Done
@@ -7374,9 +7360,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			++LineIndex;
 		}
 		if (!isNext(',')) { return false; }
-		if (!getNVar()){return false;}				// Next parameter is the FileNumber variable
+		if (!getNVar()) { return false; }			// Next parameter is the FileNumber variable
 		NumericVarValues.set(theValueIndex, (double) FileTable.size());
-		int saveValueIndex = theValueIndex;         // Save in case read file not found.
+		int saveValueIndex = theValueIndex;			// Save in case read file not found.
 
 		if (!isNext(',')) { return false; }
 		if (!getStringArg()) { return false; }		// Final parameter is the filename
@@ -7391,46 +7377,39 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		FileEntry.putBoolean("isText", false);
 		
 		if (FileMode == FMR) {												// Read was selected
-			BufferedInputStream bis = null;
+			BufferedInputStream buf = null;
 			if (fileName.startsWith("http")) {
 				try {
 					URL url = new URL(fileName);
 					URLConnection connection = url.openConnection();
-					InputStream fis = connection.getInputStream();
-					bis = new BufferedInputStream(fis, 8192);
+					buf = new BufferedInputStream(connection.getInputStream());
 				} catch (Exception e) {
 					RunTimeError("Problem: " + e + " at:");
 					return false;
 				}
 			} else {
 				File file = new File(Basic.getDataPath(fileName));
-				if (file.exists()) {
-					try {
-						FileInputStream fis = new FileInputStream(file);
-						bis = new BufferedInputStream(fis, 8192);
-						if (bis != null) bis.mark((int) file.length());
-					} catch (Exception e) {
-						return RunTimeError(e);
-					}
-				} else {													// file does not exist
-					if (Basic.isAPK) {										// if not standard BASIC! then is user APK
-						int resID = getRawResourceID(fileName);				// try to load the file from a raw resource
-						if (resID == 0) { return false; }
-						try {
-							InputStream inputStream = getResources().openRawResource(resID);
-							bis = new BufferedInputStream(inputStream, 8192);
-						} catch (Exception e) {
-							return RunTimeError(e);
-						}
+				try {
+					buf = Basic.getBufferedInputStream(file.getPath());
+					if (buf != null) { buf.mark((int)file.length()); }
+				} catch (IOException ie) {
+					return RunTimeError(closeStream(buf, ie));				// Report first exception, if any, and if no previous RTE set
+				} catch (Exception e) {
+					closeStream(buf, null);
+					return RunTimeError(e);
+				}
+				if (buf == null) {
+					if (Basic.isAPK) {
+						return false;
 					} else {												// standard BASIC!
-						NumericVarValues.set(saveValueIndex, (double) -1);	// report file does not exist
+						NumericVarValues.set(saveValueIndex, (double) -1);	// change file index report file does not exist
 						return true;
 					}
 				}
 			}
 
 			FileEntry.putInt("stream", BISlist.size());		// The stream parm indexes
-			BISlist.add(bis);								// into the FISlist
+			BISlist.add(buf);								// into the BISlist
 			FileTable.add(FileEntry);
 		}
 
@@ -7462,7 +7441,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			}
 			
 			FileEntry.putInt("stream", DOSlist.size());		// The stream parm indexes
-			DOSlist.add(dos);								// into the FISlist
+			DOSlist.add(dos);								// into the DOSlist
 			FileTable.add(FileEntry);
 		}
 		return true;														// Done
@@ -7985,43 +7964,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (!checkSDCARD('r')) { return false; }
 
 		BufferedInputStream bis = null;
-		String result = null;
-		IOException ex = null;
+		String result = "";
+		IOException ioex = null;
+		Exception ex = null;
 
-		File file = new File(Basic.getDataPath(theFileName));		// Add the filename to the base path
-		if (file.exists()) {
-			try {														// Open the reader for the SD Card
-				FileInputStream fis = new FileInputStream(file);
-				bis = new BufferedInputStream(fis);
-				result = grabStream(bis, textFlag);
-			} catch (IOException e) {
-				ex = e;
-			} finally {
-				ex = closeStream(bis, ex);
-				if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
-			}
-			StringVarValues.set(saveVarIndex, result);
-			return true;
-		} else {													// file does not exist
-			if (Basic.isAPK) {										// if not standard BASIC! then is user APK
-				int resID = getRawResourceID(theFileName);				// try to load the file from a raw resource
-				if (resID == 0) { return false; }
-				try {
-					InputStream inputStream = getResources().openRawResource(resID);
-					bis = new BufferedInputStream(inputStream, 8192);
-					result = grabStream(bis, textFlag);
-				} catch (IOException e) {
-					ex = e;
-				} finally {
-					ex = closeStream(bis, ex);
-					if (ex != null) { return RunTimeError(ex); }
-				}
-				StringVarValues.set(saveVarIndex, result);
-				return true;
-			} else {												// standard BASIC!
-				return RunTimeError(ex);
-			}
+		String path = Basic.getDataPath(theFileName);				// Add the filename to the base path
+		try {
+			bis = Basic.getBufferedInputStream(path);
+			result = grabStream(bis, textFlag);
 		}
+		catch (IOException ie) { ioex = ie; }
+		catch (Exception e) { ex = e; }
+		finally {
+			ioex = closeStream(bis, ioex);
+			if (ioex != null) { return RunTimeError(ioex); }		// Report first exception, if any, and if no previous RTE set
+			if (ex != null) { return RunTimeError(ex); }
+		}
+		StringVarValues.set(saveVarIndex, result);
+		return true;
 	}
 
 	private boolean executeGRABURL(){
@@ -10198,35 +10158,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		return true;
 	}
 
-	private String getAlternateRawFileName(String input) {
-		// Converts a file name with upper and lower case characters to a lower case filename.
-		// The dot extension is appended to the end of the filename preceeded by "_".
-		// Any other dots in the file are also converted to "_".
-
-		// MyFile.png = myfile_png
-		// bigSound.mp3 = bigsound_mp3
-		// Earth.jpg = earth_jpg
-		// Earth.blue.jpg = earth_blue_jpg
-
-		// if there is no dot extension, returns original string
-
-		int idx = input.lastIndexOf("/");
-		return idx >= 0 ? input.substring(idx + 1).toLowerCase().replace(".", "_") : input.toLowerCase().replace(".", "_"); // Convert to lower case, convert all '.' to '_'
-	}
-
 	private int getRawResourceID(String fileName) {
-		if (fileName == null) fileName = "";
-		String packageName = getPackageName();							// Get the package name
-		int resID = 0;													// 0 is not a valid resource ID
-		for (int attempt = 1; (resID == 0) && (attempt <= 2); ++attempt) {
-			String rawFileName =
-				(attempt == 1) ? getAlternateRawFileName(fileName) :	// Convert conventional filename to raw resource name, BASIC!-style
-				(attempt == 2) ? Basic.getRawFileName(fileName) : "";	// If first try didn't work, try again, Android-style.
-			if (!rawFileName.equals("")) {
-				resID = getResources().getIdentifier(rawFileName, "raw", packageName);	// Get the resource ID
-			}
-		}
-		if (resID == 0) {
+		int resID = Basic.getRawResourceID(fileName);
+		if (resID == 0) {												// 0 is not a valid resource ID
 			RunTimeError("Error getting raw resource");
 		}
 		return resID;
@@ -10242,32 +10176,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 		String fileName = StringConstant;								// The filename as given by the user
 		File file = new File(Basic.getDataPath(fileName));
-		InputStream inputStream = null;									// Establish an input stream
+		BufferedInputStream bis = null;									// Establish an input stream
+		try { bis = Basic.getBufferedInputStream(file.getPath()); }
+		catch (Exception e) { return RunTimeError(e); }
+		if (bis == null) { return RunTimeError("No bitmap found"); }	// Can this happen?
 
-		if (file.exists()) {
-			try {
-				inputStream = new FileInputStream(file);				// Open an input stream from the SDCARD file
-			} catch (IOException e) {
-				closeStream(inputStream, e);
-				return RunTimeError(e);
-			}
-		} else {														// file does not exist
-			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
-				int resID = getRawResourceID(fileName);					// try to load the file from a raw resource
-				if (resID == 0) { return false; }
-				try {
-					inputStream = getResources().openRawResource(resID);	// Open an input stream from raw resource
-				} catch (Exception e) {
-					closeStream(inputStream, null);
-					return RunTimeError(e);
-				}
-			}															// else standard BASIC!, inputStream is still null
-		}
-		   
-		   System.gc();															// Garbage collect
+		System.gc();													// Garbage collect
 
-		aBitmap = BitmapFactory.decodeStream(inputStream);				// Create bitmap from the input stream
-		try { inputStream.close(); }
+		aBitmap = BitmapFactory.decodeStream(bis);				// Create bitmap from the input stream
+		
+		try { bis.close(); }
 		catch (Exception e) { return RunTimeError(e); }
 
 		if (aBitmap == null) return RunTimeError("Bitmap load failed at:");
@@ -10321,7 +10239,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		int Height = EvalNumericExpressionValue.intValue();
 
 		boolean parm = true;
-		if (isNext(',')) {													// optional scale paramter
+		if (isNext(',')) {													// optional scale parameter
 			if (!evalNumericExpression()) return false;
 			if (EvalNumericExpressionValue == 0.0) parm = false;
 		}
@@ -10550,7 +10468,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			if (!checkEOL()) return false;
 			b.putString(parm, StringConstant);
 		} else {
-			if (!evalNumericExpression()) return false;						// Get paramter value
+			if (!evalNumericExpression()) return false;						// Get parameter value
 			if (!checkEOL()) return false;
 			int value = EvalNumericExpressionValue.intValue();
 			if (parm.equals("bitmap")) {
@@ -14662,7 +14580,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean executeCONSOLE_DUMP(){
 
-		if (!getStringArg() || !checkEOL()) { return false; }	// Only paramter is the filename
+		if (!getStringArg() || !checkEOL()) { return false; }	// Only parameter is the filename
 		String theFileName = StringConstant;
 
 		theBackground.checkpointProgress();						// allow any pending Console activity to complete

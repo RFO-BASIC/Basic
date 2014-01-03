@@ -6,7 +6,7 @@ Android devices.
 
 This file is part of BASIC! for Android
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
     BASIC! is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,15 +27,20 @@ Copyright (C) 2010 - 2013 Paul Laughton
 
 package com.rfo.basic;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -286,7 +291,7 @@ public class Basic extends ListActivity  {
 
     }
     
-    public  static void clearProgram(){
+    public static void clearProgram(){
     	
       lines = new ArrayList<String>();					// The lines array list is the program
       String theString = "";								
@@ -299,7 +304,7 @@ public class Basic extends ListActivity  {
     }
     
     
-    private boolean AreSamplesLoaded(){				// Sample program files have not been loaded
+    private static boolean AreSamplesLoaded(){		// Sample program files have not been loaded
     												// if the sample programs directory is empty
     	String samplesPath = getSamplesPath("");	// get path with trailing '/'
     	File sdDir = new File(samplesPath);
@@ -327,6 +332,8 @@ public class Basic extends ListActivity  {
     	return false;
     }
 
+	/******************************* static file/resource utilities ******************************/
+
 	public static String getRawFileName(String input) {
 		// Converts a file name to an Android internal resource name. 
 		// Upper-case characters are converted to lower-case.
@@ -343,13 +350,128 @@ public class Basic extends ListActivity  {
 		return output.substring(0, index);			// else isolate stuff in front of dot
 	}
 
-	// The loading of the sample files and graphics is done in a background, Async Task rather than the UI task
+	public static String getAlternateRawFileName(String input) {
+		// Converts a file name with upper and lower case characters to a lower case filename.
+		// The dot extension is appended to the end of the filename preceeded by "_".
+		// Any other dots in the file are also converted to "_".
+
+		// MyFile.png = myfile_png
+		// bigSound.mp3 = bigsound_mp3
+		// Earth.jpg = earth_jpg
+		// Earth.blue.jpg = earth_blue_jpg
+
+		// if there is no dot extension, returns original string
+
+		int idx = input.lastIndexOf("/");
+		return idx >= 0 ? input.substring(idx + 1).toLowerCase().replace(".", "_") : input.toLowerCase().replace(".", "_"); // Convert to lower case, convert all '.' to '_'
+	}
+
+	public static int getRawResourceID(String fileName) {
+		if (fileName == null) fileName = "";
+		String packageName = BasicContext.getPackageName();				// Get the package name
+		int resID = 0;													// 0 is not a valid resource ID
+		for (int attempt = 1; (resID == 0) && (attempt <= 2); ++attempt) {
+			String rawFileName =
+				(attempt == 1) ? getAlternateRawFileName(fileName) :	// Convert conventional filename to raw resource name, BASIC!-style
+				(attempt == 2) ? getRawFileName(fileName) : "";			// If first try didn't work, try again, Android-style.
+			if (!rawFileName.equals("")) {
+				Resources res = BasicContext.getResources();
+				resID = res.getIdentifier(rawFileName, "raw", packageName);	// Get the resource ID
+			}
+		}
+		return resID;
+	}
+
+	public static BufferedReader getBufferedReader(String path) throws Exception {
+		File file = new File(path);
+		BufferedReader buf = null;
+		if (file.exists()) {
+			try {
+				buf = new BufferedReader(new FileReader(file));			// open an input stream from the file
+				if (buf != null) buf.mark((int)file.length());			// this call may throw an exception
+			} catch (IOException ex) {
+				if (buf != null) {
+					try { buf.close(); } catch (IOException e) { }		// ignore second exception, if any
+				}
+				throw ex;												// throw first exception
+			}
+		} else if (isAPK) {
+			int resID = getRawResourceID(file.getName());
+			if (resID != 0) {
+				Resources res = Basic.BasicContext.getResources();		// open an input stream from raw resource
+				InputStream inputStream = res.openRawResource(resID);	// this call may throw NotFoundException
+				buf = new BufferedReader(new InputStreamReader(inputStream));
+				// TODO: how to mark a buffered resource stream?
+			}
+		}
+		return buf;
+	}
+
+	public static BufferedInputStream getBufferedInputStream(String path) throws IOException {
+		File file = new File(path);
+		BufferedInputStream buf = null;
+		
+		if (file.exists()) {
+			buf = new BufferedInputStream(new FileInputStream(file));	// open an input stream from the file
+			if (buf != null) buf.mark((int)file.length());				// this call can NOT throw any exception
+		} else if (isAPK) {
+			int resID = getRawResourceID(file.getName());
+			if (resID != 0) {
+				Resources res = Basic.BasicContext.getResources();		// open an input stream from raw resource
+				InputStream inputStream = res.openRawResource(resID);	// this call may throw NotFoundException
+				buf = new BufferedInputStream(inputStream);
+				// TODO: how to mark a buffered resource stream?
+			}
+		}
+		return buf;
+	}
+
+	public static IOException closeStreams(InputStream in, OutputStream out) {
+		IOException ex = null;
+		if (in != null) {
+			try { in.close(); }
+			catch (IOException e) { ex = e; }
+		}
+		if (out != null) {
+			try {
+				out.flush();
+				out.close();
+			} catch (IOException e) {
+				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 4");
+				if (ex == null) { ex = e; }
+			}
+		}
+		return ex;
+	}
+
+	public static IOException closeStreams(Reader in, Writer out) {
+		IOException ex = null;
+		if (in != null) {
+			try { in.close(); }
+			catch (IOException e) { ex = e; }
+		}
+		if (out != null) {
+			try {
+				out.flush();
+				out.close();
+			} catch (IOException e) {
+				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 4");
+				if (ex == null) { ex = e; }
+			}
+		}
+		return ex;
+	}
+
+	/************************************* background loader *************************************/
+
+	// The loading of the sample files and graphics is done in a background AsyncTask rather than the UI task
 	// Progress is shown by sending progress messages to the UI task.
  
 	public class Background extends AsyncTask<String, String, String>{
 
-		private String[] loadingMsg;						// Displayed while files are loading
-		private String progressMarker;						// Displayed as a unit of progress while files are loading
+		private String[] mLoadingMsg;						// Displayed while files are loading
+		private String mProgressMarker;						// Displayed as a unit of progress while files are loading
+		private Resources mRes;
 
 		@Override
 		protected String doInBackground(String... str) {
@@ -388,183 +510,166 @@ public class Basic extends ListActivity  {
 
 		@Override
 		protected void onPreExecute() {
-			Resources res = BasicContext.getResources();
-			loadingMsg = res.getStringArray(R.array.loading_msg);
-			progressMarker = res.getString(R.string.progress_marker);
-			if ((loadingMsg != null) && (loadingMsg.length != 0)) { 
-				for (String s : loadingMsg) { output.add(s); }			// The message lines that tell what we are doing.
+			mRes = BasicContext.getResources();
+			mLoadingMsg = mRes.getStringArray(R.array.loading_msg);
+			mProgressMarker = mRes.getString(R.string.progress_marker);
+			if ((mLoadingMsg != null) && (mLoadingMsg.length != 0)) {
+				for (String s : mLoadingMsg) { output.add(s); }			// The message lines that tell what we are doing.
 			}
 		}
 
-    	        public double lineCount = 0;
-    	        @Override    
-    	        protected void onProgressUpdate(String... str ) {     // Called when publishProgress() is executed.
-    	        	int CHAR_PER_LINE = 20;					  // Number of dots per line
-    	        	int LINES_PER_UPDATE = 30;				  // Number of line between Progress Messages
-    	        	int MAX_UPDATE_COUNT = 0;					  // Change to maximum number of progress messages, if known.
-    	        	
-    	        	for (int i=0; i<str.length; ++i){				  			  // Form line of CHAR_PER_LINE progress characters
-    	        		String s = output.get(output.size() -1);
-    	        		s = s + str[i];
-    	        		output.set(output.size()-1, s);
-    	        		if (s.length() >= CHAR_PER_LINE){						  // After the CHAR_PER_LINEth character
-    	        			++lineCount;										  // output a new line
-    	        																  // After every LINES_PER_UPDATE
-    	        			double dd = lineCount%LINES_PER_UPDATE;
-    	        			if (dd == 0) {				   
-    	        			    double updates = Math.floor(lineCount/LINES_PER_UPDATE);  // Output a progress message
+		private final int CHAR_PER_LINE = 20;							// Number of dots per line
+		private final int LINES_PER_UPDATE = 30;						// Number of line between Progress Messages
+		private int maxUpdateCount = 0;									// Change to maximum number of progress messages, if known.
+		private int lineCount = 0;
+		@Override
+		protected void onProgressUpdate(String... str) {				// Called when publishProgress() is executed.
+			for (String s : str) {										// Form line of CHAR_PER_LINE progress characters
+				int linenum = output.size() - 1;
+				s = output.get(linenum) + s;
+				output.set(linenum, s);
 
-    	        			    if (MAX_UPDATE_COUNT > 0 ) {								 // if the max is known
-    	        			    	updates = updates/MAX_UPDATE_COUNT * 100;				 // convert progress to a percent
-    	        					output.add("Continuing load (" + updates + "%)");
-    	        			    } else 														 // else just use the number of progress line
-    	        			    	output.add("Continuing load (" + (int)updates + ")");
-    	        			}
-    	        			output.add("");							  // start a new line
-    	        		}
-    	        	}
-    	        	
-    	        	setListAdapter(AA);						// show the output
-    		    	lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
-    	        }
+				if (s.length() >= CHAR_PER_LINE) {						// After the CHAR_PER_LINEth character
+					++lineCount;										// output a new line
 
-    	        private void LoadGraphics(){
-    	        	
-    	        	// Loads the icons and audio used for the example programs
-    	        	// The files are copied from res.raw to the SD Card
+					if ((lineCount % LINES_PER_UPDATE) == 0) {			// After every LINES_PER_UPDATE
+						StringBuilder msg = new StringBuilder();		// output a progress message
 
-    	        	String dataPath = getDataPath("");				// get paths with trailing '/'
-    	        	String databasesPath = getDataBasePath("");
+						int updates = lineCount/LINES_PER_UPDATE;
+						if (maxUpdateCount != 0) {						// If the max is known
+							msg.append((updates * 100)/maxUpdateCount);	// convert progress to a percent
+							msg.append("%");
+						} else {
+							msg.append(updates);						// else just use the number of progress line
+						}
+						output.add("Continuing load (" + msg + ')');
+					}
+					output.add("");										// start a new line
+				}
+			}
 
-    	        	String[] loadFileNames = getResources().getStringArray(R.array.load_file_names);
-    	        	for (String fileName : loadFileNames) {
-    	        		if (fileName.equals("")) return;
+			setListAdapter(AA);						// show the output
+			lv.setSelection(output.size() - 1);		// set last line as the selected line to scroll
+		}
 
-    	        		String fn = getRawFileName(fileName);
-    	        		int resID = BasicContext.getResources().getIdentifier(fn, "raw", BasicPackage);
-    	        		InputStream inputStream = BasicContext.getResources().openRawResource(resID);
-    	        		String path = (fileName.endsWith(".db")) ? databasesPath : dataPath;
-    	        		Load1Graphic(inputStream, path + fileName);
-    	        	}
-    	        }
+		private void LoadGraphics(){
 
-    	        private void Load1Graphic(InputStream inputStream, String PathA ){
-    	        	    	
-    	        	// Does the actual loading of one icon or audio file
-    	        	    	
-    	        	        DataInputStream dis = new DataInputStream(inputStream);
-    	        	 		File aFile = new File(PathA);
-    	        	 		DataOutputStream dos1 = null;
+			// Loads the icons and audio used for the example programs
+			// The files are copied from res/raw to the SD Card
 
-    	        	// Note the I/O methods used here specialized for reading and writing
-    	        	// non-text data files; 
-    	        	  		
-    	        	         int Byte = 0;
-    	        	         int count = 0;
-    	        	         try {
-    	        	              FileOutputStream fos = new FileOutputStream(aFile);
-    	        	              dos1 = new DataOutputStream(fos);
-    	        	             do {
-    	        	            	 Byte = dis.readByte();
-    	        	            	 dos1.writeByte(Byte);
-    	        	            	 ++count;
-    	        	            	 if (count >= 4096){			// Show progress every 4k bytes
-    	        	            		 publishProgress(progressMarker);
-    	        	            		 count = 0;
-    	        	            	 }
-    	        	         	 } while (dis != null);
-    	        	              
-    	        	          } catch (IOException e) {
-//    	        	         	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 2 ");
-    	        	          }
-    	        	          finally {
-    	        	  			if (dos1 != null) {
-    	        	  				try {
-    	        	  					dos1.flush();
-    	        	  					dos1.close();
-    	        	  				} catch (IOException e) {
-//    	        	  		        	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 4 ");
-    	        	  				}
-    	        	  			}
-    	        	          }
+			String dataPath = getDataPath("");				// get paths with trailing '/'
+			String databasesPath = getDataBasePath("");
 
-    	        	    }
-    	        
-    	        private void LoadSamples(){
-    	        	// The files are packaged int res.raw.
-    	        	// The file, the_list contain the list of files to be loaded.
-    	        	// Get that list, and load those files
-    	        	
-    	    		SD_ProgramPath = SAMPLES_DIR;   // This setting will also force LoadFile to so the help directory
-    	    		
-    	    // The first thing done is to load the file, the_list. This file contains a list of the files
-    	    // to be loaded.
-    	    		
-    	    		// Using this round about method to get the resID for the_list
-    	    		// because the the_list will not be there in APKs
-    	    		
-	        		String fn = getRawFileName("the_list");
-	        		int resID = BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
-	    	        InputStream inputStream = BasicContext.getResources().openRawResource(resID);
+			String[] loadFileNames = mRes.getStringArray(R.array.load_file_names);
+			for (String fileName : loadFileNames) {
+				if (fileName.equals("")) continue;
 
-    	            InputStreamReader inputreader = new InputStreamReader(inputStream);
-    	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
-    	            String line;
-    	            ArrayList <String> LoadList = new ArrayList <String>();  // Stores the list of files to load
+				String fn = getRawFileName(fileName);
+				int resID = mRes.getIdentifier(fn, "raw", BasicPackage);
+				String path = (fileName.endsWith(".db")) ? databasesPath : dataPath;
+				Load1Graphic(resID, path + fileName);
+			}
+		}
 
-    	     // Read each line from the_list and add the filename to LoadList
-    	            
-    	             try {
-    	               while (( line = buffreader.readLine()) != null) {
-    	                   LoadList.add(line);
-    	                 }
-    	             } catch (IOException e) {
-//    	            	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 1  ");
-    	             }
-    	             
-    	    // Now go load each file in the list, one at a time
-    	             
-    	             for (int i=LoadList.size()-1; i >=0; --i){      // Now that we have the list of files to load
-    	            	 LoadOneFile(LoadList.get(i));				 // load them one at a time
-    	             }
-    	        }
+		private void Load1Graphic(int resID, String path){
 
-    	        private void LoadOneFile(String theFileName){
-    	        	
-    	        	// Reads one file from res.raw and writes it to the SD Card
-    	        	// into the source/help directory
-    	        	publishProgress(progressMarker);				// Show progress for each program loaded
-    	        	
-    	        	int ResId = BasicContext.getResources().getIdentifier(theFileName, "raw", BasicPackage);
-    	            InputStream inputStream = BasicContext.getResources().openRawResource(ResId);
-    	            InputStreamReader inputreader = new InputStreamReader(inputStream);
-    	            BufferedReader buffreader = new BufferedReader(inputreader, 8192);
-    	            String line;
+			// Does the actual loading of one icon or audio file
 
-    	            SD_ProgramPath = SAMPLES_DIR;
-    	            FileWriter writer = null;
-    	            String path = getSamplesPath(theFileName + ".bas");				// add .bas to the created file name.
+			InputStream inputStream = mRes.openRawResource(resID);
+			BufferedInputStream bis = new BufferedInputStream(inputStream, 8192);
+			BufferedOutputStream bos = null;
 
-    	            try {
-    	               writer = new FileWriter(path);   
-    	               while (( line = buffreader.readLine()) != null) {			 // Read and write one line at a time
-    	            	   line = line + "\n";
-    	            	   writer.write(line);
-    	                 }
-    	             } catch (IOException e) {
-//    	            	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 3 ");
-    	             }
-    	             finally {
-    	     			if (writer != null) {
-    	     				try {
-    	     					writer.flush();
-    	     					writer.close();
-    	     				} catch (IOException e) {
-//    	     		        	  Log.v(LOGTAG, CLASSTAG + " I/O Exception 4 ");
-    	     				}
-    	     			}
-    	     		}    
-    	         }
+			// Note the I/O methods used here specialized for reading and writing
+			// non-text data files;
+
+			byte[] bytes = new byte[8192];
+			int count = 0;
+			try {
+				FileOutputStream fos = new FileOutputStream(path);
+				bos = new BufferedOutputStream(fos);
+				do {
+					count = bis.read(bytes, 0, 8192);
+					if (count > 0) {
+						bos.write(bytes, 0, count);
+						publishProgress(mProgressMarker);
+					}
+				} while (count != -1);
+			} catch (IOException e) {
+				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 2");
+			}
+			closeStreams(bis, bos);
+		}
+
+		private void LoadSamples(){
+			// The files are packaged in res/raw.
+			// The file, the_list contains the list of files to be loaded.
+			// Get that list, and load those files.
+
+			SD_ProgramPath = SAMPLES_DIR;		// This setting will also force LoadFile to so the help directory
+
+			// The first thing done is to load the file, the_list.txt. This file contains a list of the files
+			// to be loaded.
+
+			// Using this round about method to get the resID for the_list.txt
+			// because the the_list will not be there in APKs
+
+			String fn = getRawFileName("the_list.txt");
+			int resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
+			if (resID == 0) return;
+
+			InputStream inputStream = mRes.openRawResource(resID);
+			InputStreamReader inputreader = new InputStreamReader(inputStream);
+			BufferedReader buffreader = new BufferedReader(inputreader, 8192);
+			String line;
+			ArrayList <String> LoadList = new ArrayList <String>();	// Stores the list of files to load
+
+			// Read each line from the_list and add the filename to LoadList
+	
+			try {
+				while ((line = buffreader.readLine()) != null) {
+					LoadList.add(line);
+				}
+			} catch (IOException e) {
+				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 1");
+			} finally {
+				if (buffreader != null) {
+					try { buffreader.close(); } catch (IOException e) {}
+				}
+			}
+
+			// Now go load each file in the list, one at a time
+
+			for (int i = LoadList.size() - 1; i >= 0; --i) {		// Now that we have the list of files to load
+				fn = LoadList.get(i);
+				int resId = mRes.getIdentifier(fn, "raw", BasicPackage);
+				String path = getSamplesPath(fn + ".bas");			// add .bas to the created file name.
+				LoadOneFile(resId, path);							// load them one at a time
+			}
+		}
+
+		private void LoadOneFile(int resID, String path){
+
+			// Reads one file from res/raw and writes it to the SD Card
+			// into the source/help directory
+			publishProgress(mProgressMarker);						// Show progress for each program loaded
+
+			InputStream inputStream = mRes.openRawResource(resID);
+			InputStreamReader inputreader = new InputStreamReader(inputStream);
+			BufferedReader buffreader = new BufferedReader(inputreader, 8192);
+			FileWriter writer = null;
+
+			try {
+				writer = new FileWriter(path);
+				String line;
+				while ((line = buffreader.readLine()) != null) {	// Read and write one line at a time
+					line = line + "\n";
+					writer.write(line);
+				}
+			} catch (IOException e) {
+				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 3");
+			}
+			closeStreams(buffreader, writer);
+		}
 
 		public   void doFirstLoad(){
 			// The first load is a short program of comments that will be displayed
@@ -592,10 +697,9 @@ public class Basic extends ListActivity  {
 
 			// Reads the program file from res/raw and puts it into memory
 			AddProgramLine APL = new AddProgramLine();
-			Resources res = getResources();
-			String ResName = res.getString(R.string.my_program);
-			int ResId = res.getIdentifier(ResName, "raw", BasicPackage);
-			InputStream inputStream = res.openRawResource(ResId);
+			String ResName = mRes.getString(R.string.my_program);
+			int ResId = mRes.getIdentifier(ResName, "raw", BasicPackage);
+			InputStream inputStream = mRes.openRawResource(ResId);
 			InputStreamReader inputreader = new InputStreamReader(inputStream);
 			BufferedReader buffreader = new BufferedReader(inputreader, 8192);
 
@@ -604,17 +708,23 @@ public class Basic extends ListActivity  {
 
 			try {
 				while ((line = buffreader.readLine()) != null) {			// Read and write one line at a time
-					APL.AddLine(line, false);								// add the line to memory
+					APL.AddLine(line, true);								// add the line to memory
 					++count;
 					if (count >= 200) {										// Show progress every 200 lines.
-						publishProgress(progressMarker);
+						publishProgress(mProgressMarker);
 						count = 0;
 					}
 				}
-			} catch (IOException e) { }
+			} catch (IOException e) {
+			} finally {
+				if (buffreader != null) {
+					try { buffreader.close(); } catch (IOException e) {}
+				}
+			}
 		}
-
 	} // class Background
+
+	/************************************** utility classes **************************************/
 
 	public static class ScreenColors {
 		public int textColor;

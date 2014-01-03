@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 *********************************************************************************
-BASIC! is an implementation of the Basic programming lanuage for
+BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2013 Paul Laughton
+Copyright (C) 2013 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -69,9 +69,7 @@ This file is part of BASIC! for Android
 
     <!--
         If there are any files that need to be copied from raw resources into the data directory,
-        list them here. The list must end with an empty string (<item></item>).
-        If there are not files to be copied, make one entry of an empty string.
-        Most APKs can leave their files in raw resources and not copy them.
+        list them here. Most APKs can leave their files in raw resources and not copy them.
         The various run commands will detect the situation and read the files from the raw resources.
         Note: If the filename has the ".db" extension, it will be loaded into the /databases/ directory.
     -->
@@ -84,7 +82,6 @@ This file is part of BASIC! for Android
         <item>whee.mp3</item>
         <item>htmldemo1.html</item>
         <item>htmldemo2.html</item>
-        <item></item>
     </string-array>
 
 </resources>

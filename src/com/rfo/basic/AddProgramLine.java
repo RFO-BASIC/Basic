@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010 - 2013 Paul Laughton
+ Copyright (C) 2010 - 2014 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -30,24 +30,22 @@
 package com.rfo.basic;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 
 import android.util.Log;
 
+
 public class AddProgramLine {
-	
+	private static final String LOGTAG = "AddProgramLine";
+	private static String kw_include = "include";
+
 	Boolean BlockFlag = false;
 	String stemp = "";
-    public static ArrayList<String> lines;       //Program lines for execution
-    public static ArrayList<Integer> lineCharCounts;
-    public static int charCount = 0;
+	public static ArrayList<Integer> lineCharCounts;
+	public static int charCount = 0;
 
-	
-	public AddProgramLine() {		
+	public AddProgramLine() {
 		charCount = 0;									// Character count = 0
 		lineCharCounts = new ArrayList<Integer>();		// create a new list of line char counts
 		lineCharCounts.add(0);							// First line starts with a zero char count
@@ -59,6 +57,7 @@ public class AddProgramLine {
 		 * Each line will have all white space characters removed and all characters
 		 * converted to lower case (unless they are within quotes).
 		 */
+		if (line == null) { return; }
 
     	// Look for block comments. All lines between block comments
     	// are tossed out
@@ -74,10 +73,10 @@ public class AddProgramLine {
 			return;
 		}
 
-    	String Temp = "";
+		String Temp = "";
 
 		int linelen = line.length();
-   		for (int i=0; i < linelen; ++i) {			// do not mess with characters
+		for (int i=0; i < linelen; ++i) {			// do not mess with characters
 			char c = line.charAt(i);				// between quote marks
 			if (c == '"' || c == '\u201c') {		// Change funny quote to real quote
 				StringBuilder sb = new StringBuilder();
@@ -98,14 +97,14 @@ public class AddProgramLine {
 			}
 		}
 
-   		if (Temp.startsWith("include")) {            // If include, 
-   			if (doInclude) {
-   				doInclude(Temp);                        // Do the include
-   				return;
-   			} else {
-   				Temp = Temp + " ... not allowed in an APK";
-   			}
-   		}
+		if (Temp.startsWith(kw_include)) {			// If include, 
+			if (doInclude) {
+				doInclude(Temp);					// Do the include
+				return;
+		//	} else {
+		//		Temp = Temp + " ... not allowed in an APK";
+			}
+		}
 
    		if (Temp.startsWith("rem")) {Temp = "";}		// toss out REM lines
    		if (Temp.startsWith("!"))Temp = "";			// and pseudo rem lines
@@ -246,47 +245,25 @@ public class AddProgramLine {
 		line = shorthand(line);
 		return tline + line;
 	}
-	
+
 	private void doInclude(String fileName) {
-
-		boolean FileNotFound = false;
-		String fn = fileName.substring(7);
-		fn = fn.trim();
-
-		String FullFileName = Basic.getSourcePath(fn);			// Base Source dir + filename
-		File file = new File(FullFileName);						// is full path to the file to load
+		fileName = fileName.substring(kw_include.length()).trim();
+		String path = Basic.getSourcePath(fileName);				// Base Source dir + filename
 		BufferedReader buf = null;
-
-		try { buf = new BufferedReader(new FileReader(file), 1024);} catch (FileNotFoundException e) {								// FNF should never happen
-//			  Log.e(AutoEun.LOGTAG, e.getMessage(), e);
-			FileNotFound = true;
-		};
-
-		if (FileNotFound) {
-			String t = "Error_Include_file (" + fn + ") not_found";
+		try { buf = Basic.getBufferedReader(path); }
+		catch (Exception e) {}										// stream already closed if exception
+		if (buf == null) {
+			String t = "Error_Include_file (" + fileName + ") not_found";
 			AddLine(t, true);
 			return;
 		}
 
 		String data = null;
-		do
-		try {												// Read lines
-			data = buf.readLine();
-			if (data == null) {								// if null, say EOF
-				data = "EOF";
-			} else {
-				data.replace('\n', ' ');            // Remove the New Line Char
-				AddLine(data, true);						// add the line 
-			}
-		} catch (IOException e) {
-//					  Log.e(LoadFile.LOGTAG, e.getMessage(), e);
-			data = "EOF";
-		}
-		while (!data.equals("EOF"));						// while not EOF
-		// File all read int
+		do {
+			try { data = buf.readLine(); }
+			catch (IOException e) { data = null; }
+			AddLine(data, true); 								// add the line
+		} while (data != null);									// while not EOF and no error
 	}
 
-
-
-	
 }
