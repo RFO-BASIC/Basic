@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010 - 2013 Paul Laughton
+ Copyright (C) 2010 - 2014 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -66,6 +66,8 @@ public class Editor extends Activity {
     public static int selectionStart;
     public static int selectionEnd;
     public static final String Name = "BASIC! Program Editor - ";
+    public static int InitialProgramSize;				// Used to determine if program has changed
+    public static boolean Saved = true;
 
     private enum Action { NONE, CLEAR, LOAD, RUN, EXIT }
 
@@ -98,18 +100,18 @@ public class Editor extends Activity {
             InitScroller(context);
         }
 
-        @Override
-        protected void  onTextChanged(CharSequence  text, int start, int before, int after) {
+		@Override
+		protected void  onTextChanged(CharSequence  text, int start, int before, int after) {
 
-// Here we are monitoring for text changes so that we can set Saved properly
+			// Here we are monitoring for text changes so that we can set Saved properly
 
-			int i = text.length();						        // When the text is changed
-			if (i > 0 && i != Basic.InitialProgramSize) {			// Make sure it is a real change
-            	Basic.Saved = false;					        // and indicate then indicate not saved
-            }
+			int i = text.length();							// When the text is changed
+			if (i > 0 && i != InitialProgramSize) {			// Make sure it is a real change
+				Saved = false;								// then indicate not saved
+			}
 
 			super.onTextChanged(text, start, before, after);
-        }
+		}
 
         @Override
         protected void onDraw(Canvas canvas) {
@@ -256,10 +258,12 @@ public class Editor extends Activity {
 		setContentView(R.layout.editor);
 		setTitle(Name + Basic.ProgramFileName);
 
-		mText = (LinedEditText) findViewById(R.id.basic_text);		// mText is the TextView Object
+		mText = (LinedEditText) findViewById(R.id.basic_text);	// mText is the TextView Object
 		mText.setMinLines(4096);
-		mText.setText(DisplayText);		// Put the text lines into Object
+		mText.setText(DisplayText);								// Put the text lines into Object
 		mText.setCursorVisible(true);
+		InitialProgramSize = DisplayText.length();
+		Saved = true;
 	}
 
 	@Override
@@ -370,7 +374,7 @@ public class Editor extends Activity {
 			}
         }
 
-    }    
+    }
 
 /*
     @Override
@@ -411,7 +415,7 @@ public class Editor extends Activity {
 		switch (item.getItemId()) {
 
 			case R.id.run:									// RUN
-				if (Basic.Saved) {							// If current program has been saved
+				if (Saved) {								// If current program has been saved
 					Run();									// then run the program
 				} else {
 					doSaveDialog(Action.RUN);				// Ask if the user wants to save before running
@@ -419,7 +423,7 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.load:									// LOAD
-				if (Basic.Saved) {							// If current program has been saved
+				if (Saved) {								// If current program has been saved
 					loadFile();								// then load the program
 				} else {
 					doSaveDialog(Action.LOAD);				// Ask if the user wants to save before loading
@@ -464,7 +468,7 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.clear:								// CLEAR
-				if (Basic.Saved) {							// If program has been saved
+				if (Saved) {								// If program has been saved
 					clearProgram();							// then clear the Editor
 				} else {
 					doSaveDialog(Action.CLEAR);				// Ask if the user wants to save before clearing
@@ -489,7 +493,7 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.exit:
-				if (Basic.Saved) {							// If program has been saved
+				if (Saved) {								// If program has been saved
 					finish();								// exit immediately
 				} else {
 					doSaveDialog(Action.EXIT);				// Ask if the user wants to save before exiting
@@ -538,7 +542,7 @@ public class Editor extends Activity {
 				public void onClick(DialogInterface dialog, int id) {
 					DisplayText = mText.getText().toString();
 					startActivity(new Intent(Editor.this, Format.class));			// Start the format activity
-					Basic.Saved = false;
+					Saved = false;
 				}
 			})
 
@@ -558,55 +562,41 @@ public class Editor extends Activity {
 		alert.show();
 	}
 
-    private void  Run() {
+	private void  Run() {
 
 		/* Run a program
 		 * Create a new Basic.lines object and then copy
-		 * the display text buffer to it. 
+		 * the display text buffer to it.
 		 * 
 		 * The display buffer is one big string. We need
 		 * to step through it looking for \n (newline) characters.
-		 * Each \n marks a new line for Basic.lines
+		 * Each \n marks a new line for Basic.lines.
 		 */
-    	
-    	AddProgramLine APL = new AddProgramLine();
-    	
+
 		DisplayText = mText.getText().toString();
-		String Temp = "";
+		Basic.loadProgramFromString(DisplayText, null);			// build program in Basic.lines
 
-
-		for (AddProgramLine.charCount = 0; AddProgramLine.charCount < DisplayText.length(); ++AddProgramLine.charCount) {      // Grab the display text
-			if (DisplayText.charAt(AddProgramLine.charCount) == '\n') {						// and add it to Basic.Lines
-				APL.AddLine(Temp, true);												// with some editing.
-				Temp = "";								
-			} else {
-				Temp = Temp + DisplayText.charAt(AddProgramLine.charCount);
-			}
+		if (Basic.lines.size() == 0) {							// If the program is empty
+			Basic.lines.add("@@@");								// add Nothing to run command
 		}
-		if (Temp.length() != 0) APL.AddLine(Temp, true);				// Do not add empty lines
 
-		if (Basic.lines.size() == 0) {						// If the program is empty
-			Basic.lines.add("@@@");						// add Nothing to run command
-		}												
-
-		Basic.theProgramRunner = new Intent(this, Run.class);		//now go run the program
-		Basic.theRunContext = null;                      			// Run will set theRunContext to non-null value
-		SyntaxErrorDisplacement = -1 ;
+		Basic.theProgramRunner = new Intent(this, Run.class);	// now go run the program
+		Basic.theRunContext = null;								// Run will set theRunContext to non-null value
+		SyntaxErrorDisplacement = -1;
 
 		startActivity(Basic.theProgramRunner);
-    }
+	}
 
 
 
-    private void loadFile() {
+	private void loadFile() {
 		if (!Basic.checkSDCARD('r')) {							// Make sure SD card is present. If not, popup
-			CharSequence text = "External storage not available.";		// some toast and do not go to LoadFile
+			CharSequence text = "External storage not available.";	// some toast and do not go to LoadFile
 			Toast.makeText(this, text, Toast.LENGTH_LONG).show();
-			return;
-		} else {														// If the SD Card can be read
-    		Intent intent = new  Intent(this, LoadFile.class);			// Go to the LoadFile Activity
-    		startActivity(intent);    // Now go Load
-    	}
+		} else {												// If the SD Card can be read
+			Intent intent = new  Intent(this, LoadFile.class);	// Go to the LoadFile Activity
+			startActivity(intent);								// Now go Load
+		}
 	}
 
 	private void clearProgram() {
@@ -698,15 +688,17 @@ public class Editor extends Activity {
 
 
 		{														// Write to SD Card
-        	// First insure the SD Card is available and writable 
+			// First insure the SD Card is available and writable 
 
-        	if (!Basic.checkSDCARD('w')) {                                      // If can't use SD card, pop up some
-        		Basic.toaster(this, "External Storage not available or not writeable.");    // toast,
-        	} else {
+			if (!Basic.checkSDCARD('w')) {											// If can't use SD card, pop up some
+				Basic.toaster(this, "External Storage not available or not writeable.");	// toast,
+			} else {
 				//Write to SD Card
 				File sdDir = new File(Basic.getBasePath());
 				if (sdDir.exists() && sdDir.canWrite()) {
-					if (Basic.SD_ProgramPath.equals("Sample_Programs") || Basic.SD_ProgramPath.equals("/Sample_Programs")) Basic.SD_ProgramPath = "";
+					if (Basic.SD_ProgramPath.equals("Sample_Programs") || Basic.SD_ProgramPath.equals("/Sample_Programs")) {
+						Basic.SD_ProgramPath = "";
+					}
 					String PathA = "/" + Basic.AppPath + "/source/" + "/" + Basic.SD_ProgramPath;  // Base path
 					File lbDir = new File(sdDir.getAbsoluteFile() + PathA);
 					lbDir.mkdirs();													// make the dirs
@@ -715,7 +707,7 @@ public class Editor extends Activity {
 					xbDir.mkdirs();													// make the dirs
 					if (xbDir.exists() && xbDir.canWrite()) {
 						File file = new File(xbDir.getAbsoluteFile()
-											 + "/" + theFileName);									// add the filename
+											 + "/" + theFileName);					// add the filename
 						try {
 							file.createNewFile();
 						} catch (Exception e) {
@@ -725,7 +717,7 @@ public class Editor extends Activity {
 							FileWriter writer = null;
 
 							try {
-								writer = new FileWriter(file);							// write the program
+								writer = new FileWriter(file);						// write the program
 								for (int i=0; i < Basic.lines.size(); i++) {
 									writer.write(Basic.lines.get(i));
 									writer.write("\n");
@@ -746,14 +738,14 @@ public class Editor extends Activity {
 						}
 					}
 				}
-        	}
+			}
 
-        }
+		}
 
-    	Basic.ProgramFileName = theFileName;				// Set new Program file name
-    	setTitle(Name + Basic.ProgramFileName);
-		Basic.Saved = true;									// Indicate the program has been saved
-        Basic.InitialProgramSize = mText.length();			// Reset initial program size
+		Basic.ProgramFileName = theFileName;				// Set new Program file name
+		setTitle(Name + Basic.ProgramFileName);
+		InitialProgramSize = mText.length();				// Reset initial program size
+		Saved = true;										// Indicate the program has been saved
 	}
 
 	private void doAfterSave(Action afterSave) {

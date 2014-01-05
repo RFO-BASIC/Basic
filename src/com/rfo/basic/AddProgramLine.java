@@ -52,7 +52,7 @@ public class AddProgramLine {
 		Basic.lines = new ArrayList<String>();
 	}
 	
-	public void AddLine(String line, boolean doInclude) {
+	public void AddLine(String line) {
 		/* Adds one line to Basic.lines
 		 * Each line will have all white space characters removed and all characters
 		 * converted to lower case (unless they are within quotes).
@@ -97,18 +97,14 @@ public class AddProgramLine {
 			}
 		}
 
-		if (Temp.startsWith(kw_include)) {			// If include, 
-			if (doInclude) {
-				doInclude(Temp);					// Do the include
-				return;
-		//	} else {
-		//		Temp = Temp + " ... not allowed in an APK";
-			}
+		if (Temp.startsWith(kw_include)) {			// If include,
+			doInclude(Temp);						// Do the include
+			return;
 		}
 
-   		if (Temp.startsWith("rem")) {Temp = "";}		// toss out REM lines
-   		if (Temp.startsWith("!"))Temp = "";			// and pseudo rem lines
-   		if (Temp.startsWith("%"))Temp = "";			// and pseudo rem lines
+   		if (Temp.startsWith("rem")) { Temp = ""; }	// toss out REM lines
+   		if (Temp.startsWith("!"))   { Temp = ""; }	// and whole-line comments
+   		if (Temp.startsWith("%"))   { Temp = ""; }	// and end-of-line comments
    		if (!Temp.equals("")) {						// and empty lines
    			if (stemp.length() == 0) {					// whole line, or first line of a collection
    														// connected with continuation markers
@@ -254,7 +250,7 @@ public class AddProgramLine {
 		catch (Exception e) {}										// stream already closed if exception
 		if (buf == null) {
 			String t = "Error_Include_file (" + fileName + ") not_found";
-			AddLine(t, true);
+			AddLine(t);
 			return;
 		}
 
@@ -262,7 +258,7 @@ public class AddProgramLine {
 		do {
 			try { data = buf.readLine(); }
 			catch (IOException e) { data = null; }
-			AddLine(data, true); 								// add the line
+			AddLine(data);		 								// add the line
 		} while (data != null);									// while not EOF and no error
 	}
 

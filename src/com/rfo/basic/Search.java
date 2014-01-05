@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -157,7 +157,7 @@ public class Search extends Activity {
 					mChanged = !originalText.equals(Editor.DisplayText);// She may have edited it
 				}
 				if (mChanged) {
-					Basic.Saved = false;
+					Editor.Saved = false;
 				}
         	   if (nextIndex < 0 ) nextIndex = 0;						// If nextIndex indicates done, then set to start
         	   if (Index < 0) Index = 0;								// If Index indicates not found, set to start

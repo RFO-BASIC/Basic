@@ -87,8 +87,6 @@ public class Basic extends ListActivity  {
 
 	public static ArrayList<String> lines;       //Program lines for execution
 
-	public static Boolean Saved;				// False when program has changed and not saved
-	public static int InitialProgramSize;		// Used to determine if program has changed
 	public static String ProgramFileName;		// Set when program loaded or saved
 
 	public static Context BasicContext;			// saved so we do not have to pass it around
@@ -169,8 +167,6 @@ public class Basic extends ListActivity  {
 
 		DoAutoRun = false;
 
-		Saved = true;
-		InitialProgramSize = 0;
 		ProgramFileName = "";
 		theProgramRunner = null;
 	}
@@ -290,20 +286,14 @@ public class Basic extends ListActivity  {
     	}
 
     }
-    
-    public static void clearProgram(){
-    	
-      lines = new ArrayList<String>();					// The lines array list is the program
-      String theString = "";								
-      lines.add(theString);								// add an empty string to lines
-	   Editor.DisplayText="REM Start of BASIC! Program\n";      // Display text is the editors program storage for display
-       Basic.InitialProgramSize = Editor.DisplayText.length();  // Save the initial program size.
-       															// This value will be used to determine if the program
-       															// has changed.
-      Saved = true;												// Indicates that the program has been saved.
-    }
-    
-    
+
+	public static void clearProgram(){
+
+		lines = new ArrayList<String>();					// The lines array list is the program
+		lines.add("");										// add an empty string to lines
+		Editor.DisplayText="REM Start of BASIC! Program\n";	// Display text is the editors program storage for display
+	}
+
     private static boolean AreSamplesLoaded(){		// Sample program files have not been loaded
     												// if the sample programs directory is empty
     	String samplesPath = getSamplesPath("");	// get path with trailing '/'
@@ -424,6 +414,61 @@ public class Basic extends ListActivity  {
 			}
 		}
 		return buf;
+	}
+
+	public static int loadProgramFileToList(String path, ArrayList<String> list) {
+
+		int size = 0;
+		File file = new File(path);										// full path to the file to load
+		BufferedReader buf = null;
+		try { buf = getBufferedReader(path); }
+		catch (Exception e) { return size; }
+
+		// Read the file. Insert the the lines into the ArrayList.
+		String data = null;
+		do {
+			try { data = buf.readLine(); }
+			catch (IOException e) { data = null; }
+			if (data != null) {
+				list.add(data);											// add the line
+				size += data.length() + 1;
+			}
+		} while (data != null);											// while not EOF and no error
+
+		if (list.isEmpty()){
+			list.add("!");
+			size = 2;
+		}
+		return size;
+	}
+
+	public static String loadProgramListToString(ArrayList<String> list, int size) {
+		StringBuilder sb = new StringBuilder(size);
+		for (String line : list)	 {									// Copy the lines to the String
+			sb.append(line + '\n');
+		}
+		return sb.toString();
+	}
+
+																// build program in Basic.lines
+	public static void loadProgramFromString(String text, AddProgramLine APL) {
+		if (APL == null) { APL = new AddProgramLine(); }
+		StringBuilder sb = new StringBuilder();
+		int length = text.length();
+		int offset = AddProgramLine.charCount;
+		for (int k = 0; k < length; ++k) {
+			char c = text.charAt(k);							// grab the display text
+			if (c == '\n') {
+				AddProgramLine.charCount = k + offset;			// and add it to Basic.Lines
+				APL.AddLine(sb.toString());						// with some editing
+				sb.setLength(0);
+			} else {
+				sb.append(c);
+			}
+		}
+		if (sb.length() != 0) {									// if last line has no newline
+			 APL.AddLine(sb.toString());						// add the line now
+		}
 	}
 
 	public static IOException closeStreams(InputStream in, OutputStream out) {
@@ -689,8 +734,6 @@ public class Basic extends ListActivity  {
 					"program.\n\n"+
 					"!!"
 					;  // Initialize the Display Program Lines
-			Basic.InitialProgramSize = Editor.DisplayText.length();
-			Saved = true;
 		}
 
 		private void LoadTheFile(){
@@ -708,7 +751,7 @@ public class Basic extends ListActivity  {
 
 			try {
 				while ((line = buffreader.readLine()) != null) {			// Read and write one line at a time
-					APL.AddLine(line, true);								// add the line to memory
+					APL.AddLine(line);										// add the line to memory
 					++count;
 					if (count >= 200) {										// Show progress every 200 lines.
 						publishProgress(mProgressMarker);

@@ -15387,8 +15387,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean executeRUN(){
 
-		if (Basic.isAPK) { return RunTimeError("Run not permitted in a compiled apk"); }
-
 		if (!getStringArg()) { return false; }								// get program filename
 		String fileName = StringConstant;
 
@@ -15400,8 +15398,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (!checkEOL()) { return false; }
 
 		String fn = Basic.getSourcePath(fileName);
-		File file = new File(fn);
-		if (!file.exists()) {												// error if the program file does not exist
+		boolean exists = ( (!Basic.isAPK && new File(fn).exists()) ||		// standard BASIC can't run resource
+						   (Basic.isAPK && (getRawResourceID(fn) != 0)) );	// APK can't run file
+		if (!exists) {														// error if the program file does not exist
 			return RunTimeError(fileName + " not found");
 		}
 

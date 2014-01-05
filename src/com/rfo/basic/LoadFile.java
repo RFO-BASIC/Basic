@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -27,17 +27,14 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
 import android.app.ListActivity;
 import android.os.Bundle;
 import android.util.Log;
+
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
@@ -173,92 +170,38 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
 		return true;												// if none of the above, it is a file
 	}
 
-	private void  FileLoader(String aFileName){							// Loads the selected file
-		
-		// The user has selected a file to load, load it.
+	private void FileLoader(String aFileName) {					// The user has selected a file to load, load it.
 
-		Basic.ProgramFileName=aFileName;
-		BufferedReader buf = null;
-		boolean FileNotFound = false;
+		Basic.clearProgram(); 				// Clear the old program
+		Editor.DisplayText = "";			// Clear the display text buffer
 
-    																	//Write to SD Card
+		Basic.ProgramFileName = aFileName;
 
 		String FullFileName = Basic.getSourcePath( 							// Base Source dir 
-			  	Basic.SD_ProgramPath + 										// plus load path
-			  	"/" + 
-			  	aFileName);													// plus filename
-		File file = new File(FullFileName);									// is full path to the file to load
+				Basic.SD_ProgramPath + File.separatorChar +					// plus load path
+				aFileName);													// plus filename
 
-			  try{ buf = new BufferedReader(new FileReader(file), 8096);}	// Open the reader.
-			  catch(FileNotFoundException e){								// FNF should never happen
-				  Log.e(LoadFile.LOGTAG, e.getMessage(), e);
-				  FileNotFound = true;
-				  };
-			  
-		  
-		  									// File now opened
-		String data = null;
-		Basic.clearProgram(); 				// Clear the old program      
-        Basic.lines.remove(0);				// Remove the the first line created by ClearProgam
-    	Editor.DisplayText = "";			// Clear the display text buffer
-    	
-    	// read the file. Insert the the lines into Basic.lines.
-//    	Log.v(LoadFile.LOGTAG, " " + LoadFile.CLASSTAG + " t1");
-    	int size = 0;
-     if (!FileNotFound){
-		do
-	        try {												// Read lines
-            	data = buf.readLine();
-	        	if (data == null){								// if null, say EOF
-            		data="EOF";
-        		}else {
-        			Basic.lines.add(data);						// add the line 
-        			size = size + data.length()+1;
-        		}
-             }
-        	catch (IOException e) {
-//				  Log.e(LoadFile.LOGTAG, e.getMessage(), e);
-        		data="EOF";
-        	}
-        	while (!data.equals("EOF"));						// while not EOF
-        														// File all read int
-        	if (Basic.lines.isEmpty()){
-        		Basic.lines.add("!");
-        	}
-     }else{
-    	 
-    	 // Special case of file not found and doing Launcher Shortcut
-    	 // Turn the program file into an error message
-    	 // and act as if we loaded a file
-    	 
-    	 Basic.lines.add("! Auto Run Error: \"" + aFileName + "\" not found");
-    	 size = 30;
-     }
-     
-     // The file is now loaded into Basic.lines. Next we need to move it
-     // the lines into the Editor display buffer.
-// 	Log.v(LoadFile.LOGTAG, " " + LoadFile.CLASSTAG + " t2");
- 	StringBuilder sb = new StringBuilder(size);
-     
-        	String s = Basic.lines.get(0);						// Get the first line
-//        	Basic.lines.add(" ");                               // Insures DisplayText does not end up null
-//        	sb.append(' ');
-        	if (s.length()==0){Basic.lines.remove(0);}          // If is an empty line, toss it
-        	
-            for (String line : Basic.lines){					// Copy the lines to the display buffer
-            	sb.append(line + '\n');
-//            	Editor.DisplayText = Editor.DisplayText+ line +"\n";
-                }
-//        	Log.v(LoadFile.LOGTAG, " " + LoadFile.CLASSTAG + " t3");
-        	Editor.DisplayText = sb.toString();
-            
-            Basic.InitialProgramSize = Editor.DisplayText.length();		// Save the initial size for changed
-            Basic.Saved =true;											// check
-            if (Editor.mText == null) {
-            	throw new RuntimeException("LoadFile: Editor.mText null");
-            }
-            Editor.mText.setText(Editor.DisplayText);
-            finish();													// LoadFile is done
+		ArrayList<String> lines = new ArrayList<String>();
+		int size = Basic.loadProgramFileToList(FullFileName, lines);		// is full path to the file to load
+		if (size == 0) {					// File not found - this should never happen
+			// Turn the program file into an error message
+			// and act as if we loaded a file.
+			String msg = "! Load Error: \"" + aFileName + "\" not found";
+			lines.add(msg);
+			size = msg.length() + 1;
+		}
+
+		// The file is now loaded into a String ArrayList. Next we need to move
+		// the lines into the Editor display buffer.
+
+		Editor.DisplayText = Basic.loadProgramListToString(lines, size);
+		Editor.InitialProgramSize = Editor.DisplayText.length();		// Save the initial size for changed check
+		Editor.Saved = true;
+		if (Editor.mText == null) {
+			throw new RuntimeException("LoadFile: Editor.mText null");
+		}
+		Editor.mText.setText(Editor.DisplayText);
+		finish();													// LoadFile is done
 	}
 
 }
