@@ -244,9 +244,8 @@ public class AddProgramLine {
 
 	private void doInclude(String fileName) {
 		fileName = fileName.substring(kw_include.length()).trim();
-		String path = Basic.getSourcePath(fileName);				// Base Source dir + filename
 		BufferedReader buf = null;
-		try { buf = Basic.getBufferedReader(path); }
+		try { buf = Basic.getBufferedReader(Basic.SOURCE_DIR, fileName); }
 		catch (Exception e) {}										// stream already closed if exception
 		if (buf == null) {
 			String t = "Error_Include_file (" + fileName + ") not_found";

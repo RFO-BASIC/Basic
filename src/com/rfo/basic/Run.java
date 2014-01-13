@@ -50,6 +50,7 @@ import java.io.Flushable;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
@@ -121,6 +122,8 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.AssetFileDescriptor;
+import android.content.res.Resources.NotFoundException;
 //import android.content.ClipboardManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -980,31 +983,28 @@ public class Run extends ListActivity {
     	"length", "release", "pause",
     	"isdone", "record.start", "record.stop"
     };
-    
-    public static final int audio_load = 0;
-    public static final int audio_play = 1;
-    public static final int audio_loop = 2;
-    public static final int audio_stop = 3;
-    public static final int audio_volume = 4;
-    public static final int audio_pcurrent = 5;
-    public static final int audio_pseek = 6;
-    public static final int audio_length = 7;
-    public static final int audio_release = 8;
-    public static final int audio_pause = 9;
-    public static final int audio_isdone = 10;
-    public static final int audio_record_start = 11;
-    public static final int audio_record_stop = 12;
-    public static final int audio_none = 98;
-    
-    public static Uri theURI = null;
-    public static MediaPlayer theMP = null;
-    public static String MPfilename ="";
-    public static ArrayList<MediaPlayer> theMPList;
-    public static ArrayList<Uri> theMpUriList;
-    public static ArrayList<Integer> theMpResIDList;
-    public static boolean seekComplete;
-    public static boolean PlayIsDone;
-    public MediaRecorder mRecorder = null;    
+
+    private static final int audio_load = 0;
+    private static final int audio_play = 1;
+    private static final int audio_loop = 2;
+    private static final int audio_stop = 3;
+    private static final int audio_volume = 4;
+    private static final int audio_pcurrent = 5;
+    private static final int audio_pseek = 6;
+    private static final int audio_length = 7;
+    private static final int audio_release = 8;
+    private static final int audio_pause = 9;
+    private static final int audio_isdone = 10;
+    private static final int audio_record_start = 11;
+    private static final int audio_record_stop = 12;
+    private static final int audio_none = 98;
+
+    private static MediaPlayer theMP = null;
+    private static ArrayList<MediaPlayer> theMPList;
+    private static ArrayList<String> theMPNameList;
+    private static boolean PlayIsDone;
+    private MediaRecorder mRecorder = null;
+
     // ******************************* Variables for Sensor Commands **********************************
 
     private SensorActivity theSensors;
@@ -2098,20 +2098,14 @@ private void InitVars(){
     OnTouchLine = 0;
     Touched = false;
 
-    
     // ********************************* Variables for Audio Commands
-    
-    theURI = null;
+
     theMP = null;
-    MPfilename ="";
     theMPList = new ArrayList<MediaPlayer>();
-    theMpUriList = new ArrayList<Uri>() ;
-    theMpUriList.add(null);
-    theMPList.add(null);
-    theMpResIDList = new ArrayList<Integer>();
-    theMpResIDList.add(0);
- 
-    
+    theMPNameList = new ArrayList<String>();
+    theMPList.add(null);		// We don't use the [0] element of these Lists
+    theMPNameList.add(null);
+
     // ******************************* Variables for Sensor Commands **********************************
 
     theSensors = null;
@@ -2233,6 +2227,18 @@ public void cleanUp(){
 	ttsStop();
 
 	myVib.cancel();
+
+	if (theMP != null) {
+		theMP.release();
+		theMP = null;
+	}
+	if (theMPList != null) {
+		for (MediaPlayer mp : theMPList) {
+			if (mp != null) { mp.release(); }
+		}
+		theMPList = null;
+		theMPNameList = null;
+	}
 
 	if (theSensors != null) {
 		theSensors.stop();
@@ -7052,12 +7058,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		FileEntry.putInt("position", 1);
 		FileEntry.putBoolean("isText", true);
 
-		File file = new File(Basic.getDataPath(fileName));
-
 		if (FileMode == FMR) {											// Read was selected
 			BufferedReader buf = null;
-			try { buf = Basic.getBufferedReader(file.getPath()); }		// closes stream if error on mark()
-			catch (Exception e) { return RunTimeError(e); }
+			try { buf = Basic.getBufferedReader(Basic.DATA_DIR, fileName); } // closes stream if error on mark()
+			catch (FileNotFoundException ex1) { }
+			catch (NotFoundException ex2) { }
+			catch (Exception e) { return RunTimeError("Problem: " + e + " at:"); } // Something other than not found (?)
 			if (buf == null) {
 				if (Basic.isAPK) {
 					return false;
@@ -7073,6 +7079,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		}
 
 		else if (FileMode == FMW) {										// Write Selected
+			File file = new File(Basic.getDataPath(fileName));
 			if (append && file.exists()) {
 				FileEntry.putInt("position", (int) file.length()+1);
 			} else {										// if not appending overwrite existing file
@@ -7384,20 +7391,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 					URLConnection connection = url.openConnection();
 					buf = new BufferedInputStream(connection.getInputStream());
 				} catch (Exception e) {
-					RunTimeError("Problem: " + e + " at:");
-					return false;
+					return RunTimeError("Problem: " + e + " at:");
 				}
 			} else {
-				File file = new File(Basic.getDataPath(fileName));
-				try {
-					buf = Basic.getBufferedInputStream(file.getPath());
-					if (buf != null) { buf.mark((int)file.length()); }
-				} catch (IOException ie) {
-					return RunTimeError(closeStream(buf, ie));				// Report first exception, if any, and if no previous RTE set
-				} catch (Exception e) {
-					closeStream(buf, null);
-					return RunTimeError(e);
-				}
+				try { buf = Basic.getBufferedInputStream(Basic.DATA_DIR, fileName); }
+				catch (FileNotFoundException ex1) { }
+				catch (NotFoundException ex2) { }
+				catch (Exception e) { return RunTimeError("Problem: " + e + " at:"); } // Something other than not found (?)
 				if (buf == null) {
 					if (Basic.isAPK) {
 						return false;
@@ -7968,9 +7968,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		IOException ioex = null;
 		Exception ex = null;
 
-		String path = Basic.getDataPath(theFileName);				// Add the filename to the base path
 		try {
-			bis = Basic.getBufferedInputStream(path);
+			bis = Basic.getBufferedInputStream(Basic.DATA_DIR, theFileName);
 			result = grabStream(bis, textFlag);
 		}
 		catch (IOException ie) { ioex = ie; }
@@ -10175,16 +10174,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (!checkEOL()) return false;
 
 		String fileName = StringConstant;								// The filename as given by the user
-		File file = new File(Basic.getDataPath(fileName));
 		BufferedInputStream bis = null;									// Establish an input stream
-		try { bis = Basic.getBufferedInputStream(file.getPath()); }
+		try { bis = Basic.getBufferedInputStream(Basic.DATA_DIR, fileName); }
 		catch (Exception e) { return RunTimeError(e); }
 		if (bis == null) { return RunTimeError("No bitmap found"); }	// Can this happen?
 
 		System.gc();													// Garbage collect
 
 		aBitmap = BitmapFactory.decodeStream(bis);				// Create bitmap from the input stream
-		
+
 		try { bis.close(); }
 		catch (Exception e) { return RunTimeError(e); }
 
@@ -11143,7 +11141,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		  return false;									      // report fail
 
 	  		}
-	  	  
+
+	private MediaPlayer getMP(String fileName) {
+		MediaPlayer mp = null;
+		File file = new File(Basic.getDataPath(fileName));
+		if (file.exists()) {
+			Uri uri = Uri.fromFile(file);								// Create Uri for the file
+			if (uri != null) {
+				mp = MediaPlayer.create(Basic.BasicContext, uri);		// Create a new Media Player
+			}
+		} else {														// the file does not exist
+			if (Basic.isAPK) {											// we are in APK
+				int resID = getRawResourceID(fileName);					// try to load the file from a raw resource
+				if (resID != 0) {
+					mp = MediaPlayer.create(Basic.BasicContext, resID);
+				}
+			}
+		}
+		return mp;
+	}
+
 	private boolean execute_audio_load(){
 		  /* If there is already an audio running,
 		   * then stop it and 
@@ -11156,9 +11173,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			  theMP = null;
 		  }*/
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
-//		  AudioManager audioSM = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
-		MediaPlayer aMP = null;
-		  
+//		AudioManager audioSM = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+
 		if (!getNVar()) return false;									// Get the Player Number Var
 		int saveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
@@ -11167,137 +11183,79 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (!checkEOL()) return false;
 
 		String fileName = StringConstant;								// The filename as given by the user
-		File file = new File(Basic.getDataPath(fileName));
+		MediaPlayer aMP = getMP(fileName);
 
-		Uri theURI = null;
-		int resID = 0;
-		if (file.exists()) {
-			try {
-				theURI = Uri.fromFile(file);							// Create Uri for the file
-				if (theURI == null) {
-					RunTimeError(StringConstant + "Not Found at:");
-					return false;
-				}
-				aMP = MediaPlayer.create(Basic.BasicContext, theURI);	// Create a new Media Player
-			} catch (Exception e) {
-				return RunTimeError(e);
-			}
-		} else {														// file does not exist
-			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
-				resID = getRawResourceID(fileName);						// try to load the file from a raw resource
-				if (resID == 0) { return false; }
-				aMP = MediaPlayer.create(Basic.BasicContext, resID);
-			}															// else standard BASIC!, aMP is still null
+		if (aMP == null) { return RunTimeError(fileName + "Not Found at:"); }
+		aMP.setAudioStreamType(AudioManager.STREAM_MUSIC);
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
+		NumericVarValues.set(saveValueIndex, (double)theMPList.size());
+		theMPList.add(aMP);
+		theMPNameList.add(fileName);
+		return true;
+	}
+
+	private boolean execute_audio_release(){
+
+		if (!evalNumericExpression()) return false;
+		int index = EvalNumericExpressionValue.intValue();
+		if (index <= 0 || index >= theMPList.size()) {
+			return RunTimeError("Invalid Player List Value");
 		}
+		if (!checkEOL()) return false;
 
-		   if (aMP == null){
-			   RunTimeError(StringConstant + "Not Found at:");
-			   return false;
-		   }
-		   
-		   aMP.setAudioStreamType(AudioManager.STREAM_MUSIC);
-		   setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		   
-		   NumericVarValues.set(saveValueIndex, (double) theMPList.size());
-		   theMPList.add(aMP);
-		   theMpUriList.add(theURI);
-		   theMpResIDList.add(resID);
+		MediaPlayer aMP = theMPList.get(index);
+		if (aMP == null) return true;
+
+		if (theMP == aMP) { return RunTimeError("Must stop player before releasing"); }
+
+		aMP.release();
+		theMPList.set(index, null);
 
 		return true;
 	}
-	  
-	  private boolean execute_audio_release(){
 
-		  if (!evalNumericExpression()) return false;
-		  double d = EvalNumericExpressionValue;
-		  int index = (int) d;
-		  if (index <=0 || index >= theMPList.size()){
-			  RunTimeError("Invalid Player List Value");
-			  return false;
-		  }
-		  
-		  if (!checkEOL()) return false;
+	private boolean execute_audio_play(){
 
-		  MediaPlayer aMP = theMPList.get(index);
-		  if (aMP == null) return true;
-		  
-		  if (theMP == aMP) {
-			  RunTimeError("Must stop player before releasing");
-			  return false;
-		  }
-		  
-		  aMP.release();
-		  theMPList.set(index, null);
+		if (!evalNumericExpression()) return false;
+		int index = EvalNumericExpressionValue.intValue();
+		if (index <= 0 || index >= theMPList.size()) {
+			return RunTimeError("Invalid Player List Value");
+		}
+		if (!checkEOL()) return false;
 
-		  return true;
-	  }
-	  
-	  private boolean execute_audio_play(){
-		  
-		  if (!evalNumericExpression()) return false;
-		  double d = EvalNumericExpressionValue;
-		  int index = (int) d;
-		  if (index <=0 || index >= theMPList.size()){
-			  RunTimeError("Invalid Player List Value");
-			  return false;
-		  }
-			
-		  if (!checkEOL()) return false;
-		  
-		  MediaPlayer aMP = theMPList.get(index);
-		  if (aMP == null){
-			  RunTimeError("Audio not loaded at:");
-			   return false;			  
-		  }
-		  
-		  if (theMP != null){
-			  RunTimeError("Stop Current Audio Before Starting New Audio");
-			   return false;			  
-		  }
-		  
-		  setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		  
-		  theMP = aMP;
-//		  Log.v(LOGTAG, CLASSTAG + " play " + theMP);
-		  try {theMP.prepare();}
-		  catch (Exception e) {
-//				return RunTimeError(e);
-		  }
-		  theMP.start();
-		  
-		  if (!theMP.isPlaying()){
-			  
-			  Uri thisUri = theMpUriList.get(index);
-			  if (thisUri == null) {
-				  int id = theMpResIDList.get(index);
-				  aMP = MediaPlayer.create(Basic.BasicContext, id);
-			  }
-			  else {
-				  aMP = MediaPlayer.create(Basic.BasicContext, thisUri);
-			  }
-			  if (aMP == null){
-				  RunTimeError("Media player synchronous problem.");
-				  return true;
-			  }
-			  theMPList.set(index, aMP);
-			  theMP.release();
-			  theMP = aMP;
-			  theMP.start();
-		  }
-		  
-		  PlayIsDone = false;
-		  
-		  theMP.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-			
+		MediaPlayer aMP = theMPList.get(index);
+		if (aMP == null) { return RunTimeError("Audio not loaded at:"); }
+		if (theMP != null) { return RunTimeError("Stop Current Audio Before Starting New Audio"); }
+
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+//		Log.v(LOGTAG, CLASSTAG + " play " + aMP);
+
+		try { aMP.prepare(); } catch (Exception e) { }
+		aMP.start();
+
+		if (!aMP.isPlaying()) {								// Somehow lost the player. Make a new one.
+			aMP.release();
+			aMP = getMP(theMPNameList.get(index));
+			if (aMP == null) {
+				RunTimeError("Media player synchronous problem.");
+				return true;								// Is this correct?
+			}
+			theMPList.set(index, aMP);
+			aMP.start();
+		}
+
+		aMP.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
 			public void onCompletion(MediaPlayer mp) {
 				PlayIsDone = true;
-				}
-		  });
+			}
+		});
+//		Log.v(LOGTAG, CLASSTAG + " is playing " + theMP.isPlaying());
+		PlayIsDone = false;
+		theMP = aMP;
 
-//		  Log.v(LOGTAG, CLASSTAG + " is playing " + theMP.isPlaying());
-		  
-		  return true;
-	  }
+		return true;
+	}
 
 	private boolean execute_audio_isdone(){
 		if (!getNVar()) return false;	
@@ -15407,11 +15365,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		Bundle bb = new Bundle();
 		bb.putString("fn", fn);
 		bb.putString("data", data);
+		bb.putBoolean("RUN", true);											// tell AutoRun this is a RUN command
 
 		Intent intent = new Intent(this, AutoRun.class);
 		intent.putExtras(bb);
 
-		Basic.DoAutoRun = false;
 		startActivity(intent);
 		finish();
 

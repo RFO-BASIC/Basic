@@ -43,6 +43,9 @@ public class AutoRun extends Activity {
 	private static final String CLASSTAG = AutoRun.class.getSimpleName();
 //	Log.v(AutoRun.LOGTAG, " " + AutoRun.CLASSTAG + " String Var Value =  " + d);
 
+	private boolean fromRun;						// false if started by shortcut,
+													// true if started by RUN command
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -53,9 +56,11 @@ public class AutoRun extends Activity {
 
 		Intent intent = getIntent();
 		Bundle b = intent.getExtras();
+		fromRun = false;											// assume shortcut
 
 		boolean fileFound;
 		if (b != null) {											// If bundle is not empty
+			fromRun = b.getBoolean("RUN", false);					// from RUN command?
 			String fn = b.getString("fn");							// then go load the file
 			fileFound = FileLoader(fn);
 		} else {													// if bundle is empty
@@ -75,8 +80,8 @@ public class AutoRun extends Activity {
 
 			AddProgramLine APL = new AddProgramLine();				// creates new Basic.lines
 
-			if (!Basic.DoAutoRun) {
-				String data = b.getString("data");
+			String data = b.getString("data");						// RUN command can add a data string
+			if (data != null) {
 				data = "##$=\"" + data + "\"";
 				AddProgramLine.charCount = data.length();
 				APL.AddLine(data);
@@ -100,17 +105,23 @@ public class AutoRun extends Activity {
 
 	private boolean FileLoader(String aFileName) {					// Loads the selected file
 
+		// File name from old-style shortcut starts with "/source/".
+		// File name from new-style shortcut is full absolute path.
+		// File name from RUN command is full absolute path.
+
 		if (aFileName == null) aFileName = " ";
 
 		boolean baseDriveChanged = false;
-		String filePath = Basic.getFilePath();
-		int z = aFileName.indexOf(filePath);
-		if (z == -1) {
-			if (aFileName.startsWith("/source/"))					// Legacy shortcut
-				aFileName = filePath + aFileName;
-			else {
-				baseDriveChanged = true;
-				//aFileName = " fubar";
+		if (!fromRun) {												// file name from shortcut may need massage
+			String filePath = Basic.getFilePath();
+			int z = aFileName.indexOf(filePath);
+			if (z == -1) {
+				if (aFileName.startsWith("/source/"))				// Legacy shortcut
+					aFileName = filePath + aFileName;
+				else {
+					baseDriveChanged = true;
+					//aFileName = " fubar";
+				}
 			}
 		}
 

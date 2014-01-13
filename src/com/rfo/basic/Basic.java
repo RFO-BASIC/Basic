@@ -70,8 +70,8 @@ public class Basic extends ListActivity  {
 	private static final String LOGTAG = "Basic";
 	private static final String CLASSTAG = Basic.class.getSimpleName();
 
-	private static final String SOURCE_DIR    = "source";
-	private static final String DATA_DIR      = "data";
+	public  static final String SOURCE_DIR    = "source";
+	public  static final String DATA_DIR      = "data";
 	private static final String DATABASES_DIR = "databases";
 	public  static final String SAMPLES_DIR   = "Sample_Programs";
 	private static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
@@ -114,7 +114,7 @@ public class Basic extends ListActivity  {
 		if (basePath.equals("none"))
 			basePath = Environment.getExternalStorageDirectory().getPath();
 		Basic.basePath = basePath;
-		Basic.filePath = basePath + "/" + AppPath;
+		Basic.filePath = basePath + File.separatorChar + AppPath;
 	}
 
 	public static String getBasePath() {
@@ -129,8 +129,8 @@ public class Basic extends ListActivity  {
 		// if (!subPath.startsWith("/"))	uncomment to enable absolute paths
 		{
 			StringBuilder path = new StringBuilder(filePath);
-			if (subdir != null) { path.append('/').append(subdir); }
-			if (subPath != null) { path.append('/').append(subPath); }
+			if (subdir != null) { path.append(File.separatorChar).append(subdir); }
+			if (subPath != null) { path.append(File.separatorChar).append(subPath); }
 			subPath = path.toString();
 		}
 		return subPath;
@@ -372,8 +372,19 @@ public class Basic extends ListActivity  {
 		return resID;
 	}
 
-	public static BufferedReader getBufferedReader(String path) throws Exception {
-		File file = new File(path);
+	public static InputStream streamFromResource(String dir, String path) throws Exception {
+		InputStream inputStream = null;
+		int resID = getRawResourceID(path);
+		if (resID != 0) {
+			Resources res = Basic.BasicContext.getResources();			// open an input stream from raw resource
+			inputStream = res.openRawResource(resID);					// this call may throw NotFoundException
+		}
+		return inputStream;
+	}
+
+	public static BufferedReader getBufferedReader(String dir, String path) throws Exception {
+		File file = new File((dir == null)	? path						// no dir, use path as given
+											: getFilePath(dir, path));	// dir is SOURCE_DIR, DATA_DIR, etc
 		BufferedReader buf = null;
 		if (file.exists()) {
 			try {
@@ -386,32 +397,24 @@ public class Basic extends ListActivity  {
 				throw ex;												// throw first exception
 			}
 		} else if (isAPK) {
-			int resID = getRawResourceID(file.getName());
-			if (resID != 0) {
-				Resources res = Basic.BasicContext.getResources();		// open an input stream from raw resource
-				InputStream inputStream = res.openRawResource(resID);	// this call may throw NotFoundException
-				buf = new BufferedReader(new InputStreamReader(inputStream));
-				// TODO: how to mark a buffered resource stream?
-			}
+			InputStream inputStream = streamFromResource(dir, path);
+			if (inputStream != null) { buf = new BufferedReader(new InputStreamReader(inputStream)); }
+			// TODO: how to mark a non-file buffered stream?
 		}
 		return buf;
 	}
 
-	public static BufferedInputStream getBufferedInputStream(String path) throws IOException {
-		File file = new File(path);
+	public static BufferedInputStream getBufferedInputStream(String dir, String path) throws Exception {
+		File file = new File((dir == null)	? path						// no dir, use path as given
+											: getFilePath(dir, path));	// dir is SOURCE_DIR, DATA_DIR, etc
 		BufferedInputStream buf = null;
-		
 		if (file.exists()) {
 			buf = new BufferedInputStream(new FileInputStream(file));	// open an input stream from the file
 			if (buf != null) buf.mark((int)file.length());				// this call can NOT throw any exception
 		} else if (isAPK) {
-			int resID = getRawResourceID(file.getName());
-			if (resID != 0) {
-				Resources res = Basic.BasicContext.getResources();		// open an input stream from raw resource
-				InputStream inputStream = res.openRawResource(resID);	// this call may throw NotFoundException
-				buf = new BufferedInputStream(inputStream);
-				// TODO: how to mark a buffered resource stream?
-			}
+			InputStream inputStream = streamFromResource(dir, path);	// this call may throw an exception
+			if (inputStream != null) { buf = new BufferedInputStream(inputStream); }
+			// TODO: how to mark a non-file buffered stream?
 		}
 		return buf;
 	}
@@ -419,9 +422,8 @@ public class Basic extends ListActivity  {
 	public static int loadProgramFileToList(String path, ArrayList<String> list) {
 
 		int size = 0;
-		File file = new File(path);										// full path to the file to load
 		BufferedReader buf = null;
-		try { buf = getBufferedReader(path); }
+		try { buf = getBufferedReader(null, path); }					// full path to the file to load
 		catch (Exception e) { return size; }
 
 		// Read the file. Insert the the lines into the ArrayList.
@@ -519,6 +521,51 @@ public class Basic extends ListActivity  {
 		private Resources mRes;
 
 		@Override
+		protected void onPreExecute() {
+			mRes = BasicContext.getResources();
+			mLoadingMsg = mRes.getStringArray(R.array.loading_msg);
+			mProgressMarker = mRes.getString(R.string.progress_marker);
+			if ((mLoadingMsg != null) && (mLoadingMsg.length != 0)) {
+				for (String s : mLoadingMsg) { output.add(s); }			// The message lines that tell what we are doing.
+			}
+		}
+
+		private final int CHAR_PER_LINE = 20;							// Number of dots per line
+		private final int LINES_PER_UPDATE = 30;						// Number of line between Progress Messages
+		private int maxUpdateCount = 0;									// Change to maximum number of progress messages, if known.
+		private int lineCount = 0;
+
+		@Override
+		protected void onProgressUpdate(String... str) {				// Called when publishProgress() is executed.
+			for (String s : str) {										// Form line of CHAR_PER_LINE progress characters
+				int linenum = output.size() - 1;
+				s = output.get(linenum) + s;
+				output.set(linenum, s);
+
+				if (s.length() >= CHAR_PER_LINE) {						// After the CHAR_PER_LINEth character
+					++lineCount;										// output a new line
+
+					if ((lineCount % LINES_PER_UPDATE) == 0) {			// After every LINES_PER_UPDATE
+						StringBuilder msg = new StringBuilder();		// output a progress message
+
+						int updates = lineCount/LINES_PER_UPDATE;
+						if (maxUpdateCount != 0) {						// If the max is known
+							msg.append((updates * 100)/maxUpdateCount);	// convert progress to a percent
+							msg.append("%");
+						} else {
+							msg.append(updates);						// else just use the number of progress line
+						}
+						output.add("Continuing load (" + msg + ')');
+					}
+					output.add("");										// start a new line
+				}
+			}
+
+			setListAdapter(AA);						// show the output
+			lv.setSelection(output.size() - 1);		// set last line as the selected line to scroll
+		}
+
+		@Override
 		protected String doInBackground(String... str) {
 			if (isAPK) {
 				doBGforAPK();
@@ -552,50 +599,6 @@ public class Basic extends ListActivity  {
     	            finish();
 
     	        }
-
-		@Override
-		protected void onPreExecute() {
-			mRes = BasicContext.getResources();
-			mLoadingMsg = mRes.getStringArray(R.array.loading_msg);
-			mProgressMarker = mRes.getString(R.string.progress_marker);
-			if ((mLoadingMsg != null) && (mLoadingMsg.length != 0)) {
-				for (String s : mLoadingMsg) { output.add(s); }			// The message lines that tell what we are doing.
-			}
-		}
-
-		private final int CHAR_PER_LINE = 20;							// Number of dots per line
-		private final int LINES_PER_UPDATE = 30;						// Number of line between Progress Messages
-		private int maxUpdateCount = 0;									// Change to maximum number of progress messages, if known.
-		private int lineCount = 0;
-		@Override
-		protected void onProgressUpdate(String... str) {				// Called when publishProgress() is executed.
-			for (String s : str) {										// Form line of CHAR_PER_LINE progress characters
-				int linenum = output.size() - 1;
-				s = output.get(linenum) + s;
-				output.set(linenum, s);
-
-				if (s.length() >= CHAR_PER_LINE) {						// After the CHAR_PER_LINEth character
-					++lineCount;										// output a new line
-
-					if ((lineCount % LINES_PER_UPDATE) == 0) {			// After every LINES_PER_UPDATE
-						StringBuilder msg = new StringBuilder();		// output a progress message
-
-						int updates = lineCount/LINES_PER_UPDATE;
-						if (maxUpdateCount != 0) {						// If the max is known
-							msg.append((updates * 100)/maxUpdateCount);	// convert progress to a percent
-							msg.append("%");
-						} else {
-							msg.append(updates);						// else just use the number of progress line
-						}
-						output.add("Continuing load (" + msg + ')');
-					}
-					output.add("");										// start a new line
-				}
-			}
-
-			setListAdapter(AA);						// show the output
-			lv.setSelection(output.size() - 1);		// set last line as the selected line to scroll
-		}
 
 		private void LoadGraphics(){
 
@@ -740,12 +743,12 @@ public class Basic extends ListActivity  {
 
 			// Reads the program file from res/raw and puts it into memory
 			AddProgramLine APL = new AddProgramLine();
-			String ResName = mRes.getString(R.string.my_program);
-			int ResId = mRes.getIdentifier(ResName, "raw", BasicPackage);
-			InputStream inputStream = mRes.openRawResource(ResId);
-			InputStreamReader inputreader = new InputStreamReader(inputStream);
-			BufferedReader buffreader = new BufferedReader(inputreader, 8192);
+			String name = mRes.getString(R.string.my_program);
+			InputStream inputStream = null;
+			try { inputStream = streamFromResource(SOURCE_DIR, name); }
+			catch (Exception ex) { return; }								// If not found, give up
 
+			BufferedReader buffreader = new BufferedReader(new InputStreamReader(inputStream));
 			String line = "";
 			int count = 0;
 
