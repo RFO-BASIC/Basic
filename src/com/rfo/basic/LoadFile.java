@@ -182,7 +182,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
 				aFileName);													// plus filename
 
 		ArrayList<String> lines = new ArrayList<String>();
-		int size = Basic.loadProgramFileToList(FullFileName, lines);		// is full path to the file to load
+		int size = Basic.loadProgramFileToList(true, FullFileName, lines);	// is full path to the file to load
 		if (size == 0) {					// File not found - this should never happen
 			// Turn the program file into an error message
 			// and act as if we loaded a file.

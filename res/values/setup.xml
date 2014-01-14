@@ -43,7 +43,7 @@ This file is part of BASIC! for Android
     <!-- If APK needs a /database/ directory, set true -->
     <bool name="apk_create_database_dir">true</bool>
 
-    <!-- The BASIC! program in a res/raw resource to build into the APK -->
+    <!-- The BASIC! program resource to build into the APK -->
     <string name="my_program">my_program</string>
 
     <!-- The default Console and TEXT.INPUT titles -->
@@ -68,20 +68,13 @@ This file is part of BASIC! for Android
     <string name="progress_marker">.</string>
 
     <!--
-        If there are any files that need to be copied from raw resources into the data directory,
-        list them here. Most APKs can leave their files in raw resources and not copy them.
-        The various run commands will detect the situation and read the files from the raw resources.
-        Note: If the filename has the ".db" extension, it will be loaded into the /databases/ directory.
+        If there are any files that need to be copied from the assets directory
+        into the file system, list them here. Most APKs can leave their files
+        in assets and not copy them. The various run commands will detect the
+        situation and read the files from assets. Note: If the filename has the
+        ".db" extension, it will be loaded into the /databases/ directory.
     -->
     <string-array name="load_file_names">
-        <item>boing.mp3</item>
-        <item>cartman.png</item>
-        <item>meow.wav</item>
-        <item>fly.gif</item>
-        <item>galaxy.png</item>
-        <item>whee.mp3</item>
-        <item>htmldemo1.html</item>
-        <item>htmldemo2.html</item>
     </string-array>
 
 </resources>

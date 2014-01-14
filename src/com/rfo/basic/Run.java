@@ -7856,10 +7856,41 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		return true;
 	}
 
+	private long getResourceSize(String fileName) {
+		long size = -1;
+		int resID = Basic.getRawResourceID(fileName);
+		if (resID != 0) {
+			InputStream inputStream= null;
+			try {
+				inputStream = getResources().openRawResource(resID);
+				size = inputStream.available();
+			}
+			catch (Exception ex){ }							// eat exception and return -1
+			finally { closeStream(inputStream, null); }
+		}
+		return size;
+	}
+
+	private long getAssetSize(String fileName) {
+		long size = -1;
+		String path = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
+		AssetFileDescriptor afd = null;
+		try {
+			afd = getAssets().openFd(path);
+			size = afd.getLength();
+		}
+		catch (IOException ex1) { }							// eat exception and return -1
+		finally {
+			try { if (afd != null) { afd.close(); } }
+			catch (IOException ex2) { }
+		}
+		return size;
+	}
+
 	private boolean executeFILE_SIZE(){
 		if (!getNVar()) { return false; }					// get the var to put the size value into
 		int SaveValueIndex = theValueIndex;
-		double size = 0;
+		long size = -1;
 
 		if (!isNext(',')) { return false; }
 		if (!getStringArg()) { return false; }				// get the file name
@@ -7869,23 +7900,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (!checkSDCARD('r')) { return false; }
 
 		File file = new File(Basic.getDataPath(fileName));
-		if (!file.exists()) {								// the file does not exist
-			if (Basic.isAPK) {								// we are in APK -> try to get it from raw resources
-				int resID = getRawResourceID(fileName);
-				if (resID == 0) { return RunTimeError(fileName + " not found"); }
-				try {
-					InputStream inputStream = getResources().openRawResource(resID);
-					size = inputStream.available();
-				} catch (Exception e) {
-					return RunTimeError(e);
+		if (file.exists()) {
+			size = file.length();							// the file exists
+		} else {											// the file does not exist
+			if (Basic.isAPK) {								// we are in APK
+				size = getResourceSize(fileName);			// try to get it from raw resource
+				if (size == -1) {							// resource not found
+					size = getAssetSize(fileName);			// try to get it from assets
 				}
-			} else {													// standard BASIC! -> error
-				return RunTimeError(fileName + " not found");
 			}
-		} else {														// the file exists
-			size = file.length();
 		}
-		NumericVarValues.set(SaveValueIndex, size);			// Put the file size into the var
+		if (size == -1) {									// not file, resource, or asset
+			return RunTimeError(fileName + " not found");
+		}
+		NumericVarValues.set(SaveValueIndex, (double)size);	// Put the file size into the var
 
 		return true;
 	}
@@ -10157,14 +10185,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		return true;
 	}
 
-	private int getRawResourceID(String fileName) {
-		int resID = Basic.getRawResourceID(fileName);
-		if (resID == 0) {												// 0 is not a valid resource ID
-			RunTimeError("Error getting raw resource");
-		}
-		return resID;
-	}
-
 	private boolean execute_gr_bitmap_load(){
 		if (!getNVar()) return false;									// Graphic Bitmap Pointer Variable
 		int SaveValueIndex = theValueIndex;
@@ -11152,9 +11172,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			}
 		} else {														// the file does not exist
 			if (Basic.isAPK) {											// we are in APK
-				int resID = getRawResourceID(fileName);					// try to load the file from a raw resource
+				int resID = Basic.getRawResourceID(fileName);			// try to load the file from a raw resource
 				if (resID != 0) {
 					mp = MediaPlayer.create(Basic.BasicContext, resID);
+				} else try {											// try to load the file from assets
+					AssetFileDescriptor afd = getAssets().openFd(Basic.getAppFilePath(Basic.DATA_DIR, fileName));
+					mp = new MediaPlayer();
+					mp.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());
+					mp.prepare();
+					afd.close();
+				} catch (IOException ex) {
+					if (mp != null) {
+						mp.release();
+						mp = null;
+					}
 				}
 			}
 		}
@@ -14675,7 +14706,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		  
 		  return true;
 	  }
-	  
+
 	private boolean execute_SP_load(){
 		if (!getNVar()) return false;
 		int savedIndex = theValueIndex;
@@ -14685,22 +14716,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (!checkEOL()) return false;
 		String fileName = StringConstant;								// The filename as given by the user
 		String fn = Basic.getDataPath(fileName);
-		File file = new File(fn);
 
-		int SoundID = 0;
-		if (file.exists()) {
-			SoundID = theSoundPool.load(fn, 1);
-		} else {														// file does not exist
-			if (Basic.isAPK) {											// if not standard BASIC! then is user APK
-				int resID = getRawResourceID(fileName);					// try to load the file from a raw resource
-				if (resID == 0) { return false; }
-				SoundID = theSoundPool.load(Basic.BasicContext, resID, 1);
-			}															// else standard BASIC!, SoundID is 0
+		int SoundID = theSoundPool.load(fn, 1);
+		if (SoundID == 0) {												// if file does not exist
+			if (Basic.isAPK) {											// and this is a user APK
+				int resID = Basic.getRawResourceID(fileName);			// try to load the file from a raw resource
+				if (resID != 0) {
+					SoundID = theSoundPool.load(Basic.BasicContext, resID, 1);
+				} else try {
+					AssetFileDescriptor afd = getAssets().openFd(Basic.getAppFilePath(Basic.DATA_DIR, fileName));
+					SoundID = theSoundPool.load(afd, 1);
+				} catch (IOException ex) { }
+				if (SoundID == 0) { return false; }
+			}
 		}
 		NumericVarValues.set(savedIndex, (double) SoundID );
 		return true;
 	}
-	  
+
 	  private boolean execute_SP_play(){
 		  
 		  if (!getNVar()) return false;                        			// Stream return variable
@@ -15355,15 +15388,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		}
 		if (!checkEOL()) { return false; }
 
-		String fn = Basic.getSourcePath(fileName);
-		boolean exists = ( (!Basic.isAPK && new File(fn).exists()) ||		// standard BASIC can't run resource
-						   (Basic.isAPK && (getRawResourceID(fn) != 0)) );	// APK can't run file
-		if (!exists) {														// error if the program file does not exist
+		String path = Basic.getFilePath(Basic.SOURCE_DIR, fileName);
+		boolean exists = false;
+		if (!Basic.isAPK) { exists = new File(path).exists(); }				// standard BASIC can only RUN a file
+		else if (Basic.getRawResourceID(fileName) != 0) { exists = true; }	// APK can run resource
+		else try {															// or asset
+			String assetPath = Basic.getAppFilePath(Basic.SOURCE_DIR, fileName);
+			getAssets().openFd(assetPath); 									// exception if asset does not exist
+			exists = true;
+		} catch (IOException ex) { }
+		if (!exists) {														// error if the program does not exist
 			return RunTimeError(fileName + " not found");
 		}
 
 		Bundle bb = new Bundle();
-		bb.putString("fn", fn);
+		bb.putString("fn", fileName);										// without the path
 		bb.putString("data", data);
 		bb.putBoolean("RUN", true);											// tell AutoRun this is a RUN command
 

@@ -107,7 +107,7 @@ public class AutoRun extends Activity {
 
 		// File name from old-style shortcut starts with "/source/".
 		// File name from new-style shortcut is full absolute path.
-		// File name from RUN command is full absolute path.
+		// File name from RUN command is relative to "<AppPath>/source".
 
 		if (aFileName == null) aFileName = " ";
 
@@ -129,7 +129,7 @@ public class AutoRun extends Activity {
 		Editor.DisplayText = "";			// Clear the display text buffer
 
 		ArrayList<String> lines = new ArrayList<String>();
-		int size = Basic.loadProgramFileToList(aFileName, lines);
+		int size = Basic.loadProgramFileToList(!fromRun, aFileName, lines);
 		Boolean found = (size != 0);		// size is 0 if file not found
 		if (!found) {
 			// Special case of file not found and doing Launcher Shortcut.

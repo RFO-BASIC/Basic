@@ -30,6 +30,7 @@ package com.rfo.basic;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -91,7 +92,6 @@ public class Basic extends ListActivity  {
 
 	public static Context BasicContext;			// saved so we do not have to pass it around
 	public static Context theRunContext;
-	private String BasicPackage;
 
 	public static String SD_ProgramPath = "";	// Used by Load/Save
 	public static Intent theProgramRunner;
@@ -154,10 +154,17 @@ public class Basic extends ListActivity  {
 		return getFilePath(DATABASES_DIR, subPath);
 	}
 
+	public static String getAppFilePath(String subdir, String subPath) { // path for assets
+														// same as getFilePath() but no basePath
+		StringBuilder path = new StringBuilder(AppPath);
+		if (subdir != null) { path.append(File.separatorChar).append(subdir); }
+		if (subPath != null) { path.append(File.separatorChar).append(subPath); }
+		return path.toString();
+	}
+
 	private void initVars() {
 		// Some of these may not need initialization; if so I choose to err on the side of caution
 		BasicContext = getApplicationContext();
-		BasicPackage = BasicContext.getPackageName();
 
 		Resources res = getResources();
 		AppPath = res.getString(R.string.app_path);
@@ -378,6 +385,9 @@ public class Basic extends ListActivity  {
 		if (resID != 0) {
 			Resources res = Basic.BasicContext.getResources();			// open an input stream from raw resource
 			inputStream = res.openRawResource(resID);					// this call may throw NotFoundException
+		} else {
+			inputStream = Basic.BasicContext.getAssets().				// open an input stream from an asset
+							open(Basic.getAppFilePath(dir, path));		// this call may throw IOException
 		}
 		return inputStream;
 	}
@@ -419,11 +429,17 @@ public class Basic extends ListActivity  {
 		return buf;
 	}
 
-	public static int loadProgramFileToList(String path, ArrayList<String> list) {
+	public static int loadProgramFileToList(boolean isFullPath, String path, ArrayList<String> list) {
+
+		// MES 2013/01/13 - We got in a jam when moving resources to assets.
+		// Files and assets have a different base path. For backward compatibility,
+		// we're letting callers use the full path if they only want a file. 
+		// If a caller wants to use an asset "file", it must set isFullPath false
+		// and use a path relative to "source" so getBufferedReader can find the asset.
 
 		int size = 0;
 		BufferedReader buf = null;
-		try { buf = getBufferedReader(null, path); }					// full path to the file to load
+		try { buf = getBufferedReader((isFullPath ? null : Basic.SOURCE_DIR), path); }
 		catch (Exception e) { return size; }
 
 		// Read the file. Insert the the lines into the ArrayList.
@@ -575,51 +591,122 @@ public class Basic extends ListActivity  {
 			return "";
 		}
 
-    	        private void doBGforSB() {									// Background code for Standard Basic
-    	         	LoadSamples();
-    	        	LoadGraphics();											// and the graphics files too
-    	        	doFirstLoad();											// First load shows a first load basic program
-   	            	DoAutoRun = false;
-    	            startActivity(new Intent(BasicContext, Editor.class));	// 	Goto the Editor
-    	            finish();
-    	        }
-    	        
-    	        private void doBGforAPK() {								// Background code of APK
-    	            InitDirs();											// Initialize Basic directories every time
-    	            LoadGraphics();										// Load the graphics files
+		private void doBGforSB() {								// Background code for Standard Basic
+			SD_ProgramPath = SAMPLES_DIR;						// This setting will also force LoadFile to show the samples directory
+			copyAssets(AppPath);
+			doFirstLoad();										// First load shows a first load basic program
+			DoAutoRun = false;
+			startActivity(new Intent(BasicContext, Editor.class));	// Goto the Editor
+			finish();
+		}
 
-    	            lines = new ArrayList <String>();                    // Program will be loaded into this array list
+		private void doBGforAPK() {								// Background code of APK
+			InitDirs();											// Initialize Basic directories every time
+			LoadGraphics();										// Load the graphics files
 
-    	            LoadTheFile();                                       // Load the basic program file into memory
+			lines = new ArrayList <String>();					// Program will be loaded into this array list
+			LoadTheProgram();									// Load the basic program into memory
 
-    	            theProgramRunner = new Intent(BasicContext, Run.class);		//now go run the program
-    	            theRunContext = null;
-    	            DoAutoRun = true;
-    	            startActivity(theProgramRunner);                     // The program is now running
-    	            finish();
+			theProgramRunner = new Intent(BasicContext, Run.class);	// now go run the program
+			theRunContext = null;
+			DoAutoRun = true;
+			startActivity(theProgramRunner);					// The program is now running
+			finish();
+		}
 
-    	        }
+		private void copyAssets(String path) {	// Recursively copy all the assets in the named subdirectory to the SDCard
+			String[] dirs = null;
+			try { dirs = getAssets().list(path); }
+			catch (IOException e) { }
+			if (dirs == null) return;
+
+			if (dirs.length == 0) {
+				copyAssetToFile(path);
+				return;
+			}
+
+			new File(getBasePath() + File.separatorChar + path).mkdirs();
+			for (String dir : dirs) {
+				copyAssets(path + File.separatorChar + dir);
+			}
+		}
+
+		private void copyAssetToFile(String path) {
+			if (path.endsWith(".bas") || path.endsWith(".txt") || path.endsWith(".html")) {
+				copyTextAssetToFile(path);
+			} else {
+				copyBinaryAssetToFile(path);
+			}
+		}
+
+		private void copyTextAssetToFile(String path) {
+			BufferedReader in = null;
+			BufferedWriter out = null;
+
+			publishProgress(mProgressMarker);						// Show progress for each program loaded
+			File file = new File(getBasePath() + File.separatorChar + path);
+
+			try {
+				in = new BufferedReader(new InputStreamReader(getAssets().open(path)));
+				out = new BufferedWriter(new FileWriter(file));
+				String line;
+				while ((line = in.readLine()) != null) {			// Read and write one line at a time
+					line +=  "\n";
+					out.write(line);
+				}
+			} catch (IOException e) {
+				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 3");
+			}
+			closeStreams(in,out);
+		}
+
+		private void copyBinaryAssetToFile(String path) {
+			BufferedInputStream in = null;
+			BufferedOutputStream out = null;
+
+			File file = new File(getBasePath() + File.separatorChar + path);
+
+			byte[] bytes = new byte[8192];
+			int count = 0;
+			try {
+				in = new BufferedInputStream(getAssets().open(path));
+				out = new BufferedOutputStream(new FileOutputStream(file));
+				do {
+					count = in.read(bytes, 0, 8192);
+					if (count > 0) {
+						out.write(bytes, 0, count);
+						publishProgress(mProgressMarker);
+					}
+				} while (count != -1);
+			} catch (IOException e) {
+				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 3");
+			}
+			closeStreams(in,out);
+		}
 
 		private void LoadGraphics(){
 
 			// Loads the icons and audio used for the example programs
-			// The files are copied from res/raw to the SD Card
+			// The files are copied from assets/<AppPath>/data/ to the SD Card
 
-			String dataPath = getDataPath("");				// get paths with trailing '/'
-			String databasesPath = getDataBasePath("");
+//			String dataPath = getDataPath("");				// get paths with trailing '/'
+//			String databasesPath = getDataBasePath("");
 
 			String[] loadFileNames = mRes.getStringArray(R.array.load_file_names);
 			for (String fileName : loadFileNames) {
 				if (fileName.equals("")) continue;
 
-				String fn = getRawFileName(fileName);
-				int resID = mRes.getIdentifier(fn, "raw", BasicPackage);
-				String path = (fileName.endsWith(".db")) ? databasesPath : dataPath;
-				Load1Graphic(resID, path + fileName);
+//				String fn = getRawFileName(fileName);
+//				int resID = mRes.getIdentifier(fn, "raw", BasicPackage);
+//				String path = (fileName.endsWith(".db")) ? databasesPath : dataPath;
+//				copyBinaryResourceToFile(resID, path + fileName);
+
+				String path = AppPath + File.separatorChar + fileName;
+				copyBinaryAssetToFile(path);
 			}
 		}
 
-		private void Load1Graphic(int resID, String path){
+		private void copyBinaryResourceToFile(int resID, String path){
 
 			// Does the actual loading of one icon or audio file
 
@@ -648,78 +735,7 @@ public class Basic extends ListActivity  {
 			closeStreams(bis, bos);
 		}
 
-		private void LoadSamples(){
-			// The files are packaged in res/raw.
-			// The file, the_list contains the list of files to be loaded.
-			// Get that list, and load those files.
-
-			SD_ProgramPath = SAMPLES_DIR;		// This setting will also force LoadFile to so the help directory
-
-			// The first thing done is to load the file, the_list.txt. This file contains a list of the files
-			// to be loaded.
-
-			// Using this round about method to get the resID for the_list.txt
-			// because the the_list will not be there in APKs
-
-			String fn = getRawFileName("the_list.txt");
-			int resID = Basic.BasicContext.getResources().getIdentifier (fn, "raw", BasicPackage);
-			if (resID == 0) return;
-
-			InputStream inputStream = mRes.openRawResource(resID);
-			InputStreamReader inputreader = new InputStreamReader(inputStream);
-			BufferedReader buffreader = new BufferedReader(inputreader, 8192);
-			String line;
-			ArrayList <String> LoadList = new ArrayList <String>();	// Stores the list of files to load
-
-			// Read each line from the_list and add the filename to LoadList
-	
-			try {
-				while ((line = buffreader.readLine()) != null) {
-					LoadList.add(line);
-				}
-			} catch (IOException e) {
-				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 1");
-			} finally {
-				if (buffreader != null) {
-					try { buffreader.close(); } catch (IOException e) {}
-				}
-			}
-
-			// Now go load each file in the list, one at a time
-
-			for (int i = LoadList.size() - 1; i >= 0; --i) {		// Now that we have the list of files to load
-				fn = LoadList.get(i);
-				int resId = mRes.getIdentifier(fn, "raw", BasicPackage);
-				String path = getSamplesPath(fn + ".bas");			// add .bas to the created file name.
-				LoadOneFile(resId, path);							// load them one at a time
-			}
-		}
-
-		private void LoadOneFile(int resID, String path){
-
-			// Reads one file from res/raw and writes it to the SD Card
-			// into the source/help directory
-			publishProgress(mProgressMarker);						// Show progress for each program loaded
-
-			InputStream inputStream = mRes.openRawResource(resID);
-			InputStreamReader inputreader = new InputStreamReader(inputStream);
-			BufferedReader buffreader = new BufferedReader(inputreader, 8192);
-			FileWriter writer = null;
-
-			try {
-				writer = new FileWriter(path);
-				String line;
-				while ((line = buffreader.readLine()) != null) {	// Read and write one line at a time
-					line = line + "\n";
-					writer.write(line);
-				}
-			} catch (IOException e) {
-				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 3");
-			}
-			closeStreams(buffreader, writer);
-		}
-
-		public   void doFirstLoad(){
+		public void doFirstLoad(){
 			// The first load is a short program of comments that will be displayed
 			// by the Editor
 
@@ -739,9 +755,9 @@ public class Basic extends ListActivity  {
 					;  // Initialize the Display Program Lines
 		}
 
-		private void LoadTheFile(){
+		private void LoadTheProgram(){
 
-			// Reads the program file from res/raw and puts it into memory
+			// Reads the program file from res/raw or assets/<AppPath>/source and puts it into memory
 			AddProgramLine APL = new AddProgramLine();
 			String name = mRes.getString(R.string.my_program);
 			InputStream inputStream = null;

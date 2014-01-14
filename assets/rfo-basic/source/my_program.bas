@@ -6,7 +6,7 @@ REM Start of BASIC! Program
 ! the audio file is loaded from rfo-basic/data/
 !
 ! When run from an APK, the audio is loaded
-! from res/raw/
+! from assets/<your-app>/data/
 !
 AUDIO.LOAD aft, "meow.wav"
 AUDIO.PLAY aft
