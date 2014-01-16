@@ -71,11 +71,11 @@ public class Basic extends ListActivity  {
 	private static final String LOGTAG = "Basic";
 	private static final String CLASSTAG = Basic.class.getSimpleName();
 
-	public  static final String SOURCE_DIR    = "source";
-	public  static final String DATA_DIR      = "data";
-	private static final String DATABASES_DIR = "databases";
-	public  static final String SAMPLES_DIR   = "Sample_Programs";
-	private static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
+	public static final String SOURCE_DIR    = "source";
+	public static final String DATA_DIR      = "data";
+	public static final String DATABASES_DIR = "databases";
+	public static final String SAMPLES_DIR   = "Sample_Programs";
+	public static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
 
 	public static String AppPath;							// Set to the path name for application directories
 	public static boolean isAPK;							// If building APK, set true

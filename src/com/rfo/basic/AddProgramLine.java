@@ -231,7 +231,7 @@ public class AddProgramLine {
 				}
 			}
 			if (tt > 0) {
-				line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + line.substring(tt + 2, ll);
+				line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + "(" + line.substring(tt + 2, ll) + ")";
 			}
 			return line;
 		}

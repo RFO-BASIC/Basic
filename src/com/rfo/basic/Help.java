@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -35,7 +35,6 @@ import java.util.ArrayList;
 
 import android.app.ListActivity;
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.ClipboardManager;
@@ -48,93 +47,94 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
 
 
-// Called from Editor when user selected Menu->Help
-// Displays Help text residing in res.values.strings
+// Called from Editor when user selected Menu->Commands
+// Displays command list residing in f01_commands.bas
 
 public class Help extends ListActivity {
-  private ListView lv;
-  private ArrayList <String> output = new ArrayList<String>();
-  private static final String Chars = "abcdefghijklmnopqrstuvwxyz";
-  private InputMethodManager IMM;
+	private ListView lv;
+	private ArrayList <String> output = new ArrayList<String>();
+	private static final String Chars = "abcdefghijklmnopqrstuvwxyz";
+	private InputMethodManager IMM;
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    Basic.ColoredTextAdapter AA = new Basic.ColoredTextAdapter(this, output, Typeface.MONOSPACE);
-    lv = getListView();
-    lv.setTextFilterEnabled(false);
-    lv.setBackgroundColor(AA.backgroundColor);
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		Basic.ColoredTextAdapter AA = new Basic.ColoredTextAdapter(this, output, Typeface.MONOSPACE);
+		lv = getListView();
+		lv.setTextFilterEnabled(false);
+		lv.setBackgroundColor(AA.backgroundColor);
 
-    setRequestedOrientation(Settings.getSreenOrientation(this));
+		setRequestedOrientation(Settings.getSreenOrientation(this));
 
-    Resources res = getResources();
-    int ResId = res.getIdentifier("f01_commands", "raw", getPackageName());
-    InputStream inputStream = res.openRawResource(ResId);
-    InputStreamReader inputreader = new InputStreamReader(inputStream);
-    BufferedReader buffreader = new BufferedReader(inputreader, 8192);
-    String line;
-    
-    try {
-    	while (( line = buffreader.readLine()) != null) {			 // Read and write one line at a time
-    		output.add(line);
-    	}
-    } catch (IOException e) {
-    }
-    
-    setListAdapter(AA);
-    
-    lv.setOnItemClickListener(new OnItemClickListener() {
-        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        															// If a line is clicked on
-        String command = output.get(position);						// Get the command
-        int index = command.lastIndexOf (",");						// trim off the page number
-        if (index >= 0) command = command.substring(0, index);   					
-        
-		ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-		clipboard.setText(command);                  // Put the user expression into the clipboard
-		finish();									 // Exit back to Editor
+		String commandFile = "f01_commands.bas";
+		InputStream inputStream = null;
+		try { inputStream = Basic.streamFromResource(Basic.SOURCE_SAMPLES_PATH, commandFile); }
+		catch (Exception ex) { }
 
-        }
-        
-      });
+		if (inputStream != null) {
+			InputStreamReader inputreader = new InputStreamReader(inputStream);
+			BufferedReader buffreader = new BufferedReader(inputreader, 8192);
+			String line;
 
-    IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-    IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-   }
-   
-   
-   public boolean onKeyUp(int keyCode, KeyEvent event)  {
-	   
-	    if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-		       finish();
-		       return true;
-		    }
+			try {
+				while ((line = buffreader.readLine()) != null) {		// Read one line at a time
+					output.add(line);
+				}
+			} catch (IOException e1) {
+				output.add("Error reading command list " + commandFile);
+				Basic.closeStreams(buffreader, null);
+			}
+		} else {
+			output.add("Command list " + commandFile + " not found");
+		}
 
-	   int n;
-	   char theChar;
-	   String theText;
-	   int index = 0;
-	   
-	   if (keyCode >=29 && keyCode <= 54){
-	    	n = keyCode -29;
-	    	theChar = Chars.charAt(n);
-	    	
-	    	for (int i = 0; i < output.size(); ++i){
-	    		String line = output.get(i);
-	    		char c = line.charAt(0);
-	    		c = Character.toLowerCase(c);
-	    		if (c == theChar){
-	    			lv.setSelection(i);
-//	    			lv.smoothScrollToPosition(i);
-	    			break;
-	    		}
-	    		index = index + line.length();
-	    	}
-	    		
-	   }
-	   return super.onKeyUp(keyCode, event);
-   }
-   
+		setListAdapter(AA);
 
+		lv.setOnItemClickListener(new OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+																// If a line is clicked on
+				String command = output.get(position);			// Get the command
+				int index = command.lastIndexOf (",");			// trim off the page number
+				if (index >= 0) command = command.substring(0, index);
+
+				ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+				clipboard.setText(command);						// Put the user expression into the clipboard
+				finish();										// Exit back to Editor
+			}
+		});
+
+		IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+		IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+	}
+
+	public boolean onKeyUp(int keyCode, KeyEvent event) {
+		
+		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+			finish();
+			return true;
+		}
+
+		int n;
+		char theChar;
+		int index = 0;
+
+		if (keyCode >=29 && keyCode <= 54){
+			n = keyCode -29;
+			theChar = Chars.charAt(n);
+
+			for (int i = 0; i < output.size(); ++i){
+				String line = output.get(i);
+				char c = line.charAt(0);
+				c = Character.toLowerCase(c);
+				if (c == theChar){
+					lv.setSelection(i);
+//					lv.smoothScrollToPosition(i);
+					break;
+				}
+				index = index + line.length();
+			}
+		}
+		return super.onKeyUp(keyCode, event);
+	}
 
 }
