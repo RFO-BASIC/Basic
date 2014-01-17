@@ -7,7 +7,7 @@ Examine the code  and run then run this program.
 ! DO - UNTIL Example
 
 ! The following example will print
-! 1, 2, 3, 3
+! 1, 2, 3
 
 PRINT "Do Example"
 index = 1
@@ -19,7 +19,7 @@ UNTIL index = limit
 PRINT index
 
 ! The following example will print
-! 4, 5, 6, 6
+! 4, 5, 6, 7
 
 PRINT "While Example"
 index = 4
@@ -29,11 +29,20 @@ WHILE index <= limit
  index = index + 1
 REPEAT
 PRINT index
-!
+
 ! Both loop types may be nested
 ! to any level
 !
 ! The following example will print
+! 1, 1, 1
+! 1, 1, 2
+! 1, 2, 1
+! 1, 2, 2
+! 2, 1, 1
+! 2, 1, 2
+! 2, 2, 1
+! 2, 2, 2
+! 30, 30, 30
 !
 PRINT "Nested DO and WHILE examples"
 

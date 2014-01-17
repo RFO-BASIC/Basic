@@ -274,7 +274,7 @@ public class Run extends ListActivity {
     	"stack.", "socket.", "http.post", "device",
     	"debug.", "console.",
     	"tts.","ftp.", "bt.",						// moved three "tts" commands to tts_cmd
-    	" ", " ", " ",
+    	"f_n.continue", "w_r.continue", "d_u.continue",
     	"call", "su.", "system.",
     	"undim", "tget",
     	"f_n.break", "w_r.break", "d_u.break",
@@ -392,9 +392,9 @@ public class Run extends ListActivity {
     private static final int BKWtts = 88;					// TTS commands moved to tts_cmd
     private static final int BKWftp = 89;
     private static final int BKWbt = 90;
-    private static final int BKWnull91 = 91;
-    private static final int BKWnull92 = 92;
-    private static final int BKWnull93 = 93;
+    private static final int BKWf_n_continue = 91;
+    private static final int BKWw_r_continue = 92;
+    private static final int BKWd_u_continue = 93;
     private static final int BKWcall = 94;
     private static final int BKWsu = 95;
     private static final int BKWsystem = 96;
@@ -1008,75 +1008,76 @@ public class Run extends ListActivity {
     // ******************************* Variables for Sensor Commands **********************************
 
     private SensorActivity theSensors;
-    
+
     public static final String Sensors_KW[] = {
     	"list","open","read","close", "rotate"
     };
-    
-    public static final int sensors_list = 0;
-    public static final int sensors_open = 1;
-    public static final int sensors_read = 2;
-    public static final int sensors_close = 3;
-    public static final int sensors_rotate = 4;
-    public static final int sensors_none = 98;
-    
+
+    private static final int sensors_list = 0;
+    private static final int sensors_open = 1;
+    private static final int sensors_read = 2;
+    private static final int sensors_close = 3;
+    private static final int sensors_rotate = 4;
+    private static final int sensors_none = 98;
+
     // ***********************  Variables for GPS Commands  ******************************************
-    
+
     public static final String GPS_KW[] = {
     	"altitude", "latitude", "longitude",
     	"bearing", "accuracy", "speed",
     	"provider", "open", "close", "time"
     };
-    
-    public static final int gps_altitude = 0;
-    public static final int gps_latitude = 1;
-    public static final int gps_longitude = 2;
-    public static final int gps_bearing = 3;
-    public static final int gps_accuracy = 4;
-    public static final int gps_speed = 5;
-    public static final int gps_provider = 6;
-    public static final int gps_open = 7;
-    public static final int gps_close = 8;
-    public static final int gps_time = 9;
-    
-    public GPS theGPS;
-	
+
+    private static final int gps_altitude = 0;
+    private static final int gps_latitude = 1;
+    private static final int gps_longitude = 2;
+    private static final int gps_bearing = 3;
+    private static final int gps_accuracy = 4;
+    private static final int gps_speed = 5;
+    private static final int gps_provider = 6;
+    private static final int gps_open = 7;
+    private static final int gps_close = 8;
+    private static final int gps_time = 9;
+
+    private GPS theGPS;
+
 	// ************************* Variables for Array Commands
-	
+
 	public static final String Array_KW[] = {
 		"length", "load", "sort",
 		"sum", "average", "reverse",
 		"shuffle", "min","max", "delete",
-		"variance", "std_dev", "copy"
+		"variance", "std_dev", "copy", "search"
 	};
-	
-	public static final int array_length = 0;
-	public static final int array_load = 1;
-	public static final int array_sort = 2;
-	public static final int array_sum = 3;
-	public static final int array_average = 4;
-	public static final int array_reverse = 5;
-	public static final int array_shuffle = 6;
-	public static final int array_min = 7;
-	public static final int array_max = 8;
-	public static final int array_delete = 9;
-	public static final int array_variance = 10;
-	public static final int array_std_dev = 11;
-	public static final int array_copy = 12;	
-	public static final int array_none =99;
-	
-	public static boolean DoAverage;
-	public static boolean DoReverse;
-	public static boolean DoShuffle;
-	public static boolean DoVariance;
-	public static boolean DoStdDev;
-	public static boolean DoSort;
-	public static boolean DoMin;
-	public static boolean DoMax;
-	public static boolean DoSum;
-	
-	public static long sTime;
-	
+
+	private static final int array_length = 0;
+	private static final int array_load = 1;
+	private static final int array_sort = 2;
+	private static final int array_sum = 3;
+	private static final int array_average = 4;
+	private static final int array_reverse = 5;
+	private static final int array_shuffle = 6;
+	private static final int array_min = 7;
+	private static final int array_max = 8;
+	private static final int array_delete = 9;
+	private static final int array_variance = 10;
+	private static final int array_std_dev = 11;
+	private static final int array_copy = 12;
+	private static final int array_search = 13;
+	private static final int array_none =99;
+
+	private static boolean DoAverage;
+	private static boolean DoReverse;
+	private static boolean DoShuffle;
+	private static boolean DoVariance;
+	private static boolean DoStdDev;
+	private static boolean DoSort;
+	private static boolean DoMin;
+	private static boolean DoMax;
+	private static boolean DoSum;
+
+	private static long sTime;
+
 // ************************************ List command variables *********************************
 
 	public static final String List_KW[] = {
@@ -1084,66 +1085,66 @@ public class Run extends ListActivity {
 		"type","get", "clear", "remove", "insert", "size",
 		"contains", "toarray", "search"
 	};
+
+	private static final int list_new = 0;
+	private static final int list_addlist = 1;
+	private static final int list_addarray = 2;
+	private static final int list_add = 3;
+	private static final int list_set = 4;
+	private static final int list_gettype = 5;
+	private static final int list_get = 6;
+	private static final int list_clear = 7;
+	private static final int list_remove = 8;
+	private static final int list_insert = 9;
+	private static final int list_size = 10;
+	private static final int list_contains = 11;
+	private static final int list_toarray = 12;
+	private static final int list_search = 13;
+	private static final int list_none = 99;
 	
-	public static final int list_new = 0;
-	public static final int list_addlist = 1;
-	public static final int list_addarray = 2;
-	public static final int list_add = 3;
-	public static final int list_set = 4;
-	public static final int list_gettype = 5;
-	public static final int list_get = 6;
-	public static final int list_clear = 7;
-	public static final int list_remove = 8;
-	public static final int list_insert = 9;
-	public static final int list_size = 10;
-	public static final int list_contains = 11;
-	public static final int list_toarray = 12;
-	public static final int list_search = 13;
-	public static final int list_none = 99;
-	
-	public static final int list_is_numeric = 1;
-	public static final int list_is_string = 0;
+	private static final int list_is_numeric = 1;
+	private static final int list_is_string = 0;
 
 	public static ArrayList <ArrayList> theLists;
 	public static ArrayList <Integer> theListsType;  
-	
+
 // ************************************ Bundle Variables ****************************************
-	
+
 	public static final String Bundle_KW[]= {
 		"create", "put", "get", "type",
 		"keys", "copy", "clear", "contain"
 	};
-	
-	public static final int bundle_create = 0;
-	public static final int bundle_put = 1;
-	public static final int bundle_get = 2;
-	public static final int bundle_type = 3;
-	public static final int bundle_keyset = 4;
-	public static final int bundle_copy = 5;
-	public static final int bundle_clear = 6;
-	public static final int bundle_contain = 7;         // ******* El Condor	
-	
-	public static ArrayList <Bundle> theBundles;
-	
+
+	private static final int bundle_create = 0;
+	private static final int bundle_put = 1;
+	private static final int bundle_get = 2;
+	private static final int bundle_type = 3;
+	private static final int bundle_keyset = 4;
+	private static final int bundle_copy = 5;
+	private static final int bundle_clear = 6;
+	private static final int bundle_contain = 7;         // ******* El Condor	
+
+	private static ArrayList <Bundle> theBundles;
+
 // *********************************** Stack Variables **********************************************
 	public static final String Stack_KW[]= {
 		"create", "push", "pop", "peek",
 		"type", "isempty", "clear"
 	};
-	
-	public static final int stack_create = 0;
-	public static final int stack_push = 1;
-	public static final int stack_pop = 2;
-	public static final int stack_peek = 3;
-	public static final int stack_type = 4;
-	public static final int stack_isempty = 5;
-	public static final int stack_clear = 6;
-	
-	public static ArrayList<Stack> theStacks;
-	public static ArrayList <Integer> theStacksType; 
-	
-	public static final int stack_is_numeric = 1;
-	public static final int stack_is_string = 0;
+
+	private static final int stack_create = 0;
+	private static final int stack_push = 1;
+	private static final int stack_pop = 2;
+	private static final int stack_peek = 3;
+	private static final int stack_type = 4;
+	private static final int stack_isempty = 5;
+	private static final int stack_clear = 6;
+
+	private static ArrayList<Stack> theStacks;
+	private static ArrayList <Integer> theStacksType; 
+
+	private static final int stack_is_numeric = 1;
+	private static final int stack_is_string = 0;
 
 //  ******************************* Socket Variables **************************************************
 
@@ -2773,7 +2774,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	        	case BKWstep:
 	        		break;
 	        	case BKWnext:
-	        		if (!executeNext()){SyntaxError();return false;}
+	        		if (!executeNEXT()){SyntaxError();return false;}
 	        		break;
 	        	case BKWgoto:
 	        		if (!executeGOTO()){SyntaxError();return false;}
@@ -3009,6 +3010,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	        		break;
 	        	case BKWbt:
 	        		if (!executeBT()) {SyntaxError(); return false;}
+	        		break;
+	        	case BKWf_n_continue:
+	        		if (!executeF_N_CONTINUE()) {SyntaxError(); return false;}
+	        		break;
+	        	case BKWw_r_continue:
+	        		if (!executeW_R_CONTINUE()) {SyntaxError(); return false;}
+	        		break;
+	        	case BKWd_u_continue:
+	        		if (!executeD_U_CONTINUE()) {SyntaxError(); return false;}
 	        		break;
 	        	case BKWcall:
 	        		if (!executeCALL()) {SyntaxError(); return false;}
@@ -5306,14 +5316,31 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			return true;
 
 		}
-	
-	private  boolean executeFOR(){
-		
 
-		
-		Bundle b= new Bundle();						// A bundle to hold value for stack
-		
-		if (ExecutingLineIndex+1 >= Basic.lines.size()) { return false; }
+	private boolean skipTo(String target, String nest, String errMsg) {
+		int lineNum;
+		int limit = Basic.lines.size();
+		for (lineNum = ExecutingLineIndex + 1; lineNum < limit; ++lineNum) {
+			String line = Basic.lines.get(lineNum);
+			if (line.startsWith(target)) {
+				ExecutingLineIndex = lineNum;					// found the target
+				ExecutingLineBuffer = line;
+				LineIndex = target.length();
+				return true;
+			}
+			if (line.startsWith(nest)) {
+				ExecutingLineIndex = lineNum;					// found nested block of same type
+				if (!skipTo(target, nest, errMsg)) return false;// recursively seek its end
+				lineNum = ExecutingLineIndex;
+			}
+		}
+		return RunTimeError(errMsg);							// end of program, target not found
+	}
+
+	private boolean executeFOR(){
+
+		Bundle b = new Bundle();						// A bundle to hold value for stack
+
 		b.putInt("line",ExecutingLineIndex);							// Loop return location
 
 		if (!getNVar()) { return false; }
@@ -5348,200 +5375,164 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		
 		b.putDouble("step", step);
 		
-		if (step > 0){											// Test the initial condition
+		if (step > 0) {											// Test the initial condition
 			if (fstart > flimit) {return SkipToNext();}			// If exceeds limit then skip to NEXT
-		}else 
+		} else {
 			if (fstart < flimit) {return SkipToNext();}
-
+		}
 		ForNextStack.push(b);
 		
 		return true;
 	}
-	
-		private boolean executeF_N_BREAK(){
-			if (ForNextStack.empty()){				// If the stack is empty
-				RunTimeError("No For Loop Active");			// then we have a misplaced NEXT
-				return false;
-			}
-			if (!checkEOL()) return false;
 
-			if (!SkipToNext()) return false;
-			
-			
-			
-			ForNextStack.pop();
-			
-			return true;
+	private boolean SkipToNext() {
+		return skipTo("next", "for", "FOR without NEXT");
+	}
 
+	private boolean executeF_N_CONTINUE(){
+		if (ForNextStack.empty()) {								// If the stack is empty
+			return RunTimeError("No For Loop Active");			// then we have a misplaced CONTINUE
 		}
-		
-		private  boolean SkipToNext(){
-															// Skip statments until NEXT found
-			++ExecutingLineIndex;
-	    	do {
-	    		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
-	    		LineIndex = 0 ;
-				if (ExecutingLineBuffer.startsWith("next")){
-					LineIndex = 4;
-					return true;
-				}
-				
-				if (ExecutingLineBuffer.startsWith("for")){   // Found found nested FOR
-		    		++ExecutingLineIndex;					  // Recursively seek it's 
-	    			if (!SkipToNext()){return false;}		  // NEXT
-	    		}
-	    		++ExecutingLineIndex;
-	    	}while (ExecutingLineIndex < Basic.lines.size());
-	    	
-	    	RunTimeError("FOR without NEXT");							// If end of program...
-	    	return false; // End of program. No Next found;
+		if (!checkEOL()) return false;
 
+		if (!SkipToNext()) return false;
+		doNext();
+		return true;
+	}
+
+	private boolean executeF_N_BREAK(){
+		if (ForNextStack.empty()) {								// If the stack is empty
+			return RunTimeError("No For Loop Active");			// then we have a misplaced BREAK
 		}
-	
-		private  boolean executeNext(){
-		
-		
-		if (ForNextStack.empty()){				// If the stack is empty
-			RunTimeError("NEXT with out FOR");			// then we have a misplaced NEXT
-			return false;
+		if (!checkEOL()) return false;
+
+		if (!SkipToNext()) return false;
+		ForNextStack.pop();
+		return true;
+	}
+
+	private boolean executeNEXT(){
+		if (ForNextStack.empty()) {								// If the stack is empty
+			return RunTimeError("NEXT without FOR");			// then we have a misplaced NEXT
 		}
-		Bundle b = ForNextStack.peek();			// Peek at the TOS Bundle
+		return doNext();
+	}
+
+	private boolean doNext() {
+		Bundle b = ForNextStack.peek();							// Peek at the TOS Bundle
 		int line = b.getInt("line");
-		int varindex = b.getInt("var");					// We did not store the index value, we stored a pointer to it
+		int varindex = b.getInt("var");							// We did not store the index value, we stored a pointer to it
 		double var = NumericVarValues.get(varindex);
 		double limit = b.getDouble("limit");
 		double step = b.getDouble("step");
 		
-		var = var + step;						// Do the STEP
-		NumericVarValues.set(varindex, var); 	// Assign the result to the index
+		var += step;											// Do the STEP
+		NumericVarValues.set(varindex, var);					// Assign the result to the index
 		
-		if (step<0){							// Test limit
-			if (var >= limit){
-				ExecutingLineIndex = line;
-				return true;
-			}
-			b = ForNextStack.pop();				// If done, pop the stack 
-			return true;
+		if (((step > 0) && (var <= limit)) || ((step <= 0) && (var >= limit))) { // Test limit
+			ExecutingLineIndex = line;
+		} else {
+			ForNextStack.pop();									// If done, pop the stack
 		}
-		if (var <= limit){						// If not done, go back the statement
-			ExecutingLineIndex = line;			// following NEXT
-			return true;
-			}
-		
-		b = ForNextStack.pop();
-		
 		return true;
 	}
 
 	private boolean executeWHILE(){
 		if (!evalNumericExpression()) return false;
+		if (!checkEOL()) return false;
 
-		if (EvalNumericExpressionValue != 0){		   // if true
-			WhileStack.push(ExecutingLineIndex-1);	   // push line number onto while stack.
-			return checkEOL();
+		if (EvalNumericExpressionValue != 0) {
+			WhileStack.push(ExecutingLineIndex - 1);			// true: push line number onto while stack
+			return true;
 		}
-		if (!SkipToRepeat()){return false;}		  // False, find the REPEAT for the nested FOR
-		return true;
+		return SkipToRepeat();									// false: find the REPEAT for the WHILE
 	}
-	
-	private boolean executeW_R_BREAK(){
-		if (WhileStack.empty()){				// If the stack is empty
-			RunTimeError("No While Statement Active");			// then we have a misplaced NEXT
-			return false;
+
+	private boolean SkipToRepeat() {
+		return skipTo("repeat", "while", "WHILE without REPEAT");
+	}
+
+	private boolean executeW_R_CONTINUE(){
+		if (WhileStack.empty()) {								// If the stack is empty
+			return RunTimeError("No While Loop Active");		// then we have a misplaced CONTINUE
 		}
 		if (!checkEOL()) return false;
+
+		ExecutingLineIndex = WhileStack.pop();					// Pop the line number of the WHILE
+		return true;
+	}
+
+	private boolean executeW_R_BREAK(){
+		if (WhileStack.empty()) {								// If the stack is empty
+			return RunTimeError("No While Statement Active");	// then we have a misplaced BREAK
+		}
+		if (!checkEOL()) return false;
+
 		if (!SkipToRepeat()) return false;
 		WhileStack.pop();
 		return true;
 	}
 
-	
-		private boolean SkipToRepeat(){
-		++ExecutingLineIndex;						   // if conditional is false, find the repeat
-		if (ExecutingLineIndex >= Basic.lines.size()){
-			RunTimeError("WHILE without REPEAT");
-	    	return false;
-		}
-    	do {
-    		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
-    		LineIndex = 0 ;
-    		if (ExecutingLineBuffer.startsWith("repeat")){
-    			return true;
-    		}
-    		if (ExecutingLineBuffer.startsWith("while")){   // Found found nested WHILE
-	    		++ExecutingLineIndex;
-    			if (!SkipToRepeat()){return false;}		  // Find the REPEAT for the nested WHILE
-    		}
-    		++ExecutingLineIndex;
-    	}while (ExecutingLineIndex < Basic.lines.size());
-    	RunTimeError("WHILE without REPEAT");
-    	return false; // End of program. No Next found;
-	}
-	
-		private boolean executeREPEAT(){
-		if (WhileStack.empty()){				// Empty stack = error
-			RunTimeError("REPEAT without WHILE");
-	    	return false; // End of program. No Next found;
-		}
-		ExecutingLineIndex = WhileStack.pop();	// Pop the line number of the WHILE
-
-		return checkEOL();
-	}
-	
-	private boolean executeDO(){
-		DoStack.push(ExecutingLineIndex-1);	   // push line number onto DO stack.
-		return checkEOL();
-
-	}
-	
-	private boolean executeD_U_BREAK(){
-		if (DoStack.empty()){				// Empty stack = error
-			RunTimeError("No DO loop active");
-	    	return false; // End of program. No UNTIL found;
+	private boolean executeREPEAT(){
+		if (WhileStack.empty()) {								// If the stack is empty
+			return RunTimeError("REPEAT without WHILE");		// then we have a misplaced REPEAT
 		}
 		if (!checkEOL()) return false;
-		if (!SkipToUntil());
+
+		ExecutingLineIndex = WhileStack.pop();					// Pop the line number of the WHILE
+		return true;
+	}
+
+	private boolean executeDO(){
+		if (!checkEOL()) return false;
+		DoStack.push(ExecutingLineIndex - 1);					// push line number onto DO stack.
+		return true;
+	}
+
+	private boolean SkipToUntil() {
+		return skipTo("until", "do", "DO without UNTIL");
+	}
+
+	private boolean executeD_U_CONTINUE(){
+		if (DoStack.empty()) {									// If the stack is empty
+			return RunTimeError("No DO loop active");			// then we have a misplaced CONTINUE
+		}
+		if (!checkEOL()) return false;
+
+		if (!SkipToUntil()) return false;
+		return doUntil();
+	}
+
+	private boolean executeD_U_BREAK(){
+		if (DoStack.empty()) {									// If the stack is empty
+			return RunTimeError("No DO loop active");			// then we have a misplaced BREAK
+		}
+		if (!checkEOL()) return false;
+
+		if (!SkipToUntil()) return false;
 		DoStack.pop();
 		return true;
 	}
-	
-	private boolean SkipToUntil(){
-		++ExecutingLineIndex;						   // if conditional is false, find the repeat
-		if (ExecutingLineIndex >= Basic.lines.size()){
-			RunTimeError("DO without UNTIL");
-	    	return false;
+
+	private boolean executeUNTIL(){
+		if (DoStack.empty()) {									// If the stack is empty
+			return RunTimeError("UNTIL without DO");			// then we have a misplaced UNTIL
 		}
-    	do {
-    		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
-    		LineIndex = 0 ;
-    		if (ExecutingLineBuffer.startsWith("until")){
-    			return true;
-    		}
-    		if (ExecutingLineBuffer.startsWith("do")){   // Found found nested WHILE
-	    		++ExecutingLineIndex;
-    			if (!SkipToUntil()){return false;}		  // Find the REPEAT for the nested WHILE
-    		}
-    		++ExecutingLineIndex;
-    	}while (ExecutingLineIndex < Basic.lines.size());
-    	RunTimeError("DO without UNTIL");
-    	return false; // End of program. No Next found;
+		return doUntil();
 	}
 
-	
-		private boolean executeUNTIL(){
-		if (DoStack.empty()){				// Empty stack = error
-			RunTimeError("UNTIL without DO");
-	    	return false; // End of program. No UNTIL found;
-		}
+	private boolean doUntil() {
 		if (!evalNumericExpression()) return false;
-		if (EvalNumericExpressionValue == 0){     // If false
-			ExecutingLineIndex = DoStack.pop();   // pop the DO line number and go to it.
-			return true;
+		if (!checkEOL()) return false;
+
+		if (EvalNumericExpressionValue == 0) {
+			ExecutingLineIndex = DoStack.pop();					// false: pop the DO line number and go to it.
+		} else {
+			DoStack.pop();										// true: pop the stack
 		}
-		DoStack.pop();								// if true, pop the stack and
-		return checkEOL();
+		return true;
 	}
-	
+
 	private  boolean executeINPUT(){
 
 		if (!getStringArg()) return false;
@@ -11851,6 +11842,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		    	  	case array_copy:
 		    	  		if (!execute_array_copy()){return false;}
 		    	  		break;
+		    	  	case array_search:
+		    	  		if (!execute_array_search()){return false;}
+		    	  		break;
 		    	  	default:
 		    	  		return false;
 		    	  	}
@@ -12131,6 +12125,69 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 				StringVarValues.set(destStart++, StringVarValues.get(SourceBase + i));
 			}
 		}
+		return true;
+	}
+
+	private boolean execute_array_search(){
+		if (!getArrayVarForRead()) { return false; }				// Get the array variable
+		boolean isNumeric = VarIsNumeric;
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
+		int length = ArrayEntry.getInt("length");					// get the array length
+		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
+
+		if (!isNext(',')) return false;								// move to the value
+
+		int found = -1;
+		int savedVarIndex = 0;
+		int start = 0;
+
+		if (!isNumeric) {											// String type array
+			if (!getStringArg()) return false;						// Get the string to search for
+			String sfind = StringConstant;
+
+			if (!isNext(',')) return false;							// move to the result var
+			if (!getNVar()) return false;
+			savedVarIndex = theValueIndex;
+
+			if (isNext(',')) {										// move to the start index
+				if (!evalNumericExpression()) return false;
+				start = EvalNumericExpressionValue.intValue();
+				if (--start < 0) { start = 0; }						// convert to zero-based index
+			}
+			if (!checkEOL()) return false;
+
+			for (int i = start; i < length; ++i) {					// Search the list for a match
+				if (sfind.equals(StringVarValues.get(base + i))) {
+					found = i;
+					break;
+				}
+			}
+		} else {													// Numeric type array
+			if (!evalNumericExpression()) return false;				// Get the value to search for
+			double nfind = EvalNumericExpressionValue;
+
+			if (!isNext(',')) return false;							// move to the result var
+			if (!getNVar()) return false;
+			savedVarIndex = theValueIndex;
+
+			if (isNext(',')) {										// move to the start index
+				if (!evalNumericExpression()) return false;
+				start = EvalNumericExpressionValue.intValue();
+				if (--start < 0) { start = 0; }						// convert to zero-based index
+			}
+			if (!checkEOL()) return false;
+
+			for (int i = start; i < length; ++i) {					// Search the list for a match
+				if (nfind == NumericVarValues.get(base + i)) {
+					found = i;
+					break;
+				}
+			}
+		}
+
+		++found;// Found is ones based
+		NumericVarValues.set(savedVarIndex, (double)found);
+
 		return true;
 	}
 

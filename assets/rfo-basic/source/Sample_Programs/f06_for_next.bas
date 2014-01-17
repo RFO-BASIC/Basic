@@ -1,7 +1,7 @@
 !!
 This file contains executable examples
 For - Next operations. Examine 
-the code  and run then run this program.
+the code and run then run this program.
 !!
 
 PRINT "Example 1"
@@ -18,20 +18,20 @@ FOR j = 1 TO 3
 NEXT j
 PRINT j*10
 
-! will also print 1, 2 , 3, 40
+! will also print 1, 2, 3, 40
 !
 ! if the STEP is not present, STEP 1
 ! is assumed
 
 PRINT "Example 3"
 start = 1
-stop = 3
+stop = 4
 FOR index = start TO stop STEP 2
  PRINT index
 NEXT index
 PRINT index*10
 
-! will print 1, 2, 50
+! will print 1, 3, 50
 !
 ! The loop will repeat until the
 ! index > stop
@@ -67,7 +67,7 @@ NEXT k
 ! a comment to help you keep track
 ! your nesting.
 !
-! Some restrictions on variable names..
+! Some restrictions on variable names.
 !
 ! FOR <var> = <exp1> TO <exp2> STEP <exp3>
 !
@@ -81,6 +81,14 @@ NEXT k
 
 bottom = 2
 top = 3
-FOR index = botTOm TO top  STEP 2
+FOR index = botTOm TO top STEP 2
+ PRINT index
+NEXT
+
+! But you can use parentheses to hide the keyword.
+
+bottom = 2
+top = 3
+FOR index = (bottom) TO top STEP 2
  PRINT index
 NEXT
