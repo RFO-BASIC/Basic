@@ -156,10 +156,14 @@ public class Basic extends ListActivity  {
 
 	public static String getAppFilePath(String subdir, String subPath) { // path for assets
 														// same as getFilePath() but no basePath
-		StringBuilder path = new StringBuilder(AppPath);
-		if (subdir != null) { path.append(File.separatorChar).append(subdir); }
-		if (subPath != null) { path.append(File.separatorChar).append(subPath); }
-		return path.toString();
+		StringBuilder sb = new StringBuilder(AppPath);
+		if (subdir != null) { sb.append(File.separatorChar).append(subdir); }
+		if (subPath != null) { sb.append(File.separatorChar).append(subPath); }
+		String path = sb.toString();								// path may have ".." elements AssetManager can't handle
+		File file = new File(path.toString());						// get canonical path to remove them
+		try { path = file.getCanonicalPath().substring(1); }		// strip leading '/' from canonical path
+		catch (IOException e) { Log.w(LOGTAG, "getAppFilePath - getCanonicalPath: " + e); }
+		return path;												// unmodified path if getCanonicalPath threw exception
 	}
 
 	private void initVars() {
@@ -373,7 +377,8 @@ public class Basic extends ListActivity  {
 				(attempt == 2) ? getRawFileName(fileName) : "";			// If first try didn't work, try again, Android-style.
 			if (!rawFileName.equals("")) {
 				Resources res = BasicContext.getResources();
-				resID = res.getIdentifier(rawFileName, "raw", packageName);	// Get the resource ID
+				String fullName = packageName + ":raw/" + rawFileName;	// "fully-qualified resource name"
+				resID = res.getIdentifier(fullName, null, null);		// Get the resource ID
 			}
 		}
 		return resID;
@@ -401,6 +406,7 @@ public class Basic extends ListActivity  {
 				buf = new BufferedReader(new FileReader(file));			// open an input stream from the file
 				if (buf != null) buf.mark((int)file.length());			// this call may throw an exception
 			} catch (IOException ex) {
+				Log.e(LOGTAG, "getBufferedReader: " + ex);
 				if (buf != null) {
 					try { buf.close(); } catch (IOException e) { }		// ignore second exception, if any
 				}
@@ -617,7 +623,7 @@ public class Basic extends ListActivity  {
 		private void copyAssets(String path) {	// Recursively copy all the assets in the named subdirectory to the SDCard
 			String[] dirs = null;
 			try { dirs = getAssets().list(path); }
-			catch (IOException e) { }
+			catch (IOException e) { Log.e(LOGTAG, "copyAssets: " + e); }
 			if (dirs == null) return;
 
 			if (dirs.length == 0) {
@@ -645,6 +651,8 @@ public class Basic extends ListActivity  {
 
 			publishProgress(mProgressMarker);						// Show progress for each program loaded
 			File file = new File(getBasePath() + File.separatorChar + path);
+			File dir = new File(file.getParent());
+			if (!dir.exists()) { dir.mkdirs(); }
 
 			try {
 				in = new BufferedReader(new InputStreamReader(getAssets().open(path)));
@@ -655,7 +663,7 @@ public class Basic extends ListActivity  {
 					out.write(line);
 				}
 			} catch (IOException e) {
-				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 3");
+				Log.w(LOGTAG, "copyTextAssetToFile: " + e);
 			}
 			closeStreams(in,out);
 		}
@@ -665,6 +673,8 @@ public class Basic extends ListActivity  {
 			BufferedOutputStream out = null;
 
 			File file = new File(getBasePath() + File.separatorChar + path);
+			File dir = new File(file.getParent());
+			if (!dir.exists()) { dir.mkdirs(); }
 
 			byte[] bytes = new byte[8192];
 			int count = 0;
@@ -679,7 +689,7 @@ public class Basic extends ListActivity  {
 					}
 				} while (count != -1);
 			} catch (IOException e) {
-				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 3");
+				Log.w(LOGTAG, "copyBinaryAssetToFile: " + e);
 			}
 			closeStreams(in,out);
 		}
@@ -701,7 +711,7 @@ public class Basic extends ListActivity  {
 //				String path = (fileName.endsWith(".db")) ? databasesPath : dataPath;
 //				copyBinaryResourceToFile(resID, path + fileName);
 
-				String path = AppPath + File.separatorChar + fileName;
+				String path = getAppFilePath((fileName.endsWith(".db") ? DATABASES_DIR : DATA_DIR), fileName);
 				copyBinaryAssetToFile(path);
 			}
 		}
@@ -730,7 +740,7 @@ public class Basic extends ListActivity  {
 					}
 				} while (count != -1);
 			} catch (IOException e) {
-				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 2");
+				Log.w(LOGTAG, "copyBinaryResourceToFile: " + e);
 			}
 			closeStreams(bis, bos);
 		}
@@ -762,7 +772,10 @@ public class Basic extends ListActivity  {
 			String name = mRes.getString(R.string.my_program);
 			InputStream inputStream = null;
 			try { inputStream = streamFromResource(SOURCE_DIR, name); }
-			catch (Exception ex) { return; }								// If not found, give up
+			catch (Exception ex) {											// If not found, give up
+				Log.e(LOGTAG, "LoadTheProgram - error getting stream from resource: " + ex);
+				return;
+			}
 
 			BufferedReader buffreader = new BufferedReader(new InputStreamReader(inputStream));
 			String line = "";
@@ -778,9 +791,11 @@ public class Basic extends ListActivity  {
 					}
 				}
 			} catch (IOException e) {
+				Log.e(LOGTAG, "LoadTheProgram - error reading, about line " + count + ": " + e);
 			} finally {
 				if (buffreader != null) {
-					try { buffreader.close(); } catch (IOException e) {}
+					try { buffreader.close(); }
+					catch (IOException e) {}
 				}
 			}
 		}
