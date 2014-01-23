@@ -742,7 +742,6 @@ public class Run extends ListActivity {
 	private Stack<Bundle> FunctionStack;				// Stack contains the currently executing functions
 	private int VarSearchStart;							// Used to limit search for var names to executing function vars
 	private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
-	private int scOpValue;								// An instance variable that needs to be saved when executing function
 
 	private boolean VarIsNew = true;					// Signal from get var that this var is new
 	private boolean VarIsNumeric = true;				// if false, Var is string
@@ -2039,7 +2038,6 @@ private void InitVars(){
     FunctionStack = new Stack<Bundle>() ;			// Stack contains the currently executing functions
     VarSearchStart = 0;					// Used to limit search for var names to executing function vars
    fnRTN = false;				// Set true by fn.rtn. Cause RunLoop() to return
-   scOpValue = 0;						// An instance variable that needs to be saved when executing function
    Debug = false;
 
     VarIsNew = true;				// Signal from get var that this var is new
@@ -3706,42 +3704,37 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		return ENE(theOpStack, theValueStack);				// Recursively call ENE for rest of expression
 	}
 
-	private boolean getOp(){							// Get an expression operator if there is one
-														// Get a possible Operator
-			
-		int i = 0;
-		for (i = 0; i<OperatorString.length; ++i){
-			
-			 if (ExecutingLineBuffer.charAt(LineIndex) == '~'){          // Look for the array.load continue line character
-				 ++LineIndex;
-				 OperatorValue = EOL;			 // Change it to EOL
-				 return true;
-			 }
-			 
-			 if (ExecutingLineBuffer.startsWith(OperatorString[i], LineIndex)){
-				 OperatorValue = i;
-				 LineIndex = LineIndex + OperatorString[i].length();
-				 return true;
-			 	}
+	private boolean getOp(){								// Get an expression operator if there is one
+
+		int lastOp = OperatorString.length;					// Look for operator
+		for (int i = 0; i < lastOp; ++i) {
+			String op = OperatorString[i];
+			if (ExecutingLineBuffer.startsWith(op, LineIndex)) {
+				OperatorValue = i;
+				LineIndex += op.length();
+				return true;
 			}
-		return false;
 		}
-	
-		private  boolean handleOp(int op, Stack<Integer> theOpStack, Stack<Double> theValueStack ){		// handle and exprssion operator
+		if (isNext('~')) {									// Look for the array.load continue line character
+			OperatorValue = EOL;							// Change it to EOL
+			return true;
+		}
+		return false;
+	}
+
+	private  boolean handleOp(int op, Stack<Integer> theOpStack, Stack<Double> theValueStack ){	// handle an expression operator
 
 											// Execute operator in turn by their precedence
-			
+
 		double d1 = 0;
 		double d2 = 0;
-		int id1 = 0;
-		int id2 = 0;
 		int ExecOp = 0;
 
 											// If the operator stack is empty, push an SOE (should never happen)
 		if (theOpStack.empty()) {
-//            theOpStack.push(SOE);
+//			theOpStack.push(SOE);
 			return false;
-        }
+		}
 											// If the current operator's Goes Onto Stack Precedence
 											// is less than the top of stack' Come Off precedence
 											// then pop the top of stack operator and execute it
@@ -3751,16 +3744,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		
 		while (ComesOffPrecedence[theOpStack.peek()] >= GoesOnPrecedence[op]){
 
-				if (theValueStack.empty()) return false;        // Avoid a crash
+				if (theValueStack.empty()) return false;	// Avoid a crash
 				ExecOp = theOpStack.pop();
 
-																// Execute the popped operator
-																// In general values are popped
-																// from the value stack and then
-																// operated on by the operator
-																// the result is then pushed onto
-																// the value stack
-				
+											// Execute the popped operator
+											// In general values are popped from the stack and then
+											// operated on by the operator
+											// the result is then pushed onto the value stack
 				switch (ExecOp){
 				case UMINUS:
 					d1 = theValueStack.pop();
@@ -3795,9 +3785,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
 					// handle divide by zero
-					if (d1==0){
-						RunTimeError("DIVIDE BY ZERO AT:");
-						return false;
+					if (d1 == 0) {
+						return RunTimeError("DIVIDE BY ZERO AT:");
 					}
 					d1 = d2 / d1;
 					theValueStack.push(d1);
@@ -3813,99 +3802,62 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 				case LE:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
-					if (d2 <= d1){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = (d2 <= d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 					
 				case NE:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
-					if (d2 != d1){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = (d2 != d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 					
 				case GE:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
-					if (d2 >= d1){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = (d2 >= d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 					
 				case GT:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
-					if (d2 > d1){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = (d2 > d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 					
 				case LT:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
-					if (d2 < d1){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = (d2 < d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 					
-				case LEQ:                        // Logical Equals 
+				case LEQ:						// Logical Equals 
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
-					if (d2 == d1){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = (d2 == d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 
 				case OR:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
-					d1 = d1 + d2;
-					if (d1 != 0){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = ((d1 != 0) || (d2 != 0)) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 
 				case AND:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
-					if ((d1 != 0) && (d2 != 0)){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = ((d1 != 0) && (d2 != 0)) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 
 				case NOT:
 					d1 = theValueStack.pop();
-					if (d1 == 0){
-						d1 = 1.0;
-					} else{
-						d1 = 0.0;
-					}
+					d1 = (d1 == 0) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
 				case LPRN:
@@ -4404,83 +4356,72 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		return false;													// report fail
 	}
 
-	private  boolean evalStringExpression(){			// Evaluate a string expression
+	private boolean evalStringExpression(){						// Evaluate a string expression
 
-		SEisLE = false;		// Assume not Logical Expression
-																// Evaluate a string exprssion
-		if (!ESE())
-			{return false;}								// Get the next element (constant, var, function, etc)
-		String Temp1 = StringConstant;							// save the resulting string
-
-													            // Do concatenations
 		int max = ExecutingLineBuffer.length();
-		if (LineIndex >= max) return false;
-		while (ExecutingLineBuffer.charAt(LineIndex)== '+'){	// If concat then
-			++LineIndex;										
-			if (LineIndex >= max) return false;
-			if (!ESE()){SyntaxError();return false;}			// then get the other half
-			Temp1 = Temp1 + StringConstant;						// and do the concat
-		}
-													            // Not a concat, try logical compares
-		
+		if (LineIndex >= max) { return false; }
+
+		char c = ExecutingLineBuffer.charAt(LineIndex);
+		if (c == '\n' || c == ')') { return false; }			// If eol or starts with ')', there is not an expression
+
+		SEisLE = false;											// Assume not Logical Expression
+
+		String Temp1 = "";
+		do {
+			if (!ESE()) { return false; }						// Get the next element (constant, var, function, etc)
+			Temp1 += StringConstant;							// save the resulting string 
+		} while (isNext('+'));									// Another piece to concatenate?
+
 		StringConstant = Temp1;
-		EvalNumericExpressionValue = 0.0;                      // Set Logical Compare Result to false
+		EvalNumericExpressionValue = 0.0;						// Set Logical Compare Result to false
+		if (LineIndex >= max) { return false; }
+		c = ExecutingLineBuffer.charAt(LineIndex);
+		if ((c == '\n') ||		// end of line
+			(c == ')')  ||		// end of parenthesized expression
+			(c == ',')  ||		// parameter separator
+			(c == ';')  ||		// PRINT separator
+			(c == ':')			// SQL.UPDATE separator
+			) { return true; }									// string expression done
+
+																// logical comparison operator required
 		int SaveLineIndex = LineIndex;
-		if (LineIndex >= max) return false;
-
-		if (!getOp()) {
-			if (ExecutingLineBuffer.charAt(LineIndex)!= ',' &&
-				ExecutingLineBuffer.charAt(LineIndex)!= ';'	&&
-			    ExecutingLineBuffer.charAt(LineIndex)!= ':'	) return false;
-			return true;				// Get the potential operator. If none then done
+		boolean isOp = getOp();
+		int operator = OperatorValue;
+		isOp &=	operator == LE  ||
+				operator == NE  ||
+				operator == GE  ||
+				operator == GT  ||
+				operator == LT  ||
+				operator == LEQ ;
+		if (!isOp) {											// not a logical comparison op
+			LineIndex = SaveLineIndex;
+			return true;										// string expression done
 		}
-		
-	    if (OperatorValue == LE || 				// Insure the operator is a logical compare
-	    		OperatorValue == NE ||
-	    		OperatorValue == GE || 
-	    		OperatorValue == GT || 
-	    		OperatorValue == LEQ || 
-	    		OperatorValue == LT  ) {
-	    	
-	    } else{
-	    	if (OperatorValue != EOL &&
-	    		OperatorValue != RPRN	) return false;
-	    	LineIndex = SaveLineIndex; return true;
-	    	}
-	    scOpValue=OperatorValue;							// Save incase user function call causes change
-		if (!ESE()) {return false;}							// get the string to compare
-		OperatorValue = scOpValue;							// Restore saved value
-		String Temp2 = StringConstant;						// do any concat on the right side
-		boolean flag = true; 
-		while (flag && ExecutingLineBuffer.charAt(LineIndex)== '+'){
-			SaveLineIndex = LineIndex;
-			++LineIndex;
-			if (LineIndex >= max) return false;
 
-			if (!ESE()){									// If what follow not string exp
-				LineIndex = SaveLineIndex;					// assume the + operation is numeric
-				flag = false;
-			}else {
-				try {Temp2 = Temp2 + StringConstant;}		// build up the right side string
-				catch (Exception e) {
-				   return RunTimeError(e);
-			   }
+		if (!ESE()) { return false; }							// get the string to compare
+
+		SEisLE = true;											// signal logical string expression
+		String Temp2 = StringConstant;							// do any concat on the right side
+		while (isNext('+')) {
+			SaveLineIndex = LineIndex - 1;						// index of the '+'
+			if (ESE()) {
+				Temp2 += StringConstant;						// build up the right side string
+			} else {											// what follows is not a string expression
+				LineIndex = SaveLineIndex;						// assume the + operation is numeric
+				break;
 			}
 		}
-		
-		SEisLE = true;										// Signal logical string expression
-		
-		if (Temp1 ==  null || Temp2 == null) return false;
-		int cv = Temp1.compareTo(Temp2); 		// Do the compare
-		
+
+		if (Temp1 ==  null || Temp2 == null) { return false; }
+		int cv = Temp1.compareTo(Temp2);						// Do the compare
 		/* if Temp1 < Temp2, cv < 0
 		 * if Temp1 = Temp2, cv = 0
-		 * if Temp1 > Temp2, cv >0
+		 * if Temp1 > Temp2, cv > 0
 		 */
-		
-		EvalNumericExpressionValue = 0.0;      // assume false
-		
-		switch (OperatorValue){
+
+		EvalNumericExpressionValue = 0.0;						// assume false
+
+		switch (operator) {
 
 		case LE:
 			if (cv <= 0) EvalNumericExpressionValue = 1.0;
@@ -4501,20 +4442,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			if (cv < 0) EvalNumericExpressionValue = 1.0;
 			break;
 		default:
+			return false;										// Can't happen
+		}
+		return true;
+	}
+
+	private boolean ESE(){										// Get a String expression element
+ 
+		if (GetStringConstant()) { return true; }				// Try String Constant
+
+		int LI = LineIndex;
+
+		if (isNext('(')) {										// Try parenthesized string expression
+			if (getStringArg() && isNext(')')) { return true; }	// logical expresson not allowed here
+			LineIndex = LI;
 			return false;
 		}
-		SEisLE = true;
-		return true;											// Done
-	}
-	
-	
-	
-	private boolean ESE(){								// Part of evaluating a string expression
 
-														// Get the String expression element
-		if (GetStringConstant()) {return true;}					// Try String Constant
-
-		int LI = LineIndex;										// Try string variable
+		// Try string variable
 		String var = getVarAndType();							// top half of getVar()
 		if (var != null) {
 			if (VarIsNumeric) {
@@ -4525,30 +4470,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 				StringConstant = StringVarValues.get(theValueIndex);
 				return true;
 			}
-			LineIndex = LI;
-		}
-
-		Bundle ufb = ufBundle;
-		if (isUserFunction(TYPE_STRING)) {
-			boolean flag = doUserFunction();
-			ufBundle = ufb;
-			if (flag){
-				return true; 
-			}else {
-				LineIndex = LI;
-				return false;
-			}
 		}
 		LineIndex = LI;
-																// Try String Functions
-		if (!getStringFunction()) { return false; }
-		if (!doStringFunction()) { SyntaxError();  return false; }
-		return true;
+
+		boolean flag = false;
+		Bundle ufb = ufBundle;
+		if (isUserFunction(TYPE_STRING)) {
+			flag = doUserFunction();
+			ufBundle = ufb;
+		} else {
+			LineIndex = LI;										// Try String Functions
+			flag = (getStringFunction() && doStringFunction());
+		}
+		if (!flag) { LineIndex = LI; }
+		return flag;
 	}
 
 	private boolean doStringFunction() {
 		double d = 0;
-		double d1 = 0;
 		int e = 0;
 		int e1 = 0;
 		int length;
@@ -6752,7 +6691,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	fsb.putInt("SVV", StringVarValues.size());
 	fsb.putInt("AT", ArrayTable.size());
 	fsb.putInt("ELI", ExecutingLineIndex);
-	fsb.putInt("SCOV", scOpValue);
 	fsb.putString("PKW", PossibleKeyWord);
 	fsb.putString("fname",ufBundle.getString("fname"));
 
@@ -6853,7 +6791,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	trimArray(VarNames, fsb.getInt("SVN"));
 	trimArray(VarIndex, fsb.getInt("VI"));
 	VarSearchStart = fsb.getInt("VSS");
-	scOpValue = fsb.getInt("SCOV");
 	trimArray(NumericVarValues, fsb.getInt("NVV"));
 	trimArray(StringVarValues, fsb.getInt("SVV"));
 	trimArray(ArrayTable, fsb.getInt("AT"));
@@ -11207,7 +11144,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		String fileName = StringConstant;								// The filename as given by the user
 		MediaPlayer aMP = getMP(fileName);
 
-		if (aMP == null) { return RunTimeError(fileName + "Not Found at:"); }
+		if (aMP == null) { return RunTimeError(fileName + " Not Found at:"); }
 		aMP.setAudioStreamType(AudioManager.STREAM_MUSIC);
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
