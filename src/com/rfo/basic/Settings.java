@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -22,13 +22,10 @@ This file is part of BASIC! for Android
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
     You may contact the author, Paul Laughton, at basic@laughton.com
-    
+
 	*************************************************************************************************/
 
 package com.rfo.basic;
-
-
-
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -38,6 +35,7 @@ import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -45,13 +43,11 @@ import android.os.Environment;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceCategory;
 import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.View;
-import android.widget.ListView;
+
 
 // Called from Editor when user presses Menu->Settings
 
@@ -60,41 +56,40 @@ public class Settings extends PreferenceActivity {
 	private static float  Small_font = 12;
 	private static float  Medium_font = 18;
 	private static float  Large_font = 24;
-	
+
 	public static boolean changeBaseDrive = false;
-	   
+
 //Log.v(Settings.LOGTAG, " " + Settings.CLASSTAG + " context =  " + context);
 
 	   @Override
 	   protected void onCreate(Bundle savedInstanceState) {   // The method sets the initial displayed
 	      super.onCreate(savedInstanceState);				  // checked state from the xml file
-	      addPreferencesFromResource(R.xml.settings);         // it does not effect the above variables
+	      addPreferencesFromResource(R.xml.settings);         // it does not affect the above variables
 	      setBaseDrive();
-
 	   }
-	   
+
 	   public  void setBaseDrive() {
 		   int count = 3;
-		   
+
 		      String xentries[] = {"No external storage"};
 		      String xvalues[] = {"none"};
-		      
+
 		      String entries[] ;
 		      String values[];
-		      
+
 		      entries = values = getStorageDirectories();
-		      
+
 		      if (entries.length == 0) {
 		    	  entries = xentries;
 		    	  values = xvalues;
 		      }
-		      		      
+
 		      PreferenceManager PM = getPreferenceManager();
 		      ListPreference baseDrivePref = (ListPreference) PM.findPreference("base_drive_pref");
 		      baseDrivePref.setEntries(entries);
-		      baseDrivePref.setEntryValues(values);		   
+		      baseDrivePref.setEntryValues(values);
 	   }
-	   
+
 	   public static String[] getStorageDirectories()
 	   {
 	       String[] dirs = null;
@@ -137,7 +132,8 @@ public class Settings extends PreferenceActivity {
 	       }
 	       return dirs;
 	   }
-	   
+
+	   @Override
 	   public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key pressed
 		    if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
 		       finish();
@@ -146,7 +142,8 @@ public class Settings extends PreferenceActivity {
 		    return super.onKeyUp(keyCode, event);
 
 	   }
-	   
+
+	   @Override
 	   public boolean onPreferenceTreeClick (PreferenceScreen preferenceScreen, Preference preference) {
 		   changeBaseDrive = true;
 		   Preference p = preference;
@@ -156,74 +153,74 @@ public class Settings extends PreferenceActivity {
 		   }
 		   return false;
 	   }
-	   
+
+	public static void setDefaultValues(Context context, boolean force) {
+		if (force) {
+			SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
+			pref.edit().clear().commit();
+		}
+		PreferenceManager.setDefaultValues(context, R.xml.settings, force);
+	}
+
 	   public static String getBaseDrive(Context context) {
 		      String baseDrive = PreferenceManager.getDefaultSharedPreferences(context)
 			            .getString("base_drive_pref", "none");
 		      return baseDrive;
 	   }
-	   
+
 	   public static float getFont(Context context) {
-		      
+
 		      String font = PreferenceManager.getDefaultSharedPreferences(context)
 		            .getString("font_pref", "Medium");
-		      
+
 		      if (font.equals("Small")) return Small_font;
 		      if (font.equals("Medium")) return Medium_font;
 		      return Large_font;
 	   }
-	   
+
 	   public static int  getLOadapter(Context context){
 		      String font = PreferenceManager.getDefaultSharedPreferences(context)
 	            .getString("font_pref", "Medium");
-	      
+
 	      if (font.equals("Small")) return R.layout.simple_list_layout_s;
 	      if (font.equals("Medium")) return R.layout.simple_list_layout_m;
 	      return R.layout.simple_list_layout_l;
-
-		   
 	   }
-	   
-	   public static Typeface  getConsoleTypeface(Context context){
+
+	   public static Typeface getConsoleTypeface(Context context){
 		      String font = PreferenceManager.getDefaultSharedPreferences(context)
-	            .getString("csf_pref", "Medium");
-	      
+	            .getString("csf_pref", "MS");
+
 	      if (font.equals("MS")) return Typeface.MONOSPACE;
 	      if (font.equals("SS")) return Typeface.SANS_SERIF;
 	      if (font.equals("S")) return Typeface.SERIF;
 	      return Typeface.MONOSPACE;
-
-		   
 	   }
-	   
 
-	   
 	   public static boolean getLinedEditor(Context context){
 		   return PreferenceManager.getDefaultSharedPreferences(context)
            .getBoolean("lined_editor", true);
 	   }
-	   
+
 	   public static boolean getAutoIndent(Context context){
 		   return PreferenceManager.getDefaultSharedPreferences(context)
            .getBoolean("autoindent", false);
 	   }
 
-	   
 	   public static boolean getLinedConsole(Context context){
 		   return PreferenceManager.getDefaultSharedPreferences(context)
            .getBoolean("lined_console", true);
 	   }
 
-	   
 	   public static String getEditorColor(Context context){
 		   return PreferenceManager.getDefaultSharedPreferences(context)
            .getString("es_pref", "BW");
 	   }
-	   
+
 	   public static int getSreenOrientation(Context context){
 		   String SO = PreferenceManager.getDefaultSharedPreferences(context)
            .getString("so_pref", "0");
-		   
+
 		   int RV = 0;
 		   int nSO = 0;
 		   if (SO.equals("0")) nSO = 0;
@@ -231,7 +228,7 @@ public class Settings extends PreferenceActivity {
 		   if (SO.equals("2")) nSO = 2;
 		   if (SO.equals("3")) nSO = 3;
 		   if (SO.equals("4")) nSO = 4;
-		   
+
 		   switch (nSO){
 			case 0:
 				RV = ActivityInfo.SCREEN_ORIENTATION_SENSOR;
@@ -249,11 +246,11 @@ public class Settings extends PreferenceActivity {
 				RV = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
 				break;
 			default:
-				RV = ActivityInfo.SCREEN_ORIENTATION_SENSOR;	
+				RV = ActivityInfo.SCREEN_ORIENTATION_SENSOR;
 		}
-		   
+
 		return RV;
-		   
+
 	   }
 
 }

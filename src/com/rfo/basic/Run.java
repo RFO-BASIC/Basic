@@ -177,6 +177,7 @@ import android.graphics.Paint;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 
 import org.apache.commons.net.ftp.*;
 import android.widget.AdapterView.OnItemClickListener;
@@ -1898,13 +1899,18 @@ public void onCreate(Bundle savedInstanceState) {
 //	Log.v(LOGTAG, CLASSTAG + " On Create 2 " + ExecutingLineIndex );
 
 	myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
-	AA = new Basic.ColoredTextAdapter(this, output, Settings.getConsoleTypeface(this)); // Establish the output screen
+															// Establish the output screen
+	AA = new Basic.ColoredTextAdapter(this, output, Settings.getConsoleTypeface(this));
 	setListAdapter(AA);
 	lv = getListView();
 	lv.setTextFilterEnabled(false);
 	lv.setSelection(0);
 	lv.setBackgroundColor(AA.backgroundColor);
-	if (!Settings.getLinedConsole(this))lv.setDividerHeight(0);
+	if (Settings.getLinedConsole(this)) {
+		lv.setDivider(new ColorDrawable(AA.lineColor));		// override default from theme, sometimes it's invisible
+	} else {
+		lv.setDividerHeight(0);								// don't show the divider
+	}
 
 //	  IMM.restartInput(lv);
 	  executeKBHIDE();

@@ -44,7 +44,8 @@ This file is part of BASIC! for Android
     <bool name="apk_create_database_dir">true</bool>
 
     <!-- The BASIC! program resource to build into the APK -->
-    <string name="my_program">my_program</string>
+    <!-- Default path is assets/<app_path>/source/ -->
+    <string name="my_program">my_program.bas</string>
 
     <!-- The default Console and TEXT.INPUT titles -->
     <string name="run_name">BASIC! Program Output</string>
@@ -53,7 +54,7 @@ This file is part of BASIC! for Android
     <!-- The default text and background colors selected in Preferences -->
     <integer name="color1">0xff000000</integer>
     <integer name="color2">0xffffffff</integer>
-    <integer name="color3">0xff006478</integer>
+    <integer name="color3">0x80006478</integer>
 
     <!--
         Message lines displayed on the opening screen while files are loading.
@@ -68,11 +69,12 @@ This file is part of BASIC! for Android
     <string name="progress_marker">.</string>
 
     <!--
-        If there are any files that need to be copied from the assets directory
-        into the file system, list them here. Most APKs can leave their files
-        in assets and not copy them. The various run commands will detect the
-        situation and read the files from assets. Note: If the filename has the
-        ".db" extension, it will be loaded into the /databases/ directory.
+        If there are any resources or assets that your app wants to have copied
+        into the file system, list them here as <item>file_name</item> tags.
+        The default path for most files is <app_path>/data/
+        The default path for files ending in ".db" is <app_path>/databases/
+        This list is for standalone APKs only; standard BASIC! does not use it.
+        Most apps can leave this empty, using files directly from assets.
     -->
     <string-array name="load_file_names">
     </string-array>

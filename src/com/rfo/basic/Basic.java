@@ -188,6 +188,7 @@ public class Basic extends ListActivity  {
 		super.onCreate(savedInstanceState);					// Set up of fresh start
 		Log.v(LOGTAG, CLASSTAG + " onCreate");
 
+		Settings.setDefaultValues(this, isAPK);				// if isAPK, force to default settings
 		initVars();
 		String base = Settings.getBaseDrive(this);
 		setFilePaths(base);
@@ -388,11 +389,11 @@ public class Basic extends ListActivity  {
 		InputStream inputStream = null;
 		int resID = getRawResourceID(path);
 		if (resID != 0) {
-			Resources res = Basic.BasicContext.getResources();			// open an input stream from raw resource
+			Resources res = BasicContext.getResources();				// open an input stream from raw resource
 			inputStream = res.openRawResource(resID);					// this call may throw NotFoundException
 		} else {
-			inputStream = Basic.BasicContext.getAssets().				// open an input stream from an asset
-							open(Basic.getAppFilePath(dir, path));		// this call may throw IOException
+			inputStream = BasicContext.getAssets().						// open an input stream from an asset
+							open(getAppFilePath(dir, path));			// this call may throw IOException
 		}
 		return inputStream;
 	}
@@ -608,7 +609,7 @@ public class Basic extends ListActivity  {
 
 		private void doBGforAPK() {								// Background code of APK
 			InitDirs();											// Initialize Basic directories every time
-			LoadGraphics();										// Load the graphics files
+			LoadGraphicsForAPK();								// Load the sound and graphics files
 
 			lines = new ArrayList <String>();					// Program will be loaded into this array list
 			LoadTheProgram();									// Load the basic program into memory
@@ -673,9 +674,6 @@ public class Basic extends ListActivity  {
 			BufferedOutputStream out = null;
 
 			File file = new File(getBasePath() + File.separatorChar + path);
-			File dir = new File(file.getParent());
-			if (!dir.exists()) { dir.mkdirs(); }
-
 			byte[] bytes = new byte[8192];
 			int count = 0;
 			try {
@@ -694,55 +692,51 @@ public class Basic extends ListActivity  {
 			closeStreams(in,out);
 		}
 
-		private void LoadGraphics(){
+		private void LoadGraphicsForAPK(){
 
-			// Loads the icons and audio used for the example programs
-			// The files are copied from assets/<AppPath>/data/ to the SD Card
-
-//			String dataPath = getDataPath("");				// get paths with trailing '/'
-//			String databasesPath = getDataBasePath("");
+			// Loads icons and audio to the SDcard.
+			// The files to create are listed in setup.xml:load_file_names.
+			// The names are relative to "<AppPath>/data/", except that
+			// names ending in ".db" are relative to "<AppPath>/databases/". 
+			// The content is copied from res/raw/ or assets/.
 
 			String[] loadFileNames = mRes.getStringArray(R.array.load_file_names);
 			for (String fileName : loadFileNames) {
 				if (fileName.equals("")) continue;
 
-//				String fn = getRawFileName(fileName);
-//				int resID = mRes.getIdentifier(fn, "raw", BasicPackage);
-//				String path = (fileName.endsWith(".db")) ? databasesPath : dataPath;
-//				copyBinaryResourceToFile(resID, path + fileName);
-
-				String path = getAppFilePath((fileName.endsWith(".db") ? DATABASES_DIR : DATA_DIR), fileName);
-				copyBinaryAssetToFile(path);
+				String dir = fileName.endsWith(".db") ? DATABASES_DIR : DATA_DIR;
+				Load1Graphic(dir, fileName);
 			}
 		}
 
-		private void copyBinaryResourceToFile(int resID, String path){
+		private void Load1Graphic(String dir, String fileName){
+			BufferedInputStream in = null;
+			BufferedOutputStream out = null;
 
-			// Does the actual loading of one icon or audio file
-
-			InputStream inputStream = mRes.openRawResource(resID);
-			BufferedInputStream bis = new BufferedInputStream(inputStream, 8192);
-			BufferedOutputStream bos = null;
-
-			// Note the I/O methods used here specialized for reading and writing
-			// non-text data files;
+			File file = new File(getFilePath(dir, fileName));
+			File parent = new File(file.getParent());
+			if (!parent.exists()) { parent.mkdirs(); }
+			if (!parent.exists()) {
+				Log.w(LOGTAG, "Load1Graphic: can not create directory " + file.getPath());
+				return;
+			}
 
 			byte[] bytes = new byte[8192];
 			int count = 0;
 			try {
-				FileOutputStream fos = new FileOutputStream(path);
-				bos = new BufferedOutputStream(fos);
+				in = new BufferedInputStream(streamFromResource(dir, fileName), 8192);
+				out = new BufferedOutputStream(new FileOutputStream(file));
 				do {
-					count = bis.read(bytes, 0, 8192);
+					count = in.read(bytes, 0, 8192);
 					if (count > 0) {
-						bos.write(bytes, 0, count);
+						out.write(bytes, 0, count);
 						publishProgress(mProgressMarker);
 					}
 				} while (count != -1);
-			} catch (IOException e) {
-				Log.w(LOGTAG, "copyBinaryResourceToFile: " + e);
+			} catch (Exception e) {
+				Log.w(LOGTAG, "Load1Graphic: " + e);
 			}
-			closeStreams(bis, bos);
+			closeStreams(in, out);
 		}
 
 		public void doFirstLoad(){
@@ -842,6 +836,7 @@ public class Basic extends ListActivity  {
 		private Typeface mTypeface = null;
 		public int textColor;
 		public int backgroundColor;
+		public int lineColor;
 
 		public ColoredTextAdapter(Activity activity, ArrayList<String> alist, Typeface typeface) {
 			this(activity, alist);
@@ -855,6 +850,7 @@ public class Basic extends ListActivity  {
 			ScreenColors colors = new ScreenColors();
 			textColor = colors.textColor;
 			backgroundColor = colors.backgroundColor;
+			lineColor = colors.lineColor;
 		}
 
 		@Override
