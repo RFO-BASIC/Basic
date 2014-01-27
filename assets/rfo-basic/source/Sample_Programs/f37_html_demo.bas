@@ -52,7 +52,7 @@ SW.BEGIN type$
  ! A hyperlink was clicked on
  SW.CASE "LNK:"
   PRINT "Hyperlink selected: "+ data$
-  HTML.LOAD.URL data$
+  IF RIGHT$(data$,7)<>"sign_in" THEN HTML.LOAD.URL data$
   SW.BREAK
 
  ! An error occured
