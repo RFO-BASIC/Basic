@@ -181,6 +181,7 @@ import android.graphics.drawable.ColorDrawable;
 
 import org.apache.commons.net.ftp.*;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 
 
 /* Executes the Basic program. Run splits into two parts.
@@ -635,6 +636,8 @@ public class Run extends ListActivity {
     private int OnBGLine = 0;
     private int onCTLine = 0;
     private boolean ConsoleTouched = false;
+    private boolean ConsoleLongTouch = false;
+    private int TouchedConsoleLine = 0;					// first valid line number is 1
     private int interruptResume = -1;
  
     private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer
@@ -778,13 +781,15 @@ public class Run extends ListActivity {
     //  ******************  Console Command variables ********************************
 
     public static final String Console_KW[] = {			// Console commands
-    	"front", "save", "title", "line.new", "line.char"
+    	"front", "save", "title", "line.text", "line.touched", "line.new", "line.char"
     };
 
 	private final Command[] Console_cmd = new Command[] {	// Map console command key words to their execution functions
 		new Command("front")            { public boolean run() { return executeCONSOLE_FRONT(); } },
 		new Command("save")             { public boolean run() { return executeCONSOLE_DUMP(); } },
 		new Command("title")            { public boolean run() { return executeCONSOLE_TITLE(); } },
+		new Command("line.text")        { public boolean run() { return executeCONSOLE_LINE_TEXT(); } },
+		new Command("line.touched")     { public boolean run() { return executeCONSOLE_LINE_TOUCHED(); } },
 		new Command("line.new")         { public boolean run() { return executeCONSOLE_LINE_NEW(); } },
 		new Command("line.char")        { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
 	};
@@ -902,8 +907,8 @@ public class Run extends ListActivity {
     	 "bitmap.drawinto.end", "bitmap.draw",
     	 "get.bmpixel", "get.value", "set.antialias",
     	 "get.textbounds", "text.typeface", "ongrtouch.resume",
-    	 "camera.select", " ", "getdl", "point"			// placeholder for "camera.blindshoot"
-    
+    	 "camera.select", " ", "getdl", "point",			// placeholder for "camera.blindshoot"
+    	 "get.type", "get.params"
     };
 
     public static final int gr_open = 0;				// Graphics Commands enums
@@ -972,9 +977,11 @@ public class Run extends ListActivity {
     public static final int gr_camera_blindshoot = 63;
     public static final int gr_getdl = 64;
     public static final int gr_point = 65;
-    
+    public static final int gr_get_type = 66;
+    public static final int gr_get_params = 67;
+
     public static final int gr_none = 98;
-    
+
     // ******************************** Variables for Audio commands ****************************
 
     public static final String Audio_KW[] ={
@@ -1867,82 +1874,95 @@ public class Background extends Thread {
 		} // for each string
 	} // onProgressUpdate()
 
-// *********************Run Entry Point. Called from Editor or AutoRun *******************
+	
+// ********************* Run Entry Point. Called from Editor or AutoRun *******************
 
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
 
-@Override
-public void onCreate(Bundle savedInstanceState) {
-	
-	super.onCreate(savedInstanceState);
-	Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex );
-	
-	if (Basic.lines == null){
-		Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
-		Intent intent = new Intent(getApplicationContext(), Basic.class);
-		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		startActivity(intent);
-		finish();
-		return;
-	}
-	
-//	System.gc();
-//	Log.v(LOGTAG, CLASSTAG + " isOld  " + isOld);
-	if (isOld){
-		if (theWakeLock != null){
-			theWakeLock.release();
+		super.onCreate(savedInstanceState);
+		Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex );
+		
+		if (Basic.lines == null){
+			Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
+			Intent intent = new Intent(getApplicationContext(), Basic.class);
+			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			startActivity(intent);
+			finish();
+			return;
 		}
-	}
-	theWakeLock = null;
-	isOld = true;
 
-	InitVars();	
-//	Log.v(LOGTAG, CLASSTAG + " On Create 2 " + ExecutingLineIndex );
+//		System.gc();
+//		Log.v(LOGTAG, CLASSTAG + " isOld  " + isOld);
+		if (isOld){
+			if (theWakeLock != null){
+				theWakeLock.release();
+			}
+		}
+		theWakeLock = null;
+		isOld = true;
 
-	myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
+		InitVars();	
+//		Log.v(LOGTAG, CLASSTAG + " On Create 2 " + ExecutingLineIndex );
+
+		myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
 															// Establish the output screen
-	AA = new Basic.ColoredTextAdapter(this, output, Settings.getConsoleTypeface(this));
-	setListAdapter(AA);
-	lv = getListView();
-	lv.setTextFilterEnabled(false);
-	lv.setSelection(0);
-	lv.setBackgroundColor(AA.backgroundColor);
-	if (Settings.getLinedConsole(this)) {
-		lv.setDivider(new ColorDrawable(AA.lineColor));		// override default from theme, sometimes it's invisible
-	} else {
-		lv.setDividerHeight(0);								// don't show the divider
-	}
+		AA = new Basic.ColoredTextAdapter(this, output, Settings.getConsoleTypeface(this));
+		setListAdapter(AA);
+		lv = getListView();
+		lv.setTextFilterEnabled(false);
+		lv.setSelection(0);
+		lv.setBackgroundColor(AA.backgroundColor);
+		if (Settings.getLinedConsole(this)) {
+			lv.setDivider(new ColorDrawable(AA.lineColor));	// override default from theme, sometimes it's invisible
+		} else {
+			lv.setDividerHeight(0);							// don't show the divider
+		}
+	
+//		IMM.restartInput(lv);
+		executeKBHIDE();
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		setRequestedOrientation(Settings.getSreenOrientation(this));
+		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+	
+		headsetBroadcastReceiver = new BroadcastsHandler();
+		this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
+	
+		Basic.theRunContext = this;
 
-//	  IMM.restartInput(lv);
-	  executeKBHIDE();
-	  setVolumeControlStream(AudioManager.STREAM_MUSIC);
-	  setRequestedOrientation(Settings.getSreenOrientation(this));
-	  mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-      headsetBroadcastReceiver = new BroadcastsHandler();
-      this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
-	  
-	  Basic.theRunContext = this;
-	  
-	  // Listener for Console Touch
-	  
-	    lv.setOnItemClickListener(new OnItemClickListener() {
-	        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+		// Listeners for Console Touch
+	
+		lv.setOnItemClickListener(new OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 				if (onCTLine != 0) {
+					TouchedConsoleLine = position + 1;
+					ConsoleLongTouch = false; 
 					ConsoleTouched = true;
 				}
-	        }
-	      });
-
-	theBackground = new Background();						// Start the background task
-	theBackground.start();
+			}
+		});
 	
+		lv.setOnItemLongClickListener(new OnItemLongClickListener() {
+			public boolean  onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+				if (onCTLine != 0) {
+					TouchedConsoleLine = position + 1;
+					ConsoleLongTouch = true; 
+					ConsoleTouched = true;
+					return true;
+				}
+				return false;
+			}
+		});
+
+		theBackground = new Background();						// Start the background task
+		theBackground.start();
+
 	}
 
 private void InitVars(){
-	
-		
-    OnErrorLine =0 ;              // Line number for OnError: label
-    OnBackKeyLine=0;
+
+    OnErrorLine = 0;							// Line number for OnError: label
+    OnBackKeyLine = 0;
     BackKeyHit = false;
     OnMenuKeyLine = 0;
     MenuKeyHit = false;
@@ -1950,6 +1970,8 @@ private void InitVars(){
     OnBGLine = 0;
     onCTLine = 0;
     ConsoleTouched = false;
+    ConsoleLongTouch = false;
+    TouchedConsoleLine = 0;						// first valid line number is 1
 
 
     errorMsg = "No error";
@@ -9199,6 +9221,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
    	    	  	case gr_get_value:
    	    	  		if (!execute_gr_get_value()) return false;
    	    	  		break;
+   	    	  	case gr_get_type:
+   	    	  		 return execute_gr_get_type();
+   	    	  	case gr_get_params:
+  	    	  		 return execute_gr_get_params();
    	    	  	case gr_antialias:
    	    	  		if (!execute_gr_antialias()) return false;
    	    	  		break;
@@ -9841,13 +9867,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		  return true;
 	  }
 
+	private Bundle getObjectBundle() {						// get and validate the user-sepecified graphics object
+		Bundle b = null;
+		if (!evalNumericExpression()) return b;					// Get Object Number
+		int obj = EvalNumericExpressionValue.intValue();
+		if (obj < 0 || obj >= DisplayList.size()) {
+			RunTimeError("Object out of range");
+		} else {
+			b = DisplayList.get(obj);							// Get the specified display object
+		}
+		return b;
+	}
+
 	private boolean execute_gr_hide(){
 		if (!evalNumericExpression()) return false;							// Get Object Number
-		if (!checkEOL()) return false;
 		int obj = EvalNumericExpressionValue.intValue();
 		if (obj < 0 || obj >= DisplayList.size()) {
 			return RunTimeError("Hide parameter out of range");
 		}
+		if (!checkEOL()) return false;
+
 		Bundle b = DisplayList.get(obj);				// Get the specified display object
 		b.putInt("hide", 1);							// Set hide to true
 		DisplayList.set(obj, b);						// put the modified object back
@@ -9856,11 +9895,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean execute_gr_show(){
 		if (!evalNumericExpression()) return false;							// Get Object Number
-		if (!checkEOL()) return false;
 		int obj = EvalNumericExpressionValue.intValue();
 		if (obj < 0 || obj >= DisplayList.size()) {
 			return RunTimeError("Show parameter out of range");
 		}
+		if (!checkEOL()) return false;
+
 		Bundle b = DisplayList.get(obj);				// Get the specified display object
 		b.putInt("hide", 0);							// Set hide to false
 		DisplayList.set(obj, b);						// put the modified object back
@@ -9868,12 +9908,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	}
 
 	private boolean execute_gr_get_position(){
-		if (!evalNumericExpression()) return false;							// Get Object Number
-		int obj = EvalNumericExpressionValue.intValue();
-		if (obj < 0 || obj >= DisplayList.size()) {
-			return RunTimeError("Object out of range");
-		}
-		Bundle b = DisplayList.get(obj);				// Get the specified display object
+		Bundle b = getObjectBundle();
+		if (b == null) return false;
 
 		if (!isNext(',') || !getNVar()) return false;
 		int xIndex = theValueIndex;
@@ -9895,17 +9931,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	}
 
 	private boolean execute_gr_get_value(){
-		if (!evalNumericExpression()) return false;						// Get Object Number
-		int obj = EvalNumericExpressionValue.intValue();
-		if (obj < 0 || obj >= DisplayList.size()) {
-			return RunTimeError("Object out of range");
-		}
+		Bundle b = getObjectBundle();								// get the graphics object
+		if (b == null) return false;
 
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;							// get the parameter string
+		if (!isNext(',') || !getStringArg()) return false;			// get the parameter string
 		String parm = StringConstant;
 
-		Bundle b = DisplayList.get(obj);							// Get the specified display object
 		if (!b.containsKey(parm)) {
 			return RunTimeError("Object does not contain " + parm);
 		}
@@ -9922,6 +9953,30 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			StringVarValues.set(theValueIndex, theText);
 		}
 		return true;
+	}
+
+	private boolean execute_gr_get_type() {
+		Bundle b = getObjectBundle();								// get the graphics object
+		if (b == null) return false;
+		if (!isNext(',') || !getStringArg() || !checkEOL()) return false;// var for type string
+
+		int type = b.getInt("type");
+		StringVarValues.set(theValueIndex, GR.types[type]);
+		return true;
+	}
+
+	private boolean execute_gr_get_params() {
+		Bundle b = getObjectBundle();								// get the graphics object
+		if (b == null) return false;
+		if (!isNext(',') ||	!getArrayVarForWrite(TYPE_STRING) || !checkEOL()); // get the array variable
+
+		Set<String> keySet = b.keySet();							// get parameters from Bundle
+		keySet.remove("type");
+		keySet.remove("hide");
+		ArrayList<String> keys = new ArrayList<String>(keySet);
+
+		/* Puts the list of keys into an unDIMed array */
+		return ListToBasicStringArray(VarNumber, keys, keys.size());
 	}
 
 	private boolean execute_gr_touch(int p){
@@ -11452,7 +11507,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			}
 			ArrayList<String> census = theSensors.takeCensus();
 			int nSensors = census.size();						// If no sensors reported.....
-			if (nSensors==0){
+			if (nSensors ==0 ) {
 				return RunTimeError("This device reports no Sensors");
 			}
 
@@ -14564,6 +14619,38 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			title = StringConstant;
 		}
 		sendMessage(MESSAGE_CONSOLE_TITLE, title);				// Signal UI to update its title
+		return true;
+	}
+
+	private boolean executeCONSOLE_LINE_TEXT(){
+		if (!evalNumericExpression()) return false;				// line number to read
+		int lineNum = EvalNumericExpressionValue.intValue();
+		if (!isNext(',') || !getSVar() || !checkEOL()) return false; // variable for line content
+
+		if (--lineNum < 0) {									// convert from 1-based user index to 0-based Java index
+			return RunTimeError("Line number must be >= 1");
+		}
+		int max = output.size();								// number of lines written to console
+		String lineText = (lineNum < max) ? output.get(lineNum) : "";
+		StringVarValues.set(theValueIndex, lineText);
+		return true;
+	}
+
+	private boolean executeCONSOLE_LINE_TOUCHED(){
+		if (!getNVar()) return false; 							// variable for last line number touched
+		int lineVarIndex = theValueIndex;
+		int longTouchVarIndex = -1;
+		if (isNext(',')) {
+			if (!getNVar()) return false;						// optional variable indicating short or long touch
+			longTouchVarIndex = theValueIndex;
+		}
+		if (!checkEOL()) return false;
+
+		NumericVarValues.set(lineVarIndex, (double)TouchedConsoleLine);
+		if (longTouchVarIndex != -1) {
+			double isLongTouch = ConsoleLongTouch ? 1 : 0;
+			NumericVarValues.set(longTouchVarIndex, isLongTouch);
+		}
 		return true;
 	}
 

@@ -94,8 +94,25 @@ public class GR extends Activity {
     public static final int dClip = 13;
     public static final int dPoly = 14;
     public static final int dPoint = 15;
+    public static final String[] types = {			// KEEP THESE IN SYNC!!!
+        "null",				// dNull = 0;
+        "circle",			// dCircle = 1;
+        "rect",				// dRect = 2;
+        "line",				// dLine = 3;
+        "oval",				// dOval = 4;
+        "arc",				// dArc = 5;
+        "text",				// dText = 6;
+        "bitmap",			// dBitmap = 7;
+        "rotate.start",		// dRotate_Start = 8;
+        "rotate.end",		// dRotate_End = 9;
+        "orientation",		// dOrientation = 10;
+        "close",			// dClose = 11;
+        "set.pixels",		// dsetPixels = 12;
+        "clip",				// dClip = 13;
+        "poly",				// dPoly = 14;
+        "point",			// dPoint = 15;
+    };
 
-    
 //  Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " String Var Value =  ");
 
 
