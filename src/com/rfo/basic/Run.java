@@ -719,8 +719,7 @@ public class Run extends ListActivity {
 	private boolean PrintLineReady = false;				// Signals a line is ready to print or write
 
 	private InputMethodManager IMM;
-	private ArrayList<String> LabelNames;				// A list of all the label names found in the program
-	private ArrayList<Integer> LabelValues;				// The line numbers associated with Label Names
+	private HashMap<String,Integer> Labels;				// A list of all labels and associated line numbers
 
 	private ArrayList<String> VarNames ;				// Each entry has the variable name string
 	private ArrayList<Integer> VarIndex;				// Each entry is an index into
@@ -1558,17 +1557,16 @@ public class Run extends ListActivity {
  *  This code all runs in the background task.
  *  
  */
-    												
 
 
-public class Background extends Thread {
-	
-// The execution of the basic program is done by this background Thread. This is done to keep the UI task
-// responsive. This method controls Run as it is running in the background.
-    	
+    public class Background extends Thread {
+
+    // The execution of the basic program is done by this background Thread. This is done to keep the UI task
+    // responsive. This method controls Run as it is running in the background.
+
         @Override
         public void run() {
-        	
+
         	boolean flag = true;
 //    		Basic.Echo = Settings.getEcho(Basic.BasicContext);
         	Echo = false;
@@ -1756,14 +1754,14 @@ public class Background extends Thread {
         }
 
         private boolean doInterrupt(int gotoLine) {
-        	if (interruptResume != -1 ) return true;   	// If we are handling an interrupt then do not cancel this one
-        	interruptResume = ExecutingLineIndex;	   	// Set the resume Line Number
-        	ExecutingLineIndex = gotoLine;			   	// Set the goto line number
+        	if (interruptResume != -1) return true;		// If we are handling an interrupt then do not cancel this one
+        	interruptResume = ExecutingLineIndex;		// Set the resume Line Number
+        	ExecutingLineIndex = gotoLine;				// Set the goto line number
         	IfElseStack.push(IEinterrupt);
         	return false;								//Turn off the interrupt
         }
 
-} // End of Background class
+    } // End of Background class
 
 	private Context getContext() {
 		return GRFront ? GR.context : this;
@@ -2045,11 +2043,9 @@ private void InitVars(){
 
    PrintLine = "";					// Hold the Print line currently being built
     PrintLineReady = false;			// Signals a line is ready to print or write
-    
-	LabelNames = new ArrayList<String>() ;         // A list of all the label names found in the program
-	LabelValues = new ArrayList<Integer>() ;       // The line numbers associated with Label Names
 
-    
+	Labels = new HashMap<String, Integer>();		// A list of all labels and associated line numbers
+
     VarNames = new ArrayList<String>() ;			// Each entry has the variable name string
     VarIndex = new ArrayList<Integer>();			// Each entry is an index into
     VarNumber = 0;				// An index for both VarNames and NVarValue
@@ -2630,7 +2626,7 @@ private void trimArray(ArrayList Array, int start){
 }
 
 // Look for a BASIC! word: [_@#\l]?[_@#\l\d]*
-private  String getWord(String line, int start, boolean stopOnPossibleKeyword) {
+private String getWord(String line, int start, boolean stopOnPossibleKeyword) {
 	int max = line.length();
 	if (start >= max || start < 0) { return ""; }
 	int li = start;
@@ -2650,29 +2646,17 @@ private  String getWord(String line, int start, boolean stopOnPossibleKeyword) {
 	return line.substring(start, li);
 }
 
-// Store a label and its line number; called from PreScan()
-private boolean storeLabel(String name, int LineNumber) {
-	for (int i = 0; i < LabelNames.size(); ++i) {			  		// scan for duplicate name
-		if (LabelNames.get(i).equals(name)) {
-			RunTimeError("Duplicate label name");
-			return false;
-		}
-	}
-
-	LabelNames.add(name);											// Not Duplicate, so save it
-	LabelValues.add(LineNumber);									// and its line number
-																	// Check for Interrupt Labels
-	if (name.equals("onerror")) OnErrorLine = LineNumber;
-	if (name.equals("onbackkey")) OnBackKeyLine = LineNumber;
-	if (name.equals("onmenukey")) OnMenuKeyLine = LineNumber;
-	if (name.equals("ontimer")) OnTimerLine = LineNumber;
-	if (name.equals("onkeypress")) OnKeyLine = LineNumber;
-	if (name.equals("ongrtouch")) OnTouchLine = LineNumber;
-	if (name.equals("onbtreadready")) OnBTReadLine = LineNumber;
-	if (name.equals("onbackground")) OnBGLine = LineNumber;
-	if (name.equals("onconsoletouch")) onCTLine = LineNumber;
-
-	return checkEOL();
+private void getInterruptLabels() {								// check for interrupt labels
+	Integer line;
+	line = Labels.get("onerror");        OnErrorLine   = (line == null) ? 0 : line.intValue();
+	line = Labels.get("onbackkey");      OnBackKeyLine = (line == null) ? 0 : line.intValue();
+	line = Labels.get("onmenukey");      OnMenuKeyLine = (line == null) ? 0 : line.intValue();
+	line = Labels.get("ontimer");        OnTimerLine   = (line == null) ? 0 : line.intValue();
+	line = Labels.get("onkeypress");     OnKeyLine     = (line == null) ? 0 : line.intValue();
+	line = Labels.get("ongrtouch");      OnTouchLine   = (line == null) ? 0 : line.intValue();
+	line = Labels.get("onbtreadready");  OnBTReadLine  = (line == null) ? 0 : line.intValue();
+	line = Labels.get("onbackground");   OnBGLine      = (line == null) ? 0 : line.intValue();
+	line = Labels.get("onconsoletouch"); onCTLine      = (line == null) ? 0 : line.intValue();
 }
 
 // Scan the entire program. Find all the labels and read.data statements.
@@ -2689,29 +2673,20 @@ private boolean PreScan() {
 		String word = getWord(line, 0, false);
 		LineIndex = word.length();
 
-		if (isNext(':')) {											// if word really is a label
-			if (!storeLabel(word, LineNumber)) { return false; }	// if error or duplicate, report it
+		if (isNext(':')) {											// if word really is a label, store it
+			if (Labels.put(word, LineNumber) != null) { return RunTimeError("Duplicate label name"); }
+			if (!checkEOL())                   { return false; }
 		}
 		else if (line.startsWith("read.data")) {					// Is not a label. If it is READ.DATA
 			LineIndex = 9;											// set LineIndex just past READ.DATA
 			if (!executeREAD_DATA())           { return false; }	// parse and store the data list
 		}
 	}
+	getInterruptLabels();
 	return true;
 }
 
-private int isLabel(String varName){
-	int nope = -1;
-	int s = LabelNames.size();
-	if (s == 0) { return nope; }
-
-	for (int i=0; i < s; ++i ){
-		if (LabelNames.get(i).equals(varName)) return LabelValues.get(i);
-	}
-	return nope;
-}
-
-private static  void Show(String str){					// Display a Error message on  output screen. Message will be
+private static void Show(String str){					// Display a Error message on  output screen. Message will be
 														// picked up up in main loop and sent to the UI task.
   if (str.startsWith("@@")){							// If this an interprocess message
 	  TempOutput[TempOutputIndex]= str;					// send the message
@@ -3331,7 +3306,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean getArrayVarForWrite() {				// get the array var name as a new, undimensioned array
 		int LI = LineIndex;
-		boolean ok = true;
 		String var = getVarAndType();					// either string or numeric type is ok
 		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
 		else if (!VarIsNew)					{ RunTimeError(EXPECT_NEW_ARRAY); }
@@ -3445,7 +3419,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	}
 
 	private boolean searchVar(String var) {			// search for a variable by name
-		int j = VarSearchStart;						// Usually zero but will change when executing User Function
+													// VarSearchStart is usually zero but will change when executing User Function
+		int j = (interruptResume == -1) ? VarSearchStart : 0;	// unless we're in an interrupt
 		for ( ; j < VarNames.size(); ++j) {			// look up this var in the variable table
 			if (var.equals(VarNames.get(j))) {		// found it
 				VarIsNew = false;
@@ -5140,42 +5115,41 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	}
 
+	private int getLabelLineNum() {
+		String label = getWord(ExecutingLineBuffer, LineIndex, false);	// get label name
+		int len = label.length();
+		LineIndex += len;
+		if (len != 0) {
+			Integer lineNum = Labels.get(label);
+			if (lineNum == null) {
+				RunTimeError("Undefined Label at:");
+			} else {
+				return lineNum.intValue();
+			}
+		}
+		return -1;
+	}
+
 	private boolean executeGOTO() {
 
 		int maxStack = 50000 ;						// 50,000 should be enough
 
-		if (IfElseStack.size() > maxStack) {
+		if ((IfElseStack.size() > maxStack) || (ForNextStack.size() > maxStack)) {
 			return RunTimeError("Stack overflow. See manual about use of GOTO.");
 		}
-		if (ForNextStack.size() > maxStack) {
-			return RunTimeError("Stack overflow. See manual about use of GOTO");
-		}
 
-		String varName = getVarAndType();			// get label name and look up its VarNumber
-		if ((varName != null) && checkEOL()) {
-			int gln = isLabel(varName);
-			if (gln < 0) {
-				return RunTimeError("Undefined Label at:");
-			}
-			ExecutingLineIndex = gln;
-			return true;
-		}
-		return false;
+		int gln = getLabelLineNum();
+		if ((gln <= 0) || !checkEOL()) return false;
+		ExecutingLineIndex = gln;
+		return true;
 	}
 
 	private boolean executeGOSUB() {
-
-		String varName = getVarAndType();			// get label name and look up its VarNumber
-		if ((varName != null) && checkEOL()) {
-			int gln = isLabel(varName);
-			if (gln < 0) {
-				return RunTimeError("Undefined Label at:");
-			}
-			GosubStack.push(ExecutingLineIndex);
-			ExecutingLineIndex = gln;
-			return true;
-		}
-		return false;
+		int gln = getLabelLineNum();
+		if ((gln <= 0) || !checkEOL()) return false;
+		GosubStack.push(ExecutingLineIndex);
+		ExecutingLineIndex = gln;
+		return true;
 	}
 
 	private  boolean executeIF(){
