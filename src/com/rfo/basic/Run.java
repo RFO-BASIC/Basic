@@ -2698,14 +2698,12 @@ private static void Show(String str){					// Display a Error message on  output 
 	}
 }
 
-private static  void PrintShow(String str){				// Display a PRINT message on  output screen. Message will be
+private static  void PrintShow(String str){				// Display a PRINT message on output screen. Message will be
 	if (TempOutputIndex >= MaxTempOutput) return;
 	
 	TempOutput[TempOutputIndex]= str;					// picked up up in main loop and sent to the UI task.
 	++TempOutputIndex;
 }
-
-
 
 
 	private  boolean StatementExecuter(){					// Execute one basic line (statement)
@@ -3304,62 +3302,61 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		return false;
 	}
 
-	private boolean getArrayVarForWrite() {				// get the array var name as a new, undimensioned array
+	private String getArrayVarForWrite() {				// get the array var name as a new, undimensioned array
+														// returns the name, does NOT create a variable
 		int LI = LineIndex;
 		String var = getVarAndType();					// either string or numeric type is ok
 		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
 		else if (!VarIsNew)					{ RunTimeError(EXPECT_NEW_ARRAY); }
 		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
-		else {
-			createNewVar(var);							// no error, create new variable with dummy VarIndex
-			return true;
-		}
-		LineIndex = LI;
-		return false;
+		else return var;								// no error, return name, caller must create variable
+
+		LineIndex = LI;									// error, return null
+		return null;
 	}
 
-	private boolean getArrayVarForWrite(boolean type) {	// get the array var name as a new, undimensioned array
+	private String getArrayVarForWrite(boolean type) {	// get the array var name as a new, undimensioned array
+														// returns the name, does NOT create a variable
 		int LI = LineIndex;
 		String var = parseVar(!USER_FN_OK);
 		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
 		else if (type != VarIsNumeric)		{ RunTimeError(type ? EXPECT_NUM_ARRAY : EXPECT_STRING_ARRAY); }
 		else if (searchVar(var))			{ RunTimeError(EXPECT_NEW_ARRAY); }
 		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
-		else {
-			createNewVar(var);							// no error, create new variable with dummy VarIndex
-			return true;
-		} 
-		LineIndex = LI;
-		return false;
+		else return var;								// no error, return name, caller must create variable
+
+		LineIndex = LI;									// error, return null
+		return null;
 	}
 
-	private boolean getArrayVarForRead() {				// get the array var name as a previously-dimensioned array
+	private String getArrayVarForRead() {				// get the array var as a previously-dimensioned array
+														// returns the var name, null if error or no var
 		int LI = LineIndex;
 		String var = getVarAndType();					// type must match expected type
 		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
 		else if (VarIsNew)					{ RunTimeError(EXPECT_DIM_ARRAY); }
 		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 		else {
-			return true;								// no error
+			return var;									// no error, array index is in theValueIndex
 		}
 		LineIndex = LI;
-		return false;
+		return null;									// error, theVarIndex is not valid
 	}
 
-	private boolean getNewFNVar() {						// get var and assure that it is a new function name
+	private String getNewFNVar() {						// get var and assure that it is a new function name
+														// returns the name, does NOT create a variable
 		int LI = LineIndex;
 		String var = parseVar(USER_FN_OK);				// Get function name if there is one.
 		if ((var != null) && VarIsFunction) {			// If there is one...
 			searchVar(var);								// ... look for it in the symbol table.
 			if (VarIsNew) {
-				createNewVar(var);
-				return true;
+				return var;
 			} else {
 				RunTimeError(EXPECT_NEW_FN_NAME);
 			}
 		}
 		LineIndex = LI;
-		return false;
+		return null;
 	}
 
 	// ************************* top half of getVar() *************************
@@ -4867,8 +4864,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			} while (isNext(','));
 			if (!isNext(']'))					{ return false; }		// must have closing bracket
 
-			int avn = createNewVar(var);								// no error, create new variable
-			if (!BuildBasicArray(avn, avt, dimValues)) { return false; } // build the array
+			if (!BuildBasicArray(var, avt, dimValues)) { return false; }// no error, build the array
 
 		} while (isNext(','));											// continue while there are arrays to be DIMed
 		return checkEOL();												// then done
@@ -4886,82 +4882,78 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		return checkEOL();
 	}
 
-	private   boolean BuildBasicArray(int VarNum, boolean IsNumeric, ArrayList<Integer> DimList){	//Part of DIM
+	private boolean BuildBasicArray(String var, boolean IsNumeric, ArrayList<Integer> DimList){	//Part of DIM
 
-													// Build a basic array
+													// Build a basic array attached to a new variable
 													// Makes a bundle with information about the 
 													// array and put the bundle into the array table
 													// The index to bundle in the array table
 													// The index is put into the VAR table as the
 													// the var value
-		
+
 													// In addition, a value element is created for
 													// each element in the array
-		
+
 		ArrayValueStart = 0;
 		int TotalElements = 1;
 		int theDim = 0;
 		ArrayList<Integer> ArraySizes = new ArrayList<Integer>();
 
-		for (int i = 0; i<DimList.size(); ++i){   // Initialize array sizes
-			ArraySizes.add(0);					  // the purpose of this list will be explained later			
+		for (int i = 0; i < DimList.size(); ++i) {			// Initialize array sizes
+			ArraySizes.add(0);								// the purpose of this list will be explained later
 		}
-		ArraySizes.add(1);						 // and add the unitary 
-		
-		for (int dim=DimList.size()-1; dim >= 0; --dim){	//for each Dim from last to first
-			theDim = DimList.get(dim);						//get the Dim
-			if (theDim < 1){								// insure >=1
-				RunTimeError("DIMs must be >= 1 at");
-				return false;
-			}
-			TotalElements= TotalElements*theDim;			//multiply this Index by the previous size
-			ArraySizes.set(dim, TotalElements);				//and set in the ArraySizes List
-															//The list of sizes is used to quickly
-															//calculate array element offset
-															//when array is referenced
+		ArraySizes.add(1);									// and add the unitary
 
-			if (TotalElements>50000){						// Limit the size of any one array
+		for (int dim=DimList.size()-1; dim >= 0; --dim) {	// for each Dim from last to first
+			theDim = DimList.get(dim);						// get the Dim
+			if (theDim < 1) {								// insure >= 1
+				return RunTimeError("DIMs must be >= 1 at");
+			}
+			TotalElements= TotalElements*theDim;			// multiply this Index by the previous size
+			ArraySizes.set(dim, TotalElements);				// and set in the ArraySizes List
+															// The list of sizes is used to quickly
+															// calculate array element offset
+															// when array is referenced
+
+			if (TotalElements>50000) {						// Limit the size of any one array
 				return RunTimeError("Array exceeds 50,000 elements");	// to 50,000 elements
 			}
 		}
-		ArraySizes.remove(0);								//remove the last size (the first size)
-		try{
-		if (IsNumeric){										//Initialize Numeric Array Values
+		ArraySizes.remove(0);								// remove the last size (the first size)
+
+		if (IsNumeric) {									// Initialize Numeric Array Values
 			ArrayValueStart = NumericVarValues.size();		// All numeric var values kept in NumericVarValues
-			for (int i=0; i < TotalElements; ++i){			// Number inited to 0.0
+			for (int i=0; i < TotalElements; ++i) {			// Number inited to 0.0
 				NumericVarValues.add(0.0);
 			}
-		}else{												//Initialize String Array Values
-			ArrayValueStart = StringVarValues.size();		//All string var values kept in StringVarValues
-			for (int i=0; i < TotalElements; ++i){
+		} else {											// Initialize String Array Values
+			ArrayValueStart = StringVarValues.size();		// All string var values kept in StringVarValues
+			for (int i=0; i < TotalElements; ++i) {
 				StringVarValues.add("");					// Strings inited to empty
 			}
 		}
-		}
-		catch (Exception e) {
-			return RunTimeError(e);
-		}
 
-	
 		Bundle ArrayEntry = new Bundle();						// Build the array table entry bundle
-		ArrayEntry.putIntegerArrayList("dims", DimList);        // The array index values
+		ArrayEntry.putIntegerArrayList("dims", DimList);		// The array index values
 		ArrayEntry.putIntegerArrayList("sizes", ArraySizes);	// The array sizes
 		ArrayEntry.putInt("length", TotalElements);
 		ArrayEntry.putInt("base", ArrayValueStart);				// The pointer the first array element value
-		VarIndex.set(VarNum, ArrayTable.size());				// The var's value is its array table index		
-		ArrayTable.add(ArrayEntry);								// Put the element bundle into the array table
-		
-		return true;
-	}// end BuildBasicArray
 
-	private boolean BuildBasicArray(int VarNum, boolean IsNumeric, int length){	// Build 1D array
+		int varNum = createNewVar(var);
+		VarIndex.set(varNum, ArrayTable.size());				// The var's value is its array table index
+		ArrayTable.add(ArrayEntry);								// Put the element bundle into the array table
+
+		return true;
+	} // end BuildBasicArray
+
+	private boolean BuildBasicArray(String var, boolean IsNumeric, int length){	// Build 1D array
 		ArrayList <Integer> dimValues = new ArrayList<Integer>();		// list of dimensions
 		dimValues.add(length);											// only one dimension
-		return (BuildBasicArray(VarNum, IsNumeric, dimValues));			// go build an array of the proper size
+		return (BuildBasicArray(var, IsNumeric, dimValues));			// go build an array of the proper size
 	}
 
-	private boolean ListToBasicNumericArray(int VarNum, List <Double> Values, int length) {
-		if (!BuildBasicArray(VarNum, true, length)) return false;		// go build an array of the proper size and type
+	private boolean ListToBasicNumericArray(String var, List <Double> Values, int length) {
+		if (!BuildBasicArray(var, true, length)) return false;			// go build an array of the proper size and type
 		int i = ArrayValueStart;
 		for (Double d : Values) {										// stuff the array
 			NumericVarValues.set(i++, d);
@@ -4969,8 +4961,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		return true;
 	}
 
-	private boolean ListToBasicStringArray(int VarNum, List <String> Values, int length) {
-		if (!BuildBasicArray(VarNum, false, length)) return false;		// go build an array of the proper size and type
+	private boolean ListToBasicStringArray(String var, List <String> Values, int length) {
+		if (!BuildBasicArray(var, false, length)) return false;			// go build an array of the proper size and type
 		int i = ArrayValueStart;
 		for (String s : Values) {										// stuff the array
 			StringVarValues.set(i++, s);
@@ -6550,74 +6542,60 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 // ******************************* User Defined Functions ******************************
 
-	private boolean  executeFN_DEF(){									// Define Function
+	private boolean  executeFN_DEF(){								// Define Function
 
-		if (!getNewFNVar()) return false;							// Get the function name
-
-		int fVarNumber = VarNumber;                                  // Save the VarNumber of the function name
+		String var = getNewFNVar();									// Get the function name
+		if (var == null) { return false; }
+		int fVarNumber = createNewVar(var);							// Save the VarNumber of the function name
 		boolean fType = VarIsNumeric;
-		int NVV = NumericVarValues.size();							// Save for array trim
-		int SVV = StringVarValues.size();
 
-		ArrayList<String> fVarName = new ArrayList<String>();        // List of parameter names
-		ArrayList<Integer> fVarType = new ArrayList<Integer>();      // List of parameter types
-		ArrayList<Integer> fVarArray = new ArrayList<Integer>();     // A list of indicating if parm is array
+		ArrayList<String> fVarName = new ArrayList<String>();		// List of parameter names
+		ArrayList<Integer> fVarType = new ArrayList<Integer>();		// List of parameter types
+		ArrayList<Integer> fVarArray = new ArrayList<Integer>();	// A list of indicating if parm is array
 
 		if (!isNext(')')) {
 			do {													// Get each of the parameter names
-				String var = getVarAndType();
-				if (var == null) { return false; }
+				String name = parseVar(!USER_FN_OK);				// without creating any new vars
+				if (name == null) { return false; }
 				if (VarIsArray) {									// Process array
-					if (!isNext(']')) { return RunTimeError(EXPECT_ARRAY_NO_INDEX); } // Array must not have any indices
-					fVarArray.add(1);      // 1 Indicates var is array
-				} else fVarArray.add(0);   // 0 Indicates var is not an array
+					if (!isNext(']')) {								// Array must not have any indices
+						return RunTimeError(EXPECT_ARRAY_NO_INDEX);
+					}
+					fVarArray.add(1);								// 1 Indicates var is array
+				} else fVarArray.add(0);							// 0 Indicates var is not an array
 
-				fVarName.add(var);									// Save the name
+				fVarName.add(name);									// Save the name
 				fVarType.add(VarIsNumeric ? 1 : 0);					// Save the type
 			} while (isNext(','));
 			if ( !(isNext(')') && checkEOL()) ) { return false; }
 		}
-		
+
 		Bundle b = new Bundle();									// Build the bundle for the FunctionTable
-		b.putInt("line", ExecutingLineIndex);                       // Line number of fn.def
-		b.putString("fname", VarNames.get(fVarNumber));             // Name of this function
+		b.putInt("line", ExecutingLineIndex);						// Line number of fn.def
+		b.putString("fname", VarNames.get(fVarNumber));				// Name of this function
 		b.putBoolean("isNumeric", fType);							// Type of function
-		b.putStringArrayList("pnames", fVarName);                   // List of parameter names
-		b.putIntegerArrayList("ptype", fVarType);                   // List of parameter types
+		b.putStringArrayList("pnames", fVarName);					// List of parameter names
+		b.putIntegerArrayList("ptype", fVarType);					// List of parameter types
 		b.putIntegerArrayList("array", fVarArray);					// List of parameter array flags
 		
 		int fn = FunctionTable.size();
 		FunctionTable.add(b);										// Add the Bundle to the function table
-		
+
 		VarIndex.set(fVarNumber, fn);								// Associate the function number with
 																	// the function name
-
-		trimArray(VarNames, fVarNumber+1);						// Remove parameter names from the
-		trimArray(VarIndex, fVarNumber+1);						// variable name and index tables
-		trimArray(NumericVarValues, NVV);						// Numeric var values
-		trimArray(StringVarValues, SVV);						// String var values
-		
-		++ExecutingLineIndex;
-		do{																	  // Now scan for the fn.end
-			if (ExecutingLineIndex >= Basic.lines.size()) break;
-			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);        
-			if (ExecutingLineBuffer.startsWith("fn.end")) break;              // Break out when found
-			if (ExecutingLineBuffer.startsWith("fn.def")){					  // Insure not trying to define function in function
-				RunTimeError("Can not define a function within a function at:");
-				return false;
+		int max = Basic.lines.size();
+		while (++ExecutingLineIndex < max) {						// Now scan for the fn.end
+			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
+			if (ExecutingLineBuffer.startsWith("fn.end")) {			// Break out when found
+				return true;
 			}
-			++ExecutingLineIndex;
-		}while (ExecutingLineIndex < Basic.lines.size());
-		
-		if (ExecutingLineIndex >= Basic.lines.size()){                        // if at end of program, fn.end not found                 
-			RunTimeError("No fn.end for this function");
-			return false;
+			if (ExecutingLineBuffer.startsWith("fn.def")) {			// Insure not trying to define function in function
+				return RunTimeError("Can not define a function within a function at:");
+			}
 		}
-
-		return true;
+		return RunTimeError("No fn.end for this function");			// end of program, fn.end not found
 	}
-	
-	
+
 	private boolean  executeFN_RTN(){
 		if (FunctionStack.empty()){							// Insure RTN actually called from executing function
 			RunTimeError("misplaced fn.rtn");
@@ -6636,25 +6614,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		fnRTN = true;										// Signal RunLoop() to return
 		return checkEOL();
 	}
-	
+
 	private boolean executeFN_END(){
 		if (FunctionStack.empty()){							// Insure END actually called from executing function
 			RunTimeError("misplaced fn.end");
 			return false;
 		}
-		
+
 		Bundle fsb = new Bundle();							
 		fsb = FunctionStack.peek();							// Look at the Function Bundle on the stack
-		
+
 		if (fsb.getBoolean("isNum")){						// to determine if function is string or numeric
 			EvalNumericExpressionValue = 0.0;				// Set default value
 		}else{
 			StringConstant = "";							// Set default value
 		}
-		
+
 		fnRTN = true;										// Signal RunLoop() to return
 		return checkEOL();
-
 	}
 
 	private boolean executeCALL(){
@@ -6716,7 +6693,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 			boolean isGlobal = isNext('&');								// optional for scalars, ignored for arrays
 			boolean typeIsNumeric = (fVarType.get(i) != 0);
 			if (fVarArray.get(i) == 1){									// if this parm is an array
-				if (!getArrayVarForRead())	{ return false; }			// Get the array name var
+				if (getArrayVarForRead() == null) { return false; }		// Get the array name var
 				if (typeIsNumeric != VarIsNumeric) {					// Insure type (string or number) match
 					return RunTimeError("Array parameter type mismatch at:");
 				}
@@ -7869,9 +7846,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		String filePath = StringConstant;
 
 		if (!isNext(',')) { return false; }							// parse the ,D$[]
-		if (!getArrayVarForWrite(TYPE_STRING)) { return false; }	// Get the array variable
+		String var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
+		if (var == null) { return false; }							// must name a new string array variable
 		if (!checkEOL()) { return false; }							// line must end with ']'
-		int SaveVarNumber = VarNumber;
 
 		File lbDir = new File(Basic.getDataPath(filePath));
 		if (!lbDir.exists()) {										// error if directory does not exist
@@ -7902,7 +7879,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		int length = dirs.size();									// number of directories and files in list
 		if (length == 0) { length = 1; }							// make at least one element if dir is empty
 																	// it will be an empty string
-		return ListToBasicStringArray(SaveVarNumber, dirs, length);	// Copy the list to a BASIC! array
+		return ListToBasicStringArray(var, dirs, length);			// Copy the list to a BASIC! array
 	}
 
 	private boolean executeGRABFILE(){
@@ -8213,8 +8190,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean executeSPLIT(int limit){
 
-		if (!getArrayVarForWrite(TYPE_STRING)) { return false; }	// Get the result array variable
-		int SaveArrayVarNumber = VarNumber;
+		String var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
+		if (var == null) { return false; }							// must name a new string array variable
 
 		if (!isNext(',')) { return false; }
 		if (!getStringArg()) { return false; }						// Get the string to split
@@ -8226,7 +8203,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		int length = r.length;										// Get the number of strings generated
 		if (length == 0) { return false; }							// error in doSplit()
 
-		return ListToBasicStringArray(SaveArrayVarNumber, Arrays.asList(r), length);
+		return ListToBasicStringArray(var, Arrays.asList(r), length);
 	}
 
 	private String[] doSplit(String SearchString, int limit) {		// Split a string
@@ -8449,7 +8426,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean executeVIBRATE(){
 
-		if (!getArrayVarForRead()) return false;					// Get the array variable
+		if (getArrayVarForRead() == null) return false;				// Get the array variable
 		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); } // Insure that it is a numeric array
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
 
@@ -9317,8 +9294,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean execute_gr_getdl(){
 
-		if (!getArrayVarForWrite(TYPE_NUMERIC)) { return false; }	// Get the array variable
-		int arrayVarNumber = VarNumber;
+		String var = getArrayVarForWrite(TYPE_NUMERIC);				// get the result array variable
+		if (var == null) { return false; }							// must name a new numeric array variable
+
 		boolean keepHiddenObjects = false;
 		if (isNext(',')) {											// Optional "hidden" flag
 			if (!evalNumericExpression()) { return false; }
@@ -9337,38 +9315,37 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (count == 0) { count = 1; }								// if no objects, make a list with
 																	// one entry that indexes the null object
 
-		if (!BuildBasicArray(arrayVarNumber, true, count)) { return false; } // build the array
+		if (!BuildBasicArray(var, true, count)) { return false; }	// build the array
 		for (int i = 0, j = ArrayValueStart; i < count; ++i, ++j) {	// stuff the array
 			NumericVarValues.set(j, list[i]);						// count may be < list.length
 		}
 		return true;
 	}
 
-	  private boolean execute_gr_newdl(){
-		  
-		  if (!getArrayVarForRead()) return false;					// Get the array variable
-		  if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
-		  if (!checkEOL()) { return false; }						// line must end with ']'
+	private boolean execute_gr_newdl(){
 
-			Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
-			int length = ArrayEntry.getInt("length");				// get the array length
-			int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
+		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
+		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
+		if (!checkEOL()) { return false; }							// line must end with ']'
 
-			RealDisplayList.clear();
-			RealDisplayList.add(0);									// First entry points to null bundle
-			
-			for (int i = 0; i < length; ++i){						// Copy the bundle pointers 
-				double d = NumericVarValues.get(base+i);
-				int id = (int) d;
-				if (id < 0 || id >= DisplayList.size()){
-					return RunTimeError("Invalid Object Number");
-				}
-				RealDisplayList.add(id);
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
+		int length = ArrayEntry.getInt("length");					// get the array length
+		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
+
+		RealDisplayList.clear();
+		RealDisplayList.add(0);										// First entry points to null bundle
+
+		for (int i = 0; i < length; ++i) {							// Copy the bundle pointers 
+			int id = NumericVarValues.get(base + i).intValue();
+			if (id < 0 || id >= DisplayList.size()) {
+				return RunTimeError("Invalid Object Number");
 			}
+			RealDisplayList.add(id);
+		}
 
-		  return true;
-	  }
-	  
+		return true;
+	}
+
 	  public void PaintListAdd(Paint p){
 		  PaintList.add(p);
 	  }
@@ -9942,15 +9919,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	private boolean execute_gr_get_params() {
 		Bundle b = getObjectBundle();								// get the graphics object
 		if (b == null) return false;
-		if (!isNext(',') ||	!getArrayVarForWrite(TYPE_STRING) || !checkEOL()); // get the array variable
+
+		if (!isNext(',')) { return false; }
+		String var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
+		if (var == null) { return false; }							// must name a new string array variable
+		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		Set<String> keySet = b.keySet();							// get parameters from Bundle
 		keySet.remove("type");
 		keySet.remove("hide");
 		ArrayList<String> keys = new ArrayList<String>(keySet);
 
-		/* Puts the list of keys into an unDIMed array */
-		return ListToBasicStringArray(VarNumber, keys, keys.size());
+		/* Puts the list of keys into a new array */
+		return ListToBasicStringArray(var, keys, keys.size());
 	}
 
 	private boolean execute_gr_touch(int p){
@@ -10516,7 +10497,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		int SaveValueIndex = theValueIndex;
 
 		if (!isNext(',')) return false;
-		if (!getArrayVarForRead()) return false;				// Get the array variable
+		if (getArrayVarForRead() == null) return false;			// Get the array variable
 		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); }
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
 
@@ -11472,9 +11453,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	  		}
 
 		private boolean execute_sensors_list(){
-			if (!getArrayVarForWrite(TYPE_STRING)) { return false; }	// Get the array variable
+			String var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
+			if (var == null) { return false; }							// must name a new string array variable
 			if (!checkEOL()) { return false; }							// line must end with ']'
-			int theVarNumber = VarNumber;
 
 			if (theSensors == null) {
 				theSensors = new SensorActivity(this);
@@ -11485,8 +11466,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 				return RunTimeError("This device reports no Sensors");
 			}
 
-			/* Puts the list of sensors into an unDIMed array */
-			return ListToBasicStringArray(theVarNumber, census, nSensors);
+			/* Puts the list of sensors into a new array */
+			return ListToBasicStringArray(var, census, nSensors);
 		}
 
 		private boolean execute_sensors_open(){
@@ -11827,17 +11808,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	private  boolean GetArrayKeyWord(){						// Get a Basic key word if it is there
 		// is the current line index at a key word?
 		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		int i = 0;
-		for (i = 0; i<Array_KW.length; ++i){				// loop through the key word list
-			if (Temp.startsWith(Array_KW[i])){    			// if there is a match
+		for (int i = 0; i < Array_KW.length; ++i) {			// loop through the key word list
+			if (Temp.startsWith(Array_KW[i])) {				// if there is a match
 				KeyWordValue = i;							// set the key word number
 				LineIndex = LineIndex + Array_KW[i].length(); // move the line index to end of key word
 				return true;								// and report back
-				}
+			}
 		}
-		KeyWordValue = array_none;						// no key word found
+		KeyWordValue = array_none;							// no key word found
 		return false;										// report fail
-
 	}
 
 	private boolean execute_array_length(){
@@ -11846,7 +11825,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		int SaveValueIndex = theValueIndex;
 
 		if (!isNext(',')) { return false; }
-		if (!getArrayVarForRead()) { return false; }				// Get the array variable
+		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
@@ -11858,34 +11837,33 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	}
 
 	private boolean execute_array_load(){
+		String var = getArrayVarForWrite();							// get the result array variable
+		if (var == null) { return false; }							// must name a new array variable
+		if (!isNext(',')) { return false; }							// Comma before the list
 
-		if (!getArrayVarForWrite()) { return false; }			// get the array var name as a new array
-		int theVarNumber = VarNumber;
-		if (!isNext(',')) { return false; }						// Comma before the list
-
-		if (VarIsNumeric) {										// If the array is numeric
-			ArrayList<Double> Values = new ArrayList<Double>();	// Create a list for the numeric values
-			if (!LoadNumericList(Values)) return false;		// load numeric list
+		if (VarIsNumeric) {											// If the array is numeric
+			ArrayList<Double> Values = new ArrayList<Double>();		// Create a list for the numeric values
+			if (!LoadNumericList(Values)) return false;				// load numeric list
 			if (!checkEOL()) return false;
-			return ListToBasicNumericArray(theVarNumber, Values, Values.size());// Copy the list to a BASIC! array
+			return ListToBasicNumericArray(var, Values, Values.size()); // Copy the list to a BASIC! array
 		} else {
-			ArrayList<String> Values = new ArrayList<String>();	// Create a list for the numeric values
-			if (!LoadStringList(Values)) return false;			// load string list
+			ArrayList<String> Values = new ArrayList<String>();		// Create a list for the numeric values
+			if (!LoadStringList(Values)) return false;				// load string list
 			if (!checkEOL()) return false;
-			return ListToBasicStringArray(theVarNumber, Values, Values.size());	// Copy the list to a BASIC! array
+			return ListToBasicStringArray(var, Values, Values.size()); // Copy the list to a BASIC! array
 		}
 	}
 	
 	private boolean LoadNumericList(ArrayList <Double> Values){
 		while (true) {											// loop through the list
-			if (!evalNumericExpression()) return false;         // values may be expressions
+			if (!evalNumericExpression()) return false;			// values may be expressions
 			Values.add(EvalNumericExpressionValue);
 
 			if (LineIndex >= ExecutingLineBuffer.length()) return false;
 			char c = ExecutingLineBuffer.charAt(LineIndex);		// get the next character
 			if (c == ',') {										// if it is a comma
 				++LineIndex;									// skip it and continue looping
-			} else if (c == '~') {            					// if it is a line continue character
+			} else if (c == '~') {								// if it is a line continue character
 				if (!nextLine()) return false;					// get next line if there is one
 			} else break;										// else no more values in the list
 		}
@@ -11894,14 +11872,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 	private boolean LoadStringList(ArrayList <String> Values){
 		while (true) {											// loop through the list
-			if (!getStringArg()) return false;          		// values may be expressions
+			if (!getStringArg()) return false;					// values may be expressions
 			Values.add(StringConstant);
 
 			if (LineIndex >= ExecutingLineBuffer.length()) return false;
 			char c = ExecutingLineBuffer.charAt(LineIndex);		// get the next character
 			if (c == ',') {										// if it is a comma
 				++LineIndex;									// skip it and continue looping
-			} else if (c == '~') {            					// if it is a line continue character
+			} else if (c == '~') {								// if it is a line continue character
 				if (!nextLine()) return false;					// get next line if there is one
 			} else break;										// else no more values in the list
 		}
@@ -11912,17 +11890,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 		// This method implements several array commands
 
-		if (!getArrayVarForRead()) { return false; }				// Get the array variable
-		if (!checkEOL()) { return false; }							// line must end with ']'
+		if (getArrayVarForRead() == null) { return false; }				// Get the array variable
+		if (!checkEOL()) { return false; }								// line must end with ']'
 
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array   
-			int length = ArrayEntry.getInt("length");               // get the array length
-			int base = ArrayEntry.getInt("base");                   // and the start of values in the value space
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));	// Get the array table bundle for this array   
+			int length = ArrayEntry.getInt("length");					// get the array length
+			int base = ArrayEntry.getInt("base");						// and the start of values in the value space
 
 			if (VarIsNumeric){											// Numeric Array
-				ArrayList <Double> Values = new ArrayList<Double>();    // Create a list to copy array values into
+				ArrayList <Double> Values = new ArrayList<Double>();	// Create a list to copy array values into
 
-				for (int i =0; i<length; ++i){                          // Copy the array values into that list
+				for (int i = 0; i < length; ++i) {						// Copy the array values into that list
 					Values.add(NumericVarValues.get(base+i));
 				}
 																		// Execute the command specific procedure
@@ -11958,7 +11936,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		int SaveValueIndex = theValueIndex;
 
 		if (!isNext(',')) { return false; }
-		if (!getArrayVarForRead()) { return false; }				// Get the array variable
+		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
 		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); }
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
@@ -12044,7 +12022,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (!VarIsArray)						{ return RunTimeError("Destination not array"); }
 		if (SourceArrayNumeric != VarIsNumeric)	{ return RunTimeError("Arrays not of same type"); }
 		boolean destIsNew = VarIsNew;
-		int destVarNumber = VarNumber;								// Not valid if VarIsNew!
+		int destVarNumber = VarNumber;								// Not valid if destIsNew!
 
 		int extras = 0;												// Get the extras parameter
 		if (!isNext(']')) {
@@ -12063,9 +12041,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 												{ return RunTimeError("Source array start > length"); }
 				if (SourceLength < 1)			{ return RunTimeError("Length must be positive"); }
 			}
-			destVarNumber = createNewVar(destVar);
-			totalLength = SourceLength + Math.abs(extras);			// go build an array of the proper size and type
-			if (!BuildBasicArray(destVarNumber, SourceArrayNumeric, totalLength)) { return false; }
+			totalLength = SourceLength + Math.abs(extras);			// go build a new array of the proper size and type
+			if (!BuildBasicArray(destVar, SourceArrayNumeric, totalLength)) { return false; }
 			destStart = ArrayValueStart;
 			if (extras < 0) { destStart -= extras; }				// if negative extras, add absolute value to start index
 
@@ -12101,7 +12078,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 	}
 
 	private boolean execute_array_search(){
-		if (!getArrayVarForRead()) { return false; }				// Get the array variable
+		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
 		boolean isNumeric = VarIsNumeric;
 		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
 		int length = ArrayEntry.getInt("length");					// get the array length
@@ -12262,7 +12239,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (listIndex == 0) return false;
 
 		if (!isNext(',')) return false;
-		if (!getArrayVarForRead()) return false;					// Get the array variable
+		if (getArrayVarForRead() == null) return false;				// Get the array variable
 		if (!checkEOL()) return false;
 
 		boolean isListNumeric = (theListsType.get(listIndex) == list_is_numeric);
@@ -12590,9 +12567,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 		if (listIndex == 0) return false;
 		if (!isNext(',')) return false;									// move to the array var
 
-		if (!getArrayVarForWrite()) return false;						// Get the array name var
-		if (!checkEOL()) return false;
-		int svn = VarNumber;											// save the array variable table number
+		String var = getArrayVarForWrite();								// get the result array variable
+		if (var == null) return false;									// must name a new array variable
+		if (!checkEOL()) return false;									// line must end with ']'
 
 		int listType = theListsType.get(listIndex);						// Get this lists type
 		boolean isListNumeric = (listType == list_is_numeric);
@@ -12600,10 +12577,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on  ou
 
 		if (isListNumeric) {
 			ArrayList<Double> Values = theLists.get(listIndex);			// Get the numeric list
-			return ListToBasicNumericArray(svn, Values, Values.size());	// Copy the list to a BASIC! array
+			return ListToBasicNumericArray(var, Values, Values.size());	// Copy the list to a BASIC! array
 		} else {
 			ArrayList<String> Values = theLists.get(listIndex);			// Get the string list
-			return ListToBasicStringArray(svn, Values, Values.size());	// Copy the list to a BASIC! array
+			return ListToBasicStringArray(var, Values, Values.size());	// Copy the list to a BASIC! array
 		}
 	}
 
