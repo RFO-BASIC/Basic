@@ -4,7 +4,7 @@
 BASIC! is an implementation of the Basic programming lanuage for
 Android devices.
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -44,7 +44,7 @@ This file is part of BASIC! for Android
     <string name="auto_run_name">Auto Run</string>
     <string name="sensors_name">Sensors</string>
     <string name="select_name">BASIC! Select</string>
-    <string name="spawn_name">Create Application</string>
+    <string name="debug_name">BASIC! Debugger</string>
     <string name="play_sound_name"> </string>
     <string name="select_device"> Select Device</string>
     <string name="title_paired_devices">Paired Devices</string>
@@ -102,9 +102,5 @@ This file is part of BASIC! for Android
         all you have to do is click \'OK\'.</string>
 <string name="crash_dialog_comment_prompt">You might add your comments about the problem below:</string>
 <string name="crash_dialog_ok_toast">Thank you !</string>
-
-
-   <string name="help_title">BASIC! Commands</string>
-
 
 </resources>

@@ -158,7 +158,6 @@ import android.view.MenuItem;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.graphics.Bitmap;
@@ -223,25 +222,25 @@ public class Run extends ListActivity {
 
 	// ***************************** Command class *****************************
 
-	public static class Command {						// Map a command key word string to its execution function
-		public final String name;						// The command key word
+	public static class Command {						// Map a command keyword string to its execution function
+		public final String name;						// The command keyword
 		public Command(String name) { this.name = name; }
 		public boolean run() { return false; }			// Run the command execution function
 	}
 
-	private boolean executeCommand(Command[] commands, String type){// If the current line starts with a key word in a command list
+	private boolean executeCommand(Command[] commands, String type){// If the current line starts with a keyword in a command list
 																	// execute the command. The "type" is used only to report errors.
 		for (Command c : commands) {								// loop through the command list
 			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) {// if there is a match
-				LineIndex += c.name.length();						// move the line index to end of key word
+				LineIndex += c.name.length();						// move the line index to end of keyword
 				return c.run();										// run the function and report back
 			}
 		}
 		RunTimeError("Unknown " + type + " command");
-		return false;												// no key word found
+		return false;												// no keyword found
 	}
 
-// **********  The variables for the Basic Key words ****************************    
+// **********  The variables for the Basic Keywords ****************************    
     
     public static final String BasicKeyWords[]={
     	"rem", "dim", "let", 
@@ -299,7 +298,7 @@ public class Run extends ListActivity {
     	
     };
 
-    private static final int BKWrem  = 0;		// Enumerated names for the key words
+    private static final int BKWrem  = 0;		// Enumerated names for the keywords
     private static final int BKWdim = 1;
     private static final int BKWlet = 2;
     private static final int BKWelseif = 3;
@@ -448,14 +447,14 @@ public class Run extends ListActivity {
     private static final int BKWread_data = 140;
     private static final int BKWread_next = 141;
     private static final int BKWread_from = 142;
-    private static final int BKWonconsoletouch = BKWonerror;     //143
+    private static final int BKWonconsoletouch = BKWonerror;	//143
     private static final int BKWconsole_resume = 144;
 
     private static final int BKWnone= 198;
     private static final int SKIP = 199;
 
-    private static int KeyWordValue = 0;            	// Will contain an enumerated key word value
-    private static String PossibleKeyWord = "";	// Used when TO, STEP, THEN are expected
+    private static int KeyWordValue = 0;						// Will contain an enumerated keyword value
+    private static String PossibleKeyWord = "";					// Used when TO, STEP, THEN are expected
 
     // **************** The variables for the math function names ************************
 
@@ -683,12 +682,9 @@ public class Run extends ListActivity {
 	private boolean WaitForSelect = false;
 	private boolean dbSwap = false;
 	private boolean dbSelect = false;
-	private AlertDialog.Builder DebugDialog;
-	private AlertDialog theDebugDialog;
-	private AlertDialog.Builder DebugSwapDialog;
-	private AlertDialog theDebugSwapDialog;
-	private AlertDialog.Builder DebugSelectDialog;
-	private AlertDialog theDebugSelectDialog;
+	private AlertDialog dbDialog;
+	private AlertDialog dbSwapDialog;
+	private AlertDialog dbSelectDialog;
 	private boolean dbDialogScalars;
 	private boolean dbDialogArray;
 	private boolean dbDialogList;
@@ -783,7 +779,7 @@ public class Run extends ListActivity {
     	"front", "save", "title", "line.text", "line.touched", "line.new", "line.char"
     };
 
-	private final Command[] Console_cmd = new Command[] {	// Map console command key words to their execution functions
+	private final Command[] Console_cmd = new Command[] {	// Map console command keywords to their execution functions
 		new Command("front")            { public boolean run() { return executeCONSOLE_FRONT(); } },
 		new Command("save")             { public boolean run() { return executeCONSOLE_DUMP(); } },
 		new Command("title")            { public boolean run() { return executeCONSOLE_TITLE(); } },
@@ -799,7 +795,7 @@ public class Run extends ListActivity {
 	private boolean BadInput = false;
 	private boolean InputCancelled = false;
 	private boolean InputIsNumeric = true;
-	private int inputVarNumber;
+	private int InputVarIndex;								// Index into Numeric or StringVarValues, depending on VarIsNumeric
 	private String UserPrompt = "";
 	private String InputDefault = "";
 	private boolean InputDismissed = false;					// These two will be used only if we dismiss the dialog in onPause
@@ -829,7 +825,7 @@ public class Run extends ListActivity {
     	"raw_query", "drop_table", "new_table"
     };
 
-	private final Command[] SQL_cmd = new Command[] {	// Map SQL command key words to their execution functions
+	private final Command[] SQL_cmd = new Command[] {	// Map SQL command keywords to their execution functions
 		new Command("open")             { public boolean run() { return execute_sql_open(); } },
 		new Command("close")            { public boolean run() { return execute_sql_close(); } },
 		new Command("insert")           { public boolean run() { return execute_sql_insert(); } },
@@ -1167,13 +1163,13 @@ public class Run extends ListActivity {
 		"server.read.file", "server.write.file"
 	};
 
-	private final Command[] Socket_cmd = new Command[] {	// Map Socket command key words to their execution functions
+	private final Command[] Socket_cmd = new Command[] {		// Map Socket command keywords to their execution functions
 		new Command("client.")          { public boolean run() { return executeSocketClient(); } },
 		new Command("server.")          { public boolean run() { return executeSocketServer(); } },
 		new Command("myip")             { public boolean run() { return executeMYIP(); } }
 	};
                                     
-	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket client command key words to their execution functions
+	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket client command keywords to their execution functions
 		new Command("connect")          { public boolean run() { return executeCLIENT_CONNECT(); } },
 		new Command("status")           { public boolean run() { return executeCLIENT_STATUS(); } },
 		new Command("read.ready")       { public boolean run() { return executeCLIENT_READ_READY(); } },
@@ -1186,7 +1182,7 @@ public class Run extends ListActivity {
 		new Command("write.file")       { public boolean run() { return executeCLIENT_PUTFILE(); } }
 	};
 
-	private final Command[] SocketServer_cmd = new Command[] {	// Map Socket server command key words to their execution functions
+	private final Command[] SocketServer_cmd = new Command[] {	// Map Socket server command keywords to their execution functions
 		new Command("create")           { public boolean run() { return executeSERVER_CREATE(); } },
 		new Command("connect")          { public boolean run() { return executeSERVER_ACCEPT(); } },
 		new Command("status")           { public boolean run() { return executeSERVER_STATUS(); } },
@@ -1268,7 +1264,7 @@ public class Run extends ListActivity {
 		"init", "speak.tofile", "speak", "stop"
 	};
 
-	private final Command[] tts_cmd = new Command[] {		// Map TTS command key words to their execution functions
+	private final Command[] tts_cmd = new Command[] {		// Map TTS command keywords to their execution functions
 		new Command("init")             { public boolean run() { return executeTTS_INIT(); } },
 		new Command("speak.tofile")     { public boolean run() { return executeTTS_SPEAK_TOFILE(); } },
 		new Command("speak")            { public boolean run() { return executeTTS_SPEAK(); } },
@@ -1380,7 +1376,7 @@ public class Run extends ListActivity {
     };
     public static final String[] System_KW = su_KW;
 
-	private final Command[] SU_cmd = new Command[] {	// Map SU/System command key words to their execution functions
+	private final Command[] SU_cmd = new Command[] {	// Map SU/System command keywords to their execution functions
 		new Command("open")             { public boolean run() { return execute_SU_open(); } },
 		new Command("write")            { public boolean run() { return execute_SU_write(); } },
 		new Command("read.ready")       { public boolean run() { return execute_SU_read_ready(); } },
@@ -1479,7 +1475,7 @@ public class Run extends ListActivity {
 		"set", "clear", "resume"
 	};
 
-	private final Command[] Timer_cmd = new Command[] {		// Map Timer command key words to their execution functions
+	private final Command[] Timer_cmd = new Command[] {		// Map Timer command keywords to their execution functions
 		new Command("set")              { public boolean run() { return executeTIMER_SET(); } },
 		new Command("clear")            { public boolean run() { return executeTIMER_CLEAR(); } },
 		new Command("resume")           { public boolean run() { return executeTIMER_RESUME(); } }
@@ -1496,7 +1492,7 @@ public class Run extends ListActivity {
     	"set", "get", "list"
     };
 
-	private final Command[] TimeZone_cmd = new Command[] {		// Map TimeZone command key words to their execution functions
+	private final Command[] TimeZone_cmd = new Command[] {		// Map TimeZone command keywords to their execution functions
 		new Command("set")              { public boolean run() { return executeTIMEZONE_SET(); } },
 		new Command("get")              { public boolean run() { return executeTIMEZONE_GET(); } },
 		new Command("list")             { public boolean run() { return executeTIMEZONE_LIST(); } }
@@ -1698,27 +1694,27 @@ public class Run extends ListActivity {
 					}
 					if (DebuggerStep) {
 						DebuggerStep = false;
-						publishProgress("@@E");						// signal UI to run debugger dialog again
+						sendMessage(MESSAGE_DEBUG_DIALOG);			// signal UI to run debugger dialog again
 						break;
 					}
 					if (dbSwap) {
-						publishProgress("@@H");
 						WaitForSwap = true;
+						sendMessage(MESSAGE_DEBUG_SWAP);
 						while (WaitForSwap) {
 							Thread.yield();
 							/*
 							if(dbSelect){
 								dbSelect = false;
 								WaitForSelect = true;
-								publishProgress("@@I");
+								sendMessage(MESSAGE_DEBUG_SELECT);
 								while (WaitForSelect) {
 									Thread.yield();
 								}
 							}
 							*/
 						}
-						publishProgress("@@E");						// signal UI to run debugger dialog again
 						dbSwap = false;
+						sendMessage(MESSAGE_DEBUG_DIALOG);			// signal UI to run debugger dialog again
 					}
 				}
 
@@ -1857,12 +1853,6 @@ public class Run extends ListActivity {
         			char c = str[i].charAt(3);
         			String s = output.get(output.size()-1) + c;
         			output.set(output.size()-1, s);
-        		}else if (str[i].startsWith("@@E")){					// Input dialog signal
-        			doDebugDialog();
-        		}else if (str[i].startsWith("@@H")){					// Swap dialog called
-        			doDebugSwapDialog();
-        		}else if (str[i].startsWith("@@I")){					// Select dialog called
-        			doDebugSelectDialog();
         		} else {output.add(str[i]);}		// Not a signal, just write msg to screen.
 			} else {output.add(str[i]);}			// Not a signal, just write msg to screen.
 
@@ -2009,27 +1999,24 @@ private void InitVars(){
     // debugger ui vars
    Watch_VarNames = new ArrayList<String>(); // watch list of string names
    WatchVarIndex = new ArrayList<Integer>();// watch list of variable indexes
-	 dbDialogScalars = false;
-	 dbDialogArray = false;
-	 dbDialogList = false;
-	 dbDialogStack = false;
-	 dbDialogBundle = false;
-	 dbDialogWatch = false;
-	 dbDialogProgram = true;
-	 dbConsoleHistory = "";
-	 dbConsoleExecute = "";
-	 dbConsoleELBI = 0;
-	 WatchedArray =-1;
- 	WatchedList =-1;
+	dbDialogScalars = false;
+	dbDialogArray = false;
+	dbDialogList = false;
+	dbDialogStack = false;
+	dbDialogBundle = false;
+	dbDialogWatch = false;
+	dbDialogProgram = true;
+	dbConsoleHistory = "";
+	dbConsoleExecute = "";
+	dbConsoleELBI = 0;
+	WatchedArray = -1;
+	WatchedList =-1;
 	WatchedStack =-1;
 	WatchedBundle =-1;
-	DebugDialog = null;
-	theDebugDialog = null;
-	DebugSwapDialog = null;
-	theDebugSwapDialog = null;
-	DebugSelectDialog = null;
-	theDebugSelectDialog = null;
 	dbSwap = false;
+	dbDialog = null;
+	dbSwapDialog = null;
+	dbSelectDialog = null;
 
     Stop = false;	   						// Stops program from running
     Exit = false;							// Exits program and signals caller to exit, too
@@ -2082,7 +2069,7 @@ private void InitVars(){
 	BadInput = false;
 	InputCancelled = false;
 	InputIsNumeric = true;
-	inputVarNumber = 0;
+	InputVarIndex = -1;
 	UserPrompt = "";
 	InputDefault = "";
 	InputDismissed = false;
@@ -2711,7 +2698,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		PossibleKeyWord = "";
 		GetKeyWord();												// Get the keyword that may start the line
 
-			if (KeyWordValue == BKWnone) KeyWordValue = BKWlet;    // If no key word, then assume pseudo LET
+			if (KeyWordValue == BKWnone) KeyWordValue = BKWlet;    // If no keyword, then assume pseudo LET
 
 			if (!IfElseStack.empty()){					// if inside IF-ELSE-ENDIF
 				Integer q = IfElseStack.peek();			// decide if we should skip to ELSE or ENDIF
@@ -2732,7 +2719,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
         		if (Echo)
         			{PrintShow(ExecutingLineBuffer.substring(0, ExecutingLineBuffer.length()-1));}
 
-	        switch (KeyWordValue){						// Execute the key word
+	        switch (KeyWordValue){						// Execute the keyword
 	        
 	        	case BKWrem:
 	        		break;
@@ -3234,18 +3221,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;							// return value in EvalNumericExpressionValue
 	}
 
-	private  boolean GetKeyWord(){						// Get a Basic key word if it is there
-		// is the current line index at a key word?
-		int i = 0;
-		for (i = 0; i<BasicKeyWords.length; ++i){		// loop through the key word list
-			 if (ExecutingLineBuffer.startsWith(BasicKeyWords[i], LineIndex)){    // if there is a match
-				 KeyWordValue = i;						// set the key word number
-				 LineIndex += BasicKeyWords[i].length(); // move the line index to end of key word
-				 return true;							// and report back
-			 	}
+	private boolean GetKeyWord(){							// Get a Basic keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < BasicKeyWords.length; ++i) {	// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(BasicKeyWords[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += BasicKeyWords[i].length();		// move the line index to end of keyword
+				return true;								// and report back
 			}
-		KeyWordValue = BKWnone;							// no key word found
-		return false;									// report fail
+		}
+		KeyWordValue = BKWnone;								// no keyword found
+		return false;										// report fail
 	}
 
 	// ************************* start of getVar() and its derivatives ****************************
@@ -4884,51 +4870,36 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean BuildBasicArray(String var, boolean IsNumeric, ArrayList<Integer> DimList){	//Part of DIM
 
-													// Build a basic array attached to a new variable
-													// Makes a bundle with information about the 
-													// array and put the bundle into the array table
-													// The index to bundle in the array table
-													// The index is put into the VAR table as the
-													// the var value
+		// Build a basic array attached to a new variable.
+		// Makes a bundle with information about the array and put the bundle into the array table.
+		// The index into the array table is put into the variable table as the the var value.
+		// In addition, a value element is created for each element in the array.
 
-													// In addition, a value element is created for
-													// each element in the array
-
-		ArrayValueStart = 0;
-		int TotalElements = 1;
-		int theDim = 0;
+		// This list of sizes is used to quickly calculate the array element offset
+		// when the array is referenced.
 		ArrayList<Integer> ArraySizes = new ArrayList<Integer>();
 
-		for (int i = 0; i < DimList.size(); ++i) {			// Initialize array sizes
-			ArraySizes.add(0);								// the purpose of this list will be explained later
-		}
-		ArraySizes.add(1);									// and add the unitary
+		int TotalElements = 1;
+		for (int d = DimList.size() - 1; d >= 0; --d) {		// for each Dim from last to first
+			int dim = DimList.get(d);						// get the Dim
+			if (dim < 1) { return RunTimeError("DIMs must be >= 1 at"); }
 
-		for (int dim=DimList.size()-1; dim >= 0; --dim) {	// for each Dim from last to first
-			theDim = DimList.get(dim);						// get the Dim
-			if (theDim < 1) {								// insure >= 1
-				return RunTimeError("DIMs must be >= 1 at");
-			}
-			TotalElements= TotalElements*theDim;			// multiply this Index by the previous size
-			ArraySizes.set(dim, TotalElements);				// and set in the ArraySizes List
-															// The list of sizes is used to quickly
-															// calculate array element offset
-															// when array is referenced
+			ArraySizes.add(0, TotalElements);				// insert the previous total in the ArraySizes List
+			TotalElements= TotalElements * dim;				// multiply this dimension by the previous size
 
-			if (TotalElements>50000) {						// Limit the size of any one array
+			if (TotalElements > 50000) {					// Limit the size of any one array
 				return RunTimeError("Array exceeds 50,000 elements");	// to 50,000 elements
 			}
 		}
-		ArraySizes.remove(0);								// remove the last size (the first size)
 
 		if (IsNumeric) {									// Initialize Numeric Array Values
 			ArrayValueStart = NumericVarValues.size();		// All numeric var values kept in NumericVarValues
-			for (int i=0; i < TotalElements; ++i) {			// Number inited to 0.0
+			for (int i = 0; i < TotalElements; ++i) {		// Number inited to 0.0
 				NumericVarValues.add(0.0);
 			}
 		} else {											// Initialize String Array Values
 			ArrayValueStart = StringVarValues.size();		// All string var values kept in StringVarValues
-			for (int i=0; i < TotalElements; ++i) {
+			for (int i = 0; i < TotalElements; ++i) {
 				StringVarValues.add("");					// Strings inited to empty
 			}
 		}
@@ -4946,7 +4917,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	} // end BuildBasicArray
 
-	private boolean BuildBasicArray(String var, boolean IsNumeric, int length){	// Build 1D array
+	private boolean BuildBasicArray(String var, boolean IsNumeric, int length) { // Build 1D array
 		ArrayList <Integer> dimValues = new ArrayList<Integer>();		// list of dimensions
 		dimValues.add(length);											// only one dimension
 		return (BuildBasicArray(var, IsNumeric, dimValues));			// go build an array of the proper size
@@ -4970,7 +4941,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private  boolean GetArrayValue() {				// Get the value of an array element using its index values
+	private boolean GetArrayValue() {				// Get the value of an array element using its index values
 		ArrayList<Integer> indicies = new ArrayList<Integer>();
 		if (!isNext(']')) {							// Parse out the index values for this call
 			int avn = VarNumber;					// preserve the array's VarNumber
@@ -4988,7 +4959,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		ArrayList<Integer> dims = ArrayEntry.getIntegerArrayList("dims");
 		ArrayList<Integer> sizes = ArrayEntry.getIntegerArrayList("sizes");
 
-		if (dims.size() != indicies.size()){						// insure index count = dim count
+		if (dims.size() != indicies.size()) {		// insure index count = dim count
 			RunTimeError(
 					"Indices count(" +
 					indicies.size()+
@@ -5466,7 +5437,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private  boolean executeINPUT(){
+	private boolean executeINPUT(){
 
 		if (!getStringArg()) return false;
 		UserPrompt = StringConstant;
@@ -5476,7 +5447,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!getVar()) return false;
 		InputIsNumeric = VarIsNumeric;
-		inputVarNumber = VarNumber;
+		InputVarIndex = theValueIndex;
 
 		InputDefault = "";
 		if (isNext(',')) {
@@ -5501,8 +5472,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Context context = getContext();
 		AlertDialog.Builder dialog = new AlertDialog.Builder(context);
 		final EditText input = new EditText(context);
-	    input.setText(InputDefault);
-	    if (InputIsNumeric) input.setInputType(0x00003002); // Limits keys to signed decimal numbers
+		input.setText(InputDefault);
+		if (InputIsNumeric) input.setInputType(0x00003002); // Limits keys to signed decimal numbers
 		dialog.setView(input);
 		dialog.setCancelable(true);
 		dialog.setTitle(UserPrompt);
@@ -5527,9 +5498,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						BadInput = true;
 						return;
 					}
-					NumericVarValues.set(VarIndex.get(inputVarNumber), d);
+					NumericVarValues.set(InputVarIndex, d);
 				} else {										// String Input Handling
-					StringVarValues.set(VarIndex.get(inputVarNumber), theInput);
+					StringVarValues.set(InputVarIndex, theInput);
 				}
 				WaitForInput = false;
 				theAlertDialog = null;
@@ -5658,14 +5629,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		
 		return checkEOL();
 	}
-	
-	
+
+
 // **************************************************  Debug Commands *********************************
-	
+
 	private boolean executeDEBUG(){
-		
+
 		if (!GetDebugKeyWord()) return false;
-	
+
 		switch (KeyWordValue){
 
 			case debug_on:
@@ -5698,60 +5669,57 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			case debug_dump_bundle:
 				if (!executeDUMP_BUNDLE()){SyntaxError(); return false;}
 				break;
-	  	case debug_watch_clear:
-			  if (!executeDEBUG_WATCH_CLEAR()){SyntaxError(); return false;}
+			case debug_watch_clear:
+				if (!executeDEBUG_WATCH_CLEAR()){SyntaxError(); return false;}
 				break;
 			case debug_watch:
-			  if(!executeDEBUG_WATCH()){SyntaxError(); return false;}
+				if(!executeDEBUG_WATCH()){SyntaxError(); return false;}
 				break;
 			case debug_show_scalars:
-			  if (!executeDEBUG_SHOW_SCALARS()){SyntaxError(); return false;}
+				if (!executeDEBUG_SHOW_SCALARS()){SyntaxError(); return false;}
 				break;
 			case debug_show_array:
-			  if (!executeDEBUG_SHOW_ARRAY()){SyntaxError(); return false;}
+				if (!executeDEBUG_SHOW_ARRAY()){SyntaxError(); return false;}
 				break;
 			case debug_show_list:
-			  if (!executeDEBUG_SHOW_LIST()){SyntaxError(); return false;}
+				if (!executeDEBUG_SHOW_LIST()){SyntaxError(); return false;}
 				break;
 			case debug_show_stack:
-			  if (!executeDEBUG_SHOW_STACK()){SyntaxError(); return false;}
+				if (!executeDEBUG_SHOW_STACK()){SyntaxError(); return false;}
 				break;
 			case debug_show_bundle:
-			  if (!executeDEBUG_SHOW_BUNDLE()){SyntaxError(); return false;}
+				if (!executeDEBUG_SHOW_BUNDLE()){SyntaxError(); return false;}
 				break;
 			case debug_show_watch:
-			  if (!executeDEBUG_SHOW_WATCH()){SyntaxError(); return false;}
+				if (!executeDEBUG_SHOW_WATCH()){SyntaxError(); return false;}
 				break;
 			case debug_show_program:
-			  if (!executeDEBUG_SHOW_PROGRAM()){SyntaxError();return false;}
+				if (!executeDEBUG_SHOW_PROGRAM()){SyntaxError();return false;}
 				break;
 			case debug_show:
 				if (!executeDEBUG_SHOW()){SyntaxError(); return false;}
 				break;
 			case debug_console:
-			  if (!executeDEBUG_CONSOLE()){SyntaxError();return false;}
+				if (!executeDEBUG_CONSOLE()){SyntaxError();return false;}
 				break;
 			default:
 		}
 
 		return true;
 	}
-	
-	  private  boolean GetDebugKeyWord(){							// Get a Basic key word if it is there
-			// is the current line index at a key word?
-		  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		  int i = 0;
-		  for (i = 0; i<Debug_KW.length; ++i){					// loop through the key word list
-			  if (Temp.startsWith(Debug_KW[i])){    			// if there is a match
-				  KeyWordValue = i;							// set the key word number
-				  LineIndex = LineIndex + Debug_KW[i].length(); // move the line index to end of key word
-				  return true;								// and report back
-			  }
-		  }
-		  KeyWordValue = debug_none;							// no key word found
-		  return false;										// report fail
 
-}
+	private boolean GetDebugKeyWord(){						// Get a debug command keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < Debug_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(Debug_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += Debug_KW[i].length();			// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = debug_none;							// no keyword found
+		return false;										// report fail
+	}
 
 	private boolean executeDEBUG_ON() {
 		if (!checkEOL()) return false;
@@ -5765,328 +5733,210 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Echo = false;
 		return true;
 	}
-	
+
 	private boolean executeDEBUG_PRINT() {
 		if (Debug) executePRINT();
 		return true;
 	}
-	
-	     private boolean executeECHO_ON(){
-			if (!checkEOL()) return false;
-			if (Debug){
-			  Echo = true;
-			}
-			  return true;
-			
-		  }
-		  
-		  private boolean executeECHO_OFF(){
-			if (!checkEOL()) return false;
-			  Echo = false;
-			  return true;
-		  }
-		  
-		  private boolean executeDUMP_SCALARS(){
-			  if (!Debug) return true;
-			  
-			  int count = VarNames.size();
-			  PrintShow("Scalar Dump");
-			  for (int i = 0 ; i < count; ++ i){
-				  boolean isString = false;
-				  boolean doIt = true;
-				  if (VarNames.get(i).endsWith("(")) doIt = false;
-				  if (VarNames.get(i).endsWith("[")) doIt = false;
-				  if (doIt) {
-					  if (VarNames.get(i).endsWith("$")) isString = true;
-					  String Line = VarNames.get(i) + " = ";
-					  if (isString) Line = Line + StringVarValues.get(VarIndex.get(i));
-				 	  else {
-				 		  Line = Line + Double.toString(NumericVarValues.get(VarIndex.get(i)));
-				 	  }
-				  	PrintShow(Line);
-				  }
-			  }
-			  PrintShow("....");
-			  
-			  return true;
-		  }
+
+	private boolean executeECHO_ON(){
+		if (!checkEOL()) return false;
+		if (Debug) Echo = true;
+		return true;
+	}
+
+	private boolean executeECHO_OFF(){
+		if (!checkEOL()) return false;
+		Echo = false;
+		return true;
+	}
+
+	private boolean executeDUMP_SCALARS(){
+		if (!Debug) return true;
+		if (!checkEOL()) return false;
+
+		ArrayList<String> lines = dbDoScalars("");
+		for (String line : lines) {
+			if (line != null) { PrintShow(line); }
+		}
+		PrintShow("....");
+		return true;
+	}
 
 	private boolean executeDUMP_ARRAY(){
 		if (!Debug) return true;
 
-		if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
-		if (VarIsNew)									{ return RunTimeError(EXPECT_DIM_ARRAY); }
+		String var = getVarAndType();
+		if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+		if (VarIsNew)						{ return RunTimeError(EXPECT_DIM_ARRAY); }
+		if (!checkEOL()) return false;
 
-		PrintShow("Dumping Array " + VarNames.get(VarNumber) + "]");
-
-				Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
-				int length = ArrayEntry.getInt("length");				// get the array length
-				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
-				
-				for (int i = 0; i <length; ++i){ 
-					if (VarIsNumeric){
-						PrintShow(Double.toString(NumericVarValues.get(base+i)));
-					}
-					else{
-						PrintShow(StringVarValues.get(base + i));
-					}
-				}
-				
-				PrintShow("....");
+		WatchedArray = VarNumber;
+		ArrayList<String> lines = dbDoArray("");
+		for (String line : lines) {
+			if (line != null) { PrintShow(line); }
+		}
+		PrintShow("....");
 		return true;
 	}
 
-		  private boolean executeDUMP_LIST(){
-			  if (!Debug) return true;
-			  
-				if (!evalNumericExpression()) return false;					// Get the list pointer
-				int listIndex = EvalNumericExpressionValue.intValue();
-				if (listIndex < 1 || listIndex >= theLists.size()){
-					RunTimeError("Invalid List Pointer");
-					return false;
-				}
-				
-				PrintShow("Dumping List " + Double.toString(EvalNumericExpressionValue));
-				
-				switch (theListsType.get(listIndex))						// Get this lists type
-				{
-				case list_is_string:										// String
-					ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
-					int length = thisStringList.size();
-					if (length == 0 ){
-						PrintShow("Empty List");
-						break;
-					}
-					for (int i=0; i < length; ++i){
-						PrintShow (thisStringList.get(i));			//Get the requested string
-					}
-					break;
-					
-				case list_is_numeric:												// Number
-					ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
-					length = thisNumericList.size();
-					if (length == 0 ){
-						PrintShow("Empty List");
-						break;
-					}
-					for (int i=0; i < length; ++i){
-						PrintShow (Double.toString(thisNumericList.get(i)));			//Get the requested string
-					}
-					break;
-					
-				default:
-					RunTimeError("Internal problem. Notify developer");
-					return false;
-			
-				}
-				PrintShow("....");
+	private boolean executeDUMP_LIST(){
+		if (!Debug) return true;
 
-			  return true;
-		  }
+		int listIndex = getListArg();							// get the list pointer
+		if (listIndex == 0) return false;
+		if (!checkEOL()) return false;
 
-		  private boolean executeDUMP_STACK(){
-			  if (!Debug) return true;
-			  
-				if (!evalNumericExpression()) return false;							// Get the Stack pointer
-				int stackIndex = EvalNumericExpressionValue.intValue();
-				if (stackIndex < 1 || stackIndex >= theStacks.size()){
-					RunTimeError("Invalid Stack Pointer");
-					return false;
-				}
+		WatchedList = listIndex;
+		ArrayList<String> lines = dbDoList("");
+		for (String line : lines) {
+			if (line != null) { PrintShow(line); }
+		}
+		PrintShow("....");
+		return true;
+	}
 
-				Stack thisStack = theStacks.get(stackIndex);		               // Get the Stack
-				if (thisStack.isEmpty()){
-					RunTimeError("Stack is empty");
-					return false;
-				}
-				
-				Stack tempStack = new Stack();
-				tempStack = (Stack) thisStack.clone();
-				
-				PrintShow("Dumping stack " + Double.toString(EvalNumericExpressionValue));
-				
-				switch (theStacksType.get(stackIndex))
-				{
-				case stack_is_string:												// String type list
-					if (tempStack.isEmpty()){
-						PrintShow("Empty Stack");
-						break;
-					}
-					do {
-						String thisString = (String) tempStack.pop();
-						PrintShow(thisString);
-					} while (!tempStack.isEmpty());
-					
-					break;
-					
-				case stack_is_numeric:
-					if (tempStack.isEmpty()){
-						PrintShow("Empty Stack");
-						break;
-					}
-					do {
-						Double thisNumber = (Double) tempStack.pop();
-						PrintShow(Double.toString(thisNumber));
-					} while (!tempStack.isEmpty());
-					break;
-					
-				default:
-					RunTimeError("Internal problem. Notify developer");
-					return false;
-			
-				}
-				PrintShow("....");
-			  return true;
-		  }
+	private boolean executeDUMP_STACK(){
+		if (!Debug) return true;
 
-		  private boolean executeDUMP_BUNDLE(){
-			  if (!Debug) return true;
-			  
-				if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-				if (!checkEOL()) return false;
-				int bundleIndex = EvalNumericExpressionValue.intValue();
-				if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-					return RunTimeError("Invalid Bundle Pointer");
-				}
-				
-			    Bundle b = theBundles.get(bundleIndex);
-			    
-			    PrintShow("Dumping Bundle " + Double.toString(EvalNumericExpressionValue));
-			    
-			    Set<String> set= b.keySet();
-			    
-			    if (set.size() == 0){
-			    	PrintShow("Empty Bundle");
-			    	PrintShow("....");
-			    	return true;
-			    }
-			    
-			    for (String s : set) {
-			    	if (!s.startsWith("@@@N.")) {
-			    		boolean isNumeric = b.getBoolean("@@@N."+ s);
-			    		if (isNumeric) {
-			    			PrintShow(s + ": " + Double.toString(b.getDouble(s)));
-			    		}else{
-			    			PrintShow(s + ": " +  b.getString(s));
-			    		}
-			    	}
-			    	
-			    }
-			    
-			    PrintShow("....");
-			    
-			  return true;
-		  }
+		int stackIndex = getStackIndexArg();					// get the stack pointer
+		if (stackIndex == 0) return false;
+		if (!checkEOL()) return false;
 
-		//=====================DEBUGGER DIALOG STUFF========================
+		WatchedStack = stackIndex;
+		ArrayList<String> lines = dbDoList("");
+		for (String line : lines) {
+			if (line != null) { PrintShow(line); }
+		}
+		PrintShow("....");
+		return true;
+	}
 
-		  private boolean executeDEBUG_WATCH_CLEAR(){
-			  if(!Debug) return true;
-				WatchVarIndex.clear();
-			  Watch_VarNames.clear();
-			  if (!WatchVarIndex.isEmpty()||!Watch_VarNames.isEmpty()) return false;
-			  return true;
-		  }
-		   private boolean executeDEBUG_WATCH(){ // separate the names and store them
-			  if (!Debug){return true;}
-			 
-			  int ti=LineIndex;
-			  int i=LineIndex;
-			  boolean add = true;
-			  for( i = LineIndex;i<ExecutingLineBuffer.length();++i){
-				  char c = ExecutingLineBuffer.charAt(i);
-				  if (c==','||i==ExecutingLineBuffer.length()-1){
-					  LineIndex =ti;
-					  getVar();
-					  add = true;
-					  //PrintShow('"'+ExecutingLineBuffer.substring(ti,i)+'"');
-					  for (int j = 0;j<WatchVarIndex.size();++j){
-						  if (WatchVarIndex.get(j)==VarNumber)add = false;
-						  //PrintShow(Integer.toString(WatchVarIndex.get(j))+"   "+Integer.toString(VarNumber));
-					  }
-					  if (add){
-					  Watch_VarNames.add(ExecutingLineBuffer.substring(ti,i));
-					  WatchVarIndex.add(VarNumber);
-					  }
-					  ti = i+1;
-				  }
-				  
-			 }
-			 return true;
-		  }
-		  private boolean executeDEBUG_SHOW_SCALARS(){
-				DialogSelector(1);
-				executeDEBUG_SHOW();
-				return true;
+	private boolean executeDUMP_BUNDLE(){
+		if (!Debug) return true;
+
+		int bundleIndex = getBundleArg();						// get the Bundle pointer
+		if (bundleIndex == 0) return false;
+		if (!checkEOL()) return false;
+
+		WatchedBundle = bundleIndex;
+		ArrayList<String> lines = dbDoBundle("");
+		for (String line : lines) {
+			if (line != null) { PrintShow(line); }
+		}
+		PrintShow("....");
+		return true;
+	}
+
+	//=====================DEBUGGER DIALOG STUFF========================
+
+	private boolean executeDEBUG_WATCH_CLEAR(){
+		if(!Debug) return true;
+		if (!checkEOL()) return false;
+
+		WatchVarIndex.clear();
+		Watch_VarNames.clear();
+		return (WatchVarIndex.isEmpty() && Watch_VarNames.isEmpty());
+	}
+
+	private boolean executeDEBUG_WATCH(){				// separate the names and store them
+		if (!Debug) return true;
+
+		int max = ExecutingLineBuffer.length() - 1;
+		int ni = LineIndex;								// start of name string
+		do {
+			int i = ExecutingLineBuffer.indexOf(',', ni);
+			if (i < 0) { i = max; }
+			String name = ExecutingLineBuffer.substring(ni, i);
+			getVar();
+			boolean add = true;
+			for (int j = 0; j < WatchVarIndex.size(); ++j) {
+				if (WatchVarIndex.get(j)==VarNumber) { add = false; }
 			}
+			if (add) {
+				Watch_VarNames.add(name);
+				WatchVarIndex.add(VarNumber);
+			}
+			LineIndex = ni = i + 1;
+		} while (ni < max);
+		return true;
+	}
+
+	private boolean executeDEBUG_SHOW_SCALARS(){
+		DialogSelector(1);
+		executeDEBUG_SHOW();
+		return true;
+	}
 
 	private boolean executeDEBUG_SHOW_ARRAY(){
 		if (!Debug) return true;
-		if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
-		if (VarIsNew)									{ return RunTimeError(EXPECT_DIM_ARRAY); }
+
+		String var = getVarAndType();
+		if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+		if (VarIsNew)						{ return RunTimeError(EXPECT_DIM_ARRAY); }
+
 		WatchedArray = VarNumber;
 		DialogSelector(2);
 		executeDEBUG_SHOW();
 		return true;
 	}
 
-			private boolean executeDEBUG_SHOW_LIST(){
-				if (!Debug) return true;
-			  
-				if (!evalNumericExpression()) return false;					// Get the list pointer
-				int listIndex = EvalNumericExpressionValue.intValue();
-				if (listIndex < 1 || listIndex >= theLists.size()){
-					return RunTimeError("Invalid List Pointer");
-				}
-				WatchedList = listIndex;
-				DialogSelector(3);
-				executeDEBUG_SHOW();
-				return true;
-			}
-			private boolean executeDEBUG_SHOW_STACK(){
-				if (!Debug) return true;
-			  
-				if (!evalNumericExpression()) return false;							// Get the Stack pointer
-				int stackIndex = EvalNumericExpressionValue.intValue();
-				if (stackIndex < 1 || stackIndex >= theStacks.size()){
-					return RunTimeError("Invalid Stack Pointer");
-				}
-				WatchedStack = stackIndex;
-				DialogSelector(4);
-				executeDEBUG_SHOW();
-				return true;
-			}
-			private boolean executeDEBUG_SHOW_BUNDLE(){
-				if (!Debug) return true;
-			  
-				if (!evalNumericExpression()) return false;							// Get the Bundle pointer
-				int bundleIndex = EvalNumericExpressionValue.intValue();
-				if (bundleIndex < 1 || bundleIndex >= theBundles.size()){
-					return RunTimeError("Invalid Bundle Pointer");
-				}
-				WatchedBundle = bundleIndex;
-				DialogSelector(5);
-				executeDEBUG_SHOW();
-				return true;
-			}
-			private boolean executeDEBUG_SHOW_WATCH(){
-				if (!Debug) return true;
-				DialogSelector(6);
-				executeDEBUG_SHOW();
-				return true;
-			}
-			private boolean executeDEBUG_CONSOLE(){
-				if(!Debug) return true;
-				DialogSelector(7);
-				executeDEBUG_SHOW();
-				return true;
-			}
-			private boolean executeDEBUG_SHOW_PROGRAM(){
-				if(!Debug) return true;
-				DialogSelector(8);
-				executeDEBUG_SHOW();
-				return true;
-			}
+	private boolean executeDEBUG_SHOW_LIST(){
+		if (!Debug) return true;
+
+		int listIndex = getListArg();							// get the list pointer
+		if (listIndex == 0) return false;
+
+		WatchedList = listIndex;
+		DialogSelector(3);
+		executeDEBUG_SHOW();
+		return true;
+	}
+
+	private boolean executeDEBUG_SHOW_STACK(){
+		if (!Debug) return true;
+
+		int stackIndex = getStackIndexArg();					// get the stack pointer
+		if (stackIndex == 0) return false;
+
+		WatchedStack = stackIndex;
+		DialogSelector(4);
+		executeDEBUG_SHOW();
+		return true;
+	}
+
+	private boolean executeDEBUG_SHOW_BUNDLE(){
+		if (!Debug) return true;
+
+		int bundleIndex = getBundleArg();						// get the Bundle pointer
+		if (bundleIndex == 0) return false;
+
+		WatchedBundle = bundleIndex;
+		DialogSelector(5);
+		executeDEBUG_SHOW();
+		return true;
+	}
+
+	private boolean executeDEBUG_SHOW_WATCH(){
+		if (!Debug) return true;
+		DialogSelector(6);
+		executeDEBUG_SHOW();
+		return true;
+	}
+
+	private boolean executeDEBUG_CONSOLE(){
+		if (!Debug) return true;
+		DialogSelector(7);
+		executeDEBUG_SHOW();
+		return true;
+	}
+
+	private boolean executeDEBUG_SHOW_PROGRAM(){
+		if(!Debug) return true;
+		DialogSelector(8);
+		executeDEBUG_SHOW();
+		return true;
+	}
 
 			private void DialogSelector(int selection){
 				dbDialogScalars = false;
@@ -6124,195 +5974,158 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						break;
 				}
 			}
-			
-		  private boolean executeDEBUG_SHOW(){   // trigger do debug dialog
-			  if (!Debug){return true;}
-			  WaitForResume = true;
-			  PrintShow("@@E");
-			  return true;
-		  }
-			
-			
-	private void doDebugDialog(){
-		
-		//remove the instance of dialog cleanly
-		//if(theDebugDialog != null) {theDebugDialog.dismiss();theDebugDialog = null;}
-		//if(theDebugSwapDialog != null) {theDebugSwapDialog.dismiss();theDebugSwapDialog = null;}
-		
+
+	private boolean executeDEBUG_SHOW() {				// trigger do debug dialog
+		if (!Debug) return true;
+		WaitForResume = true;
+		sendMessage(MESSAGE_DEBUG_DIALOG);
+		return true;
+	}
+
+	private String chomp(String str) {
+		return str.substring(0, str.length() - 1);
+	}
+
+	private String quote(String str) {
+		return '\"' + str + '\"';
+	}
+
+	private void doDebugDialog() {
+
 		ArrayList<String> msg = new ArrayList<String>();
-		
-	  if(!dbDialogProgram){
-			msg = doFunc();
-      msg.add ("Executable Line #:    "+Integer.toString(ExecutingLineIndex+1));
-			msg.add("Executing:\n"+ExecutingLineBuffer);
+
+		if (!dbDialogProgram) {
+			msg = dbDoFunc();
+			msg.add("Executable Line #:    " + Integer.toString(ExecutingLineIndex + 1)
+					+ '\n' + chomp(ExecutingLineBuffer));
 		}
-		
-		if(dbDialogScalars) msg.addAll(doScalars());
-		if(dbDialogArray) msg.addAll( doArray());
-		if(dbDialogList) msg.addAll(doList());
-		if(dbDialogStack) msg.addAll(doStack());
-		if(dbDialogBundle) msg.addAll( doBundle());
-		if(dbDialogWatch) msg.addAll(doWatch());
+
+		if (dbDialogScalars) msg.addAll(dbDoScalars("  "));
+		if (dbDialogArray)   msg.addAll(dbDoArray("  "));
+		if (dbDialogList)    msg.addAll(dbDoList("  "));
+		if (dbDialogStack)   msg.addAll(dbDoStack("  "));
+		if (dbDialogBundle)  msg.addAll(dbDoBundle("  "));
+		if (dbDialogWatch)   msg.addAll(dbDoWatch("  "));
  
-		if(dbDialogProgram){
-			for (int i = 0; i < Basic.lines.size();++i){
-				if (i==ExecutingLineIndex){
-					msg.add(" >>"+Integer.toString(1+i)+": "+Basic.lines.get(i).substring(0,Basic.lines.get(i).length()-1));
-			  }else{	msg.add( "   "+Integer.toString(1+i)+": "+Basic.lines.get(i).substring(0,Basic.lines.get(i).length()-1));}
+		if (dbDialogProgram) {
+			for (int i = 0; i < Basic.lines.size(); ++i) {
+				msg.add(((i == ExecutingLineIndex) ? " >>" : "   ")	// mark current line
+						+ (i + 1) + ": "							// one-based line index
+						+ chomp(Basic.lines.get(i)));				// remove newline
 			}
 		}
-			
-		DebugDialog = new AlertDialog.Builder(this);
-	
-		DebugDialog.setCancelable(true);
-		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		View dialoglayout = inflater.inflate(R.layout.debug_dialog_layout, (ViewGroup) findViewById(R.id.debug_list));
-		ListView debugView = (ListView)dialoglayout.findViewById(R.id.debug_list); 
-		ArrayAdapter<String>dbListAdapter = new ArrayAdapter<String>(this,R.layout.debug_list_layout,msg);
+
+		LayoutInflater inflater = getLayoutInflater();
+		View dialogLayout = inflater.inflate(R.layout.debug_dialog_layout, null);
+
+		ListView debugView = (ListView)dialogLayout.findViewById(R.id.debug_list); 
+		debugView.setAdapter(new ArrayAdapter<String>(this, R.layout.debug_list_layout, msg));
 		debugView.setVerticalScrollBarEnabled(true);
-		debugView.setAdapter(dbListAdapter);
-		
-	  DebugDialog.setTitle("BASIC! Debugger");
-		
-		DebugDialog.setOnCancelListener(new 
-		DialogInterface.OnCancelListener(){
-		    public void onCancel(DialogInterface arg0) {
-			  	DebuggerHalt = true;
-			  	WaitForResume = false;
-			  }
-	  });	
-	  DebugDialog.setPositiveButton("Resume", new 
-		DialogInterface.OnClickListener() {
-	    	public void onClick(DialogInterface dialog,int which) {
-        	WaitForResume = false;
-	    	}
+		if (dbDialogProgram) { debugView.setSelection(ExecutingLineIndex); }
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(this)
+			.setCancelable(true)
+			.setTitle(R.string.debug_name)
+			.setView(dialogLayout);
+
+		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+			public void onCancel(DialogInterface arg0) {
+				DebuggerHalt = true;
+				WaitForResume = false;
+			}
 		});
-		DebugDialog.setNeutralButton("Step",new
-		DialogInterface.OnClickListener(){
+
+		builder.setPositiveButton("Resume", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog,int which) {
+				WaitForResume = false;
+			}
+		});
+
+		builder.setNeutralButton("Step", new DialogInterface.OnClickListener() {
 			public void onClick(DialogInterface dialog,int which){
 				DebuggerStep = true;
 				WaitForResume = true;
 			}
 		});
 
-		  // leave out until the switcher is done.
-		DebugDialog.setNegativeButton("View Swap",new 
-		DialogInterface.OnClickListener(){
+		// leave out until the switcher is done.
+		builder.setNegativeButton("View Swap",new DialogInterface.OnClickListener() {
 			public void onClick(DialogInterface dialog,int which) {
 				dbSwap = true;
-		}
-	  });
-	
-		theDebugDialog = DebugDialog.setView(dialoglayout).show();
-		
-		WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
-		lp.copyFrom(theDebugDialog.getWindow().getAttributes());
-		lp.width = WindowManager.LayoutParams.FILL_PARENT;
-		lp.height = WindowManager.LayoutParams.FILL_PARENT;
-		theDebugDialog.getWindow().setAttributes(lp);
-		
-		if(dbDialogProgram){debugView.setSelection (ExecutingLineIndex);}
+			}
+		});
+
+		dbDialog = builder.show();
+		dbDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
+									   WindowManager.LayoutParams.FILL_PARENT);
 	}
-	
-	private void doDebugSwapDialog(){
-		//if(theDebugSwapDialog != null) {theDebugSwapDialog.dismiss();theDebugSwapDialog=null;}
-		//if(theDebugDialog != null) {theDebugDialog.dismiss();theDebugDialog=null; }
-		
+
+	private void doDebugSwapDialog() {
+
 		ArrayList<String> msg = new ArrayList<String>();
-		String[] options = new String[]{"Program","Scalars","Array","List","Stack","Bundle","Watch"};
-		msg.addAll(Arrays.asList(options));
-		
-		DebugSwapDialog = new AlertDialog.Builder(this);
-	
-		DebugSwapDialog.setCancelable(true);
-		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		View dialoglayout = inflater.inflate(R.layout.debug_list_s_layout, (ViewGroup) findViewById(R.id.debug_list_s));
-		ListView debugView = (ListView)dialoglayout.findViewById(R.id.debug_list_s); 
-		ArrayAdapter<String>dbListAdapter = new ArrayAdapter<String>(this,R.layout.simple_list_layout_1,msg);
+		msg.addAll(Arrays.asList("Program", "Scalars", "Array", "List", "Stack", "Bundle", "Watch"));
+		final String[] names = {
+			"View Program", "View Scalars", "View Array", "View List",
+			"View Stack",   "View Bundle",  "View Watch", "View Console"
+		};
+
+		LayoutInflater inflater = getLayoutInflater();
+		View dialogLayout = inflater.inflate(R.layout.debug_list_s_layout, null);
+
+		ListView debugView = (ListView)dialogLayout.findViewById(R.id.debug_list_s);
+		debugView.setAdapter(new ArrayAdapter<String>(this, R.layout.simple_list_layout_1, msg));
 		debugView.setVerticalScrollBarEnabled(true);
-		debugView.setAdapter(dbListAdapter);
 		debugView.setClickable(true);
-	  DebugSwapDialog.setTitle("Select View:");
-		
-		debugView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id){
+
+		debugView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 				DialogSelector(position);
-				boolean dosel = false;
-				if(dbDialogArray == true & WatchedArray == -1) dosel = true;
-				if(dbDialogList == true & WatchedList == -1) dosel = true;
-				if(dbDialogStack == true & WatchedStack == -1) dosel = true;
-				if(dbDialogBundle == true & WatchedBundle==-1) dosel = true;
+				boolean dosel = 
+					(dbDialogArray  && WatchedArray  == -1) ||
+					(dbDialogList   && WatchedList   == -1) ||
+					(dbDialogStack  && WatchedStack  == -1) ||
+					(dbDialogBundle && WatchedBundle == -1);
 				if (dosel) {
 					// if the element has not been defined ask if user wishes to do so.
 					// or at least this is where it will go.
 					// for now, default to view program.
 					DialogSelector(0);
-					position =0;
+					position = 0;
 				}
-				String Name="";
-				switch (position){
-					case 0:
-					Name = "View Program";
-					break;
-					case 1:
-					Name = "View Scalars";
-					break;
-					case 2:
-					Name = "View Array";
-					break;
-					case 3:
-					Name = "View List";
-					break;
-					case 4:
-					Name = "View Stack";
-					break;
-					case 5:
-					Name = "View Bundle";
-					break;
-					case 6:
-					Name = "View Watch";
-					break;
-					case 7:
-					Name = "View Console";
-					break;
-				}
-				
-				Toaster(Name).show();
-				
+				String name = (position < names.length) ? names[position] : "";
+				Toaster(name).show();
 			}
 		});
-		DebugSwapDialog.setOnCancelListener(new 
-		DialogInterface.OnCancelListener(){
-		    public void onCancel(DialogInterface arg0) {
-			  	WaitForSwap = false;
-			  }
-	  });	
-	  DebugSwapDialog.setPositiveButton("Confirm", new 
-		DialogInterface.OnClickListener() {
-	    	public void onClick(DialogInterface dialog,int which) {
-        	WaitForSwap = false;
-					dbSwap = false;
-	    	}
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(this)
+			.setCancelable(true)
+			.setTitle("Select View:")
+			.setView(dialogLayout);
+
+		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+			public void onCancel(DialogInterface arg0) {
+				WaitForSwap = false;
+			}
 		});
-		
+
+		builder.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog,int which) {
+				WaitForSwap = false;
+				dbSwap = false;
+			}
+		});
+
 		/*  // leave out until the element selector is done.
-		DebugSwapDialog.setNeutralButton("Choose Element",new
-		DialogInterface.OnClickListener(){
+		builder.setNeutralButton("Choose Element", new DialogInterface.OnClickListener() {
 			public void onClick(DialogInterface dialog,int which){
 				WaitForSelect = true;
-				
 			}
 		});
 		*/
-		
-		theDebugSwapDialog = DebugSwapDialog.setView(dialoglayout).show();
-		
-		WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
-		lp.copyFrom(theDebugSwapDialog.getWindow().getAttributes());
-		lp.width = WindowManager.LayoutParams.FILL_PARENT;
-		lp.height = WindowManager.LayoutParams.FILL_PARENT;
-		theDebugSwapDialog.getWindow().setAttributes(lp);
-		
+
+		dbSwapDialog = builder.show();
+		dbSwapDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
+										   WindowManager.LayoutParams.FILL_PARENT);
 	}
 
 	private Toast Toaster(CharSequence msg) {			// default: short, high toast
@@ -6326,208 +6139,204 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return toast;
 	}
 
-	private void doDebugSelectDialog(){
-		if(theDebugSelectDialog != null) theDebugSelectDialog.dismiss();
-		
+	private void doDebugSelectDialog() {
+		if (dbSelectDialog != null) { dbSelectDialog.dismiss(); }
+
 		ArrayList<String> msg = new ArrayList<String>();
-		
+		// TODO: What did Michael have in mind?
 	}
-	
-	private ArrayList<String> doWatch(){
+
+	private ArrayList<String> dbDoWatch(String prefix) {
 		ArrayList<String> msg = new ArrayList<String>();
-		msg.add ("Watching:");
-	   
+		msg.add("Watching:");
+
 		int count = VarNames.size();
-		if(!WatchVarIndex.isEmpty()){
+		if (!WatchVarIndex.isEmpty()) {
 			int watchcount = WatchVarIndex.size();
-			for(int j = 0;j< watchcount;++j){
-				 int wvi = WatchVarIndex.get(j);
-				 if (wvi < count){
-					boolean isString = false;
-					boolean doIt = true;
-				  	if (VarNames.get(wvi).endsWith("(")) doIt = false;
-				  	if (VarNames.get(wvi).endsWith("[")) doIt = false;
-				  	if (doIt) {
-						  if (VarNames.get(wvi).endsWith("$")) isString = true;
-					  	String Line = VarNames.get(wvi) + " = ";
-					  	if (isString) Line = Line + StringVarValues.get(VarIndex.get(wvi));
-				 	  		else {
-				 		  		Line = Line + Double.toString(NumericVarValues.get(VarIndex.get(wvi)));
-				 	  	}
-				  		msg.add(Line);
-					 }
-				}else{msg.add(Watch_VarNames.get(j)+" = Undefined");}
-		  }
-		}else{msg.add( "\n"+"Undefined.");}
+			for (int j = 0; j < watchcount; ++j) {
+				int wvi = WatchVarIndex.get(j);
+				if (wvi < count) {
+					String line = dbDoOneScalar(wvi, prefix);
+					if (line != null) { msg.add(line); }
+				} else {
+					msg.add(Watch_VarNames.get(j) + " = Undefined");
+				}
+			}
+		} else { msg.add("\n" + "Undefined."); }
 		return msg;
 	}
-	
-	private ArrayList<String> doFunc(){
+
+	private ArrayList<String> dbDoFunc() {
 		ArrayList<String> msg = new ArrayList<String>();
-	  String msgs = "";
-			if(!FunctionStack.isEmpty()){
-					Stack<Bundle> tempStack = (Stack<Bundle>) FunctionStack.clone();
-					do {
-						msgs =(tempStack.pop().getString("fname"))+ msgs;
-					} while (!tempStack.isEmpty());
-			}else{msgs+="MainProgram";}
-		msg.add("In Function: "+msgs);
+		String msgs = "";
+		if (!FunctionStack.isEmpty()) {
+			Stack<Bundle> tempStack = (Stack<Bundle>) FunctionStack.clone();
+			do {
+				msgs = tempStack.pop().getString("fname") + msgs;
+			} while (!tempStack.isEmpty());
+		} else { msgs += "MainProgram"; }
+		msg.add("In Function: " + msgs);
 		return msg;
 	}
-	
-	private ArrayList<String> doScalars(){
-			
-			  int count = VarNames.size();
-			  ArrayList<String> msg= new ArrayList<String>();
-				msg.add("Scalar Dump");
-			  for (int i = 0 ; i < count; ++ i){
-				  boolean isString = false;
-				  boolean doIt = true;
-				  if (VarNames.get(i).endsWith("(")) doIt = false;
-				  if (VarNames.get(i).endsWith("[")) doIt = false;
-				  if (doIt) {
-					  if (VarNames.get(i).endsWith("$")) isString = true;
-					  String Line = VarNames.get(i) + " = ";
-					  if (isString) Line = Line + StringVarValues.get(VarIndex.get(i));
-				 	  else {
-				 		  Line = Line + Double.toString(NumericVarValues.get(VarIndex.get(i)));
-				 	  }
-				  	msg.add("  "+Line);
-				  }
-			  }
-			  return msg;
+
+	private ArrayList<String> dbDoScalars(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Scalar Dump");
+		int count = VarNames.size();
+		for (int varNum = 0; varNum < count; ++varNum) {
+			String line = dbDoOneScalar(varNum, prefix);
+			if (line != null) { msg.add(line); }
+		}
+		return msg;
 	}
-	private ArrayList<String> doArray(){
-			  ArrayList<String> msg=new ArrayList<String>();
-			  msg.add("Dumping Array " + VarNames.get(WatchedArray) + "]");
 
-				Bundle ArrayEntry = ArrayTable.get(VarIndex.get(WatchedArray)); // Get the array table bundle for this array
-				int length = ArrayEntry.getInt("length");				// get the array length
-				int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
-				
-				boolean ArrayIsNumeric = true;
-				if(VarNames.get(WatchedArray).endsWith("$["))ArrayIsNumeric = false;
-				for (int i = 0; i <length; ++i){ 
-					if (ArrayIsNumeric){
-						msg.add(Double.toString(NumericVarValues.get(base+i)));
-					}
-					else{
-						msg.add(StringVarValues.get(base + i));
-					}
-				}
-			  return msg;
-		  }
-			
-			private ArrayList<String> doList(){
-				ArrayList<String> msg=new ArrayList<String>();
-				
-				msg.add("Dumping List " + Double.toString(WatchedList));
-				
-				switch (theListsType.get(WatchedList))						// Get this lists type
-				{
-				case list_is_string:										// String
-					ArrayList<String> thisStringList = theLists.get(WatchedList);  // Get the string list
-					int length = thisStringList.size();
-					if (length == 0 ){
-						msg.add ("Empty List");
-						break;
-					}
-					for (int i=0; i < length; ++i){
-						msg.add(thisStringList.get(i));			//Get the requested string
-					}
-					break;
-					
-				case list_is_numeric:												// Number
-					ArrayList<Double> thisNumericList = theLists.get(WatchedList);	//Get the numeric list
-					length = thisNumericList.size();
-					if (length == 0 ){
-						msg.add("Empty List");
-						break;
-					}
-					for (int i=0; i < length; ++i){
-						msg.add(Double.toString(thisNumericList.get(i)));			//Get the requested string
-					}
-					break;
-					
-				default:
-					//RunTimeError("Internal problem. Notify developer");
-					//return false;
-			
-				}
-			  return msg;
-		  }
-			
-			private ArrayList<String> doStack(){
-			  ArrayList<String> msg=new ArrayList<String>();
+	private String dbDoOneScalar(int varNum, String prefix) {
+		String var = VarNames.get(varNum);
+		int len = (var == null) ? 0 : var.length();
+		if (len == 0) {
+			return(prefix + "Warning: zero-length variable name");
+		}
+		char last = var.charAt(len - 1);
+		boolean isScalar = (last != '(') && (last != '[');
+		if (isScalar) {
+			boolean isString = (last == '$');
+			String line = prefix + var;
+			Integer Index = VarIndex.get(varNum).intValue();
+			if (Index == null) {
+				line += ": Warning: null variable index";
+			} else {
+				int index = Index.intValue();
+				line += " = "
+					 + (isString ? quote(StringVarValues.get(index))
+								 : NumericVarValues.get(index).toString());
+			}
+			return line;
+		}
+		return null;
+	}
 
-				Stack thisStack = theStacks.get(WatchedStack);		               // Get the Stack
-				if (thisStack.isEmpty()){
-					msg.add("Stack has not been created.");
-				  return msg;
-				}
-				
-				Stack tempStack = new Stack();
-				tempStack = (Stack) thisStack.clone();
-				
-				msg.add("Dumping stack " + Double.toString(WatchedStack));
-				
-				switch (theStacksType.get(WatchedStack)){
-				case stack_is_string:												// String type list
-					if (tempStack.isEmpty()){
-						msg.add("Empty Stack");
-						break;
-					}
-					do {
-						String thisString = (String) tempStack.pop();
-						msg.add(thisString);
-					} while (!tempStack.isEmpty());
-					
-					break;
-					
-				case stack_is_numeric:
-					if (tempStack.isEmpty()){
-						msg.add("Empty Stack");
-						break;
-					}
-					do {
-						Double thisNumber = (Double) tempStack.pop();
-						msg.add(Double.toString(thisNumber));
-					} while (!tempStack.isEmpty());
-					break;
-					
-				default:
-					msg.add("Internal problem. Notify developer");
-					return msg;
-				}
-			  return msg;
+	private ArrayList<String> dbDoArray(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		String var = VarNames.get(WatchedArray);
+		msg.add("Dumping Array " + var + "]");
+
+		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(WatchedArray));	// Get the array table bundle for this array
+		if (ArrayEntry == null) {
+			msg.add(prefix + "Warning: null array table entry");
+		} else {
+			int length = ArrayEntry.getInt("length");			// get the array length
+			int base = ArrayEntry.getInt("base");				// and the start of the array in the variable space
+			// ArrayList<Integer> dims = ArrayEntry.getIntegerArrayList("dims");
+			// ArrayList<Integer> sizes = ArrayEntry.getIntegerArrayList("sizes");
+			// msg.add("dims: " + dims.toString());
+			// msg.add("sizes: " + sizes.toString());
+			boolean isString = var.endsWith("$[");
+			for (int i = 0; i < length; ++i) {
+				msg.add(prefix +
+						(isString ? quote(StringVarValues.get(base + i))
+								  : NumericVarValues.get(base + i).toString()));
 			}
-			
-			private ArrayList<String> doBundle(){
-					ArrayList<String> msg=new ArrayList<String>();
-			    Bundle b = theBundles.get(WatchedBundle);
-			    
-			    msg.add("Dumping Bundle " + Double.toString(WatchedBundle));
-			    
-			    Set<String> set= b.keySet();
-			    
-			    if (set.size() == 0){
-			    	msg.add("Empty Bundle");
-						return msg;
-			    }
-			    
-			    for (String s : set) {
-			    	if (!s.startsWith("@@@N.")) {
-			    		boolean isNumeric = b.getBoolean("@@@N."+ s);
-			    		if (isNumeric) {
-			    			msg.add(s + ": " + Double.toString(b.getDouble(s)));
-			    		}else{
-			    			msg.add(s + ": " +  b.getString(s));
-			    		}
-			    	}
-			    	
-			    }
-			  return msg;
+		}
+		return msg;
+	}
+
+	private ArrayList<String> dbDoList(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Dumping List " + WatchedList);
+
+		if ((WatchedList < 0) || (WatchedList >= theLists.size())) {
+			msg.add(prefix + "List has not been created.");
+			return msg;
+		}
+
+		ArrayList list = theLists.get(WatchedList);				// get the list
+		if (list == null) {
+			msg.add(prefix + "Warning: null list variable");
+			return msg;
+		}
+
+		int length = list.size();
+		if (length == 0) {
+			msg.add(prefix + "Empty List");
+		} else {
+			boolean isString = (theListsType.get(WatchedList) == list_is_string);
+			for (Object item : list) {							// get each item
+				String line;
+				if (item == null) {
+					line = "Warning: null list item";
+				} else {
+					line = item.toString();
+					if (isString) { line = quote(line); }
+				}
+				msg.add(prefix + line);
 			}
+		}
+		return msg;
+	}
+
+	private ArrayList<String> dbDoStack(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Dumping stack " + WatchedStack);
+
+		if ((WatchedStack < 0) || (WatchedStack >= theStacks.size())) {
+			msg.add(prefix + "Stack has not been created.");
+			return msg;
+		}
+
+		Stack stack = theStacks.get(WatchedStack);				// get the stack
+		if (stack == null) {
+			msg.add(prefix + "Warning: null list variable");
+		} else if (stack.isEmpty()) {
+			msg.add(prefix + "Empty Stack");
+		} else {
+			Stack tempStack = (Stack)stack.clone();
+			boolean isString = (theStacksType.get(WatchedStack) == list_is_string);
+			do {
+				String line;
+				Object item = tempStack.pop();					// get each item
+				if (item == null) {
+					line = "Warning: null stack item";
+				} else {
+					line = item.toString();
+					if (isString) { line = quote(line); }
+				}
+				msg.add(prefix + line);
+			} while (!tempStack.isEmpty());
+		}
+		return msg;
+	}
+
+	private ArrayList<String> dbDoBundle(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Dumping Bundle " + WatchedBundle);
+
+		if ((WatchedBundle < 0) || (WatchedBundle >= theBundles.size())) {
+			msg.add(prefix + "Bundle has not been created.");
+			return msg;
+		}
+
+		Bundle b = theBundles.get(WatchedBundle);				// get the bundle
+		if (b == null) {
+			msg.add(prefix + "Warning: null bundle variable");
+			return msg;
+		}
+
+		Set<String> set = b.keySet();
+		if (set.size() == 0) {
+			msg.add(prefix + "Empty Bundle");
+			return msg;
+		}
+
+		for (String s : set) {
+			if (!s.startsWith("@@@N.")) {
+				boolean isNumeric = b.getBoolean("@@@N." + s);
+				msg.add(prefix + s + ": " +
+						(isNumeric ? Double.toString(b.getDouble(s))
+								   : quote(b.getString(s))));
+			}
+		}
+		return msg;
+	}
 
 	public boolean handleDebugMessage(Message msg) {
 		switch (msg.what) {
@@ -7757,8 +7566,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) { return false; }
 		if (!checkSDCARD('r')) { return false; }
 
-		File file = new File(Basic.getDataPath(fileName));
-		double exists = file.exists() ? 1 : 0;				// does it exist?
+		double exists = 0.0;								// "false"
+		if (!fileName.equals("")) {							// empty file name would report parent dir exists; catch it and report false
+			File file = new File(Basic.getDataPath(fileName));
+			if (file.exists()) exists = 1.0;				// if file exists, report "true"
+		}
 		NumericVarValues.set(saveValueIndex, exists);
 		return true;
 	}
@@ -8005,7 +7817,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return checkEOL();
 	}
 
-	private boolean executeTIMEZONE(){										// Get TimeZone command key word if it is there
+	private boolean executeTIMEZONE(){										// Get TimeZone command keyword if it is there
 		return executeCommand(TimeZone_cmd, "TimeZone");
 	}
 
@@ -8515,7 +8327,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// ************************************************ SQL Package ***************************************
 
-	private boolean executeSQL(){									// Get SQL command key word if it is there
+	private boolean executeSQL(){									// Get SQL command keyword if it is there
 		return executeCommand(SQL_cmd, "SQL");
 	}
 
@@ -9199,22 +9011,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
    	      }
    	   }
  
-   
-	  private  boolean GetGRKeyWord(){						// Get a Basic key word if it is there
-															// is the current line index at a key word?
-		  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		  int i = 0;
-		  for (i = 0; i<GR_KW.length; ++i){					// loop through the key word list
-			  if (Temp.startsWith(GR_KW[i])){    				// if there is a match
-				  KeyWordValue = i;								// set the key word number
-				  LineIndex = LineIndex + GR_KW[i].length(); 	// move the line index to end of key word
-				  return true;									// and report back
-			  }
-		  }
-		  KeyWordValue = gr_none;								// no key word found
-		  return false;											// report fail
-	  }
-	  
+	private boolean GetGRKeyWord(){							// Get a GR command keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < GR_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(GR_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += GR_KW[i].length();				// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = gr_none;								// no keyword found
+		return false;										// report fail
+	}
+
 	  public void DisplayListAdd(Bundle b){
 		  b.putInt("alpha", 256);
 		  b.putInt("paint", PaintList.size()-1);							// paint for this lines
@@ -11090,21 +10899,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  return true;
 	  }
 
-	  private  boolean GetAudioKeyWord(){						// Get a Basic key word if it is there
-			// is the current line index at a key word?
-		  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		  int i = 0;
-		  for (i = 0; i<Audio_KW.length; ++i){		           // loop through the key word list
-			  if (Temp.startsWith(Audio_KW[i])){               // if there is a match
-				  KeyWordValue = i;						       // set the key word number
-				  LineIndex = LineIndex + Audio_KW[i].length(); // move the line index to end of key word
-				  return true;							      // and report back
-			  }
-		  }
-		  KeyWordValue = audio_none;						  // no key word found
-		  return false;									      // report fail
-
-	  		}
+	private boolean GetAudioKeyWord(){						// Get an audio command keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < Audio_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(Audio_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += Audio_KW[i].length();			// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = audio_none;							// no keyword found
+		return false;										// report fail
+	}
 
 	private MediaPlayer getMP(String fileName) {
 		MediaPlayer mp = null;
@@ -11435,22 +11241,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	      	}
 		  return true;
 	  }
-	  
-	  private  boolean GetSensorsKeyWord(){						// Get a Basic key word if it is there
-			// is the current line index at a key word?
-		  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		  int i = 0;
-		  for (i = 0; i<Sensors_KW.length; ++i){		// loop through the key word list
-			  if (Temp.startsWith(Sensors_KW[i])){    // if there is a match
-				  KeyWordValue = i;						// set the key word number
-				  LineIndex = LineIndex + Sensors_KW[i].length(); // move the line index to end of key word
-				  return true;							// and report back
-			  }
-		  }
-		  KeyWordValue = sensors_none;							// no key word found
-		  return false;									// report fail
 
-	  		}
+	private boolean GetSensorsKeyWord(){					// Get a sensors commmand keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < Sensors_KW.length; ++i) {		// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(Sensors_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += Sensors_KW[i].length();		// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = sensors_none;						// no keyword found
+		return false;										// report fail
+	}
 
 		private boolean execute_sensors_list(){
 			String var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
@@ -11590,8 +11393,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 
 // ************************************************ GPS Package ***********************************
- 	  
- 	  private boolean executeGPS(){
+
+	private boolean executeGPS(){
 	    	if (!GetGPSKeyWord()){
 		    	  return false;
 		      	}else {
@@ -11638,24 +11441,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		    	  }
 		      	}
 			  return true;
- 	  }
- 	  
-	  private  boolean GetGPSKeyWord(){						// Get a Basic key word if it is there
-			// is the current line index at a key word?
-		  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		  int i = 0;
-		  for (i = 0; i<GPS_KW.length; ++i){		// loop through the key word list
-			  if (Temp.startsWith(GPS_KW[i])){    // if there is a match
-				  KeyWordValue = i;						// set the key word number
-				  LineIndex = LineIndex + GPS_KW[i].length(); // move the line index to end of key word
-				  return true;							// and report back
-			  }
-		  }
-		  KeyWordValue = sensors_none;							// no key word found
-		  return false;									// report fail
+	}
 
-	  		}
-	  
+	private boolean GetGPSKeyWord(){						// Get a GPS command keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < GPS_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(GPS_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += GPS_KW[i].length();			// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = sensors_none;						// no keyword found
+		return false;										// report fail
+	}
+
 	public boolean execute_gps_open() {
 		if (!checkEOL()) return false;
 		if (theGPS != null) return true;				// If already opened.....
@@ -11805,17 +11605,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  return true;
 	  }
 
-	private  boolean GetArrayKeyWord(){						// Get a Basic key word if it is there
-		// is the current line index at a key word?
-		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		for (int i = 0; i < Array_KW.length; ++i) {			// loop through the key word list
-			if (Temp.startsWith(Array_KW[i])) {				// if there is a match
-				KeyWordValue = i;							// set the key word number
-				LineIndex = LineIndex + Array_KW[i].length(); // move the line index to end of key word
+	private boolean GetArrayKeyWord(){						// Get an array command keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < Array_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(Array_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += Array_KW[i].length();			// move the line index to end of keyword
 				return true;								// and report back
 			}
 		}
-		KeyWordValue = array_none;							// no key word found
+		KeyWordValue = array_none;							// no keyword found
 		return false;										// report fail
 	}
 
@@ -11912,7 +11711,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					NumericVarValues.set(base+i, Values.get(i));
 				}
 
-			}else{														// Do the same stuff for a string array
+			} else {													// Do the same stuff for a string array
 				ArrayList <String> Values = new ArrayList<String>();
 				for (int i =0; i<length; ++i){
 					Values.add(StringVarValues.get(base+i));
@@ -12165,17 +11964,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;
 	}
 
-	private  boolean GetListKeyWord(){						// Get a Basic key word if it is there
-		// is the current line index at a key word?
-		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		for (int i = 0; i<List_KW.length; ++i){				// loop through the key word list
-			if (Temp.startsWith(List_KW[i])){    			// if there is a match
-				KeyWordValue = i;							// set the key word number
-				LineIndex = LineIndex + List_KW[i].length(); // move the line index to end of key word
+	private boolean GetListKeyWord(){						// Get a list command keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < List_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(List_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += List_KW[i].length();			// move the line index to end of keyword
 				return true;								// and report back
 			}
 		}
-		KeyWordValue = list_none;						// no key word found
+		KeyWordValue = list_none;							// no keyword found
 		return false;										// report fail
 	}
 
@@ -12603,19 +12401,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;
 	}
 
-	private  boolean GetBundleKeyWord(){						// Get a Basic key word if it is there
-		// is the current line index at a key word?
-		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		for (int i = 0; i < Bundle_KW.length; ++i) {			// loop through the key word list
-			if (Temp.startsWith(Bundle_KW[i])) {				// if there is a match
-				KeyWordValue = i;								// set the key word number
-				LineIndex += Bundle_KW[i].length();				// move the line index to end of key word
-				return true;									// and report back
+	private boolean GetBundleKeyWord(){						// Get a bundle command keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < Bundle_KW.length; ++i) {		// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(Bundle_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += Bundle_KW[i].length();			// move the line index to end of keyword
+				return true;								// and report back
 			}
 		}
-		KeyWordValue = list_none;								// no key word found
-		return false;											// report fail
-
+		KeyWordValue = list_none;							// no keyword found
+		return false;										// report fail
 	}
 
 	private boolean execute_BUNDLE_CREATE(){
@@ -12802,22 +12598,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;
 	}
 
-	private  boolean GetStackKeyWord(){						// Get a Basic key word if it is there
-		// is the current line index at a key word?
-		String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		for (int i = 0; i<Stack_KW.length; ++i) {			// loop through the key word list
-			if (Temp.startsWith(Stack_KW[i])) {				// if there is a match
-				KeyWordValue = i;							// set the key word number
-				LineIndex = LineIndex + Stack_KW[i].length(); // move the line index to end of key word
+	private boolean GetStackKeyWord(){						// Get a Basic keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < Stack_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(Stack_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += Stack_KW[i].length();			// move the line index to end of keyword
 				return true;								// and report back
-				}
+			}
 		}
-		KeyWordValue = list_none;						// no key word found
+		KeyWordValue = list_none;							// no keyword found
 		return false;										// report fail
 	}
 
 	private boolean execute_STACK_CREATE(){
-		char c = ExecutingLineBuffer.charAt(LineIndex);    // Get the type, s or n
+		char c = ExecutingLineBuffer.charAt(LineIndex);		// Get the type, s or n
 		++LineIndex;
 		int type = 0;
 		
@@ -13184,15 +12979,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	
 //************************************** Socket Commands  ******************************************
 
-	private boolean executeSOCKET(){								// Get Socket command key word if it is there
+	private boolean executeSOCKET(){								// Get Socket command keyword if it is there
 		return executeCommand(Socket_cmd, "Socket");
 	}
 
-	private boolean executeSocketServer(){							// Get Socket Server command key word if it is there
+	private boolean executeSocketServer(){							// Get Socket Server command keyword if it is there
 		return executeCommand(SocketServer_cmd, "Socket Server");
 	}
 
-	private boolean executeSocketClient(){							// Get Socket Client command key word if it is there
+	private boolean executeSocketClient(){							// Get Socket Client command keyword if it is there
 		return executeCommand(SocketClient_cmd, "Socket Client");
 	}
 
@@ -13672,7 +13467,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	
 	//****************************************** TTS *******************************************
 
-	private boolean executeTTS(){								// Get TTS command key word if it is there
+	private boolean executeTTS(){								// Get TTS command keyword if it is there
 		return executeCommand(tts_cmd, "TTS");
 	}
 
@@ -13806,22 +13601,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		return true;
 	}
-	
-	  private  boolean GetFTPKeyWord(){						// Get a Basic key word if it is there
-			// is the current line index at a key word?
-		  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		  int i = 0;
-		  for (i = 0; i<ftp_KW.length; ++i){		// loop through the key word list
-			  if (Temp.startsWith(ftp_KW[i])){    // if there is a match
-				  KeyWordValue = i;						// set the key word number
-				  LineIndex = LineIndex + ftp_KW[i].length(); // move the line index to end of key word
-				  return true;							// and report back
-			  }
-		  }
-		  KeyWordValue = 99;							// no key word found
-		  return false;									// report fail
 
-	  		}
+	private boolean GetFTPKeyWord(){						// Get a Basic keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < ftp_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(ftp_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += ftp_KW[i].length();			// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = 99;									// no keyword found
+		return false;										// report fail
+	}
 
 	private boolean executeFTP_OPEN(){
 		if (!getStringArg()) return false;							// URL
@@ -14168,22 +13960,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			return true;
 		}
-		
-		  private  boolean GetBTKeyWord(){						// Get a Basic key word if it is there
-				// is the current line index at a key word?
-			  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-			  int i = 0;
-			  for (i = 0; i<bt_KW.length; ++i){		// loop through the key word list
-				  if (Temp.startsWith(bt_KW[i])){    // if there is a match
-					  KeyWordValue = i;						// set the key word number
-					  LineIndex = LineIndex + bt_KW[i].length(); // move the line index to end of key word
-					  return true;							// and report back
-				  }
-			  }
-			  KeyWordValue = 99;							// no key word found
-			  return false;									// report fail
 
-		  		}
+	private  boolean GetBTKeyWord(){						// Get a bluetooth command keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < bt_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(bt_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += bt_KW[i].length();				// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = 99;									// no keyword found
+		return false;										// report fail
+	}
 
 		private synchronized boolean execute_BT_status() {
 			if (!getNVar() || !checkEOL()) { return false; }
@@ -14464,7 +14253,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeSU(boolean isSU) {	// SU command (isSU true) or system comand (isSU false)
 		for (Command c : SU_cmd) {								// loop through the command list
 			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) { // if there is a match
-				LineIndex += c.name.length();					// move the line index to end of key word
+				LineIndex += c.name.length();					// move the line index to end of keyword
 				if (SUprocess == null) {
 					if (c.name.equals("open")) this.isSU = isSU;
 					else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
@@ -14473,7 +14262,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		}
 		RunTimeError("Unknown " + (isSU ? "SU" : "System") + " command");
-		return false;											// no key word found
+		return false;											// no keyword found
 	}
 
 		    private boolean execute_SU_open(){
@@ -14557,7 +14346,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		    
 /****************************************** CONSOLE Commands  ************************************/
 
-	private boolean executeCONSOLE() {							// Get Console command key word if it is there
+	private boolean executeCONSOLE() {							// Get Console command keyword if it is there
 		return executeCommand(Console_cmd, "Console");
 	}
 
@@ -14713,23 +14502,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			return true;
 		}
-	  
-	  private  boolean GetSPKeyWord(){						// Get a Basic key word if it is there
-			// is the current line index at a key word?
-		  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-		  int i = 0;
-		  for (i = 0; i<sp_KW.length; ++i){		// loop through the key word list
-			  if (Temp.startsWith(sp_KW[i])){    // if there is a match
-				  KeyWordValue = i;						// set the key word number
-				  LineIndex = LineIndex + sp_KW[i].length(); // move the line index to end of key word
-				  return true;							// and report back
-			  }
-		  }
-		  KeyWordValue = 99;							// no key word found
-		  return false;									// report fail
 
-	  		}
-	  
+	private  boolean GetSPKeyWord(){						// Get a soundpool keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < sp_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(sp_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += sp_KW[i].length();				// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = 99;									// no keyword found
+		return false;										// report fail
+	}
+
 	  private boolean execute_SP_open(){
 		  
 		  if (!evalNumericExpression()) return false;
@@ -15232,25 +15018,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			return true;
 		}
-		
-		  private  boolean GethtmlKeyWord(){						// Get a Basic key word if it is there
-				// is the current line index at a key word?
-			  String Temp = ExecutingLineBuffer.substring(LineIndex, ExecutingLineBuffer.length());
-			  int i = 0;
-			  for (i = 0; i<html_KW.length; ++i){		// loop through the key word list
-				  if (Temp.startsWith(html_KW[i])){    // if there is a match
-					  KeyWordValue = i;						// set the key word number
-					  LineIndex = LineIndex + html_KW[i].length(); // move the line index to end of key word
-					  return true;							// and report back
-				  }
-			  }
-			  KeyWordValue = 99;							// no key word found
-			  return false;									// report fail
 
-		  		}
+	private boolean GethtmlKeyWord(){						// Get n HTML keyword if it is there
+															// is the current line index at a keyword?
+		for (int i = 0; i < html_KW.length; ++i) {			// loop through the keyword list
+			if (ExecutingLineBuffer.startsWith(html_KW[i], LineIndex)) { // if there is a match
+				KeyWordValue = i;							// set the keyword number
+				LineIndex += html_KW[i].length();			// move the line index to end of keyword
+				return true;								// and report back
+			}
+		}
+		KeyWordValue = 99;									// no keyword found
+		return false;										// report fail
+	}
 
-
-	  
 	  private boolean execute_html_open(){
 		  if (Web.aWebView != null) {
 			return RunTimeError("HTML previously open and not closed");
@@ -15593,7 +15374,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	    
 	  // ******************************* Timer commands ***************************************
 	    
-	private boolean executeTIMER(){											// Get Timer command key word if it is there
+	private boolean executeTIMER(){											// Get Timer command keyword if it is there
 		return executeCommand(Timer_cmd, "Timer");
 	}
 
