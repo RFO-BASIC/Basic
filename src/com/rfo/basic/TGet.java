@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -43,30 +43,27 @@ import android.widget.EditText;
 
 
 public class TGet extends Activity {
-    private EditText theTextView;		//The EditText TextView
-    private int PromptIndex;
-    private static String theText;
+	private EditText theTextView;							// The EditText TextView
+	private int PromptIndex;
+	private String theText;
 
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event)  {
-    	// if BACK key cancel user input
-        if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event)  {
+		// if BACK key cancel user input
+		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
 
-        	if (Run.OnBackKeyLine != 0) {					// Tell program runner it happened
-        		Run.BackKeyHit = true;
-        	} else {
-        		Run.Stop = true;
-        	}
+			if (Run.OnBackKeyLine != 0) {					// Tell program runner it happened
+				Run.BackKeyHit = true;
+			} else {
+				Run.Stop = true;
+			}
 
-        	Run.TextInputString = "";						// Tell TGet command it happened
-        	Run.HaveTextInput = true;
-
-        	finish();										// End TGet Activity
-        	return true;
-        }
-        return super.onKeyUp(keyCode, event);
-
-    }
+			returnText("");									// Tell TGet command it happened
+															// and end TGet Activity
+			return true;
+		}
+		return super.onKeyUp(keyCode, event);
+	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {			// Called when the menu key is pressed.
@@ -77,16 +74,14 @@ public class TGet extends Activity {
 	}
 
 	@Override
-	public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is selected
+	public boolean onOptionsItemSelected(MenuItem item) {	// A menu item is selected
 		switch (item.getItemId()) {
 
 		case R.id.stop:										// User wants to stop execution
 			Run.MenuStop();									// Tell program runner (and user) it happened
 
-			Run.TextInputString = "";						// Tell TGet command it happened
-			Run.HaveTextInput = true;
-
-			finish();										// End TGet Activity
+			returnText("");									// Tell TGet command it happened
+															// and end TGet Activity
 		}
 		return true;
 	}
@@ -95,13 +90,13 @@ public class TGet extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
        super.onCreate(savedInstanceState);
 
-       this.setContentView(R.layout.tget);  // Layouts xmls exist for both landscape or portrait modes
+       this.setContentView(R.layout.tget);					// Layouts xmls exist for both landscape or portrait modes
 
        Intent intent = getIntent();
        String title = intent.getStringExtra("title");
        if (title != null) setTitle(title);
 
-       theTextView = (EditText) findViewById(R.id.the_text);		// The text display area
+       theTextView = (EditText) findViewById(R.id.the_text);	// The text display area
 
        theText = "";
        for (int i = 0; i < Run.output.size(); ++ i) {
@@ -138,16 +133,14 @@ public class TGet extends Activity {
        
     }
 
-    private synchronized void handleEOL() {
-    	Log.d("TGet","handleEOL");
-    	if (Run.HaveTextInput) return;							// Don't run twice for same event 
-       	String s = theTextView.getText().toString();
-       	Run.TextInputString = "";
-       	if (PromptIndex < s.length())
-       		Run.TextInputString = s.substring(PromptIndex);
-       	Run.HaveTextInput = true;
-       	finish();
-    }
+	private synchronized void handleEOL() {
+		Log.d("TGet","handleEOL");
+		if (Run.HaveTextInput) return;							// Don't run twice for same event
+
+		String s = theTextView.getText().toString();
+		s = (PromptIndex < s.length()) ? s.substring(PromptIndex) : "";
+		returnText(s);
+	}
 
        private TextWatcher inputTextWatcher = new TextWatcher() {
     	    public void afterTextChanged(Editable s) { }
@@ -164,5 +157,22 @@ public class TGet extends Activity {
     	    	}
     	    }
     	};
+
+	public void returnText(String text) {
+		if (Run.HaveTextInput) return;
+
+		synchronized (Run.LOCK) {
+			Run.TextInputString = text;
+			Run.HaveTextInput = true;
+			Run.LOCK.notify();								// release the lock that Run is waiting for
+		}
+		finish();
+	}
+
+	@Override
+	public void onDestroy() {
+		returnText("");										// release the lock that Run is waiting for
+		super.onDestroy();
+	}
 
 }

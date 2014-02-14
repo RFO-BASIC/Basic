@@ -199,6 +199,8 @@ public class Run extends ListActivity {
 	private static final String CLASSTAG = Run.class.getSimpleName();
 //	Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
+	public static Object LOCK = new Object();
+
 	// ********************* Message types for the Handler *********************
 																// message numbers < 256 are in "default" group 0
 	private static final int MESSAGE_INPUT_DIALOG      = 1;		// for INPUT command
@@ -809,13 +811,11 @@ public class Run extends ListActivity {
     public static int ToastDuration;
     
     //  ******************* Variables for the SELECT Command ***********************
-    
-    public static ArrayList<String> SelectList ;        // The list of things to select from
+
     public static int SelectedItem;						// The index of the selected item
-    public static boolean ItemSelected;                 // Signal from Select.java saying an item has been selected 
-    public static String SelectMessage ; 				// The toast message for Select.java to display
-    public static boolean SelectLongClick ;             // True if long click
-    
+    public static boolean ItemSelected;					// Signal from Select.java saying an item has been selected 
+    public static boolean SelectLongClick;				// True if long click
+
     // *********************  SQL Variables  **************************************
     
     public static final String SQL_KW[] = {				// SQL Commands
@@ -860,7 +860,7 @@ public class Run extends ListActivity {
     
     // ******************************** Graphics Declarations **********************************
     
-    public static Intent GRclass ;						// Graphics Intent Class
+    public static Intent GRclass;						// Graphics Intent Class
     public static boolean GRopen = false;				// Graphics Open Flag
     public static ArrayList<Bundle> DisplayList;
     public static ArrayList<Integer> RealDisplayList;
@@ -2081,22 +2081,21 @@ private void InitVars(){
     ToastX = 0 ;
     ToastY = 0;
     ToastDuration = 1;
-	
-    //  ******************* Variables for the SELECT Command ***********************
-    
-    SelectList = new ArrayList<String>() ;        // The list of things to select from
-    SelectedItem = 0 ;						// The index of the selected item
-    ItemSelected = false;                 // Signal from Select.java saying an item has been selected 
-    SelectMessage = "" ; 				// The toast message for Select.java to display
-    
-    DataBases = new ArrayList<SQLiteDatabase>() ; 	 // List of created data bases
-   Cursors = new ArrayList<Cursor>() ; 	 		 // List of created data bases
-   
-   TextInputString = "";
-   HaveTextInput = false;
-    
-    GRclass = null ;						// Graphics Intent Class
-    GRopen = false;				// Graphics Open Flag
+
+	// *********************  SQL Variables  **************************************
+
+	DataBases = new ArrayList<SQLiteDatabase>();	// List of created data bases
+	Cursors = new ArrayList<Cursor>();				// List of created data bases
+
+	// ********************************* Variables for text.input command ********************
+
+	TextInputString = "";
+	HaveTextInput = false;
+
+	// ******************************** Graphics Declarations **********************************
+
+    GRclass = null;									// Graphics Intent Class
+    GRopen = false;									// Graphics Open Flag
     DisplayList = new ArrayList<Bundle>() ;
     RealDisplayList = new ArrayList<Integer>() ;
     PaintList = new ArrayList<Paint>();
@@ -5769,7 +5768,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		String var = getVarAndType();
 		if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
 		if (VarIsNew)						{ return RunTimeError(EXPECT_DIM_ARRAY); }
-		if (!checkEOL()) return false;
+		// No checkEOL: ignore anything after the '['
 
 		WatchedArray = VarNumber;
 		ArrayList<String> lines = dbDoArray("");
@@ -6940,36 +6939,41 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-		private boolean executeTEXT_INPUT(){
-			if (!getSVar()) return false;
-			int saveValueIndex = theValueIndex;
+	private boolean executeTEXT_INPUT(){
+		if (!getSVar()) return false;
+		int saveValueIndex = theValueIndex;
 
-			TextInputString = "";
-			String title = null;
-			if (isNext(',')) {													// Check for optional parameter(s)
-				boolean isComma = isNext(',');									// Look for second comma, two commas together
-																				// mean initial text is skipped, use empty string
-				if (!isComma) {
-					if (!getStringArg()) return false;							// One comma so far; get initial input text
-					TextInputString = StringConstant;
-					isComma = isNext(',');										// Look again for second comma
-				}
-			    if (isComma) {
-			    	if (!getStringArg()) return false;							// Second comma; get title
-			    	title = StringConstant;
-			    }
+		TextInputString = "";
+		String title = null;
+		if (isNext(',')) {													// Check for optional parameter(s)
+			boolean isComma = isNext(',');									// Look for second comma, two commas together
+																			// mean initial text is skipped, use empty string
+			if (!isComma) {
+				if (!getStringArg()) return false;							// One comma so far; get initial input text
+				TextInputString = StringConstant;
+				isComma = isNext(',');										// Look again for second comma
 			}
-			if (!checkEOL()) return false;
-			
-			Intent intent = new Intent(this, TextInput.class);
-			if (title != null) intent.putExtra("title", title);
-			HaveTextInput = false;
-		    startActivityForResult(intent, BASIC_GENERAL_INTENT);
-		    while (!HaveTextInput) Thread.yield();
-		    
-		    StringVarValues.set(saveValueIndex, TextInputString);
-			return true;
+			if (isComma) {
+				if (!getStringArg()) return false;							// Second comma; get title
+				title = StringConstant;
+			}
 		}
+		if (!checkEOL()) return false;
+
+		Intent intent = new Intent(this, TextInput.class);
+		if (title != null) { intent.putExtra("title", title); }
+		HaveTextInput = false;
+		startActivityForResult(intent, BASIC_GENERAL_INTENT);
+
+		synchronized (LOCK) {
+			while (!HaveTextInput) {
+				try { LOCK.wait(); }										// Wait for signal from TextInput.java thread
+				catch (InterruptedException e) { HaveTextInput = true; }
+			}
+		}
+		StringVarValues.set(saveValueIndex, TextInputString);
+		return true;
+	}
 		
 	private boolean executeTEXT_POSITION_SET(){
 		if (!evalNumericExpression()) { return false; }						// First parm is the filenumber expression
@@ -7042,30 +7046,36 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 		
 	private boolean executeTGET(){
-			if (!getSVar()) return false;
-			int saveValueIndex = theValueIndex;
+		if (!getSVar()) return false;
+		int saveValueIndex = theValueIndex;
 
-			if (!isNext(',')) { return false; }
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;
+		TextInputString = StringConstant;
+		String Prompt = StringConstant;
+
+		String title = null;
+		if (isNext(',')) {
 			if (!getStringArg()) return false;
-			TextInputString = StringConstant;
-			String Prompt = StringConstant;
+			title = StringConstant;
+		}
+		if (!checkEOL()) return false;
 
-			String title = null;
-		    if (isNext(',')) {
-		    	if (!getStringArg()) return false;
-		    	title = StringConstant;
-		    }
-			if (!checkEOL()) return false;
+		Intent intent = new Intent(this, TGet.class);
+		if (title != null) { intent.putExtra("title", title); }
+		HaveTextInput = false;
+		startActivityForResult(intent, BASIC_GENERAL_INTENT);
 
-			Intent intent = new Intent(this, TGet.class);
-			if (title != null) intent.putExtra("title", title);
-			HaveTextInput = false;
-		    startActivityForResult(intent, BASIC_GENERAL_INTENT);
-		    while (!HaveTextInput) Thread.yield();
-		    PrintShow(Prompt + TextInputString);
-		    
-		    StringVarValues.set(saveValueIndex, TextInputString);
-			return true;
+		synchronized (LOCK) {
+			while (!HaveTextInput) {
+				try { LOCK.wait(); }										// Wait for signal from TGet.java thread
+				catch (InterruptedException e) { HaveTextInput = true; }
+			}
+		}
+		PrintShow(Prompt + TextInputString);
+
+		StringVarValues.set(saveValueIndex, TextInputString);
+		return true;
 	}
 
 	private boolean executeBYTE_OPEN(){										// Open a file
@@ -7944,6 +7954,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
+		ArrayList<String> selectList;
 		int saveLineIndex = LineIndex;
 		if ((getVarAndType() != null) && VarIsArray) {
 			if (!isNext(']'))	{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); } // Array must not have any indices
@@ -7954,10 +7965,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			int length = ArrayEntry.getInt("length");				// get the array length
 			int base = ArrayEntry.getInt("base");					// and the start of values in the value space
 
-			SelectList = new ArrayList<String>();					// Create a list to copy array values into
+			selectList = new ArrayList<String>();					// Create a list to copy array values into
 
 			for (int i = 0; i < length; ++i) { 						// Copy the array values into that list
-				SelectList.add(StringVarValues.get(base+i));
+				selectList.add(StringVarValues.get(base+i));
 			}
 		} else {
 			LineIndex = saveLineIndex;
@@ -7970,28 +7981,54 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (theListsType.get(listIndex) != list_is_string){
 				return RunTimeError("Not a string list");
 			}
-			SelectList = theLists.get(listIndex);
+			selectList = theLists.get(listIndex);
 		}
 
-		if ( !(isNext(',') && getStringArg()) ) return false;
-		SelectMessage = StringConstant;
-
+		String title = null;										// set defaults
+		String msg = null;
 		int isLongClickValueIndex = -1;
-		if (isNext(',')) {											// If no comma then not long press var
-			if (!getNVar()) return false;							// Get the long press var
-			isLongClickValueIndex = theValueIndex;
+
+		if (isNext(',')) {											// comma indicates optional arguments
+			boolean isComma = true;
+			if (!isNext(',') && !isEOL() && getStringArg()) {
+				title = msg = StringConstant;						// user provided a title argument
+				isComma = isNext(',');
+			}
+			if (isComma) {
+				if (isNext(',')) {
+					msg = "";										// user suppressed message
+				} else if (isEOL()) {
+					isComma = false;
+				} else if (getStringArg()) {
+					msg = StringConstant;							// user provided a message argument
+					isComma = isNext(',');
+				}
+			}
+			if (isComma) {
+				if (!getNVar()) return false;						// get the long press var
+				isLongClickValueIndex = theValueIndex;
+			}
 		}
 		if (!checkEOL()) return false;
-		
-		SelectedItem = 0;
+
+		SelectedItem = 0;											// intialize return values
 		ItemSelected = false;
 		SelectLongClick = false;
-		
-		startActivityForResult(new Intent(this, Select.class), BASIC_GENERAL_INTENT);
-		while (!ItemSelected) Thread.yield();						// Wait for signal from Selected.java thread
-		
+
+		Intent intent = new Intent(this, Select.class);
+		if (title != null) { intent.putExtra(Select.EXTRA_TITLE, title); }
+		if (msg != null)   { intent.putExtra(Select.EXTRA_MSG, msg); }
+		intent.putStringArrayListExtra(Select.EXTRA_LIST, selectList);
+		startActivityForResult(intent, BASIC_GENERAL_INTENT);
+
+		synchronized (LOCK) {
+			while (!ItemSelected) {
+				try { LOCK.wait(); }								// Wait for signal from Selected.java thread
+				catch (InterruptedException e) { ItemSelected = true; }
+			}
+		}
 		NumericVarValues.set(SaveValueIndex, (double) SelectedItem); // Put the item selected into the var
-		
+
 		if (isLongClickValueIndex != -1) {
 			double isLongPress = SelectLongClick ? 1 : 0;			// Get the actual value
 			NumericVarValues.set(isLongClickValueIndex, isLongPress); // Set the return value

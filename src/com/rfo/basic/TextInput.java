@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -25,7 +25,6 @@ This file is part of BASIC! for Android
     
 	*************************************************************************************************/
 
-
 package com.rfo.basic;
 
 import android.app.Activity;
@@ -41,32 +40,30 @@ import android.widget.EditText;
 
 
 public class TextInput extends Activity {
-    private Button finishedButton;			// The buttons
-    private EditText theTextView;		//The EditText TextView
+	private Button finishedButton;			// The buttons
+	private EditText theTextView;			// The EditText TextView
 
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event)  {
-    	// if BACK key restore original text
-        if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-//     	   Run.TextInputString = theTextView.getText().toString();   // Grab the text that the user is seeing
-     	   Run.HaveTextInput =true;
-     	   finish();
-           return true;
-        	}
-        return super.onKeyUp(keyCode, event);
-    }
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event)  {
+		// if BACK key leave original text unchanged
+		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+			releaseLock();
+			return true;
+		}
+		return super.onKeyUp(keyCode, event);
+	}
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
        super.onCreate(savedInstanceState);
 
-       setContentView(R.layout.text_input);  // Layouts xmls exist for both landscape or portrait modes
+       setContentView(R.layout.text_input);	// Layout xmls exist for both landscape and portrait modes
 
        Intent intent = getIntent();
        String title = intent.getStringExtra("title");
        if (title != null) setTitle(title);
 
-       finishedButton = (Button) findViewById(R.id.finished_button);		 // The buttons
+       finishedButton = (Button) findViewById(R.id.finished_button);		// The buttons
 
        theTextView = (EditText) findViewById(R.id.the_text);				// The text display area
        theTextView.setText(Run.TextInputString);							// The Editor's display text
@@ -79,15 +76,31 @@ public class TextInput extends Activity {
 
        theTextView.setTextSize(1, Settings.getFont(this));
 
-       finishedButton.setOnClickListener(new OnClickListener() {			// **** Done Button ****
+		finishedButton.setOnClickListener(new OnClickListener() {			// **** Done Button ****
 
-           public void onClick(View v) {
-        	   Run.TextInputString = theTextView.getText().toString();   // Grab the text that the user is seeing
-        	   Run.HaveTextInput = true;
-        	   finish();
-              return;
-           	}
-       	});
+			public void onClick(View v) {
+				Run.TextInputString = theTextView.getText().toString();		// Grab the text that the user is seeing
+				releaseLock();
+				return;
+			}
+		});
 
-    }
+	}
+
+	public void releaseLock() {
+		if (Run.HaveTextInput) return;
+
+		synchronized (Run.LOCK) {
+			Run.HaveTextInput = true;
+			Run.LOCK.notify();								// release the lock that Run is waiting for
+		}
+		finish();
+	}
+
+	@Override
+	public void onDestroy() {
+		releaseLock();										// release the lock that Run is waiting for
+		super.onDestroy();
+	}
+
 }

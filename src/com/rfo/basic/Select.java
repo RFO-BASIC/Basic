@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -30,6 +30,7 @@ package com.rfo.basic;
 import java.util.ArrayList;
 
 import android.app.ListActivity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -50,61 +51,78 @@ import android.widget.Toast;
 
 public class Select extends ListActivity {
 	private static final String LOGTAG = "Select";
-	private static final String CLASSTAG = Select.class.getSimpleName();
 
-@Override
-public void onCreate(Bundle savedInstanceState) {
-	
-  super.onCreate(savedInstanceState);
-  if (Run.SelectList == null){
-	  Run.SelectList = new ArrayList<String>();
-	  Run.SelectList.add("System Problem");
-	  Run.SelectList.add("Please contact developer");
-	  Run.SelectList.add("basic@laughton.com");
-  }
-  Basic.ColoredTextAdapter adapter = new Basic.ColoredTextAdapter(this, Run.SelectList);
-  setListAdapter(adapter);
-  ListView lv = getListView();
-  lv.setTextFilterEnabled(false);
-  setTitle(Run.SelectMessage);
-  lv.setBackgroundColor(adapter.backgroundColor);
+	public static final String EXTRA_TITLE = "select_title";
+	public static final String EXTRA_MSG   = "select_msg";
+	public static final String EXTRA_LIST  = "select_list";
 
-  lv.setOnItemLongClickListener(new OnItemLongClickListener(){
-	  public boolean  onItemLongClick(AdapterView<?> parent, View view, int position, long id){
-	    	Run.SelectedItem = position + 1;    // Set item selected base 1
-	    	Run.ItemSelected = true;            // Tell Run, which is waiting, that we have the selection
-	    	Run.SelectLongClick = true;
-	    	finish();                           // Done
-	    	return true;
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+
+		Intent intent = getIntent();
+		String title = intent.getStringExtra(EXTRA_TITLE);
+		String message = intent.getStringExtra(EXTRA_MSG);
+		ArrayList<String> list = intent.getStringArrayListExtra(EXTRA_LIST);
+		if (list == null) {
+			list = new ArrayList<String>();
+			list.add("System Problem");
+			list.add("Please contact developer");
+			list.add("basic@laughton.com");
 		}
-  });
 
-// Wait for user to select something
-  
-  lv.setOnItemClickListener(new OnItemClickListener() {			// when user taps a filename line
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-    	Run.SelectedItem = position + 1;    // Set item selected base 1
-    	Run.ItemSelected = true;            // Tell Run, which is waiting, that we have the selection
-    	Run.SelectLongClick = false;
-    	finish();                           // Done
-    }
-  });
+		Basic.ColoredTextAdapter adapter = new Basic.ColoredTextAdapter(this, list);
+		setListAdapter(adapter);
+		ListView lv = getListView();
+		lv.setTextFilterEnabled(false);
+		if (title != null) { setTitle(title); }
+		lv.setBackgroundColor(adapter.backgroundColor);
 
-  Toast.makeText(this, Run.SelectMessage, Toast.LENGTH_SHORT).show();	// Display the user's toast
-}
+		// Wait for user to select something
 
-@Override
-public boolean onKeyUp(int keyCode, KeyEvent event)  {                     // If user presses back key
-    if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {	 // go back to Run without a selection
+		lv.setOnItemLongClickListener(new OnItemLongClickListener() {	// when user long-presses a filename line
+			public boolean  onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+				setSelection(position + 1, true);			// convert to 1-based item index
+				return true;
+			}
+		});
 
-    	Run.SelectedItem = 0;            // Zero indicates no selction made
-    	Run.ItemSelected = true;         // Tell Run, which is waiting, that we are done.
-    	
-    	finish();
-        return true;
-    }
-    return super.onKeyUp(keyCode, event);
+		lv.setOnItemClickListener(new OnItemClickListener() {			// when user short-taps a filename line
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				setSelection(position + 1, false);			// convert to 1-based item index
+			}
+		});
 
-}
+		if ((message != null) && !message.equals("")) {
+			Toast.makeText(this, message, Toast.LENGTH_SHORT).show();	// Display the user's toast
+		}
+	} // onCreate
+
+	public void setSelection(int item, boolean isLongClick) {
+		if (Run.ItemSelected) return;
+
+		synchronized (Run.LOCK) {
+			Run.SelectedItem = item;						// 1-based index of selected item
+			Run.SelectLongClick = isLongClick;
+			Run.ItemSelected = true;
+			Run.LOCK.notify();								// release the lock that Run is waiting for
+		}
+		finish();
+	}
+
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event) {				// If user presses back key
+		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) { // go back to Run without a selection
+			setSelection(0, false);							// zero indicates no selection made
+			return true;
+		}
+		return super.onKeyUp(keyCode, event);
+	}
+
+	@Override
+	public void onDestroy() {
+		setSelection(0, false);								// release the lock that Run is waiting for
+		super.onDestroy();
+	}
 
 }

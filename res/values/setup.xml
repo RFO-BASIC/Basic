@@ -47,8 +47,9 @@ This file is part of BASIC! for Android
     <!-- Default path is assets/<app_path>/source/ -->
     <string name="my_program">my_program.bas</string>
 
-    <!-- The default Console and TEXT.INPUT titles -->
+    <!-- The default Console, SELECT, TEXT.INPUT, and TGET titles -->
     <string name="run_name">BASIC! Program Output</string>
+    <string name="select_name">BASIC! Select</string>
     <string name="textinput_name">BASIC! Text Input</string>
 
     <!-- The default text and background colors selected in Preferences -->
