@@ -4,7 +4,7 @@ BASIC! is an implementation of the Basic programming language for
 Android devices.
 
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -32,6 +32,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.HandlerThread;
 import android.util.Log;
 
 // Implements the GPS Listener. Started by Run
@@ -50,18 +51,38 @@ public class GPS implements LocationListener {
 	public static long Time;
 	public static String Provider = null;
 
-	public LocationManager locator;
+	private final Context mContext;
+	private LocationManager mLocator;
+	private HandlerThread mThread;
 
 	public GPS(Context context) {
-		locator = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+		mContext = context;
+		mThread = new LocationHandler("LocationListener");
+		mThread.start();
+		mThread.getLooper();	// Wait for the Looper before letting the interpreter run
+	}
 
+	private class LocationHandler extends HandlerThread {
+
+		public LocationHandler(String name) {
+			super(name);
+		}
+
+		@Override
+		protected void onLooperPrepared() {
+			mLocator = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+			startListener();
+		}
+	}
+
+	private void startListener() {
 		// Start off by getting the last known location.
 
 		Location location = null;
 		try {
-			location = locator.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+			location = mLocator.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 			if (location == null) {
-				location = locator.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+				location = mLocator.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
 				if (location == null)	Log.i(LOGTAG, "Unable to get initial location");
 				else					Log.i(LOGTAG, "Initial location from Network Provider");
 			}
@@ -72,24 +93,11 @@ public class GPS implements LocationListener {
 
 		// Stuff the last known location parameters into the variables.
 
-		if (location != null) {
-			Altitude = location.getAltitude();
-			Latitude = location.getLatitude();
-			Longitude = location.getLongitude();
-			Bearing = location.getBearing();
-			Accuracy = location.getAccuracy();
-			Speed = location.getSpeed();
-			Provider = location.getProvider();
-			Time = location.getTime();
-		}
-
-		// This is the location listener
-
-		LocationListener mLocationListener = this;
+		onLocationChanged(location);
 
 		// Start getting location change reports
 
-		locator.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
+		mLocator.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
 	}
 
 	public void onLocationChanged(Location location) {
@@ -120,6 +128,13 @@ public class GPS implements LocationListener {
 
 	public void stop() {
 		Log.i(LOGTAG, "Unregistering LocationListener");
-		locator.removeUpdates(this);
+		if (mLocator != null) {
+			mLocator.removeUpdates(this);
+			mLocator = null;
+		}
+		if (mThread != null) {
+			mThread.quit();
+			mThread = null;
+		}
 	}
 }

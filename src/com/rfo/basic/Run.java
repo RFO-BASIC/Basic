@@ -1843,8 +1843,6 @@ public class Run extends ListActivity {
 					toast.show();
         		}else if (str[i].startsWith("@@5")){					// Clear Screen Signal
         			output.clear();
-        		}else if (str[i].startsWith("@@8")){					// Start GPS
-        			if (theGPS == null) theGPS = new GPS(Run.this);
         		}else if (str[i].startsWith("@@9")){					// from checkpointProgress
         			ProgressPending = false;							// progress is published, done waiting
         		}else if (str[i].startsWith("@@A")){
@@ -11432,52 +11430,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 // ************************************************ GPS Package ***********************************
 
 	private boolean executeGPS(){
-	    	if (!GetGPSKeyWord()){
-		    	  return false;
-		      	}else {
-		      	  if (theGPS == null && KeyWordValue != gps_open){
-					theBackground.checkpointProgress();						// if signal @@8 is going to open GPS,
-					while (ProgressPending) { Thread.yield(); }				// this will wait for it to complete
-					if (theGPS == null) {
-						return RunTimeError("GPS not opened at:");
-		    		}
-		      	  }
-		    	  switch (KeyWordValue){
-		    	  	case gps_open:
-		    	  		if (!execute_gps_open()){return false;}
-		    	  		break;
-		    	  	case gps_close:
-		    	  		if (!execute_gps_close()){return false;}
-		    	  		break;
-		    	  	case gps_altitude:
-		    	  		if (!execute_gps_altitude()){return false;}
-		    	  		break;
-		    	  	case gps_longitude:
-		    	  		if (!execute_gps_longitude()){return false;}
-		    	  		break;
-		    	  	case gps_bearing:
-		    	  		if (!execute_gps_bearing()){return false;}
-		    	  		break;
-		    	  	case gps_accuracy:
-		    	  		if (!execute_gps_accuracy()){return false;}
-		    	  		break;
-		    	  	case gps_speed:
-		    	  		if (!execute_gps_speed()){return false;}
-		    	  		break;
-		    	  	case gps_latitude:
-		    	  		if (!execute_gps_latitude()){return false;}
-		    	  		break;
-		    	  	case gps_provider:
-		    	  		if (!execute_gps_provider()){return false;}
-		    	  		break;
-		    	  	case gps_time:
-		    	  		if (!execute_gps_time()){return false;}
-		    	  		break;
-		    	  	default:
-		    	  		return false;
-		    	  }
-		      	}
-			  return true;
+		if (!GetGPSKeyWord()){
+			return false;
+		}
+		if (theGPS == null && KeyWordValue != gps_open) {
+			return RunTimeError("GPS not opened at:");
+		}
+		switch (KeyWordValue) {
+			case gps_open:		return execute_gps_open();
+			case gps_close:		return execute_gps_close();
+			case gps_altitude:	return execute_gps_altitude();
+			case gps_longitude:	return execute_gps_longitude();
+			case gps_bearing:	return execute_gps_bearing();
+			case gps_accuracy:	return execute_gps_accuracy();
+			case gps_speed:		return execute_gps_speed();
+			case gps_latitude:	return execute_gps_latitude();
+			case gps_provider:	return execute_gps_provider();
+			case gps_time:		return execute_gps_time();
+			default:
+				return false;
+		}
 	}
 
 	private boolean GetGPSKeyWord(){						// Get a GPS command keyword if it is there
@@ -11495,9 +11467,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	public boolean execute_gps_open() {
 		if (!checkEOL()) return false;
-		if (theGPS != null) return true;				// If already opened.....
+		if (theGPS != null) return true;					// already opened
 
-		Show("@@8");								// tell Activity to start GPS
+		theGPS = new GPS(this);								// start GPS
 		return true;
 	}
 	  
@@ -11505,7 +11477,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) return false;
 		if (theGPS != null) {
 			Log.d(LOGTAG, "Stopping GPS on command");
-			theGPS.stop();								// Close GPS
+			theGPS.stop();									// close GPS
 			theGPS = null;
 		}
 		return true;
