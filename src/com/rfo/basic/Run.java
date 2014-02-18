@@ -3318,7 +3318,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		String var = getVarAndType();					// type must match expected type
 		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
 		else if (VarIsNew)					{ RunTimeError(EXPECT_DIM_ARRAY); }
-		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 		else {
 			return var;									// no error, array index is in theValueIndex
 		}
@@ -4865,7 +4864,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return checkEOL();
 	}
 
-	private boolean BuildBasicArray(String var, boolean IsNumeric, ArrayList<Integer> DimList){	//Part of DIM
+	// ************************************* array utilities **************************************
+
+	private boolean BuildBasicArray(String var, boolean IsNumeric, ArrayList<Integer> DimList){
 
 		// Build a basic array attached to a new variable.
 		// Makes a bundle with information about the array and put the bundle into the array table.
@@ -4994,6 +4995,52 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;									 // index combination
 		
 	}
+
+	private boolean getIndexPair(Integer[] pair) {					// get contents of [] from command line
+																	// at most two index values accepted
+		boolean isBracket = isNext(']');
+		if (!isBracket) {
+			boolean isComma = isNext(',');
+			if (!isComma) {
+				if (!evalNumericExpression()) return false;
+				pair[0] = EvalNumericExpressionValue.intValue();	// first index
+				isComma = isNext(',');
+			}
+			isBracket = isNext(']');
+			if (!isBracket && isComma) {
+				if (!evalNumericExpression()) return false;
+				pair[1] = EvalNumericExpressionValue.intValue();	// second index
+				isBracket = isNext(']');
+			}
+		}
+		return (isBracket);											// must end with ']'
+	}
+
+	private boolean getArraySegment(int arrayTableIndex, Integer[] pair) { // get var base and length of array segment
+																	// pair in is [start, length], out is [base, length]
+		Bundle b = ArrayTable.get(arrayTableIndex);					// get the array table bundle for this array
+		if (b == null) { return RunTimeError("Array does not exist"); }
+		int length = b.getInt("length");							// get the array length
+		int base = b.getInt("base");								// and the start of the array in the variable space
+		int max = base + length;
+
+		if (pair[0] != null) {
+			int start = pair[0].intValue();							// start index, 1-based, default 1
+			if (start > 1) { base += start - 1; }					// convert to 0-based index, ignore if less than 1
+			if (base > max) { base = max; }							// not an error, just force length to 0
+		}
+		if (pair[1] != null) {
+			length = pair[1].intValue();							// requested length
+			if (length < 0) { length = 0; }							// eliminate negative input
+		}
+		if ((base + length) > max) { length = max - base; }			// don't go off end of array
+
+		pair[0] = base;
+		pair[1] = length;
+		return true;
+	}
+
+	// ************************************* end array utilities **************************************
 
 	private boolean executePRINT(){
 		if (!buildPrintLine(PrintLine, "")) return false;	// build up the print line in StringConstant
@@ -6499,8 +6546,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			boolean isGlobal = isNext('&');								// optional for scalars, ignored for arrays
 			boolean typeIsNumeric = (fVarType.get(i) != 0);
 			if (fVarArray.get(i) == 1){									// if this parm is an array
-				if (getArrayVarForRead() == null) { return false; }		// Get the array name var
-				if (typeIsNumeric != VarIsNumeric) {					// Insure type (string or number) match
+				if (getArrayVarForRead() == null) { return false; }		// get the array name var
+				if (!isNext(']')) {										// must be no indices
+					return RunTimeError(EXPECT_ARRAY_NO_INDEX);
+				} else  if (typeIsNumeric != VarIsNumeric) {			// insure type (string or number) match
 					return RunTimeError("Array parameter type mismatch at:");
 				}
 
@@ -8275,19 +8324,23 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (getArrayVarForRead() == null) return false;				// Get the array variable
 		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); } // Insure that it is a numeric array
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = { null, null };
+		if (!getIndexPair(p)) return false;							// Get values inside [], if any
 
 		if (!isNext(',')) return false;								// Get the repeat value
 		if(!evalNumericExpression()) return false;
 		int repeat = EvalNumericExpressionValue.intValue();
 		if (!checkEOL()) return false;
 
-		int length = ArrayEntry.getInt("length");					// get the array length
-		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
-		
+		if (!getArraySegment(arrayTableIndex, p)) { return false; }	// Get array base and length
+		int base = p[0].intValue();
+		int length = p[1].intValue();
+
 		long Pattern[] = new long[length];							// Pattern array
-		for (int i = 0; i<length; ++i){								// Copy user array into pattern
-			Pattern[i] = NumericVarValues.get(base+i).longValue();
+		for (int i = 0; i < length; ++i) {							// Copy user array into pattern
+			Pattern[i] = NumericVarValues.get(base + i).longValue();
 		}
 
 		if (repeat > 0) myVib.cancel();
@@ -9169,12 +9222,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_gr_newdl(){
 
 		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
-		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); } // Insure that it is a numeric array
+		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); } // Insure that it is a numeric array
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = { null, null };
+		if (!getIndexPair(p)) return false;							// Get values inside [], if any
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
-		int length = ArrayEntry.getInt("length");					// get the array length
-		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
+		if (!getArraySegment(arrayTableIndex, p)) { return false; }	// Get array base and length
+		int base = p[0].intValue();
+		int length = p[1].intValue();
 
 		RealDisplayList.clear();
 		RealDisplayList.add(0);										// First entry points to null bundle
@@ -10342,8 +10399,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) return false;
 		if (getArrayVarForRead() == null) return false;			// Get the array variable
-		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); }
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
+		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); }
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] pair = { null, null };
+		if (!getIndexPair(pair)) return false;					// Get values inside [], if any
 
 		int x = 0;
 		int y = 0;
@@ -10356,18 +10416,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		int length = ArrayEntry.getInt("length");				// get the array length
+		if (!getArraySegment(arrayTableIndex, pair)) { return false; }	// Get array base and length
+		int base = pair[0].intValue();
+		int length = pair[1].intValue();
 		if ((length % 2) != 0){
 			return RunTimeError("Not an even number of elements in pixel array");
 		}
-		int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
-	
+
 /*		int pixelBase = PixelPoints.size();
 		for (int i = 0; i < length; ++i){
 			double d = NumericVarValues.get(base+i);
 			PixelPoints.add((float) d);
 		}
-*/		
+*/
 		Bundle aBundle = new Bundle();
 		aBundle.putInt("type", GR.dsetPixels);
 		aBundle.putInt("hide", 0);
@@ -11634,10 +11695,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) { return false; }
 		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = { null, null };
+		if (!getIndexPair(p)) return false;							// Get values inside [], if any
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
-		int length = ArrayEntry.getInt("length");					// Get the length from the bundle
+		if (!getArraySegment(arrayTableIndex, p)) { return false; }	// Get array base and length
+		int length = p[1].intValue();
 
 		NumericVarValues.set(SaveValueIndex, (double) length);		// Set the length into the var value
 
@@ -11699,41 +11764,45 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		// This method implements several array commands
 
 		if (getArrayVarForRead() == null) { return false; }				// Get the array variable
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = { null, null };
+		if (!getIndexPair(p)) return false;								// Get values inside [], if any
 		if (!checkEOL()) { return false; }								// line must end with ']'
 
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));	// Get the array table bundle for this array   
-			int length = ArrayEntry.getInt("length");					// get the array length
-			int base = ArrayEntry.getInt("base");						// and the start of values in the value space
+		if (!getArraySegment(arrayTableIndex, p)) { return false; }		// Get array base and length
+		int base = p[0].intValue();
+		int length = p[1].intValue();
 
-			if (VarIsNumeric){											// Numeric Array
-				ArrayList <Double> Values = new ArrayList<Double>();	// Create a list to copy array values into
+		if (VarIsNumeric) {											// Numeric Array
+			ArrayList <Double> Values = new ArrayList<Double>();	// Create a list to copy array values into
 
-				for (int i = 0; i < length; ++i) {						// Copy the array values into that list
-					Values.add(NumericVarValues.get(base+i));
-				}
-																		// Execute the command specific procedure
-				if (DoReverse)Collections.reverse(Values);				// Reverse
-				else if (DoSort) Collections.sort(Values);				// Sort
-				else if (DoShuffle) Collections.shuffle(Values);		// Shuffle
-
-				for (int i =0; i<length; ++i){							// Copy the results back to the array
-					NumericVarValues.set(base+i, Values.get(i));
-				}
-
-			} else {													// Do the same stuff for a string array
-				ArrayList <String> Values = new ArrayList<String>();
-				for (int i =0; i<length; ++i){
-					Values.add(StringVarValues.get(base+i));
-				}
-
-				if (DoReverse)Collections.reverse(Values);
-				else if (DoSort) Collections.sort(Values);
-				else if (DoShuffle) Collections.shuffle(Values);
-
-				for (int i =0; i<length; ++i){
-					StringVarValues.set(base+i, Values.get(i));
-				}
+			for (int i = 0; i < length; ++i) {						// Copy the array values into that list
+				Values.add(NumericVarValues.get(base+i));
 			}
+																	// Execute the command specific procedure
+			if (DoReverse)		{ Collections.reverse(Values); }	// Reverse
+			else if (DoSort)	{ Collections.sort(Values); }		// Sort
+			else if (DoShuffle)	{ Collections.shuffle(Values); }	// Shuffle
+
+			for (int i =0; i<length; ++i) {							// Copy the results back to the array
+				NumericVarValues.set(base + i, Values.get(i));
+			}
+
+		} else {													// Do the same stuff for a string array
+			ArrayList<String> Values = new ArrayList<String>();
+			for (int i = 0; i < length; ++i) {
+				Values.add(StringVarValues.get(base + i));
+			}
+
+			if (DoReverse)		{ Collections.reverse(Values); }	// Reverse
+			else if (DoSort)	{ Collections.sort(Values); }		// Sort
+			else if (DoShuffle)	{ Collections.shuffle(Values); }	// Shuffle
+
+			for (int i = 0; i < length; ++i) {
+				StringVarValues.set(base + i, Values.get(i));
+			}
+		}
 
 		return true;
 	}
@@ -11745,35 +11814,39 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) { return false; }
 		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
-		if (!VarIsNumeric) { return RunTimeError("Array not numeric"); }
+		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); }
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = { null, null };
+		if (!getIndexPair(p)) return false;							// Get values inside [], if any
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
-			int length = ArrayEntry.getInt("length");				// get the array length
-			int base = ArrayEntry.getInt("base");					// and the start of the array in the variable space
+		if (!getArraySegment(arrayTableIndex, p)) { return false; }	// Get array base and length
+		int base = p[0].intValue();
+		int length = p[1].intValue();
 
-			double Sum = 0;
-			double Min = NumericVarValues.get(base);
-			double Max = NumericVarValues.get(base);
+		double Sum = 0;
+		double Min = NumericVarValues.get(base);
+		double Max = NumericVarValues.get(base);
 
-			for (int i = 0; i <length; ++i){						// Loop through the array values
-				double d = NumericVarValues.get(base+i);			// Pick up the elements value
-				Sum = Sum + d;										// build the Sum
-				if (d < Min) Min = d;								// find the minimum value
-				if (d > Max) Max = d;								// and the maxium value
-			}
+		for (int i = 0; i < length; ++i){							// Loop through the array values
+			double d = NumericVarValues.get(base+i);				// Pick up the elements value
+			Sum = Sum + d;											// build the Sum
+			if (d < Min) { Min = d; }								// find the minimum value
+			if (d > Max) { Max = d; }								// and the maxium value
+		}
 
-			double Average = Sum / length;							// Calculate the average
-																			// Set the return value according to the command
-			if (DoAverage) NumericVarValues.set(SaveValueIndex, Average);
-			else if (DoSum) NumericVarValues.set(SaveValueIndex, Sum);
-			else if (DoMax) NumericVarValues.set(SaveValueIndex, Max);
-			else if (DoMin) NumericVarValues.set(SaveValueIndex, Min);
-			else if (DoVariance){
+		double Average = Sum / length;								// Calculate the average
+																	// Set the return value according to the command
+		if (DoAverage)	{ NumericVarValues.set(SaveValueIndex, Average); }
+		else if (DoSum)	{ NumericVarValues.set(SaveValueIndex, Sum); }
+		else if (DoMax)	{ NumericVarValues.set(SaveValueIndex, Max); }
+		else if (DoMin)	{ NumericVarValues.set(SaveValueIndex, Min); }
+		else if (DoVariance) {
 				double T = 0;
 				double W = 0;
-				for (int i =0; i <length; ++i){
-					double d = NumericVarValues.get(base+i);			// Pick up the elements value
+				for (int i = 0; i <length; ++i) {
+					double d = NumericVarValues.get(base + i);		// Pick up the elements value
 					W = d - Average;
 					T = T + W*W;
 				}
@@ -11781,7 +11854,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				double sd = Math.sqrt(variance);
 				if (DoStdDev) NumericVarValues.set(SaveValueIndex, sd);
 				else NumericVarValues.set(SaveValueIndex, variance);
-			}
+		}
 
 		return true;
 	}
@@ -11789,40 +11862,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_array_copy(){
 															// **** Source Array ****
 
-		if (getVarAndType() == null)			{ return false; }	// Get the array variable
+		if (getVarAndType() == null)			{ return false; }	// get the array variable
 		if (!VarIsArray)						{ return RunTimeError("Source not array"); }
 		if (VarIsNew) 							{ return RunTimeError("Source array not DIMed"); }
 		boolean SourceArrayNumeric = VarIsNumeric;
+		int arrayTableIndex = VarIndex.get(VarNumber);
 
-		Bundle SourceArray = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
-		int SourceLength = SourceArray.getInt("length");			// get the array length
-		int SourceBase = SourceArray.getInt("base");				// and the start of the array in the variable space
-		int SourceCopyLimit = SourceBase + SourceLength;
+		Integer[] p = { null, null };
+		if (!getIndexPair(p))					{ return false; }	// get values inside [], if any
 
-		if (!isNext(']')) {
-			int usi = 0;
-			boolean isComma = isNext(',');							// Experiment: make both source start and
-			boolean isBracket;										// source length args optional
-			if (!isComma) {
-				if (!evalNumericExpression())	{ return false; }	// get user's source start index
-				usi = EvalNumericExpressionValue.intValue();
-				if (usi > 1) { SourceBase += usi - 1; }				// convert to 0-based index, ignore if less than 1
-				isComma = isNext(',');
-			}
-			isBracket = isNext(']');
-			if (isComma && !isBracket) {
-				if (!evalNumericExpression())	{ return false; }	// get user's length to copy
-				SourceLength = EvalNumericExpressionValue.intValue();
-				if (SourceLength < 0) { SourceLength = 0; }			// eliminate negative input
-				isBracket = isNext(']');
-			}
-			if (!isBracket)						{ return false; }
+		if (!getArraySegment(arrayTableIndex, p)) { return false; }	// Get array base and length
+		int SourceBase = p[0].intValue();
+		int SourceLength = p[1].intValue();
 
-			if (SourceBase + SourceLength > SourceCopyLimit) {
-				SourceLength = SourceCopyLimit - SourceBase;		// don't go past end of source array
-			}
-		}
-		if (!isNext(',')) { return false; }
+		if (!isNext(','))						{ return false; }
 															// *** Destination Array ***
 
 		String destVar = getVarAndType();							// Get the array variable
@@ -11845,9 +11898,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (destIsNew) {											// copy to new array, optional extras arg adds element(s)
 
 			if (extras == 0) {										// check for cases that would create empty array
-				if (SourceBase >= SourceCopyLimit)
-												{ return RunTimeError("Source array start > length"); }
-				if (SourceLength < 1)			{ return RunTimeError("Length must be positive"); }
+				if (SourceLength < 1) { return RunTimeError("Source array [Start,Length] must specify at least one element"); }
 			}
 			totalLength = SourceLength + Math.abs(extras);			// go build a new array of the proper size and type
 			if (!BuildBasicArray(destVar, SourceArrayNumeric, totalLength)) { return false; }
@@ -11888,9 +11939,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_array_search(){
 		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
 		boolean isNumeric = VarIsNumeric;
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
-		int length = ArrayEntry.getInt("length");					// get the array length
-		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = { null, null };
+		if (!getIndexPair(p)) return false;							// Get values inside [], if any
+
+		if (!getArraySegment(arrayTableIndex, p)) { return false; }	// Get array base and length
+		int base = p[0].intValue();
+		int length = p[1].intValue();
 
 		if (!isNext(',')) return false;								// move to the value
 
@@ -12047,18 +12103,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) return false;
 		if (getArrayVarForRead() == null) return false;				// Get the array variable
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = { null, null };
+		if (!getIndexPair(p)) return false;							// Get values inside [], if any
 		if (!checkEOL()) return false;
 
 		boolean isListNumeric = (theListsType.get(listIndex) == list_is_numeric);
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
 
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber));// Get the array table bundle for this array
-		int size = ArrayEntry.getInt("length");						// get the array length
-		int base = ArrayEntry.getInt("base");						// and the start of the array in the variable space
+		if (!getArraySegment(arrayTableIndex, p)) { return false; }	// Get array base and length
+		int base = p[0].intValue();
+		int length = p[1].intValue();
 
 		ArrayList destList = theLists.get(listIndex);
 		ArrayList sourceList = (isListNumeric) ? NumericVarValues : StringVarValues;
-		for (int i = 0; i < size; ++i ) {							// Copy array to list
+		for (int i = 0; i < length; ++i ) {							// Copy array to list
 			destList.add(sourceList.get(base + i));
 		}
 		return true;
