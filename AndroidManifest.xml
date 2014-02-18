@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!--  *********************************************************************************
+<!--
+*********************************************************************************
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -24,231 +25,246 @@ This file is part of BASIC! for Android
     You may contact the author, Paul Laughton, at basic@laughton.com
 	
 	**********************************************************************************
-	-->
-	
+-->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      	  package="com.rfo.basic"
-      	  android:versionCode= "1770"
-      	  android:versionName="1.77"
-      	  >
-      	  
-     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
- 	 <uses-permission android:name="android.permission.INTERNET" android:required="false"></uses-permission>
- 	 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:required="false"></uses-permission>
-	 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:required="false"></uses-permission>
-	 <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" android:required="false"></uses-permission>
-	 <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" android:required="false"></uses-permission> 
-	 <uses-permission android:name="android.permission.VIBRATE" android:required="false"></uses-permission>
-	 <uses-permission android:name="android.permission.WAKE_LOCK" android:required="false"></uses-permission>
-	 <uses-permission android:name="android.permission.CAMERA" android:required="false"></uses-permission>	
-	 <uses-permission android:name="android.permission.BLUETOOTH" android:required="false"></uses-permission>
-	 <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:required="false"></uses-permission>
-     <uses-permission android:name="android.permission.RECORD_AUDIO" android:required="false"></uses-permission>
-     <uses-permission android:name="android.permission.READ_PHONE_STATE" android:required="false"></uses-permission>
-     <uses-permission android:name="android.permission.SEND_SMS" android:required="false"></uses-permission>
-     <uses-permission android:name="android.permission.CALL_PHONE" android:required="false"></uses-permission>
-     <uses-permission android:name="android.permission.READ_SMS" android:required="false"></uses-permission>
- 	 <uses-permission android:name="android.permission.RECEIVE_SMS" android:required="false"></uses-permission>
- 	 
-<!-- <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED">android:required="false"></uses-permission> -->
- 	 	      
-     <uses-feature android:name="android.hardware.telephony" android:required="false" />
-     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
-     <uses-feature android:name="android.hardware.location" android:required="false" />
-     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
-     <uses-feature android:name="android.hardware.camera" android:required="false" />
-     <uses-feature android:name="android.hardware.microphone" android:required="false" />
-     <uses-feature android:name="android.hardware.location.network" android:required="false" />
-     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
-     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
-     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-     
+    package="com.rfo.basic"
+    android:versionCode="1771"
+    android:versionName="1.77.01" >
 
-     <application android:icon="@drawable/icon"
-         android:label="@string/app_name"
-         android:debuggable="false"
-     >
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
 
-    	<receiver android:enabled="false" android:name=".BootUpReceiver">
-			<intent-filter>
-    		<action android:name="android.intent.action.BOOT_COMPLETED" />
-   	 		<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
- 		</receiver>
-    	
-        	
+    <!-- <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED">android:required="false"></uses-permission> -->
 
-    			 
-        <activity android:name="Basic"
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <uses-sdk android:minSdkVersion="7" android:targetSdkVersion="18" />
+
+    <supports-screens android:xlargeScreens="true" />
+
+    <application
+        android:debuggable="false"
+        android:icon="@drawable/icon"
+        android:label="@string/app_name" >
+        <receiver
+            android:name=".BootUpReceiver"
+            android:enabled="false" >
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:id="@+id/basic_screen"
+            android:name="Basic"
             android:configChanges="keyboardHidden|orientation|screenSize"
-            android:id = "@+id/basic_screen"
-            android:label="@string/app_name"
-            
-            >
-            
+            android:label="@string/app_name" >
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER" />
-               </intent-filter>
-	  <intent-filter>
-		    <action android:name='android.intent.action.VIEW' />
-		    <category android:name='android.intent.category.DEFAULT' />
-		    <data android:scheme="file" />
-		    <data android:mimeType='*/*' />
-		    <data android:pathPattern='.*\\.bas' />
-		    <data android:host="*" />
-	  </intent-filter>
-            
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:scheme="file" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.bas" />
+                <data android:host="*" />
+            </intent-filter>
         </activity>
-        
-        <activity android:name="LauncherShortcuts"
+
+        <activity
+            android:name="LauncherShortcuts"
             android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="Launcher Shortcuts">
+            android:label="Launcher Shortcuts" >
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.DEFAULT" />
-  
-            </intent-filter>
 
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
-       <activity-alias android:name="CreateShortcuts"
-            android:targetActivity="LauncherShortcuts"
-            android:label="Launcher Shortcuts">
+        <activity-alias
+            android:name="CreateShortcuts"
+            android:label="Launcher Shortcuts"
+            android:targetActivity="LauncherShortcuts" >
 
-            <!--  This intent-filter allows your shortcuts to be created in the launcher. -->
+            <!-- This intent-filter allows your shortcuts to be created in the launcher. -->
             <intent-filter>
                 <action android:name="android.intent.action.CREATE_SHORTCUT" />
+
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-
         </activity-alias>
-        
-        
-        <activity android:name=".Editor"
-            android:id = "@+id/editor_screen"
+
+        <activity
+            android:id="@+id/editor_screen"
+            android:name=".Editor"
             android:configChanges="keyboardHidden|orientation|screenSize"
-        		   android:label="@string/editor_name" >
-         </activity>
-                 <activity android:name="Settings"
-		         android:id = "@+id/settings_screen"
-                  android:label="@string/settings_name" >
-        </activity>
-         
-        		   
-        		   
-         <activity android:name="LoadFile"
-             android:id = "@+id/load_screen"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="@string/load_name" >
-        </activity>
-        
-          <activity android:name="Delete"
-              android:id = "@+id/delete_screen"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="@string/delete_name" >
-        </activity>
-        
-         <activity android:name="Run"
-             	  android:id = "@+id/run_screen"
-         		  android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="@string/run_name" >
+            android:label="@string/editor_name" >
         </activity>
 
-         <activity android:name="Search"
-             android:id = "@+id/search_screen"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-             android:windowSoftInputMode="adjustResize"
-                  android:label="@string/search_name" >
-        </activity>
-        
-        <activity android:name="Format"
-             	  android:id = "@+id/format_screen"
-         		  android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="@string/format_name" >
-        </activity>
-         
-
-         <activity android:name="Help"
-             android:id = "@+id/help_screen"
-             android:windowSoftInputMode="stateAlwaysVisible"
-                  android:label="@string/help_name" >
+        <activity
+            android:id="@+id/settings_screen"
+            android:name="Settings"
+            android:label="@string/settings_name" >
         </activity>
 
-         <activity android:name="GR"
-             	android:id = "@+id/gr_screen"
-        		  android:configChanges="keyboardHidden|orientation|screenSize"
-         		  android:theme="@android:style/Theme.NoTitleBar.Fullscreen" 
-                  android:label="@string/gr_name" >
-         </activity>
-                
-        <activity android:name="AutoRun"
+        <activity
+            android:id="@+id/load_screen"
+            android:name="LoadFile"
             android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="@string/auto_run_name" >
+            android:label="@string/load_name" >
         </activity>
- 
-         <activity android:name="Select"
-             android:id = "@+id/select_screen"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="@string/select_name" >
-         </activity>
-        
-          <activity android:name="TextInput"
-              android:id = "@+id/text_input_screen"
-         		  android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="@string/textinput_name" >
-          </activity>
-          
-          <activity android:name="TGet"
-              android:id = "@+id/text_get_screen"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-                  android:label="@string/textinput_name" >
-          </activity>
-          
-          <activity android:name="Web"
-              android:id = "@+id/web_view_screen"
-              android:label="@string/web_view_name" 
-              android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-              android:configChanges="keyboardHidden|orientation|screenSize">
-              
-          </activity>
 
-        <activity android:name="CameraView"
-            android:id = "@+id/camera_screen"
-         		  android:configChanges="keyboardHidden|orientation|screenSize"
-        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
-                  android:label="Camera" >
+        <activity
+            android:id="@+id/delete_screen"
+            android:name="Delete"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/delete_name" >
         </activity>
-        
-               <activity android:name="HandleNotify"
-            	  android:id = "@+id/notify_screen"
-         		  android:configChanges="keyboardHidden|orientation|screenSize"
-        		  android:theme="@android:style/Theme.Translucent.NoTitleBar"
-                  android:label="Notify" >
+
+        <activity
+            android:id="@+id/run_screen"
+            android:name="Run"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/run_name" >
         </activity>
-        
-        <activity android:name="DeviceListActivity"
-            android:id = "@+id/device_list_screen"
-                  android:label="@string/select_device"
-                  android:theme="@android:style/Theme.Dialog"
-                  android:configChanges="keyboardHidden|orientation|screenSize">
+
+        <activity
+            android:id="@+id/search_screen"
+            android:name="Search"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/search_name"
+            android:windowSoftInputMode="adjustResize" >
         </activity>
-        
-        <activity android:name="Null"
-                  android:label="@string/select_name" >
+
+        <activity
+            android:id="@+id/format_screen"
+            android:name="Format"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/format_name" >
         </activity>
-        
-        <uses-library android:required="false" android:name="com.sec.android.app.multiwindow" />
+
+        <activity
+            android:id="@+id/help_screen"
+            android:name="Help"
+            android:label="@string/help_name"
+            android:windowSoftInputMode="stateAlwaysVisible" >
+        </activity>
+
+        <activity
+            android:id="@+id/gr_screen"
+            android:name="GR"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/gr_name"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
+        </activity>
+
+        <activity
+            android:name="AutoRun"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/auto_run_name" >
+        </activity>
+
+        <activity
+            android:id="@+id/select_screen"
+            android:name="Select"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/select_name" >
+        </activity>
+
+        <activity
+            android:id="@+id/text_input_screen"
+            android:name="TextInput"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/textinput_name" >
+        </activity>
+
+        <activity
+            android:id="@+id/text_get_screen"
+            android:name="TGet"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/textinput_name" >
+        </activity>
+
+        <activity
+            android:id="@+id/web_view_screen"
+            android:name="Web"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/web_view_name"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
+        </activity>
+
+        <activity
+            android:id="@+id/camera_screen"
+            android:name="CameraView"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="Camera"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" >
+        </activity>
+
+        <activity
+            android:id="@+id/notify_screen"
+            android:name="HandleNotify"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="Notify"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" >
+        </activity>
+
+        <activity
+            android:id="@+id/device_list_screen"
+            android:name="DeviceListActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:label="@string/select_device"
+            android:theme="@android:style/Theme.Dialog" >
+        </activity>
+
+        <activity
+            android:name="Null"
+            android:label="@string/select_name" >
+        </activity>
+
+        <uses-library android:name="com.sec.android.app.multiwindow" android:required="false" />
         <meta-data android:name="com.sec.android.support.multiwindow" android:value="true" />
         <meta-data android:name="com.sec.android.multiwindow.DEFAULT_SIZE_W" android:value="632.0dip" />
         <meta-data android:name="com.sec.android.multiwindow.DEFAULT_SIZE_H" android:value="598.0dip" />
         <meta-data android:name="com.sec.android.multiwindow.MINIMUM_SIZE_W" android:value="632.0dip" />
         <meta-data android:name="com.sec.android.multiwindow.MINIMUM_SIZE_H" android:value="598.0dip" />
-        
     </application>
-    
-      <uses-sdk android:minSdkVersion="7" android:targetSdkVersion ="18" />
-    
+
 </manifest>
