@@ -123,6 +123,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
 import android.content.res.Resources.NotFoundException;
 //import android.content.ClipboardManager;
 import android.media.AudioFormat;
@@ -243,19 +244,19 @@ public class Run extends ListActivity {
 	}
 
 // **********  The variables for the Basic Keywords ****************************    
-    
-    public static final String BasicKeyWords[]={
+
+	public static final String BasicKeyWords[] = {
     	"rem", "dim", "let", 
     	"elseif", 									
     	"endif", "print", "input",
-    	"if", "onerror","else","end",					// onerror here for Format
-    	"for", "include", " ", "next",                  // to and step deleted
+    	"if", "onerror", "else", "end",					// onerror here for Format
+    	"for", "include", " ", "next",					// to and step deleted
     	"goto", "gosub", "return",
     	"text.open","text.close","text.readln","text.writeln",
     	"while","repeat","do","until",
-    	"onbackkey", 								    // onbackkey for Format	
-    	"dir", "mkdir", "rename",				// same as file.dir, file.mkdir, file.rename
-    	"file.delete",							//delete command deleted now undeleted
+    	"onbackkey", 									// onbackkey for Format	
+    	"dir", "mkdir", "rename",						// same as file.dir, file.mkdir, file.rename
+    	"file.",										// moved all file commands to file_cmd
     	"sql.", " ", "gr.", "pause",
     	"browse", "inkey$", "audio.", 
     	"popup", "sensors.", "gps.",
@@ -270,9 +271,9 @@ public class Run extends ListActivity {
     	"sw.begin", "sw.case","sw.break",
     	"sw.default", "sw.end", "vibrate",
     	"kb.toggle", "kb.hide", "echo.on",
-    	"echo.off", "text.input","file.size",
-    	"file.dir", "file.mkdir", "file.rename",   // Same as dir, mkdir, rename
-    	"file.root", "file.exists", "grabfile",
+    	"echo.off", "text.input",
+    	" ",  " ",  " ",  " ",	" ", " ",			// moved all file commands to file_cmd
+    	"grabfile",
     	"wakelock", "tone", "list.", "bundle.",
     	"stack.", "socket.", "http.post", "device",
     	"debug.", "console.",
@@ -334,7 +335,7 @@ public class Run extends ListActivity {
     private static final int BKWdir = 27;
     private static final int BKWmkdir = 28;
     private static final int BKWrename = 29;
-    private static final int BKWdelete = 30;
+    private static final int BKWfile = 30;
     private static final int BKWsql = 31;
     private static final int BKWnull32 = 32;             // Time moved to after Timer
     private static final int BKWgr = 33;
@@ -375,12 +376,12 @@ public class Run extends ListActivity {
     private static final int BKWecho_on = 68;
     private static final int BKWecho_off = 69;
     private static final int BKWtext_input = 70;
-    private static final int BKWfile_size = 71;
-    private static final int BKWfile_dir = 72;
-    private static final int BKWfile_mkdir = 73;
-    private static final int BKWfile_rename = 74;
-    private static final int BKWfile_roots = 75;
-    private static final int BKWfile_exists = 76;
+    private static final int BKWnull71 = 71;				// All file commands moved to file_cmd
+    private static final int BKWnull72 = 72;
+    private static final int BKWnull73 = 73;
+    private static final int BKWnull74 = 74;
+    private static final int BKWnull75 = 75;
+    private static final int BKWnull76 = 76;
     private static final int BKWgrabfile = 77;
     private static final int BKWwakelock = 78;
     private static final int BKWtone = 79;
@@ -721,17 +722,17 @@ public class Run extends ListActivity {
 
 	private ArrayList<String> VarNames ;				// Each entry has the variable name string
 	private ArrayList<Integer> VarIndex;				// Each entry is an index into
-    													// NumberVarValues or
-    													// StringVarValues or
-    													// ArrayTable or
-    													// FunctionTable
+														// NumberVarValues or
+														// StringVarValues or
+														// ArrayTable or
+														// FunctionTable
 	private int VarNumber = 0;							// An index for both VarNames and NVarValue
 	public static ArrayList<Double> NumericVarValues;	// if a Var is a number, the VarIndex is an
 														// index into this list. The values of numeric
 														// array elements are also kept here
 	private ArrayList<String> StringVarValues;			// if a Var is a string, the VarIndex is an
-    													// index into this list. The values of string
-    													// array elements are also kept here
+														// index into this list. The values of string
+														// array elements are also kept here
 	private ArrayList<Bundle> ArrayTable;				//Each DIMed array has an entry in this table
 	private String StringConstant = "";					// Storage for a string constant
 	private int theValueIndex;							// The index into the value table for the current var
@@ -747,14 +748,30 @@ public class Run extends ListActivity {
 	private boolean VarIsNew = true;					// Signal from get var that this var is new
 	private boolean VarIsNumeric = true;				// if false, Var is string
 	private boolean VarIsArray = false;					// if true, Var is an Array
-    													// if the Var is any array, the VarIndex it
-    													// and index into ArrayTable
-    
-    ClipboardManager clipboard; 
-    
-    
+														// if the Var is any array, the VarIndex it
+														// and index into ArrayTable
+
+	ClipboardManager clipboard;
+
+	// ********************************* File commands *********************************
+
+	public static final String file_KW[] = {
+		"delete", "size", "dir", "mkdir",
+		"rename", "root", "exists"
+	};
+
+	private final Command[] file_cmd = new Command[] {	// Map File command keywords to their execution functions
+		new Command("delete")           { public boolean run() { return executeDELETE(); } },
+		new Command("size")             { public boolean run() { return executeFILE_SIZE(); } },
+		new Command("dir")              { public boolean run() { return executeDIR(); } },
+		new Command("mkdir")            { public boolean run() { return executeMKDIR(); } },
+		new Command("rename")           { public boolean run() { return executeRENAME(); } },
+		new Command("root")             { public boolean run() { return executeFILE_ROOTS(); } },
+		new Command("exists")           { public boolean run() { return executeFILE_EXISTS(); } }
+	};
+
     // ******************************** Wakelock variables *********************************
-    
+
     public static PowerManager.WakeLock theWakeLock;
     public static final int partial = 1;
     public static final int dim = 2;
@@ -775,11 +792,11 @@ public class Run extends ListActivity {
     public static ArrayList<DataOutputStream> DOSlist;			// A list of file writers
     public static ArrayList<BufferedInputStream> BISlist;			// A list of file writers
 
-    //  ******************  Console Command variables ********************************
+	//  ******************  Console Command variables ********************************
 
-    public static final String Console_KW[] = {			// Console commands
-    	"front", "save", "title", "line.text", "line.touched", "line.new", "line.char"
-    };
+	public static final String Console_KW[] = {			// Console commands
+		"front", "save", "title", "line.text", "line.touched", "line.new", "line.char"
+	};
 
 	private final Command[] Console_cmd = new Command[] {	// Map console command keywords to their execution functions
 		new Command("front")            { public boolean run() { return executeCONSOLE_FRONT(); } },
@@ -1366,8 +1383,8 @@ public class Run extends ListActivity {
     public static final int bt_reconnect = 10;
     public static final int bt_readready_resume = 11;
     public static final int bt_disconnect = 12;
-    
-/**************************************  Superuser and System  ***************************/
+
+    /**************************************  Superuser and System  ***************************/
 
     public static final String su_KW[] = {
     	"open", "write", "read.ready",
@@ -2808,8 +2825,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        	case BKWrename:
 	        		if (!executeRENAME()){SyntaxError(); return false;}
 	        		break;
-	        	case BKWdelete:
-	        		if (!executeDELETE()){SyntaxError(); return false;}
+	        	case BKWfile:
+	        		if (!executeFILE()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWsql:
 	        		if (!executeSQL()){SyntaxError(); return false;}
@@ -2933,24 +2950,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        		break;
 	        	case BKWtext_input:
 	        		if (!executeTEXT_INPUT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfile_dir:
-	        		if (!executeDIR()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfile_mkdir:
-	        		if (!executeMKDIR()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfile_rename:
-	        		if (!executeRENAME()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfile_size:
-	        		if (!executeFILE_SIZE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfile_roots:
-	        		if (!executeFILE_ROOTS()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfile_exists:
-	        		if (!executeFILE_EXISTS()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWgrabfile:
 	        		if (!executeGRABFILE()){SyntaxError(); return false;}
@@ -7610,6 +7609,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		double result = file.delete() ? 1 : 0;				// try to delete it
 		NumericVarValues.set(SaveValueIndex, result);
 		return true;
+	}
+
+	private boolean executeFILE() {							// Get File command keyword if it is there
+		return executeCommand(file_cmd, "File");
 	}
 
 	private boolean executeFILE_EXISTS(){

@@ -43,6 +43,9 @@ public class TextInput extends Activity {
 	private Button finishedButton;			// The buttons
 	private EditText theTextView;			// The EditText TextView
 
+	private boolean lockReleased;			// safety valve so interpreter doesn't get hung if this
+											// instance is destroyed without first releasing the LOCK
+
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event)  {
 		// if BACK key leave original text unchanged
@@ -62,6 +65,8 @@ public class TextInput extends Activity {
        Intent intent = getIntent();
        String title = intent.getStringExtra("title");
        if (title != null) setTitle(title);
+
+		lockReleased = false;
 
        finishedButton = (Button) findViewById(R.id.finished_button);		// The buttons
 
@@ -88,10 +93,11 @@ public class TextInput extends Activity {
 	}
 
 	public void releaseLock() {
-		if (Run.HaveTextInput) return;
+		if (lockReleased) return;
 
 		synchronized (Run.LOCK) {
 			Run.HaveTextInput = true;
+			lockReleased = true;
 			Run.LOCK.notify();								// release the lock that Run is waiting for
 		}
 		finish();
@@ -99,7 +105,7 @@ public class TextInput extends Activity {
 
 	@Override
 	public void onDestroy() {
-		releaseLock();										// release the lock that Run is waiting for
+		releaseLock();										// if not already released, release the lock that Run is waiting for
 		super.onDestroy();
 	}
 

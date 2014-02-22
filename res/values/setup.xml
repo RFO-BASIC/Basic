@@ -55,7 +55,7 @@ This file is part of BASIC! for Android
     <!-- The default text and background colors selected in Preferences -->
     <integer name="color1">0xff000000</integer>
     <integer name="color2">0xffffffff</integer>
-    <integer name="color3">0x80006478</integer>
+    <integer name="color3">0xff006478</integer>
 
     <!--
         Message lines displayed on the opening screen while files are loading.

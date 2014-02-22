@@ -47,6 +47,9 @@ public class TGet extends Activity {
 	private int PromptIndex;
 	private String theText;
 
+	private boolean lockReleased;			// safety valve so interpreter doesn't get hung if this
+											// instance is destroyed without first releasing the LOCK
+
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event)  {
 		// if BACK key cancel user input
@@ -95,6 +98,8 @@ public class TGet extends Activity {
        Intent intent = getIntent();
        String title = intent.getStringExtra("title");
        if (title != null) setTitle(title);
+
+		lockReleased = false;
 
        theTextView = (EditText) findViewById(R.id.the_text);	// The text display area
 
@@ -159,11 +164,12 @@ public class TGet extends Activity {
     	};
 
 	public void returnText(String text) {
-		if (Run.HaveTextInput) return;
+		if (lockReleased) return;
 
 		synchronized (Run.LOCK) {
 			Run.TextInputString = text;
 			Run.HaveTextInput = true;
+			lockReleased = true;
 			Run.LOCK.notify();								// release the lock that Run is waiting for
 		}
 		finish();
@@ -171,7 +177,7 @@ public class TGet extends Activity {
 
 	@Override
 	public void onDestroy() {
-		returnText("");										// release the lock that Run is waiting for
+		returnText("");										// if not already released, release the lock that Run is waiting for
 		super.onDestroy();
 	}
 

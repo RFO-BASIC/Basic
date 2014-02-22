@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010 - 2013 Paul Laughton
+ Copyright (C) 2010 - 2014 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -316,6 +316,8 @@ public class Format extends ListActivity {
 				actualLine = ExpandedKeyWord(Run.SQL_KW, lcLine, actualLine, start);
 			else if (kw.equals("gr."))
 				actualLine = ExpandedKeyWord(Run.GR_KW, lcLine, actualLine, start);
+			else if (kw.equals("file."))
+				actualLine = ExpandedKeyWord(Run.file_KW, lcLine, actualLine, start);
 			else if (kw.equals("console."))
 				actualLine = ExpandedKeyWord(Run.Console_KW, lcLine, actualLine, start);
 			else if (kw.equals("audio."))
@@ -335,7 +337,7 @@ public class Format extends ListActivity {
 			else if (kw.equals("debug."))
 				actualLine = ExpandedKeyWord(Run.Debug_KW, lcLine, actualLine, start);
 			else if (kw.equals("stack."))
-					actualLine = ExpandedKeyWord(Run.Stack_KW, lcLine, actualLine, start);
+				actualLine = ExpandedKeyWord(Run.Stack_KW, lcLine, actualLine, start);
 			else if (kw.equals("tts."))
 				actualLine = ExpandedKeyWord(Run.tts_KW, lcLine, actualLine, start);
 			else if (kw.equals("ftp."))
@@ -355,7 +357,7 @@ public class Format extends ListActivity {
 			else if (kw.equals("timezone."))
 				actualLine = ExpandedKeyWord(Run.TimeZone_KW, lcLine, actualLine, start);
 		}
-    	return actualLine;
+		return actualLine;
     }
 
     private static String ExpandedKeyWord(String[] words, String lcLine, String actualLine, int start) {  // The stuff after xxx.

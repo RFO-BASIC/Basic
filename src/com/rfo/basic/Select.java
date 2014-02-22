@@ -56,6 +56,9 @@ public class Select extends ListActivity {
 	public static final String EXTRA_MSG   = "select_msg";
 	public static final String EXTRA_LIST  = "select_list";
 
+	private boolean lockReleased;			// safety valve so interpreter doesn't get hung if this
+											// instance is destroyed without first releasing the LOCK
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -70,6 +73,8 @@ public class Select extends ListActivity {
 			list.add("Please contact developer");
 			list.add("basic@laughton.com");
 		}
+
+		lockReleased = false;
 
 		Basic.ColoredTextAdapter adapter = new Basic.ColoredTextAdapter(this, list);
 		setListAdapter(adapter);
@@ -99,12 +104,13 @@ public class Select extends ListActivity {
 	} // onCreate
 
 	public void setSelection(int item, boolean isLongClick) {
-		if (Run.ItemSelected) return;
+		if (lockReleased) return;
 
 		synchronized (Run.LOCK) {
 			Run.SelectedItem = item;						// 1-based index of selected item
 			Run.SelectLongClick = isLongClick;
 			Run.ItemSelected = true;
+			lockReleased = true;
 			Run.LOCK.notify();								// release the lock that Run is waiting for
 		}
 		finish();
@@ -121,7 +127,7 @@ public class Select extends ListActivity {
 
 	@Override
 	public void onDestroy() {
-		setSelection(0, false);								// release the lock that Run is waiting for
+		setSelection(0, false);						// if not already released, release the lock that Run is waiting for
 		super.onDestroy();
 	}
 
