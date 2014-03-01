@@ -21,9 +21,9 @@
  You should have received a copy of the GNU General Public License
  along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
- You may contact the author, Paul Laughton at basic@laughton.com
+ You may contact the author or current maintainers at http://rfobasic.freeforums.org
 
- *************************************************************************************************/
+*************************************************************************************************/
 
 package com.rfo.basic;
 
@@ -481,8 +481,8 @@ public class Editor extends Activity {
 
 			case R.id.about:										// ABOUT
 				String version = getString(R.string.version);			// Get the version string
-				String url = "http://laughton.com/basic/versions/v";	// add it to the URL
-				url = url + version + "/index.html";
+				String url = "https://bintray.com/rfo-basic/android/RFO-BASIC/v"	// add it to the URL
+							+ version + "/view/read";
 				Intent i = new Intent(Intent.ACTION_VIEW);				// Go to the About web page
 				i.setData(Uri.parse(url));
 				startActivity(i);

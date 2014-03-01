@@ -3,8 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-
-Copyright (C) 2010, 2011, 2012 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -21,19 +20,17 @@ This file is part of BASIC! for Android
     You should have received a copy of the GNU General Public License
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
-    You may contact the author, Paul Laughton at basic@laughton.com
-    
-	*************************************************************************************************/
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+
+*************************************************************************************************/
 
 package com.rfo.basic;
-
-// A read thread for Superuser read line. Required because read line is blocking.
 
 import java.io.DataInputStream;
 import java.util.ArrayList;
 
-import android.content.Context;
-import android.util.Log;
+
+//A read thread for Superuser read line. Required because read line is blocking.
 
 public class SUReader {
 	

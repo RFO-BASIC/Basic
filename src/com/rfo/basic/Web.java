@@ -3,8 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -21,10 +20,9 @@ This file is part of BASIC! for Android
     You should have received a copy of the GNU General Public License
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
-    You may contact the author, Paul Laughton at basic@laughton.com
-    
-	*************************************************************************************************/
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
 
+*************************************************************************************************/
 
 package com.rfo.basic;
 
@@ -55,11 +53,10 @@ import android.os.Process;
 import android.webkit.DownloadListener;
 
 
-
 public class Web extends Activity {
 	//Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
-	WebView engine;									
+	WebView engine;
 	public static TheWebView aWebView = null;
 	public static AddData doAddData;
 	private static final String LOGTAG = "Web";
@@ -68,7 +65,7 @@ public class Web extends Activity {
  //********************************Intercept BACK Key *************************************
 	
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)  {
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
     	// if BACK key restore original text
     	
     	
@@ -182,14 +179,14 @@ public class Web extends Activity {
 
     
     @Override
-    protected void onStop(){                     
+    protected void onStop(){
     //	aWebView = null; // otherwise html.load doses not work after a return to BASIC! Thanks to LUCA! !! 2013-10-11 gt
     	Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " onStop ");
     	super.onStop();
     }
     
     @Override
-    protected void onDestroy(){                     
+    protected void onDestroy(){
     	aWebView = null;
     	Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " onDestroy ");
     	if (engine != null) engine.destroy();

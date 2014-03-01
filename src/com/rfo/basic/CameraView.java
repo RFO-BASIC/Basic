@@ -3,8 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -21,15 +20,14 @@ This file is part of BASIC! for Android
     You should have received a copy of the GNU General Public License
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
-    You may contact the author, Paul Laughton, at basic@laughton.com
-    
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+
     Some of the code in this module is based upon code obtained from:
     http://www.brighthub.com/mobile/google-android/articles/43414.aspx
-    
-	*************************************************************************************************/
+
+*************************************************************************************************/
 
 package com.rfo.basic;
-
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -52,6 +50,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.view.WindowManager;
+
 
 // **************************** Using the device camera UI ******************************
 

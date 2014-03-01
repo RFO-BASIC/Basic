@@ -1,6 +1,5 @@
 /****************************************************************************************************
 
-
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
@@ -21,9 +20,9 @@ Copyright (C) 2010 - 2014 Paul Laughton
     You should have received a copy of the GNU General Public License
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
-    You may contact the author, Paul Laughton at basic@laughton.com
-    
-	*************************************************************************************************/
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+
+*************************************************************************************************/
 
 package com.rfo.basic;
 
@@ -102,7 +101,7 @@ public class Basic extends ListActivity  {
 	private ArrayList<String> output;						// The output screen text lines
 
 	public static boolean checkSDCARD(char mount) {			// mount is 'w' for writable,
-															// 'r' for either readable or writable 
+															// 'r' for either readable or writable
 		String state = Environment.getExternalStorageState();
 		if (Environment.MEDIA_MOUNTED.equals(state)) { return true; }	// mounted for both read and write
 		if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state) && (mount == 'r')) return true;
@@ -201,7 +200,7 @@ public class Basic extends ListActivity  {
 	}
 
 	private void createForSB() {							// Create code for Standard Basic
-	
+
 		/* If we have entered Basic and there is a program running, then we should not
 		 * interfere with that run. We will just exit this attempt. A program running
 		 * is indicated by theRunContext ! = null
@@ -217,7 +216,7 @@ public class Basic extends ListActivity  {
 
 		/* If Basic is entered from a launcher shortcut, then there will an Intent with a
 		 * bundle. The bundle will contain the shortcut launcher program name.
-		 * Auto run will be called with a new bundle with just the filename. 
+		 * Auto run will be called with a new bundle with just the filename.
 		 */
 		Intent myIntent = getIntent();
 		String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // Launched by shortcut?
@@ -233,7 +232,7 @@ public class Basic extends ListActivity  {
 			DoAutoRun = true;
 			startActivity( intent );
 			finish();
-		} else if (AreSamplesLoaded()) {								// This is not a launcher short cut 
+		} else if (AreSamplesLoaded()) {								// This is not a launcher short cut
 			DoAutoRun = false;
 			startActivity(new Intent(BasicContext, Editor.class));		// 	Goto the Editor
 			finish();
@@ -242,62 +241,62 @@ public class Basic extends ListActivity  {
 		}
 	}
 
-    private void createForAPK() {											// Create code for APK
-    	runBackgroundLoader();
-    }
-    
-    private void runBackgroundLoader() {
-// Establish an output screen so that file load progress can be shown.
-        
-  	  	output = new ArrayList<String>();
-    	AA=new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);  // Establish the output screen
-  	  	lv = getListView();
-  	  	lv.setTextFilterEnabled(false);
-  	  	lv.setSelection(0);
-  	  	
-// In order to show progress in the user interface we have to start a background thread to 
-// do the actual loading. That background thread will make calls to the UI thread to show
-// show the progress.
-//
-// Once the files are loaded, the background task will start the loaded program running.
-  	  	
-    	theBackground = new Background();						// Start the background task to load
-    	theBackground.execute("");								// sample and graphics
+	private void createForAPK() {										// Create code for APK
+		runBackgroundLoader();
+	}
 
-    }
-    
-    public static void InitDirs(){
-    	
-// Initializes (creates) the directories used by Basic
+	private void runBackgroundLoader() {
+		// Establish an output screen so that file load progress can be shown.
+
+		output = new ArrayList<String>();
+		AA=new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);	// Establish the output screen
+		lv = getListView();
+		lv.setTextFilterEnabled(false);
+		lv.setSelection(0);
+
+		// In order to show progress in the user interface we have to start a background thread to
+		// do the actual loading. That background thread will make calls to the UI thread to show
+		// show the progress.
+		//
+		// Once the files are loaded, the background task will start the loaded program running.
+
+		theBackground = new Background();						// Start the background task to load
+		theBackground.execute("");								// sample and graphics
+
+	}
+
+	public static void InitDirs(){
+
+		// Initializes (creates) the directories used by Basic
 
 		if (checkSDCARD('w')) {									// Insure that SD card is mounted and writable
-    		File sdDir;
-    		if (!isAPK) {
+			File sdDir;
+			if (!isAPK) {
 				sdDir = new File(getSourcePath(null));			// source directory
-        		sdDir.mkdirs();
+				sdDir.mkdirs();
 
 				sdDir = new File(getSamplesPath(null));			// sample programs directory
-        		sdDir.mkdirs();
+				sdDir.mkdirs();
 
 				sdDir = new File(getDataPath(null));			// data directory
-    			sdDir.mkdirs();
+				sdDir.mkdirs();
 
 				sdDir = new File(getDataBasePath(null));		// databases directory
-    			sdDir.mkdirs();
-    		}
-    		
-    		if (isAPK && apkCreateDataDir) {
+				sdDir.mkdirs();
+			}
+
+			if (isAPK && apkCreateDataDir) {
 				sdDir = new File(getDataPath(null));			// data directory
-    			sdDir.mkdirs();
-    		}
-    		
-    		if (isAPK && apkCreateDataBaseDir) {
-				sdDir = new File(getDataBasePath(null));		// databases directory
-    			sdDir.mkdirs();
-    		}
-    	}
+				sdDir.mkdirs();
+			}
 
-    }
+			if (isAPK && apkCreateDataBaseDir) {
+				sdDir = new File(getDataBasePath(null));		// databases directory
+				sdDir.mkdirs();
+			}
+		}
+
+	}
 
 	public static void clearProgram(){
 
@@ -306,38 +305,38 @@ public class Basic extends ListActivity  {
 		Editor.DisplayText="REM Start of BASIC! Program\n";	// Display text is the editors program storage for display
 	}
 
-    private static boolean AreSamplesLoaded(){		// Sample program files have not been loaded
-    												// if the sample programs directory is empty
-    	String samplesPath = getSamplesPath("");	// get path with trailing '/'
-    	File sdDir = new File(samplesPath);
-    	sdDir.mkdirs();
-    	String FL[] = sdDir.list();
+	private static boolean AreSamplesLoaded(){		// Sample program files have not been loaded
+													// if the sample programs directory is empty
+		String samplesPath = getSamplesPath("");	// get path with trailing '/'
+		File sdDir = new File(samplesPath);
+		sdDir.mkdirs();
+		String FL[] = sdDir.list();
 
-    	if ((FL != null) && (FL.length != 0)) {		// if the help directory is not empty
-    												// then sort the files
-    		
-    		ArrayList<String> FL1 = new ArrayList<String>(Arrays.asList(FL));
-    		Collections.sort(FL1);					// Convert to array list to easily sort
-    		String f1 = FL1.get(0);					// The top of the list should be the
-    		if (f1.length()>11){					// f00_vnn.nn_xxx file, 
-    			String f2 = f1.substring(5, 7);
-    			String f3 = f1.substring(8,10);
-    			f1 = f2 + "." + f3;
-    			f2 = BasicContext.getString(R.string.version);         // Get the version string
-    			if (f1.equals(f2)) { return true; }		               // Compare version numbers
-    		}
-    		for (String fileName : FL) {			// If different, empty the directory
-    			File file = new File(samplesPath + fileName);
-    			file.delete();
-    		}
-    	}
-    	return false;
-    }
+		if ((FL != null) && (FL.length != 0)) {		// if the help directory is not empty
+													// then sort the files
+
+			ArrayList<String> FL1 = new ArrayList<String>(Arrays.asList(FL));
+			Collections.sort(FL1);					// Convert to array list to easily sort
+			String f1 = FL1.get(0);					// The top of the list should be the
+			if (f1.length() > 11) {					// f00_vnn.nn_xxx file
+				String f2 = f1.substring(5, 7);
+				String f3 = f1.substring(8,10);
+				f1 = f2 + "." + f3;
+				f2 = BasicContext.getString(R.string.version);         // Get the version string
+				if (f1.equals(f2)) { return true; }		               // Compare version numbers
+			}
+			for (String fileName : FL) {			// If different, empty the directory
+				File file = new File(samplesPath + fileName);
+				file.delete();
+			}
+		}
+		return false;
+	}
 
 	/******************************* static file/resource utilities ******************************/
 
 	public static String getRawFileName(String input) {
-		// Converts a file name to an Android internal resource name. 
+		// Converts a file name to an Android internal resource name.
 		// Upper-case characters are converted to lower-case.
 		// If there is a dot in the name, the dot and everything after it are dropped.
 
@@ -440,7 +439,7 @@ public class Basic extends ListActivity  {
 
 		// MES 2013/01/13 - We got in a jam when moving resources to assets.
 		// Files and assets have a different base path. For backward compatibility,
-		// we're letting callers use the full path if they only want a file. 
+		// we're letting callers use the full path if they only want a file.
 		// If a caller wants to use an asset "file", it must set isFullPath false
 		// and use a path relative to "source" so getBufferedReader can find the asset.
 
@@ -536,7 +535,7 @@ public class Basic extends ListActivity  {
 
 	// The loading of the sample files and graphics is done in a background AsyncTask rather than the UI task
 	// Progress is shown by sending progress messages to the UI task.
- 
+
 	public class Background extends AsyncTask<String, String, String>{
 
 		private String[] mLoadingMsg;						// Displayed while files are loading
@@ -697,7 +696,7 @@ public class Basic extends ListActivity  {
 			// Loads icons and audio to the SDcard.
 			// The files to create are listed in setup.xml:load_file_names.
 			// The names are relative to "<AppPath>/data/", except that
-			// names ending in ".db" are relative to "<AppPath>/databases/". 
+			// names ending in ".db" are relative to "<AppPath>/databases/".
 			// The content is copied from res/raw/ or assets/.
 
 			String[] loadFileNames = mRes.getStringArray(R.array.load_file_names);

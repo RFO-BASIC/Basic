@@ -3,8 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-
-Copyright (C) 2010 - 2013 Paul Laughton
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -21,9 +20,9 @@ This file is part of BASIC! for Android
     You should have received a copy of the GNU General Public License
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
-    You may contact the author, Paul Laughton, at basic@laughton.com
-    
-	*************************************************************************************************/
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+
+*************************************************************************************************/
 
 package com.rfo.basic;
 
@@ -53,6 +52,7 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.graphics.RectF;
 import android.graphics.Bitmap;
+
 
 public class GR extends Activity {
     private static final String LOGTAG = "GR";

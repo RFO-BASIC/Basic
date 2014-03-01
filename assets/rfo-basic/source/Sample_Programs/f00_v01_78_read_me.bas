@@ -11,7 +11,7 @@
 
 !!
 
-browse "http://laughton.com/basic/versions/"
+browse "https://bintray.com/rfo-basic/android/RFO-BASIC/view/read"
 
 !!
 Copyright Notice For BASIC!
@@ -43,7 +43,7 @@ in this directory are part of BASIC! for Android
     General Public License along with BASIC!.
     If not, see <http://www.gnu.org/licenses/>.
 
-    You may contact the author, Paul Laughton,
-    at basic@laughton.com
+    You may contact the author or current
+    maintainers at http://rfobasic.freeforums.org
 
 !!

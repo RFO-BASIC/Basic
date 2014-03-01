@@ -3,7 +3,6 @@
  BASIC! is an implementation of the Basic programming language for
  Android devices.
 
-
  Copyright (C) 2010 - 2014 Paul Laughton
 
  This file is part of BASIC! for Android
@@ -21,12 +20,11 @@
  You should have received a copy of the GNU General Public License
  along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
- You may contact the author, Paul Laughton at basic@laughton.com
+ You may contact the author or current maintainers at http://rfobasic.freeforums.org
 
   Contains contributions from Michael Camacho. 2012
 
- *************************************************************************************************/
-
+*************************************************************************************************/
 
 package com.rfo.basic;
 
