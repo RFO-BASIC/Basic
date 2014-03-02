@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!--  *********************************************************************************
-
+<!--
+*********************************************************************************
 BASIC! is an implementation of the Basic programming language for
 Android devices.
- 
- Copyright (C) 2010 - 2014 Paul Laughton
+
+Copyright (C) 2010 - 2014 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -23,91 +23,74 @@ This file is part of BASIC! for Android
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
     You may contact the author or current maintainers at http://rfobasic.freeforums.org
-	
-	**********************************************************************************
-	-->
-	
-<RelativeLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:layout_width="fill_parent" android:layout_height="fill_parent"
-	android:gravity="center_horizontal" android:padding="10px"
-	>
 
+**********************************************************************************
+-->
+
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical"
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent"
+	android:padding="10dip" >
 
 	<TextView android:id="@+id/enter_text"
 		android:layout_width="fill_parent"
 		android:layout_height="wrap_content"
-		android:layout_marginLeft="10dip"
 		android:layout_marginBottom="5dip"
 		style="@style/label_l"
 		android:text="@string/enter_text_label" />
-		
+
 	<EditText android:id="@+id/the_text1"
 		android:layout_width="fill_parent"
 		android:layout_height="40dip"
-		android:layout_marginLeft="10dip"
 		android:layout_marginBottom="5dip"
-		android:layout_below="@id/enter_text"
-		style="@style/edit_text_l" />	
-		
-        
-     <TextView android:id="@+id/enter_text2"
+		style="@style/edit_text_l" />
+
+	<TextView android:id="@+id/enter_text2"
 		android:layout_width="fill_parent"
 		android:layout_height="wrap_content"
-		android:layout_below="@id/the_text1"
-		android:layout_marginLeft="10dip"
 		android:layout_marginBottom="5dip"
 		style="@style/label_l"
 		android:text="@string/enter_text2_label" />
-        
-        
+
 	<EditText android:id="@+id/the_text2"
 		android:layout_width="fill_parent"
 		android:layout_height="40dip"
-		android:layout_marginLeft="10dip"
 		android:layout_marginBottom="5dip"
-		android:layout_below="@id/enter_text2"
-		style="@style/edit_text_l" />	
-		
-     <TextView android:id="@+id/enter_text3"
+		style="@style/edit_text_l" />
+
+	<TextView android:id="@+id/enter_text3"
 		android:layout_width="fill_parent"
 		android:layout_height="wrap_content"
-		android:layout_below="@id/the_text2"
-		android:layout_marginLeft="10dip"
 		android:layout_marginBottom="5dip"
 		style="@style/label_l"
 		android:text="@string/enter_text3_label" />
-        
-        
+
 	<EditText android:id="@+id/the_text3"
 		android:layout_width="fill_parent"
 		android:layout_height="40dip"
-		android:layout_marginLeft="10dip"
 		android:layout_marginBottom="5dip"
-		android:layout_below="@id/enter_text3"
-		style="@style/edit_text_l" />	
+		style="@style/edit_text_l" />
 
-	<Button android:id="@+id/ok_button"  
-        android:layout_width="wrap_content" 
-        android:layout_height="40dip"
-        android:textSize="20dip"
-        android:layout_marginLeft="10dip" 
-        android:layout_marginBottom="8dip"
-        android:layout_alignParentLeft="true"
-        android:layout_below="@id/the_text3"
-        android:text="@string/ok_button_label" />
+	<LinearLayout
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		android:layout_marginTop="15dip" >
 
-    <Button android:id="@+id/cancel_button"  
-        android:layout_width="wrap_content" 
-        android:layout_height="40dip"
-        android:textSize="20dip"
-        android:layout_marginLeft="10dip" 
-        android:layout_marginBottom="8dip"
-        android:layout_alignParentRight="true"
-        android:layout_toLeftOf="@id/ok_button"
-        android:layout_alignTop="@id/ok_button"
-        android:text="@string/cancel_button_label" />
-		
+		<Button android:id="@+id/cancel_button"
+			android:layout_weight="1"
+			android:layout_width="0dip"
+			android:layout_height="fill_parent"
+			android:text="@string/cancel_button_label" />
 
+		<Button android:id="@+id/ok_button"
+			android:layout_weight="1"
+			android:layout_width="0dip"
+			android:layout_height="fill_parent"
+			android:text="@string/ok_button_label" />
 
-</RelativeLayout>
+	</LinearLayout>
+
+</LinearLayout>

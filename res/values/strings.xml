@@ -52,20 +52,19 @@ This file is part of BASIC! for Android
     <string name="button_scan">Scan</string>
     <string name="none_found">None Found</string>
     <string name="scanning">Scanning</string>
-    <string name ="none_paired">No Paired Devices</string> 
-    <string name ="web_view_name">Web View</string>   
-    
+    <string name ="none_paired">No Paired Devices</string>
+    <string name ="web_view_name">Web View</string>
+
     <string name="intro_getline">BASIC! Shortcut Builder</string>
     <string name="enter_text_label">Program File Name</string>
     <string name="edit_button_label">Edit</string>
     <string name="delete_button_label">Delete</string>
     <string name="enter_text2_label">Icon File Name</string>
     <string name="enter_text3_label">Shortcut Name</string>
-    
+
     <string name="cancel_button_label">Cancel</string>
     <string name="ok_button_label">OK</string>
-    
-    
+
 <string name="run">Run</string>
 <string name="load">Load</string>
 <string name="save">Save</string>
@@ -83,6 +82,16 @@ This file is part of BASIC! for Android
 <string name="editor">Editor</string>
 <string name="pause">Pause</string>
 
+	<!-- Shortcut warnings -->
+	<string name="no_prog_name">You have not entered a BASIC! program name.</string>
+	<string name="no_icon_name">You have not entered an icon file name.</string>
+	<string name="no_shortcut_name">You have not entered a name for the shortcut.</string>
+	<string name="no_prog_file">The BASIC! program file does not exist (you can create it later).</string>
+	<string name="no_icon_file">The icon file does not exist.</string>
+	<string name="no_icon">Could not create icon from icon file.</string>
+	<string name="instr_1">Select Cancel to go back to setup</string>
+	<string name="instr_2">or OK to try to create the shortcut anyway.</string>
+
 <string name="use_sdcard">Use SD Card</string>
 <string name="use_sdcard_summary">Use SD Card for files</string>
 <string name="echo">Echo Source</string>
@@ -94,12 +103,12 @@ This file is part of BASIC! for Android
 <string name="crash_notif_ticker_text">BASIC! Crashed. Open status bar to report.</string>
 <string name="crash_notif_title">BASIC! has crashed.</string>
 <string name="crash_notif_text">Please click here to help fix the issue.</string>
-        
+
 <string name="crash_dialog_title">BASIC! has crashed</string>
 <string name="crash_dialog_text">An unexpected error occurred forcing the
         application to stop. Please help us fix this by sending us error data,
         all you have to do is click \'OK\'.</string>
 <string name="crash_dialog_comment_prompt">You might add your comments about the problem below:</string>
-<string name="crash_dialog_ok_toast">Thank you !</string>
+<string name="crash_dialog_ok_toast">Thank you!</string>
 
 </resources>

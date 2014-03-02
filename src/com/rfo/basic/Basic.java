@@ -76,20 +76,20 @@ public class Basic extends ListActivity  {
 	public static final String SAMPLES_DIR   = "Sample_Programs";
 	public static final String SOURCE_SAMPLES_PATH = SOURCE_DIR + '/' + SAMPLES_DIR;
 
-	public static String AppPath;							// Set to the path name for application directories
-	public static boolean isAPK;							// If building APK, set true
+	public static String AppPath = "rfo-basic";				// Set to the path name for application directories
+	public static boolean isAPK = false;					// If building APK, set true
 	private static boolean apkCreateDataDir;				// If APK needs a /data/ directory, set true
 	private static boolean apkCreateDataBaseDir;			// If APK needs a /database/ director, set true
 
-	public static Boolean DoAutoRun;
-	private static String filePath;
-	private static String basePath;
+	public static boolean DoAutoRun = false;
+	private static String filePath = "";
+	private static String basePath = "";
 
-	public static ArrayList<String> lines;       //Program lines for execution
+	public static ArrayList<String> lines;					//Program lines for execution
 
-	public static String ProgramFileName;		// Set when program loaded or saved
+	public static String ProgramFileName;					// Set when program loaded or saved
 
-	public static Context BasicContext;			// saved so we do not have to pass it around
+	public static Context BasicContext;						// saved so we do not have to pass it around
 	public static Context theRunContext;
 
 	public static String SD_ProgramPath = "";	// Used by Load/Save

@@ -26,18 +26,22 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
+import java.io.File;
+
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.util.Log;
-import android.widget.Button;
-import android.widget.EditText;
-import android.graphics.Bitmap;
-
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 
 
 /* Called when creating a launcher shortcut.
@@ -52,128 +56,170 @@ import android.view.View.OnClickListener;
 
 public class LauncherShortcuts extends Activity {
 	public static final String EXTRA_LS_FILENAME = "com.rfo.basic.fn";
-    private EditText theText1;    
-    private EditText theText2;    
-    private EditText theText3;
-    private Button okButton;
-    private Button cancelButton;
+	private EditText theText1;
+	private EditText theText2;
+	private EditText theText3;
+	private Button okButton;
+	private Button cancelButton;
 
-   @Override
-   protected void onCreate(Bundle savedInstanceState) {   // Help text located in R.Strings
-      super.onCreate(savedInstanceState);
-      
-      // The Intent get action call should be create shortcut.
-      // if not, done.
+	private String mAppName = "";			// the launcher shortcut name
+	private String mProgPath = "";			// the BASIC! program file name
+	private Bitmap mIcon = null;			// the icon bitmap
 
-      final Intent intent = getIntent();
-      final String action = intent.getAction();
+	private boolean mHaveProgName = false;
+	private boolean mHaveIconName = false;
+	private boolean mHaveAppName = false;
+	private boolean mProgExists = false;
+	private boolean mIconExists = false;
 
-      // If the intent is a request to create a shortcut, we'll do that and exit
-      if (!Intent.ACTION_CREATE_SHORTCUT.equals(action)) {
-          finish();
-          return;
-      }
-      
-      // Set up the form. The form layout is in res.layout.get_sc_parms.xml
-      // and res.layout-land.get_sc_parms.xml
-      // The OS will choose which layout to use depending upon the
-      // device orientation
-      
-      this.setContentView(R.layout.get_sc_parms);
-      
-      this.theText1 = (EditText) findViewById(R.id.the_text1);
-      this.theText2 = (EditText) findViewById(R.id.the_text2);
-      this.theText3 = (EditText) findViewById(R.id.the_text3);
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
 
-      this.okButton = (Button) findViewById(R.id.ok_button);
-      this.cancelButton = (Button) findViewById(R.id.cancel_button);
+		// The Intent get action call should be create shortcut.
+		// if not, done.
 
-      // Act on the dialog button presses
-      
-      this.okButton.setOnClickListener(new OnClickListener() {
-          
-          public void onClick(View v) {
-              handleOK();                    
-              finish();
-              return;
-          	}
-      	});
+		final Intent intent = getIntent();
+		final String action = intent.getAction();
 
-          this.cancelButton.setOnClickListener(new OnClickListener() {
-           
-           public void onClick(View v) {
-               handleCancel();
-               finish();
-               return;
-              }
-           });
+		if (!Intent.ACTION_CREATE_SHORTCUT.equals(action)) {
+			finish();
+			return;
+		}
 
-  
-  }   
+		// Set up the form. The form layout is in res.layout.get_sc_parms.xml
+		// and res.layout-land.get_sc_parms.xml
+		// The OS will choose which layout to use depending upon the
+		// device orientation
 
-  
-  @Override
-  public boolean onKeyUp(int keyCode, KeyEvent event)  {
-	  
-	  // Do not allow exiting the form by BACK key press
-	  // The dialog has a Cancel key for that purpose
-	  
-      if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-          return true;
-      }
+		setContentView(R.layout.get_sc_parms);
 
-      return super.onKeyUp(keyCode, event);
-  }
-  
-  private void handleOK() {
-	  
-	  // The user has pressed OK
-	  
-	  if (Basic.getFilePath().equals("")) {						// If BASIC! had not been run in a while,
-		  														// then filePath will be an empty string
-		  														// In this case, establish paths as Basic.java
-		  														// does when it is run.
-	        String basePath = Settings.getBaseDrive(this);
-	        Basic.setFilePaths(basePath);
-	  }
-	  
-	  String FileName = this.theText1.getText().toString();
-	  String BitmapFileName = this.theText2.getText().toString();
-	  String AppName = this.theText3.getText().toString();
+		theText1 = (EditText) findViewById(R.id.the_text1);		// field for BASIC! program file name
+		theText2 = (EditText) findViewById(R.id.the_text2);		// field for icon file name
+		theText3 = (EditText) findViewById(R.id.the_text3);		// field for launcher shortcut name
 
-	  String FullFileName = Basic.getSourcePath(FileName);    // The Program File Name
+		okButton = (Button) findViewById(R.id.ok_button);
+		cancelButton = (Button) findViewById(R.id.cancel_button);
 
-	  String bmfn = Basic.getDataPath(BitmapFileName);        // The bitmap file name
-	  Bitmap aBitmap = BitmapFactory.decodeFile(bmfn);        // get the actual bitmap
+		// Act on the dialog button presses
 
-	  setupShortcut( AppName, FullFileName, aBitmap);         // Go finish the shortcut setup
-	  return;
-	  
-	  
-  }
-  
-  private void handleCancel() {
-	  return;
+		cancelButton.setOnClickListener(new OnClickListener() {
 
-  }
+			public void onClick(View v) {
+				finish();
+			}
+		});
 
- 
+		okButton.setOnClickListener(new OnClickListener() {
 
-   private void setupShortcut(String AppName, String FileName, Bitmap aBitmap){
-      
-      Intent shortcutIntent = new Intent(Intent.ACTION_MAIN);        // Tells launcher where what to launch
-      shortcutIntent.setClassName(this, Basic.class.getName());		 // which is Basic.java
-      
-      shortcutIntent.putExtra(EXTRA_LS_FILENAME, FileName);			 // Use the full filename for the file to load
+			public void onClick(View v) {
+				handleOK();
+			}
+		});
 
-      Intent intent = new Intent();
-      intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent);
-      intent.putExtra(Intent.EXTRA_SHORTCUT_NAME, AppName);          // Set the title
-           
-      intent.putExtra(Intent.EXTRA_SHORTCUT_ICON, aBitmap);			 // Set the icon bitmap
-      setResult(RESULT_OK, intent);                                  // Tell caller all is ok
-   
-   }
-   
+	}
+
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event) {
+
+		// Do not allow exiting the form by BACK key press
+		// The dialog has a Cancel key for that purpose
+
+		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+			return true;
+		}
+		return super.onKeyUp(keyCode, event);
+	}
+
+	private void handleOK() {
+
+		// The user has pressed OK
+
+		String base = Basic.getFilePath();
+		if ((base == null) || base.equals("")) {				// If BASIC! has not been run in a while,
+																// then filePath will be an empty string.
+																// In this case, establish paths as Basic.java
+																// does when it is run.
+			String basePath = Settings.getBaseDrive(this);
+			Basic.setFilePaths(basePath);
+		}
+
+		String progFileName = theText1.getText().toString().trim();	// the BASIC! program file name
+		String iconFileName = theText2.getText().toString().trim();	// the icon bitmap file name
+		String appName = theText3.getText().toString().trim();		// the launcher shortcut name
+
+		mHaveProgName = (progFileName != null && !progFileName.equals(""));
+		mHaveIconName = (iconFileName != null && !iconFileName.equals(""));
+		mHaveAppName = (appName != null && !appName.trim().equals(""));
+
+		String progPath = mHaveProgName ? Basic.getSourcePath(progFileName) : "";
+		String iconPath = mHaveIconName ? Basic.getDataPath(iconFileName) : "";
+
+		mProgExists = mHaveProgName && new File(progPath).exists();
+		mIconExists = mHaveIconName && new File(iconPath).exists();
+
+		mAppName = appName;
+		mProgPath = progPath;
+		mIcon = mIconExists ? BitmapFactory.decodeFile(iconPath) : null;	// get the actual bitmap
+
+		if (mHaveAppName && mProgExists && (mIcon != null)) {
+			setupShortcut();									// go finish the shortcut setup
+		} else {
+			showWarning();
+		}
+		return;
+	}
+
+	private void setupShortcut(){
+
+		Intent shortcutIntent = new Intent(Intent.ACTION_MAIN);		// tells launcher what to launch
+		shortcutIntent.setClassName(this, Basic.class.getName());	// which is Basic.java
+
+		shortcutIntent.putExtra(EXTRA_LS_FILENAME, mProgPath);		// use the full path for the program to load
+
+		Intent intent = new Intent();
+		intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent);
+		intent.putExtra(Intent.EXTRA_SHORTCUT_NAME, mAppName);		// set the title
+		intent.putExtra(Intent.EXTRA_SHORTCUT_ICON, mIcon);			// set the icon bitmap
+		setResult(RESULT_OK, intent);								// tell caller all is ok
+
+		finish();
+	}
+
+	private void showWarning() {
+		final String prefix = "  ";
+		final String defIconMsg = "\n    (shortcut will use default Android icon)\n";
+		final TextView text = new EditText(this);
+		final Resources res = getResources();
+
+		String msg = "";
+		if (!mHaveProgName) { msg += prefix + res.getText(R.string.no_prog_name) + '\n'; }
+		if (!mHaveIconName) { msg += prefix + res.getText(R.string.no_icon_name) + defIconMsg; }
+		if (!mHaveAppName) { msg += prefix + res.getText(R.string.no_shortcut_name) + '\n'; }
+		if (mHaveProgName && !mProgExists) { msg += prefix + res.getText(R.string.no_prog_file) + '\n'; }
+		if (mHaveIconName && !mIconExists) { msg += prefix + res.getText(R.string.no_icon_file) + defIconMsg; }
+		if (mIconExists && (mIcon == null)) { msg += prefix + res.getText(R.string.no_icon) + defIconMsg; }
+		msg += "\n" + res.getText(R.string.instr_1) + '\n' + res.getText(R.string.instr_2);
+		text.setText(msg);
+
+		new AlertDialog.Builder(this)
+			.setCancelable(true)
+			.setTitle("Warning")
+			.setView(text)
+			.setPositiveButton(R.string.ok_button_label, new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dlg, int id) {
+						setupShortcut();
+					}
+				})
+			.setNegativeButton(R.string.cancel_button_label, new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dlg, int id) {
+					}
+				})
+			.setOnCancelListener(new DialogInterface.OnCancelListener() {
+					public void onCancel(DialogInterface dlg) {
+					}
+				})
+			.create().show();
+	}
 
 }
