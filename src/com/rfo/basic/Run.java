@@ -793,13 +793,16 @@ public class Run extends ListActivity {
 	//  ******************  Console Command variables ********************************
 
 	public static final String Console_KW[] = {			// Console commands
-		"front", "save", "title", "line.text", "line.touched", "line.new", "line.char"
+		"front", "save", "title",
+		"line.count", "line.text", "line.touched",
+		"line.new", "line.char"
 	};
 
 	private final Command[] Console_cmd = new Command[] {	// Map console command keywords to their execution functions
 		new Command("front")            { public boolean run() { return executeCONSOLE_FRONT(); } },
 		new Command("save")             { public boolean run() { return executeCONSOLE_DUMP(); } },
 		new Command("title")            { public boolean run() { return executeCONSOLE_TITLE(); } },
+		new Command("line.count")       { public boolean run() { return executeCONSOLE_LINE_COUNT(); } },
 		new Command("line.text")        { public boolean run() { return executeCONSOLE_LINE_TEXT(); } },
 		new Command("line.touched")     { public boolean run() { return executeCONSOLE_LINE_TOUCHED(); } },
 		new Command("line.new")         { public boolean run() { return executeCONSOLE_LINE_NEW(); } },
@@ -14429,6 +14432,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			title = StringConstant;
 		}
 		sendMessage(MESSAGE_CONSOLE_TITLE, title);				// Signal UI to update its title
+		return true;
+	}
+
+	private boolean executeCONSOLE_LINE_COUNT(){
+		if (!getNVar()) return false;							// variable to hold the number of lines
+		if (!checkEOL()) return false;
+
+		int count = output.size();								// number of lines written to console
+		NumericVarValues.set(theValueIndex, (double)count);
 		return true;
 	}
 

@@ -98,7 +98,7 @@ public class Settings extends PreferenceActivity {
 	           ArrayList <String> list = new ArrayList <String>();
 	           String line;
 	           while ((line = bufReader.readLine()) != null) {
-	               if (line.contains("vfat") || line.contains("/mnt")) {
+	               if (line.contains("vfat") || line.contains("exfat") || line.contains("/mnt")) {
 	                   StringTokenizer tokens = new StringTokenizer(line, " ");
 	                   String s = tokens.nextToken();
 	                   s = tokens.nextToken(); // Take the second token, i.e. mount point
