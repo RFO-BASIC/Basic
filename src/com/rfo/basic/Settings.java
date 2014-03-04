@@ -27,6 +27,7 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -64,38 +65,40 @@ public class Settings extends PreferenceActivity {
 	   protected void onCreate(Bundle savedInstanceState) {   // The method sets the initial displayed
 	      super.onCreate(savedInstanceState);				  // checked state from the xml file
 	      addPreferencesFromResource(R.xml.settings);         // it does not affect the above variables
-	      setBaseDrive();
+	      setBaseDriveList();
 	   }
 
-	   public  void setBaseDrive() {
-		   int count = 3;
+	public void setBaseDriveList() {
+		String defaultPath = Environment.getExternalStorageDirectory().getPath();
+		String entries[] = getStorageDirectories(defaultPath);
+		String values[] = entries.clone();
 
-		      String xentries[] = {"No external storage"};
-		      String xvalues[] = {"none"};
+		final String sdcard = "/sdcard";
+		String sdcardPath;
+		try { sdcardPath = new File(sdcard).getCanonicalPath(); }
+		catch (IOException e) { sdcardPath = ""; }
+		if (entries[0].equals(sdcardPath)) { entries[0] = sdcard; }
 
-		      String entries[] ;
-		      String values[];
+		PreferenceManager PM = getPreferenceManager();
+		ListPreference baseDrivePref = (ListPreference) PM.findPreference("base_drive_pref");
+		baseDrivePref.setEntries(entries);
+		baseDrivePref.setEntryValues(values);
 
-		      entries = values = getStorageDirectories();
+		String value = getBaseDrive(Basic.BasicContext);
+		if (value.equals("none")) {
+			baseDrivePref.setValueIndex(0);
+		}
+	}
 
-		      if (entries.length == 0) {
-		    	  entries = xentries;
-		    	  values = xvalues;
-		      }
+	private static String[] getStorageDirectories(String defaultPath)
+	{
+		defaultPath = Environment.getExternalStorageDirectory().getPath();
+		ArrayList <String> list = new ArrayList <String>();
+		list.add(defaultPath);
 
-		      PreferenceManager PM = getPreferenceManager();
-		      ListPreference baseDrivePref = (ListPreference) PM.findPreference("base_drive_pref");
-		      baseDrivePref.setEntries(entries);
-		      baseDrivePref.setEntryValues(values);
-	   }
-
-	   public static String[] getStorageDirectories()
-	   {
-	       String[] dirs = null;
 	       BufferedReader bufReader = null;
 	       try {
 	           bufReader = new BufferedReader(new FileReader("/proc/mounts"));
-	           ArrayList <String> list = new ArrayList <String>();
 	           String line;
 	           while ((line = bufReader.readLine()) != null) {
 	               if (line.contains("vfat") || line.contains("exfat") || line.contains("/mnt")) {
@@ -103,34 +106,28 @@ public class Settings extends PreferenceActivity {
 	                   String s = tokens.nextToken();
 	                   s = tokens.nextToken(); // Take the second token, i.e. mount point
 
-	                   if (s.equals(Environment.getExternalStorageDirectory().getPath())) {
-	                       list.add(s);
-	                   }
-	                   else if (line.contains("/dev/block/vold")) {
+	                   if (s.equals(defaultPath)) {
+	                       continue;
+	                   } else if (line.contains("/dev/block/vold")) {
 	                       if (!line.contains("/mnt/secure") && !line.contains("/mnt/asec") && !line.contains("/mnt/obb") && !line.contains("/dev/mapper") && !line.contains("tmpfs")) {
 	                           list.add(s);
 	                       }
 	                   }
 	               }
 	           }
-
-	           dirs = new String[list.size()];
-	           for (int i = 0; i < list.size(); i++) {
-	               dirs[i] = list.get(i);
-	           }
 	       }
 	       catch (FileNotFoundException e) {}
 	       catch (IOException e) {}
 	       finally {
 	           if (bufReader != null) {
-	               try {
-	                   bufReader.close();
-	               }
+	               try { bufReader.close(); }
 	               catch (IOException e) {}
 	           }
 	       }
-	       return dirs;
-	   }
+
+		String[] dirs = new String[list.size()];
+		return list.toArray(dirs);
+	}
 
 	   @Override
 	   public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key pressed
@@ -142,16 +139,12 @@ public class Settings extends PreferenceActivity {
 
 	   }
 
-	   @Override
-	   public boolean onPreferenceTreeClick (PreferenceScreen preferenceScreen, Preference preference) {
-		   changeBaseDrive = true;
-		   Preference p = preference;
-		   String title = p.getTitle().toString();
-		   if (title.equals("Base Drive")){
-			   changeBaseDrive = true;
-		   }
-		   return false;
-	   }
+	@Override
+	public boolean onPreferenceTreeClick (PreferenceScreen preferenceScreen, Preference preference) {
+		String title = preference.getTitle().toString();
+		changeBaseDrive = title.equals("Base Drive");
+		return false;
+	}
 
 	public static void setDefaultValues(Context context, boolean force) {
 		if (force) {

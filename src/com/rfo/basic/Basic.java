@@ -599,8 +599,12 @@ public class Basic extends ListActivity  {
 
 		private void doBGforSB() {								// Background code for Standard Basic
 			SD_ProgramPath = SAMPLES_DIR;						// This setting will also force LoadFile to show the samples directory
-			copyAssets(AppPath);
-			doFirstLoad();										// First load shows a first load basic program
+			if (new File(getFilePath()).exists()) {
+				copyAssets(AppPath);
+				doFirstLoad();									// First load shows a first load basic program
+			} else {
+				doCantLoad();									// Can't load: show an error message
+			}
 			DoAutoRun = false;
 			startActivity(new Intent(BasicContext, Editor.class));	// Goto the Editor
 			finish();
@@ -744,18 +748,35 @@ public class Basic extends ListActivity  {
 
 			Editor.DisplayText="!!\n\n" +
 					"Welcome to BASIC!\n\n" +
-					"Press Menu->More->About to\n" +
-					"get the full information\n" +
+					"Press Menu->More->About\n" +
+					"to get more information\n" +
 					"about this release.\n\n" +
 					"The BASIC! User's Manual,\n" +
 					"De Re BASIC!, can also be\n" +
-					"accessed from that location.\n\n" +
+					"found at that location.\n\n" +
 					"Press Menu->Clear to clear\n" +
-					"this program and start\n" +
-					"editing your own BASIC!\n" +
+					"this message and start\n" +
+					"writing your own BASIC!\n" +
 					"program.\n\n"+
 					"!!"
 					;  // Initialize the Display Program Lines
+		}
+
+		public void doCantLoad(){
+			// A short program of comments that will be displayed
+			// by the Editor to indicate the Base Drive is not writable
+
+			Editor.DisplayText="!!\n\n" +
+					"BASIC! is unable to write\n" +
+					"its sample programs.\n" +
+					"You can write and run\n" +
+					"programs, but you cannot\n" +
+					"save them. You can press\n" +
+					"Menu->More->Preferences\n" +
+					"and select \"Base Drive\"\n" +
+					"to change the setting\n" +
+					"to writable storage.\n\n" +
+					"!!";
 		}
 
 		private void LoadTheProgram(){
