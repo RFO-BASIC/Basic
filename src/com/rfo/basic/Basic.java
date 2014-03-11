@@ -132,6 +132,10 @@ public class Basic extends ListActivity  {
 			if (subPath != null) { path.append(File.separatorChar).append(subPath); }
 			subPath = path.toString();
 		}
+		try {
+			subPath = new File(subPath).getCanonicalPath();
+			if (subPath.isEmpty()) { subPath = new File(subPath).getAbsolutePath(); }
+		} catch(IOException e) { /* use subPath */ }
 		return subPath;
 	}
 

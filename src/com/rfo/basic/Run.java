@@ -755,7 +755,7 @@ public class Run extends ListActivity {
 
 	public static final String file_KW[] = {
 		"delete", "size", "dir", "mkdir",
-		"rename", "root", "exists"
+		"rename", "root", "exists", "type"
 	};
 
 	private final Command[] file_cmd = new Command[] {	// Map File command keywords to their execution functions
@@ -765,7 +765,8 @@ public class Run extends ListActivity {
 		new Command("mkdir")            { public boolean run() { return executeMKDIR(); } },
 		new Command("rename")           { public boolean run() { return executeRENAME(); } },
 		new Command("root")             { public boolean run() { return executeFILE_ROOTS(); } },
-		new Command("exists")           { public boolean run() { return executeFILE_EXISTS(); } }
+		new Command("exists")           { public boolean run() { return executeFILE_EXISTS(); } },
+		new Command("type")             { public boolean run() { return executeFILE_TYPE(); } }
 	};
 
     // ******************************** Wakelock variables *********************************
@@ -5146,14 +5147,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 
 		int gln = getLabelLineNum();
-		if ((gln <= 0) || !checkEOL()) return false;
+		if ((gln < 0) || !checkEOL()) return false;
 		ExecutingLineIndex = gln;
 		return true;
 	}
 
 	private boolean executeGOSUB() {
 		int gln = getLabelLineNum();
-		if ((gln <= 0) || !checkEOL()) return false;
+		if ((gln < 0) || !checkEOL()) return false;
 		GosubStack.push(ExecutingLineIndex);
 		ExecutingLineIndex = gln;
 		return true;
@@ -7636,6 +7637,39 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+	private boolean isResourceFile(int resID) {
+		boolean isFile = false;
+		if (resID != 0) {
+			InputStream inputStream= null;
+			try {
+				inputStream = getResources().openRawResource(resID);
+				isFile = true;
+			}
+			catch (Exception ex) { }						// eat exception and return false
+			finally { closeStream(inputStream, null); }
+		}
+		return isFile;
+	}
+
+	private String getAssetType(String fileName) {
+		String type = null;
+		String path = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
+		AssetFileDescriptor afd = null;
+		AssetManager am = getAssets();
+		try {
+			afd = am.openFd(path);
+			String[] list = am.list(path);
+			if (list.length != 0) { type = "d"; }
+			else if (afd != null) { type = "f"; }
+		}
+		catch (IOException ex1) { }							// eat exception and return null
+		finally {
+			try { if (afd != null) { afd.close(); } }
+			catch (IOException ex2) { }
+		}
+		return type;										// null if asset not found
+	}
+
 	private long getResourceSize(String fileName) {
 		long size = -1;
 		int resID = Basic.getRawResourceID(fileName);
@@ -7645,7 +7679,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				inputStream = getResources().openRawResource(resID);
 				size = inputStream.available();
 			}
-			catch (Exception ex){ }							// eat exception and return -1
+			catch (Exception ex) { }						// eat exception and return -1
 			finally { closeStream(inputStream, null); }
 		}
 		return size;
@@ -7698,6 +7732,39 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+
+	private boolean executeFILE_TYPE() {
+		if (!getSVar()) { return false; }					// get the var to put the type info into
+		int SaveValueIndex = theValueIndex;
+
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }				// get the file name
+		String fileName = StringConstant;
+
+		if (!checkEOL()) { return false; }
+		if (!checkSDCARD('r')) { return false; }
+
+		String type = "x";										// assume does not exist
+		File file = new File(Basic.getDataPath(fileName));
+		if (file.exists()) {
+			type = file.isDirectory() ? "d" :
+				   file.isFile()      ? "f" : "o";
+		} else {												// does not exist in file system
+			if (Basic.isAPK) {									// we are in APK
+				int resID = Basic.getRawResourceID(fileName);
+				if (resID != 0) {
+					type = isResourceFile(resID) ? "f" : "o";	// file or other, can't be a directory
+				} else {
+					String aType = getAssetType(fileName);		// file or directory, can't be other
+					if (aType != null) { type = aType; }		// else "x", does not exist
+				}
+			}													// else "x", does not exist
+		}
+		StringVarValues.set(SaveValueIndex, type);			// put the file type into the var
+
+		return true;
+	}
+
 	private boolean executeFILE_ROOTS(){
 		if (!getSVar()) { return false; }
 		int SaveVarIndex = theValueIndex;
@@ -7705,12 +7772,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) { return false; }
 		if (!checkSDCARD('r')) { return false; }
 
-		File file = new File(Basic.getDataPath(null));		// get path to default data directory
-		String s = "";
-		try { s = file.getCanonicalPath(); }
-		catch(IOException e) {}
-		
-		StringVarValues.set(SaveVarIndex, s);
+		String path = Basic.getDataPath(null);		// get canonical path to default data directory
+		StringVarValues.set(SaveVarIndex, path);
 		return true;
 	}
 
@@ -7721,6 +7784,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!isNext(',')) { return false; }							// parse the ,D$[]
 		String var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
 		if (var == null) { return false; }							// must name a new string array variable
+		String dirMark = "(d)";
+		if (isNext(',')) {											// optional directory marker
+			if (!getStringArg()) { return false; }
+			dirMark = StringConstant;
+		}
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
 		File lbDir = new File(Basic.getDataPath(filePath));
@@ -7735,14 +7803,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (FL == null) {											// if not a dir
 			dirs.add(" ");											// make list with one element
 		} else {
-											// Go through the file list and mark directory entries with (d)
+											// Go through the file list and mark directory entries with dirMark
 			String absPath = lbDir.getAbsolutePath() + '/';
 			for (String s : FL) {
 				File test = new File(absPath + s);
-				if (test.isDirectory()) {							// If file is a directory, add "(d)"
-					dirs.add(s + "(d)");							// and add to display list
+				if (test.isDirectory()) {							// If file is a directory
+					dirs.add(s + dirMark);							// mark it and add it to display list
 				} else {
-					files.add(s);									// else add name without the (d)
+					files.add(s);									// else add name without the directory mark
 				}
 			}
 			Collections.sort(dirs);									// Sort the directory list
@@ -13769,11 +13837,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			        return RunTimeError(e);
 			    }
 		}
-		
+
 		private boolean executeFTP_DIR(){
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getNVar()) return false;								// get the list VAR
+			String dirMark = "(d)";
+			if (isNext(',')) {											// optional directory marker
+				if (!getStringArg()) { return false; }
+				dirMark = StringConstant;
+			}
 			if (!checkEOL()) return false;
 
 			ArrayList<String> theStringList = new ArrayList <String>();	// create a new user list
@@ -13789,13 +13862,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 			for (FTPFile file : ftpFiles) {								// write file names to list var
 				String name = file.getName();
-				if (file.isDirectory()) { name += "(d)"; }				// mark directories
+				if (file.isDirectory()) { name += dirMark; }			// mark directories
 				theStringList.add(name);
 			}
 
 			return true;
 		}
-		
+
 		private boolean executeFTP_CD(){
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
