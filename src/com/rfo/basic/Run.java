@@ -454,8 +454,8 @@ public class Run extends ListActivity {
     private static final int BKWnone= 198;
     private static final int SKIP = 199;
 
-    private static int KeyWordValue = 0;						// Will contain an enumerated keyword value
-    private static String PossibleKeyWord = "";					// Used when TO, STEP, THEN are expected
+    private int KeyWordValue = 0;								// Will contain an enumerated keyword value
+    private String PossibleKeyWord = "";						// Used when TO, STEP, THEN are expected
 
     // **************** The variables for the math function names ************************
 
@@ -476,6 +476,7 @@ public class Run extends ListActivity {
     	"atan(", "cbrt(", "cosh(", "hypot(",
     	"sinh(", "pow(", "log10(",
     	"ucode(", "pi(", "min(", "max(",		// pi, min, max: new/2013-07-29 gt
+    	"int(", "frac(", "sgn(",				// int, frac, sgn: new/2014-03-16 gt
     };
 
     private static final int MFsin = 0;			// Enumerated name for the Match Functions
@@ -521,12 +522,25 @@ public class Run extends ListActivity {
     private static final int MFpow = 40;
     private static final int MFlog10 = 41;
     private static final int MFucode = 42;
-    private static final int MFpi = 43;				// pi new/2013-07-29 gt
-    private static final int MFmin = 44;			// min new/2013-07-29 gt
-    private static final int MFmax = 45;			// max new/2013-07-29 gt
+    private static final int MFpi = 43;				// 2013-07-29 gt
+    private static final int MFmin = 44;			// 2013-07-29 gt
+    private static final int MFmax = 45;			// 2013-07-29 gt
+    private static final int MFint = 46;			// 2014-03-16 gt
+    private static final int MFfrac = 47;			// 2014-03-16 gt
+    private static final int MFsgn = 48;			// 2014-03-16 gt
 
-    public static  int MFNumber = 0;				// Will contain a math function's enumerated name value
-    
+    private int MFNumber = 0;						// Will contain a math function's enumerated name value
+
+	private static final HashMap<String, Integer> mRoundingModeTable = new HashMap<String, Integer>(7) {{
+		put("hd", BigDecimal.ROUND_HALF_DOWN);
+		put("he", BigDecimal.ROUND_HALF_EVEN);
+		put("hu", BigDecimal.ROUND_HALF_UP);
+		put("d",  BigDecimal.ROUND_DOWN);
+		put("u",  BigDecimal.ROUND_UP);
+		put("f",  BigDecimal.ROUND_FLOOR);
+		put("c",  BigDecimal.ROUND_CEILING);
+	}};
+
     //*********************** The variables for the Operators  ************************
  
     public static final String OperatorString[]={
@@ -3524,18 +3538,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 		
 	private  boolean MathFunction(){					// get a Math Function if there is one
-													// Test for Math Function
-													// chop off used part of the line
-		
-		int i = 0;
-		for (i = 0; i<MathFunctions.length; ++i){                   // Does the chopped line
-			 if (ExecutingLineBuffer.startsWith(MathFunctions[i],LineIndex)){				// start with a math function?
-				 MFNumber = i;										// if it does, set the Enumerated name
-				 LineIndex = LineIndex + MathFunctions[i].length();	// set line index to end of MF
-				 if (LineIndex >= ExecutingLineBuffer.length()) return false;
-				 return true;										// We have a math function
-			 	}
+		int i = ExecutingLineBuffer.indexOf('(', LineIndex);
+		if (i < 0) { return false; }								// no '(', so no function
+		String token = ExecutingLineBuffer.substring(LineIndex, i + 1);	// tokoen could be a function name
+		for (i = 0; i < MathFunctions.length; ++i) {
+			if (token.equals(MathFunctions[i])) {					// Is the token a math function name?
+				MFNumber = i;										// If it is, set the Enumerated name
+				LineIndex += token.length();						// set line index to end of MF
+				return (LineIndex < ExecutingLineBuffer.length());	// If no error, we have a math function
 			}
+		}
 		return false;												// Not a math function
 	}
 	
@@ -3865,13 +3877,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		theOpStack.push(op);          // Push the current operator
 		return true;
 	}
-		
-		private boolean doMathFunction(Stack<Integer> theOpStack, Stack<Double> theValueStack){
-			double d1 = 0.0;
-			double d2 = 0.0;
-			
-			switch (MFNumber){
-			
+
+	private boolean doMathFunction(Stack<Integer> theOpStack, Stack<Double> theValueStack){
+		double d1 = 0.0;
+		double d2 = 0.0;
+
+		switch (MFNumber) {
+
 			case MFsin:
 				if (!evalNumericExpression()) return false;
 				d1 = EvalNumericExpressionValue;
@@ -3895,11 +3907,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.sqrt(d1));
 				break;
-				
+
 			case MFabs:
 				if (!evalNumericExpression()) return false;
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.abs(d1));
+				break;
+
+			case MFsgn:											// 2014-03-16 gt
+				if (!evalNumericExpression()) return false;
+				d1 = EvalNumericExpressionValue;
+				theValueStack.push(Math.signum(d1));
 				break;
 
 			case MFceil:
@@ -3907,14 +3925,29 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.ceil(d1));
 				break;
-				
+
 			case MFfloor:
 				if (!evalNumericExpression()) return false;
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.floor(d1));
 				break;
 
-			case MFmin:											// min new/2013-07-29 gt
+			case MFint:											// 2014-03-16 gt
+				if (!evalNumericExpression()) return false;
+				d1 = (double)(EvalNumericExpressionValue.intValue());
+				theValueStack.push(Double.valueOf(d1));
+				break;
+
+			case MFfrac:										// 2014-03-16 gt
+				if (!evalNumericExpression()) return false;
+				String s1 = EvalNumericExpressionValue.toString();
+				String s2 = (EvalNumericExpressionValue < 0) ? "-" : "";
+				int i1 = s1.indexOf('.');
+				d1 = (i1 < 0) ? 0 : Double.parseDouble(s2 + s1.substring(i1));
+				theValueStack.push(d1);
+				break;
+
+			case MFmin:											// 2013-07-29 gt
 				if (!evalNumericExpression()){return false;}
 				d1 = EvalNumericExpressionValue;
 				if (!isNext(',')) { return false; }
@@ -3923,7 +3956,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				theValueStack.push(Math.min(d1, d2));
 				break;
 
-			case MFmax:											// max new/2013-07-29 gt
+			case MFmax:											// 2013-07-29 gt
 				if (!evalNumericExpression()){return false;}
 				d1 = EvalNumericExpressionValue;
 				if (!isNext(',')) { return false; }
@@ -3956,7 +3989,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				theValueStack.push(Math.toRadians(d1));
 				break;
 
-			case MFpi:											// pi new/2013-07-29 gt
+			case MFpi:											// 2013-07-29 gt
 				theValueStack.push(Math.PI);
 				break;
 
@@ -3989,7 +4022,31 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			case MFround:
 				if (!evalNumericExpression()) return false;
 				d1 = EvalNumericExpressionValue;
-				theValueStack.push((double) Math.round(d1));
+				d2 = 0.0;											// default decimal place count
+				int roundingMode = BigDecimal.ROUND_HALF_DOWN;	// default rounding mode
+				if (isNext(',')) {									// look for optional place count arg
+					boolean isComma = isNext(',');
+					if (!isComma) {
+						if (!evalNumericExpression()) return false;
+						d2 = EvalNumericExpressionValue;
+						if (d2 < 0) { return RunTimeError("Decimal place count must be >= 0"); }
+						isComma = isNext(',');
+					}
+					if (isComma) {								// look for optional rounding mode
+						if (!getStringArg()) return false;
+						String roundingArg = StringConstant.toLowerCase();
+						Integer mode = mRoundingModeTable.get(roundingArg);
+						if (mode == null) { return RunTimeError("Invalid rounding mode"); }
+						roundingMode = mode.intValue();
+					}
+				}
+				if ((d2 == 0.0) && (roundingMode == BigDecimal.ROUND_HALF_DOWN))
+				{
+					d1 = (double)Math.round(d1);
+				} else {
+					d1 = new BigDecimal(d1).setScale((int)d2, roundingMode).doubleValue();
+				}
+				theValueStack.push(d1);
 				break;
 
 			case MFlen:								// LEN(s$
@@ -4312,17 +4369,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				d1 = EvalNumericExpressionValue;
 				theValueStack.push(Math.log10(d1));
 				break;
-				
+
 			default:
-				
-			}
-			// Every function must have a closing right parenthesis.
-			return (isNext(')'));
+				break;
 		}
-															
+		// Every function must have a closing right parenthesis.
+		return (isNext(')'));
+	}
 
-
-		
 	private  boolean getStringFunction(){				// Get a string function if there is one
 													// are the next characters a String Function?
 													// start by chopping off the part of the line
