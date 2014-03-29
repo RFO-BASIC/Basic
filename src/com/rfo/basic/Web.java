@@ -26,7 +26,6 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-import java.io.File;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 
@@ -35,22 +34,20 @@ import org.apache.http.util.EncodingUtils;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
+import android.os.Process;
 import android.speech.RecognizerIntent;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.JsResult;
-
-import android.os.Bundle;
-import android.os.Process;
-
-import android.webkit.DownloadListener;
 
 
 public class Web extends Activity {
@@ -204,19 +201,12 @@ public class Web extends Activity {
     	public void webLoadUrl(String URL){
     		if (engine != null)engine.loadUrl(URL);
     	}
-    
-    	public void webLoadString(String data){
-    		File lbDir;
-		if (Basic.isAPK) {
-			lbDir = new File("/android_asset/");
-		} else {
-			lbDir = new File(Basic.getDataPath(""));
+
+		public void webLoadString(String baseURL, String data){
+			if (engine == null) return;
+			engine.loadDataWithBaseURL(baseURL, data, "text/html", "UTF-8", baseURL + "*");
 		}
-    		String s = lbDir.getAbsolutePath();
-    		s = "file://" + s + "/";
-    		if (engine != null)engine.loadDataWithBaseURL(s, data, "text/html", "UTF-8", s+"*");
-    	}
-    	
+
     	public void webClose(){
     		finish();
     		if (engine != null) engine = null;

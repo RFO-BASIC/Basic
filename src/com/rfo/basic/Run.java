@@ -64,6 +64,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.Stack;
@@ -178,6 +179,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 
 import org.apache.commons.net.ftp.*;
+
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 
@@ -4021,30 +4023,27 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 			case MFround:
 				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				d2 = 0.0;											// default decimal place count
-				int roundingMode = BigDecimal.ROUND_HALF_DOWN;	// default rounding mode
-				if (isNext(',')) {									// look for optional place count arg
-					boolean isComma = isNext(',');
-					if (!isComma) {
-						if (!evalNumericExpression()) return false;
-						d2 = EvalNumericExpressionValue;
-						if (d2 < 0) { return RunTimeError("Decimal place count must be >= 0"); }
-						isComma = isNext(',');
-					}
-					if (isComma) {								// look for optional rounding mode
-						if (!getStringArg()) return false;
-						String roundingArg = StringConstant.toLowerCase();
-						Integer mode = mRoundingModeTable.get(roundingArg);
-						if (mode == null) { return RunTimeError("Invalid rounding mode"); }
-						roundingMode = mode.intValue();
-					}
-				}
-				if ((d2 == 0.0) && (roundingMode == BigDecimal.ROUND_HALF_DOWN))
-				{
+				d1 = EvalNumericExpressionValue;					// look for optional place count arg
+				if (!isNext(',')) {									// no optional parameters, legacy behavior
 					d1 = (double)Math.round(d1);
 				} else {
-					d1 = new BigDecimal(d1).setScale((int)d2, roundingMode).doubleValue();
+					int places = 0;									// default decimal place count
+					int roundingMode = BigDecimal.ROUND_HALF_DOWN;	// default rounding mode
+					boolean isComma = isNext(',');
+					if (!isComma) {
+						if (!evalNumericExpression()) return false;	// get decimal place count
+						places = EvalNumericExpressionValue.intValue();
+						if (places < 0) { return RunTimeError("Decimal place count (" + places + ") must be >= 0"); }
+						isComma = isNext(',');
+					}
+					if (isComma) {									// look for optional rounding mode
+						if (!getStringArg()) return false;
+						String roundingArg = StringConstant.toLowerCase(Locale.US);
+						Integer mode = mRoundingModeTable.get(roundingArg);
+						if (mode == null) { return RunTimeError("Invalid rounding mode: " + roundingArg); }
+						roundingMode = mode.intValue();
+					}
+					d1 = new BigDecimal(d1).setScale(places, roundingMode).doubleValue();
 				}
 				theValueStack.push(d1);
 				break;
@@ -7705,23 +7704,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return isFile;
 	}
 
-	private String getAssetType(String fileName) {
-		String type = null;
-		String path = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
-		AssetFileDescriptor afd = null;
+	private String getAssetType(String assetPath) {			// return type "d" or "f", or null if not found
 		AssetManager am = getAssets();
 		try {
-			afd = am.openFd(path);
-			String[] list = am.list(path);
-			if (list.length != 0) { type = "d"; }
-			else if (afd != null) { type = "f"; }
-		}
-		catch (IOException ex1) { }							// eat exception and return null
-		finally {
-			try { if (afd != null) { afd.close(); } }
-			catch (IOException ex2) { }
-		}
-		return type;										// null if asset not found
+			String[] list = am.list(assetPath);
+			if (list.length != 0) { return "d"; }			// it's a directory (no empty directories in assets)
+		} catch (IOException e) { }
+
+		try {												// only works for some file extensions
+			AssetFileDescriptor afd = am.openFd(assetPath);
+			try { afd.close(); } catch (IOException e) { }	// clean up
+			return "f";										// it's a file
+		} catch (IOException e) { Log.d(LOGTAG, "getAssetType:openFD:" + e); }
+
+		try {												// last ditch, should always work
+			InputStream is = am.open(assetPath);
+			try { is.close(); } catch (IOException e) { }	// clean up
+			return "f";										// it's a file
+		} catch (IOException e) { Log.d(LOGTAG, "getAssetType:open:" + e); }
+
+		return null;										// asset not found
 	}
 
 	private long getResourceSize(String fileName) {
@@ -7739,20 +7741,42 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return size;
 	}
 
-	private long getAssetSize(String fileName) {
-		long size = -1;
-		String path = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
-		AssetFileDescriptor afd = null;
+	private long getAssetSize(String fileName) {			// get the size of a file in assets
+		String assetPath = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
+		AssetManager am = getAssets();
+
 		try {
-			afd = getAssets().openFd(path);
-			size = afd.getLength();
-		}
-		catch (IOException ex1) { }							// eat exception and return -1
-		finally {
-			try { if (afd != null) { afd.close(); } }
-			catch (IOException ex2) { }
-		}
-		return size;
+			String[] list = am.list(assetPath);
+			if (list.length != 0) { return 0; }				// it's a directory (no empty directories in assets)
+		} catch (IOException e) { }
+
+		long size = AssetFileDescriptor.UNKNOWN_LENGTH;
+		try {												// try the easy way:
+			AssetFileDescriptor afd = am.openFd(assetPath);	// get afd
+			size = afd.getLength();							// and ask it for the length
+			try { afd.close(); } catch (IOException e) { }	// clean up
+			if (size != AssetFileDescriptor.UNKNOWN_LENGTH) { return size; }
+		} catch (IOException e) { Log.d(LOGTAG, "getAssetSize:openFD:" + e); }
+
+		BufferedInputStream bis = null;
+		try {												// no afd or length unknown
+			InputStream is = am.open(assetPath);			// open the file
+			size = is.available();							// and check available
+			if (size != AssetFileDescriptor.UNKNOWN_LENGTH) { return size; }
+
+			// Opened file but length is unknown.
+			// Last ditch attempt: read the file and count its bytes
+			byte[] bytes = new byte[8192];
+			long bytesRead = 0;
+			bis = new BufferedInputStream(is);
+			for (int count = 0; count != -1; count = bis.read(bytes, 0, 8192)) {
+				bytesRead += count;
+			}
+			size = bytesRead;
+		} catch (IOException e) { Log.d(LOGTAG, "getAssetSize:open:" + e); }
+		finally { closeStream(bis, null); }
+
+		return ((size == AssetFileDescriptor.UNKNOWN_LENGTH) ? -1 : size);
 	}
 
 	private boolean executeFILE_SIZE(){
@@ -7809,7 +7833,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				if (resID != 0) {
 					type = isResourceFile(resID) ? "f" : "o";	// file or other, can't be a directory
 				} else {
-					String aType = getAssetType(fileName);		// file or directory, can't be other
+					String assetPath = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
+					String aType = getAssetType(assetPath);		// file or directory, can't be other
 					if (aType != null) { type = aType; }		// else "x", does not exist
 				}
 			}													// else "x", does not exist
@@ -11147,16 +11172,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				int resID = Basic.getRawResourceID(fileName);			// try to load the file from a raw resource
 				if (resID != 0) {
 					mp = MediaPlayer.create(Basic.BasicContext, resID);
-				} else try {											// try to load the file from assets
-					AssetFileDescriptor afd = getAssets().openFd(Basic.getAppFilePath(Basic.DATA_DIR, fileName));
-					mp = new MediaPlayer();
-					mp.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());
-					mp.prepare();
-					afd.close();
-				} catch (IOException ex) {
-					if (mp != null) {
-						mp.release();
-						mp = null;
+				} else {												// try to load the file from assets
+					AssetFileDescriptor afd = null;
+					try {
+						String assetPath = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
+						afd = getAssets().openFd(assetPath);
+						mp = new MediaPlayer();
+						mp.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());
+						mp.prepare();
+					} catch (IOException e) {
+						if (mp != null) {
+							mp.release();
+							mp = null;
+						}
+					} finally {
+						if (afd != null) { try { afd.close(); } catch (IOException e) { } }
 					}
 				}
 			}
@@ -14756,10 +14786,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				int resID = Basic.getRawResourceID(fileName);			// try to load the file from a raw resource
 				if (resID != 0) {
 					SoundID = theSoundPool.load(Basic.BasicContext, resID, 1);
-				} else try {
-					AssetFileDescriptor afd = getAssets().openFd(Basic.getAppFilePath(Basic.DATA_DIR, fileName));
-					SoundID = theSoundPool.load(afd, 1);
-				} catch (IOException ex) { }
+				} else {												// try to load the file from assets
+					AssetFileDescriptor afd = null;
+					try {
+						String assetPath = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
+						afd = getAssets().openFd(assetPath);
+						SoundID = theSoundPool.load(afd, 1);
+					}
+					catch (IOException ex) { }
+					finally {
+						if (afd != null) { try { afd.close(); } catch (IOException e) { } }
+					}
+				}
 				if (SoundID == 0) { return false; }
 			}
 		}
@@ -15260,28 +15298,42 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
           
           return true;
 	  }
-	  
-      private boolean execute_html_load_url(){              // Load an internet url
+
+	private String getURL(String path) {					// build a URL for a file or directory in the file system or assets
+		String urlPath = Basic.getDataPath(path);			// if path is null, get full path of default data directory
+															// if non-null, get full path of a file in the data directory
+		if (!new File(urlPath).exists() && Basic.isAPK) {	// if file or dir does not exist in file system, and this is an APK
+			String assetPath = Basic.getAppFilePath(Basic.DATA_DIR, path);	// then look for it in assets
+			String type = getAssetType(assetPath);			// type is null if asset not found
+			String expType = (path == null) ? "d" : "f";	// are we looking for a directory or a file?
+			if ((type != null) && type.equals(expType)) {	// if asset exists and is the expected type, use its path
+				urlPath = "/android_asset/" + assetPath;
+			}
+		}													// else use the file system path
+		return "file://" + urlPath;							// make the path into a URL
+	}
+
+	private boolean execute_html_load_url(){				// Load an internet url
 		if (!getStringArg() || !checkEOL()) return false;
 
-          String urlString = StringConstant;
-          String protocolName = urlString.substring(0,4);
-          if (!protocolName.equals("http") && !protocolName.equals("java") && !protocolName.equals("file")) {
-              if (Basic.isAPK) {                              // if not standard BASIC! then is user APK
-                  urlString = "file:///android_asset/" + urlString;       // try to load the file from the assets resource
-              } else {
-                  urlString = "file://" + Basic.getDataPath(urlString);   // try to load the file from the rfo-bsaic/data folder
-              }
-          }
-//        Web.aWebView.webLoadUrl(urlString);
+		String urlString = StringConstant;
+		String protocolName = urlString.substring(0,4);
+		if (!protocolName.equals("http") && !protocolName.equals("java") && !protocolName.equals("file")) {
+		urlString = getURL(urlString);						// Get URL with full path to file in file system or assets.
+															// If neither file nor asset exists,
+															// path points to non-existent file system file.
+		}
 		sendMessage(MESSAGE_LOAD_URL, urlString);
-          return true;
-      }
+		return true;
+	}
 
-	private boolean execute_html_load_string(){			// Load an html string
+	private boolean execute_html_load_string(){				// Load an html string
 		if (!getStringArg() || !checkEOL()) return false;
-//		Web.aWebView.webLoadString(StringConstant);
-		sendMessage(MESSAGE_LOAD_STRING, StringConstant);
+		String baseURL = getURL(null) + File.separatorChar;	// baseURL is default data directory in file system or assets.
+															// If directory does not exist in either file system or assets,
+															// path points to non-existent file system directory.
+		String[] data = { baseURL, StringConstant };
+		sendMessage(MESSAGE_LOAD_STRING, data);
 		return true;
 	}
 
@@ -15388,8 +15440,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				Web.aWebView.webLoadUrl(url);
 				break;
 			case MESSAGE_LOAD_STRING:
-				String string = (String)msg.obj;
-				Web.aWebView.webLoadString(string);
+				String[] data = (String[])msg.obj;
+				Web.aWebView.webLoadString(data[0], data[1]);	// baseURL and HTML.Load.String argument
 				break;
 			case MESSAGE_POST:
 				String[] params = (String[])msg.obj;
