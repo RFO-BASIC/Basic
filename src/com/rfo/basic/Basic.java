@@ -139,8 +139,6 @@ public class Basic extends ListActivity  {
 		return subPath;
 	}
 
-	// Usage note: if subPath is null, function returns "/<basePath>/<AppPath>/source"
-	// but if subPath is "", function returns "/<basePath>/<AppPath>/source/", with "/" appended
 	public static String getSourcePath(String subPath) {
 		return getFilePath(SOURCE_DIR, subPath);
 	}
@@ -311,7 +309,7 @@ public class Basic extends ListActivity  {
 
 	private static boolean AreSamplesLoaded(){		// Sample program files have not been loaded
 													// if the sample programs directory is empty
-		String samplesPath = getSamplesPath("");	// get path with trailing '/'
+		String samplesPath = getSamplesPath(null);
 		File sdDir = new File(samplesPath);
 		sdDir.mkdirs();
 		String FL[] = sdDir.list();
@@ -330,7 +328,7 @@ public class Basic extends ListActivity  {
 				if (f1.equals(f2)) { return true; }		               // Compare version numbers
 			}
 			for (String fileName : FL) {			// If different, empty the directory
-				File file = new File(samplesPath + fileName);
+				File file = new File(samplesPath + File.separatorChar + fileName);
 				file.delete();
 			}
 		}
