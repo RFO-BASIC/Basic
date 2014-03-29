@@ -1,5 +1,5 @@
 !!
-This program demonstrats some 
+This program demonstrates some
 of the possibilities
 when using the BASIC! html commands.
 !!
@@ -8,9 +8,9 @@ when using the BASIC! html commands.
 ! any html command
 HTML.OPEN
 
-! Load the file, htmlDemo1.html
+! Load the file, htmldemo1.html
 
-HTML.LOAD.URL "htmlDemo1.html"
+HTML.LOAD.URL "htmldemo1.html"
 
 !The user now sees the html
 
