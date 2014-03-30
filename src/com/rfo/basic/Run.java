@@ -753,10 +753,11 @@ public class Run extends ListActivity {
 	private int ArrayValueStart = 0;					// Value index for newly created array 
 
 	private boolean VarIsFunction = false;				// Flag set by parseVar() when var is a user function
-	private ArrayList<Bundle> FunctionTable;      		// A bundle is created for each defined function
+	private ArrayList<Bundle> FunctionTable;			// A bundle is created for each defined function
 	private Bundle ufBundle;							// Bundle set by isUserFunction and used by doUserFunction
 	private Stack<Bundle> FunctionStack;				// Stack contains the currently executing functions
 	private int VarSearchStart;							// Used to limit search for var names to executing function vars
+	private int interruptVarSearchStart;				// Save VarSearchStart across interrupt
 	private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
 
 	private boolean VarIsNew = true;					// Signal from get var that this var is new
@@ -1788,6 +1789,7 @@ public class Run extends ListActivity {
         	if (interruptResume != -1) return true;		// If we are handling an interrupt then do not cancel this one
         	interruptResume = ExecutingLineIndex;		// Set the resume Line Number
         	ExecutingLineIndex = gotoLine;				// Set the goto line number
+        	interruptVarSearchStart = VarSearchStart;	// Save current VarSearchStart
         	IfElseStack.push(IEinterrupt);
         	return false;								//Turn off the interrupt
         }
@@ -2076,13 +2078,14 @@ private void InitVars(){
     theValueIndex = 0;				// The index into the value table for the current var
 	ArrayValueStart = 0;				// Value index for newly created array 
 	
-	VarIsFunction = false;		// Flag set by parseVar() when var is a user function
-	FunctionTable = new ArrayList<Bundle>() ;      // A bundle is created for each defined function
-	ufBundle = null ;						// Bundle set by isUserFunction and used by doUserFunction
-    FunctionStack = new Stack<Bundle>() ;			// Stack contains the currently executing functions
-    VarSearchStart = 0;					// Used to limit search for var names to executing function vars
-   fnRTN = false;				// Set true by fn.rtn. Cause RunLoop() to return
-   Debug = false;
+	VarIsFunction = false;							// Flag set by parseVar() when var is a user function
+	FunctionTable = new ArrayList<Bundle>();		// A bundle is created for each defined function
+	ufBundle = null ;								// Bundle set by isUserFunction and used by doUserFunction
+	FunctionStack = new Stack<Bundle>() ;			// Stack contains the currently executing functions
+	VarSearchStart = 0;								// Used to limit search for var names to executing function vars
+	interruptVarSearchStart = 0;					// Save VarSearchStart across interrupt
+	fnRTN = false;									// Set true by fn.rtn. Cause RunLoop() to return
+	Debug = false;
 
     VarIsNew = true;				// Signal from get var that this var is new
     VarIsNumeric = true;			// if false, Var is string(
@@ -3415,8 +3418,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean searchVar(String var) {			// search for a variable by name
-													// VarSearchStart is usually zero but will change when executing User Function
-		int j = (interruptResume == -1) ? VarSearchStart : 0;	// unless we're in an interrupt
+		int j = VarSearchStart;						// VarSearchStart is usually zero but will change when executing User Function
 		for ( ; j < VarNames.size(); ++j) {			// look up this var in the variable table
 			if (var.equals(VarNames.get(j))) {		// found it
 				VarIsNew = false;
@@ -5635,6 +5637,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean doResume(){
 		ExecutingLineIndex = interruptResume;
 		interruptResume = -1;
+		VarSearchStart = interruptVarSearchStart;
 		// Pull the IEinterrupt from the If Else stack
 		// It is possible that IFs were executed in the interrupt code
 		// so pop entries until we get to the IEinterrupt
@@ -6580,14 +6583,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	fsb.putString("PKW", PossibleKeyWord);
 	fsb.putString("fname",ufBundle.getString("fname"));
 
-	ArrayList<String> fVarName = new ArrayList<String>();				// The list of Parm Var Names
-	ArrayList<Integer> fVarType = new ArrayList<Integer>();				// and the parm types
-	ArrayList<Integer> fVarArray = new ArrayList<Integer>();			// and the parm types
+	ArrayList<String> fVarName;											// The list of Parm Var Names
+	ArrayList<Integer> fVarType;										// and the parm types
+	ArrayList<Integer> fVarArray;										// and the parm types
 	
 	fVarName = ufBundle.getStringArrayList("pnames"); 					// Get the Names and Types from the ufBundle                  
 	fVarType = ufBundle.getIntegerArrayList("ptype");					// ufBundle set by isUserFunction()
 	fVarArray = ufBundle.getIntegerArrayList("array");
-	
+
 	int pCount = fVarName.size();										// The number of parameter
 
 	int i = 0;
@@ -6649,10 +6652,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} while ( isNext(','));
 	} // end if
 
-	if (i!=pCount){
-		RunTimeError("Too few calling parameters at:");
-		return false;
-	}
+	if (i != pCount) { return RunTimeError("Too few calling parameters at:"); }
 
 	// Every function must have a closing right parenthesis.
 	if (!isNext(')')) { return false; }
@@ -6661,21 +6661,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	FunctionStack.push(fsb);							// Push the function bundle
 	VarSearchStart = sVarNames;							// Set the new start location for var name searches
-	
+
 	ExecutingLineIndex = ufBundle.getInt("line")+1;     // Set to execute first line after fn.def statement
-	
+
 	fnRTN = false;										// Will be set true by fn.rtn
 														// cause RunLoop() to return when true
-	
+
 	boolean flag = theBackground.RunLoop();				// Now go execute the function
-	
+
 	if (FunctionStack.isEmpty()){
 		RunTimeError("System problem. Wait 10 seconds before rerunning.");
 		return false;
 	}
-	
+
 	fsb = FunctionStack.pop();							// Function execution done. Restore stuff
-	
+
 	trimArray(VarNames, fsb.getInt("SVN"));
 	trimArray(VarIndex, fsb.getInt("VI"));
 	VarSearchStart = fsb.getInt("VSS");
@@ -6685,14 +6685,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	ExecutingLineIndex = fsb.getInt("ELI");
 	LineIndex = fsb.getInt("LI");
 	PossibleKeyWord = fsb.getString("PKW");
-	
+
 	ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
-	
+
 	return flag;                                      // Pass on the pass/fail state from the function
 	}
 
 // **************************** SWITCH Statements *************************************
-	
+
 	private boolean executeSW_BEGIN(){
 		boolean isNumeric;
 		double nexp = 0;
