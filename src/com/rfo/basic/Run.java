@@ -103,6 +103,7 @@ import org.apache.http.util.ByteArrayBuffer;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.KeySpec;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.app.AlertDialog;
@@ -132,6 +133,8 @@ import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.media.SoundPool;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -272,9 +275,9 @@ public class Run extends ListActivity {
     	"sw.default", "sw.end", "vibrate",
     	"kb.toggle", "kb.hide", "echo.on",
     	"echo.off", "text.input",
-    	" ",  " ",  " ",  " ",	" ", " ",			// moved all file commands to file_cmd
-    	"grabfile",
-    	"wakelock", "tone", "list.", "bundle.",
+    	" ",  " ",  " ",  " ",	" ",				// moved all file commands to file_cmd
+    	"grabfile", "wakelock", "wifilock",
+    	"tone", "list.", "bundle.",
     	"stack.", "socket.", "http.post", "device",
     	"debug.", "console.",
     	"tts.","ftp.", "bt.",						// moved three "tts" commands to tts_cmd
@@ -381,9 +384,9 @@ public class Run extends ListActivity {
     private static final int BKWnull73 = 73;
     private static final int BKWnull74 = 74;
     private static final int BKWnull75 = 75;
-    private static final int BKWnull76 = 76;
-    private static final int BKWgrabfile = 77;
-    private static final int BKWwakelock = 78;
+    private static final int BKWgrabfile = 76;
+    private static final int BKWwakelock = 77;
+    private static final int BKWwifilock = 78;
     private static final int BKWtone = 79;
     private static final int BKWlist = 80;
     private static final int BKWbundle = 81;
@@ -788,14 +791,21 @@ public class Run extends ListActivity {
 
     // ******************************** Wakelock variables *********************************
 
-    public static PowerManager.WakeLock theWakeLock;
-    public static final int partial = 1;
-    public static final int dim = 2;
-    public static final int bright = 3;
-    public static final int full = 4;
-    public static final int release = 5;
+    private static PowerManager.WakeLock theWakeLock;
+    private static final int partial = 1;
+    private static final int dim = 2;
+    private static final int bright = 3;
+    private static final int full = 4;
+    private static final int release = 5;
 
-    
+    // ******************************** Wifilock variables *********************************
+
+    private static WifiManager.WifiLock theWifiLock;
+    private static final int wifi_mode_scan = 1;
+    private static final int wifi_mode_full = 2;
+    private static final int wifi_mode_high = 3;
+    private static final int wifi_release = 4;
+
     // ******************************* File I/O operation variables  **************************
 
     public static int FMR = 0;			// File Mode Read
@@ -1921,8 +1931,12 @@ public class Run extends ListActivity {
 			if (theWakeLock != null){
 				theWakeLock.release();
 			}
+			if (theWifiLock != null){
+				theWifiLock.release();
+			}
 		}
 		theWakeLock = null;
+		theWifiLock = null;
 		isOld = true;
 
 		InitVars();	
@@ -2605,12 +2619,17 @@ protected void onDestroy(){
 		theGPS.stop();
 		theGPS = null;
 	}
-  	  
-		if (theWakeLock != null){
-			theWakeLock.release();
-			theWakeLock = null;
-		}
-	
+
+	if (theWakeLock != null){
+		theWakeLock.release();
+		theWakeLock = null;
+	}
+
+	if (theWifiLock != null){
+		theWifiLock.release();
+		theWifiLock = null;
+	}
+
 	if (BitmapList != null) {
 		for (int i = 0; i <BitmapList.size(); ++i) {
 			Bitmap SrcBitMap = BitmapList.get(i);
@@ -2977,6 +2996,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        		break;
 	        	case BKWwakelock:
 	        		if (!executeWAKELOCK()){SyntaxError(); return false;}
+	        		break;
+	        	case BKWwifilock:
+	        		if (!executeWIFILOCK()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWtone:
 	        		if (!executeTONE()){SyntaxError(); return false;}
@@ -8318,57 +8340,82 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  }
 		  return true;
 	  }
-	  
 
-	  private boolean executeWAKELOCK(){
-		  PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-		  
-		  if (!evalNumericExpression()) return false;						// Get x
-		  
-		  int code  = EvalNumericExpressionValue.intValue();
-		  
-		  if (theWakeLock != null) {
-			  theWakeLock.release();
-			  theWakeLock = null;
-		  }
-		  
-		  
-		  switch (code) {
-		  	case partial:
-		  		theWakeLock = pm.newWakeLock(
-                        PowerManager.PARTIAL_WAKE_LOCK,
-                        "BASIC!");
-		  		theWakeLock.acquire();
-		  		break;
-		  	case dim:
-		  		theWakeLock = pm.newWakeLock(
-                        PowerManager.SCREEN_DIM_WAKE_LOCK,
-                        "BASIC!");
-		  		theWakeLock.acquire();
-		  		break;
-		  	case bright:
-		  		theWakeLock = pm.newWakeLock(
-                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK,
-                        "BASIC!");
-		  		theWakeLock.acquire();
-		  		break;
-		  	case full:
-		  		theWakeLock = pm.newWakeLock(
-                        PowerManager.FULL_WAKE_LOCK,
-                        "BASIC!");
-		  		theWakeLock.acquire();
-		  		break;
-		  	case release:
-		  		break;
-		  	default:
-		  		RunTimeError("WakeLock code not 1 - 5");
-		  		return false;
-		  }
+	private boolean executeWAKELOCK(){
+		if (!evalNumericExpression()) return false;					// Get setting
+		int code  = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
 
-		  return true;
-	  }
-	  
-	  
+		if (theWakeLock != null) {
+			theWakeLock.release();
+			theWakeLock = null;
+		}
+
+		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+		String tag = "BASIC!";
+		switch (code) {
+			case partial:
+				theWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, tag);
+				theWakeLock.acquire();
+				break;
+			case dim:
+				theWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, tag);
+				theWakeLock.acquire();
+				break;
+			case bright:
+				theWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK, tag);
+				theWakeLock.acquire();
+				break;
+			case full:
+				theWakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK, tag);
+				theWakeLock.acquire();
+				break;
+			case release:
+				break;
+			default:
+				return RunTimeError("WakeLock code not 1 - 5");
+		}
+
+		return true;
+	}
+
+	@SuppressLint("InlinedApi")										// Uses a value from API 12
+	private boolean executeWIFILOCK(){
+		if (!evalNumericExpression()) return false;					// Get setting
+		int code  = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+
+		if (theWifiLock != null) {
+			theWifiLock.release();
+			theWifiLock = null;
+		}
+
+		WifiManager wm = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+		String tag = "BASIC!";
+		switch (code) {
+			case wifi_mode_high:
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR1) {	// >= 12
+					theWifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, tag);
+					theWifiLock.acquire();
+					break;
+				}							// Lower API versions fall through to MODE_FULL
+			case wifi_mode_full:
+				theWifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL, tag);
+				theWifiLock.acquire();
+				break;
+			case wifi_mode_scan:
+				theWifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_SCAN_ONLY, tag);
+				theWifiLock.acquire();
+				break;
+			case wifi_release:
+				break;
+			default:
+				return RunTimeError("WifiLock code not 1 - 4");
+		}
+
+		return true;
+	}
+
 	  private boolean executeTONE(){
 		  
 		    double duration = 1; 				// seconds
@@ -8505,11 +8552,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  if (!getSVar()) return false;
 		  
 		  String info = "";
-		  info = info + "Brand = " + android.os.Build.BRAND + "\n";
-		  info = info + "Model = " + android.os.Build.MODEL + "\n";
-		  info = info + "Device = " + android.os.Build.DEVICE + "\n";
-		  info = info + "Product = " + android.os.Build.PRODUCT + "\n";
-		  info = info + "OS = " + android.os.Build.VERSION.RELEASE;
+		  info = info + "Brand = " + Build.BRAND + "\n";
+		  info = info + "Model = " + Build.MODEL + "\n";
+		  info = info + "Device = " + Build.DEVICE + "\n";
+		  info = info + "Product = " + Build.PRODUCT + "\n";
+		  info = info + "OS = " + Build.VERSION.RELEASE;
 		  
 		  StringVarValues.set(theValueIndex, info);
 		  
@@ -10943,10 +10990,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  return true;
 	}
 
+	@SuppressLint("NewApi")										// Uses value from API 9
 	private static int getNumberOfCameras() {
 
 			int cameraCount;
-			int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
+			int level = Build.VERSION.SDK_INT;
 			if (level < 9) {											// if SDK < 9 there can be only one camera
 				Camera tCamera = Camera.open();							// Check to see if there is any camera at all
 				cameraCount = (tCamera == null) ? 0 : 1;
@@ -10957,12 +11005,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return cameraCount;
 	}
 
+	@SuppressLint("NewApi")										// Uses value from API 9
 	private boolean execute_gr_camera_select(){
 
 		if (NumberOfCameras < 0) { NumberOfCameras = getNumberOfCameras(); }
 		if (NumberOfCameras == 0) { return RunTimeError("This device does not have a camera."); }
 
-		int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
+		int level = Build.VERSION.SDK_INT;
 		if (level < 9) {											// if SDK < 9 there can be only one camera
 			CameraNumber = -1;										// so no selection is possible
 			return (NumberOfCameras != 0);
@@ -13047,7 +13096,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 	
 	private boolean executeCLIPBOARD_PUT(){
-		int v = Integer.valueOf(android.os.Build.VERSION.SDK);
+		int v = Integer.valueOf(Build.VERSION.SDK_INT);
 		if (!getStringArg()) return false;          // Get the string to put into the clipboard
 		ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 		CharSequence cs = StringConstant;
@@ -13078,10 +13127,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 	
 	// ********************************Encryption commands *****************************************
-	
-	
-/*************************************  Cypher Commands  *****************************************/
-	
+
+	@SuppressLint("NewApi")									// Uses value from API 8
 	private boolean executeENCRYPT(){
 		if (!getStringArg()) return false;					// Get the Pass Word
 		String PW = StringConstant;
@@ -13136,8 +13183,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
         StringVarValues.set(theValueIndex, Dest);    // Put the encrypted string into the user variable
 		return true;
 	}
-	
 
+	@SuppressLint("NewApi")									// Uses value from API 8
 	private boolean executeDECRYPT(){
 		if (!getStringArg()) return false;					// Get the Pass Word
 		String PW = StringConstant;
@@ -14880,27 +14927,31 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		  return true;
 	  }
-	  
-	  
-	  private boolean execute_SP_pause(){
-			if (!evalNumericExpression()) return false;
-			if (!checkEOL()) return false;
-			int streamID = EvalNumericExpressionValue.intValue();
-			if (streamID == 0 ) theSoundPool.autoPause();
-			else theSoundPool.pause(streamID);
-		  return true;
-	  }
-	  
-	  private boolean execute_SP_resume(){
-			if (!evalNumericExpression()) return false;
-			if (!checkEOL()) return false;
-			int streamID = EvalNumericExpressionValue.intValue();
-			if (streamID == 0 ) theSoundPool.autoResume();
-			else theSoundPool.resume(streamID);
 
-		  return true;
-	  }
-	  
+	@SuppressLint("NewApi")									// Uses value from API 8
+	private boolean execute_SP_pause(){
+		if (!evalNumericExpression()) return false;
+		if (!checkEOL()) return false;
+
+		int streamID = EvalNumericExpressionValue.intValue();
+		if (streamID == 0 ) theSoundPool.autoPause();
+		else theSoundPool.pause(streamID);
+
+		return true;
+	}
+
+	@SuppressLint("NewApi")									// Uses value from API 8
+	private boolean execute_SP_resume(){
+		if (!evalNumericExpression()) return false;
+		if (!checkEOL()) return false;
+
+		int streamID = EvalNumericExpressionValue.intValue();
+		if (streamID == 0 ) theSoundPool.autoResume();
+		else theSoundPool.resume(streamID);
+
+		return true;
+	}
+
 	  private boolean execute_SP_release(){
 		  if (!checkEOL()) return false;
 		  theSoundPool.release();
@@ -15120,24 +15171,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  }
 		  return true;
 	  }
-	  
- 	  private boolean executePHONE_RCV_INIT(){
-  		if (phoneRcvInited) return true;
-  		
-  		phoneRcvInited = true;
-  		
-  		mTM =  (TelephonyManager)this.getSystemService(this.TELEPHONY_SERVICE);
-  		mTM.listen(PSL, PhoneStateListener.LISTEN_CALL_STATE);
-  		
- 		return true;
- 	  }
- 	  
+
+	private boolean executePHONE_RCV_INIT(){
+		if (phoneRcvInited) return true;
+
+		phoneRcvInited = true;
+
+		mTM = (TelephonyManager)this.getSystemService(Context.TELEPHONY_SERVICE);
+		mTM.listen(PSL, PhoneStateListener.LISTEN_CALL_STATE);
+ 
+		return true;
+	}
+
 		PhoneStateListener PSL = new PhoneStateListener() {
  			public void onCallStateChanged(int state,  String incomingNumber) {
  				phoneState = state;
  				if (phoneState == TelephonyManager.CALL_STATE_RINGING) phoneNumber = incomingNumber;
  			}
- 		}; 		 
+ 		};
 
  	  
  	  private boolean executePHONE_RCV_NEXT(){
