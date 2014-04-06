@@ -23,10 +23,11 @@ This file is part of BASIC! for Android
 
     You may contact the author or current maintainers at http://rfobasic.freeforums.org
 
-**********************************************************************************-->
+**********************************************************************************
+-->
 
 <resources>
-    <string name="version">01.78</string>
+    <string name="version">01.79</string>
 
     <!-- The application name displayed in the Launcher -->
     <string name="app_name">BASIC!</string>
