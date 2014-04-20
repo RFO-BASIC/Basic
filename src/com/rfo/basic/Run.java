@@ -4642,12 +4642,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 			case SFupper:																		// UPPER$
 				if (!getStringArg()) { return false; }
-				StringConstant = StringConstant.toUpperCase();
+				StringConstant = StringConstant.toUpperCase(Locale.getDefault());
 				break;
 
 			case SFlower:																		// LOWER $
 				if (!getStringArg()) { return false; }
-				StringConstant = StringConstant.toLowerCase();
+				StringConstant = StringConstant.toLowerCase(Locale.getDefault());
 				break;
 
 			case SFformat:																		// FORMAT $
@@ -8100,27 +8100,25 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	  private boolean executeBROWSE(){
-		  
-		  if (!evalStringExpression()){return false;}
-		  if (SEisLE) return false;
-		  if (!checkEOL()) return false;
+	private boolean executeBROWSE(){
 
-		  String url = StringConstant;
-		  Intent i = new Intent(Intent.ACTION_VIEW);						  // Go to the html page
-//		  Intent i = new Intent(Intent.CATEGORY_BROWSABLE);
-		  i.setData(Uri.parse(url));
-      	try {Thread.sleep(500);}catch(InterruptedException e){}              // Sleep here stopped forced stop exceptions
+		if (!getStringArg()) return false;
+		if (!checkEOL()) return false;
+		String url = StringConstant;
 
-		  try {startActivity(i);}
-//		  catch ( android.content.ActivityNotFoundException  e){
-		  catch ( Exception  e){
-			  return RunTimeError(e);
-		  }
-		  return true;
-	  }
-	  
-	  
+		Intent i = new Intent(Intent.ACTION_VIEW);			// Intent to launch browser
+		i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		i.setData(Uri.parse(url));
+
+		// try { Thread.sleep(500); }						// Sleep here stopped forced stop exceptions
+		// catch (InterruptedException e) { }
+
+		try { startActivity(i); }							// Launch browser at url
+		catch ( Exception  e) { return RunTimeError(e); }
+
+		return true;
+	}
+
 	  private boolean executeINKEY(){
 		  
 		  if (!getSVar()) return false;						// get the var to put the key value into
@@ -10731,7 +10729,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean writeBitmapToFile(Bitmap b, String fn, int quality) {
 		CompressFormat format = CompressFormat.PNG;						// Assume png
-		String tFN = fn.toUpperCase();									// temp convert fn to upper case
+		String tFN = fn.toUpperCase(Locale.getDefault());				// temp convert fn to upper case
 		if (tFN.endsWith(".JPG")) format = CompressFormat.JPEG;			// Test jpg
 		else if (!tFN.endsWith(".PNG")) fn = fn + ".png";				// Test png
 
@@ -14542,34 +14540,32 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;											// no keyword found
 	}
 
-		    private boolean execute_SU_open(){
-		    	if (!checkEOL()) return false;
-		    	if (SUprocess != null) return true;
-		    	SU_ReadBuffer = new ArrayList<String>();    		// Initialize buffer
-		    	
-		    	try
-		        {
-		            if (isSU) SUprocess = Runtime.getRuntime().exec("su");				// Request Superuser
-		            else {
-		            	File dir = new File(Basic.getFilePath());
-		            	if (!dir.exists()) { dir.mkdirs(); }
-		            	SUprocess = Runtime.getRuntime().exec("sh", null, dir);			// Open ordinary shell
-		            }
-		            SUoutputStream = new DataOutputStream(SUprocess.getOutputStream()); // Open the output stream
-		            SUinputStream = new DataInputStream(SUprocess.getInputStream());    // Open the input stream
-		        }
-		        catch (Exception e)
-		        {
-		            RunTimeError("SU Exception: " + e);
-		            return false;
-		        }
-		        theSUReader = new SUReader(SUinputStream, SU_ReadBuffer);
-		        theSUReader.start();
+	private boolean execute_SU_open(){
+		if (!checkEOL()) return false;
+		if (SUprocess != null) return true;
+		SU_ReadBuffer = new ArrayList<String>();				// Initialize buffer
 
-		    	return true;
-		    	
-		    }
-		    
+		File dir = null;
+		if (!isSU) {											// System.open: make sure AppPath exists
+			dir = new File(Basic.getFilePath());
+			if (!dir.exists() && !dir.mkdirs()) {
+				return RunTimeError("Cannot create working directory " + dir);
+			}
+		}
+		try {
+			SUprocess = (isSU)	? Runtime.getRuntime().exec("su")				// Request Superuser
+								: Runtime.getRuntime().exec("sh", null, dir);	// Open ordinary shell
+			SUoutputStream = new DataOutputStream(SUprocess.getOutputStream());	// Open the output stream
+			SUinputStream = new DataInputStream(SUprocess.getInputStream());	// Open the input stream
+		} catch (Exception e) {
+			return RunTimeError((isSU ? "SU" : "System") + " Exception: " + e);
+		}
+		theSUReader = new SUReader(SUinputStream, SU_ReadBuffer);
+		theSUReader.start();
+
+		return true;
+	}
+
 		    private boolean execute_SU_write(){
 		    	if (!evalStringExpression()) return false;
 		    	if (!checkEOL()) return false;
@@ -14579,8 +14575,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		    		SUoutputStream.flush();
 		    	}
 		    	catch (Exception e){
-		            RunTimeError("SU Exception: " + e);
-		            return false;	    		
+					return RunTimeError((isSU ? "SU" : "System") + " Exception: " + e);
 		    	}
 
 		    	return true;
