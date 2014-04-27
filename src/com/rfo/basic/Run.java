@@ -1601,72 +1601,88 @@ public class Run extends ListActivity {
  */
 
 
-    public class Background extends Thread {
+	public class Background extends Thread {
 
-    // The execution of the basic program is done by this background Thread. This is done to keep the UI task
-    // responsive. This method controls Run as it is running in the background.
+	// The execution of the basic program is done by this background Thread. This is done to keep the UI task
+	// responsive. This method controls Run as it is running in the background.
 
-        @Override
-        public void run() {
+		private UncaughtExceptionHandler mDefaultExceptionHandler;
 
-        	boolean flag = true;
-//    		Basic.Echo = Settings.getEcho(Basic.BasicContext);
-        	Echo = false;
-        	VarSearchStart = 0;
-    		fnRTN = false;
-    		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		private UncaughtExceptionHandler mUncaughtExceptionHandler =
+			new UncaughtExceptionHandler() {
+				public void uncaughtException(Thread thread, Throwable ex) {
+					if (ex instanceof OutOfMemoryError) {
+						finishRun("Out of memory");
+					} else if (ex instanceof NullPointerException) {
+						publishProgress("Internal error! Please notify developer.");
+						finishRun("Null pointer exception");
+					} else {
+						mDefaultExceptionHandler.uncaughtException(thread, ex);
+					}
+				}
 
-        	if (PreScan()) { 				// The execution starts by scanning the source for labels and read.data
-        		
-        	ExecutingLineIndex = 0;			// Just in case PreScan ever changes it
-        	flag = RunLoop();
-        	       	
-        	Stop = true;		// If Stop is not already set, set it so that menu code can display the right thing
-        	PrintLine = "";     // Clear the Print Line buffer
-        	PrintLineReady = false;
-        	textPrintLine = "";
-        	
-        	OnBackKeyLine = 0;
-        	
-    		  if (OnErrorLine == 0 && !SyntaxError && !Exit){
-      			  
-    	  		  
-    	  		    if (!ForNextStack.empty()){
-    	  		    	publishProgress("Program ended with FOR without NEXT");
-    	  		    }
-    	  		    
-    	  		    if (!WhileStack.empty()){
-    	  		    	publishProgress("Program ended with WHILE without REPEAT");
-    	  		    }
-    	  		    
-    	  		    if (!DoStack.empty()){
-    	  		    	publishProgress("Program ended with DO without UNTIL");
-    	  		    }
-    	  		    
-    	  		  }
+				private void finishRun(String err) {
+					publishProgress(err + ", near line:");
+					publishProgress(ExecutingLineBuffer);
+					SyntaxError = true;		// This blocks "Program ended" checks in finishUp()
+					OnErrorLine = 0;		// Don't allow OnError: to catch OOM, it's fatal
+					finishUp();
+				}
+			};
 
-         	Basic.theRunContext = null;  // Signals that the background task has stopped
-         	cleanUp();
-        	}
-        	
-        	else{              // We get here if PreScan found error or duplicate label
-        		for (int i=0; i<TempOutputIndex; ++i){				// if new output lines, the send them
-        			publishProgress(TempOutput[i]);					// to UI task
-        			}
-        		TempOutputIndex = 0;
-        	}
-        	if (Exit) {
-        		finish();
-        	}
-        }
+		@Override
+		public void run() {
 
-        private void publishProgress(String... s) {
-        	mHandler.obtainMessage(MESSAGE_PUBLISH_PROGRESS, s).sendToTarget();
-        }
+//			Basic.Echo = Settings.getEcho(Basic.BasicContext);
+			Echo = false;
+			VarSearchStart = 0;
+			fnRTN = false;
+			setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-// The RunLoop() drives the execution of the program. It is called from doInBackground and
-// recursively from doUserFunction.
-        
+			mDefaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+			Thread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+
+			if (PreScan()) { 				// The execution starts by scanning the source for labels and read.data
+				ExecutingLineIndex = 0;		// Just in case PreScan ever changes it
+				RunLoop();
+				finishUp();
+			} else {						// We get here if PreScan found error or duplicate label
+				for (int i = 0; i < TempOutputIndex; ++i) {			// if new output lines, the send them
+					publishProgress(TempOutput[i]);					// to UI task
+				}
+				TempOutputIndex = 0;
+			}
+			if (Exit) {
+				finish();
+			}
+		}
+
+		private void finishUp() {			// Called from run() when done running, and from UncaughtExceptionHandler
+
+			Stop = true;		// If Stop is not already set, set it so that menu code can display the right thing
+			PrintLine = "";		// Clear the Print Line buffer
+			PrintLineReady = false;
+			textPrintLine = "";
+
+			OnBackKeyLine = 0;
+
+			if (OnErrorLine == 0 && !SyntaxError && !Exit) {
+				if (!ForNextStack.empty())	{ publishProgress("Program ended with FOR without NEXT"); }
+				if (!WhileStack.empty())	{ publishProgress("Program ended with WHILE without REPEAT"); }
+				if (!DoStack.empty())		{ publishProgress("Program ended with DO without UNTIL"); }
+			}
+
+			Basic.theRunContext = null;  // Signals that the background task has stopped
+			cleanUp();
+		}
+
+		private void publishProgress(String... s) {
+			mHandler.obtainMessage(MESSAGE_PUBLISH_PROGRESS, s).sendToTarget();
+		}
+
+		// The RunLoop() drives the execution of the program. It is called from doInBackground and
+		// recursively from doUserFunction.
+
         public  boolean RunLoop(){
         	boolean flag = true;
         	do {
@@ -8292,8 +8308,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		} catch (PatternSyntaxException pse) {
 			RunTimeError(REString + " is invalid argument at");
-		} catch (Exception e) {
-			RunTimeError(e);
 		}
 		return r;
 	}

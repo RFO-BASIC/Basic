@@ -52,6 +52,7 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -748,20 +749,28 @@ public class Basic extends ListActivity  {
 			// The first load is a short program of comments that will be displayed
 			// by the Editor
 
-			Editor.DisplayText="!!\n\n" +
+			Editor.DisplayText = "!!\n\n" +			// Initialize the Display Program Lines
 					"Welcome to BASIC!\n\n" +
 					"Press Menu->More->About\n" +
 					"to get more information\n" +
-					"about this release.\n\n" +
-					"The BASIC! User's Manual,\n" +
-					"De Re BASIC!, can also be\n" +
-					"found at that location.\n\n" +
+					"about this release, and\n" +
+					"to see the User's Manual,\n" +
+					"De Re BASIC!\n\n" +
 					"Press Menu->Clear to clear\n" +
 					"this message and start\n" +
 					"writing your own BASIC!\n" +
-					"program.\n\n"+
-					"!!"
-					;  // Initialize the Display Program Lines
+					"program.\n\n";
+			int level = Build.VERSION.SDK_INT;
+			if (level >= 11) {
+				Editor.DisplayText +=
+					"Note: if you can't load a\n" +
+					"program, check your settings.\n" +
+					"\"Developer Options ->\n" +
+					"Don't keep activities\"\n" +
+					"must NOT be checked.\n\n";
+			}
+			Editor.DisplayText += 
+					"!!";
 		}
 
 		public void doCantLoad(){
