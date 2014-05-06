@@ -1816,6 +1816,7 @@ public class Run extends ListActivity {
         	interruptResume = ExecutingLineIndex;		// Set the resume Line Number
         	ExecutingLineIndex = gotoLine;				// Set the goto line number
         	interruptVarSearchStart = VarSearchStart;	// Save current VarSearchStart
+        	VarSearchStart = 0;							// Force to predictable value
         	IfElseStack.push(IEinterrupt);
         	return false;								//Turn off the interrupt
         }
