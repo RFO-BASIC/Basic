@@ -210,15 +210,23 @@ public class AddProgramLine {
 	}
 
 	private String shorthand(String line) {			// Pre-processor: expand C/Java-like operators
-		int ll = line.length();
-		int then = line.indexOf("then");
-		if (then == -1) {
-			if (line.startsWith("++") || line.startsWith("--")) {
-				line = line.substring(2, ll) + "=1" + line.substring(1, ll);
-			}
-			if (line.endsWith("++") || line.endsWith("--")) {
-				line = line.substring(0, ll - 2) + "=" + line.substring(0, ll - 1) + "1";
-			}
+		int ii = line.indexOf("let");
+		if (ii >= 0) {
+			ii += 3;								// length of "let"
+			return line.substring(0, ii) + shorthand(line.substring(ii));
+		}
+		ii = line.indexOf("then");
+		if (ii >= 0) {
+			ii += 4;								// length of "then"
+			return line.substring(0, ii) + shorthand(line.substring(ii));
+		}
+		if (line.startsWith("++") || line.startsWith("--")) {
+			line = line.substring(2) + "=1" + line.substring(1);
+		} else
+		if (line.endsWith("++") || line.endsWith("--")) {
+			int ll = line.length();
+			line = line.substring(0, ll - 2) + "=" + line.substring(0, ll - 1) + "1";
+		} else {
 			int tt = line.indexOf("+=");
 			if (tt < 0) {
 				tt = line.indexOf("-=");
@@ -230,15 +238,10 @@ public class AddProgramLine {
 				}
 			}
 			if (tt > 0) {
-				line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + "(" + line.substring(tt + 2, ll) + ")";
+				line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + "(" + line.substring(tt + 2) + ")";
 			}
-			return line;
 		}
-		then += 4;
-		String tline = line.substring(0, then);
-		line = line.substring(then, ll);
-		line = shorthand(line);
-		return tline + line;
+		return line;
 	}
 
 	private void doInclude(String fileName) {
