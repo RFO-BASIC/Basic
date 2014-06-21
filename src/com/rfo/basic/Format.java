@@ -29,6 +29,7 @@
 package com.rfo.basic;
 
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Stack;
 
 import android.app.ListActivity;
@@ -140,7 +141,7 @@ public class Format extends ListActivity {
         	aLine = aLine.trim();       									// Remove trailing and leading blanks
         	if (aLine.equals("")) return aLine;								// Skip blank or empty line
 
-        	String xLine = aLine.toLowerCase();								// Convert to lower case
+        	String xLine = aLine.toLowerCase(Locale.US);					// Convert to lower case
         	String theLine = "";
         	for (int i = 0; i < xLine.length(); ++i) {						// remove all blanks and tabs
         		char c = xLine.charAt(i);
@@ -263,7 +264,7 @@ public class Format extends ListActivity {
     	if (blanks == actualLine.length()) return actualLine;			// Skip blank line
     	if (actualLine.startsWith("!", blanks)) return actualLine;		// Skip comment line
 
-    	String lcLine = actualLine.toLowerCase();						// Convert to lower case
+    	String lcLine = actualLine.toLowerCase(Locale.US);				// Convert to lower case
 
     	actualLine = StartOfLineKW(lcLine, actualLine, blanks);
 
@@ -288,7 +289,7 @@ public class Format extends ListActivity {
     			if (k >= 0 && k == blanks) {
     				String xkw = actualLine.substring(blanks, blanks + kw.length());
     				if (xkw.equals("inkey$")) xkw = "inkey";
-    				actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase());      // Capitalize it
+    				actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase(Locale.US)); // Capitalize it
     				break;
     			}
     		}
@@ -310,59 +311,19 @@ public class Format extends ListActivity {
 
 		if (kw.endsWith(".")) {														//Process mulitipart commands.
 			int start = blanks + kw.length();
-			if (kw.equals("sql."))
-				actualLine = ExpandedKeyWord(Run.SQL_KW, lcLine, actualLine, start);
-			else if (kw.equals("gr."))
-				actualLine = ExpandedKeyWord(Run.GR_KW, lcLine, actualLine, start);
-			else if (kw.equals("file."))
-				actualLine = ExpandedKeyWord(Run.file_KW, lcLine, actualLine, start);
-			else if (kw.equals("console."))
-				actualLine = ExpandedKeyWord(Run.Console_KW, lcLine, actualLine, start);
-			else if (kw.equals("audio."))
-				actualLine = ExpandedKeyWord(Run.Audio_KW, lcLine, actualLine, start);
-			else if (kw.equals("sensors."))
-				actualLine = ExpandedKeyWord(Run.Sensors_KW, lcLine, actualLine, start);
-			else if (kw.equals("gps."))
-				actualLine = ExpandedKeyWord(Run.GPS_KW, lcLine, actualLine, start);
-			else if (kw.equals("array."))
-				actualLine = ExpandedKeyWord(Run.Array_KW, lcLine, actualLine, start);
-			else if (kw.equals("list."))
-				actualLine = ExpandedKeyWord(Run.List_KW, lcLine, actualLine, start);
-			else if (kw.equals("bundle."))
-				actualLine = ExpandedKeyWord(Run.Bundle_KW, lcLine, actualLine, start);
-			else if (kw.equals("socket."))
-				actualLine = ExpandedKeyWord(Run.Socket_KW, lcLine, actualLine, start);
-			else if (kw.equals("debug."))
-				actualLine = ExpandedKeyWord(Run.Debug_KW, lcLine, actualLine, start);
-			else if (kw.equals("stack."))
-				actualLine = ExpandedKeyWord(Run.Stack_KW, lcLine, actualLine, start);
-			else if (kw.equals("tts."))
-				actualLine = ExpandedKeyWord(Run.tts_KW, lcLine, actualLine, start);
-			else if (kw.equals("ftp."))
-				actualLine = ExpandedKeyWord(Run.ftp_KW, lcLine, actualLine, start);
-			else if (kw.equals("bt."))
-				actualLine = ExpandedKeyWord(Run.bt_KW, lcLine, actualLine, start);
-			else if (kw.equals("su."))
-				actualLine = ExpandedKeyWord(Run.su_KW, lcLine, actualLine, start);
-			else if (kw.equals("system."))
-				actualLine = ExpandedKeyWord(Run.System_KW, lcLine, actualLine, start);
-			else if (kw.equals("soundpool."))
-				actualLine = ExpandedKeyWord(Run.sp_KW, lcLine, actualLine, start);
-			else if (kw.equals("html."))
-				actualLine = ExpandedKeyWord(Run.html_KW, lcLine, actualLine, start);
-			else if (kw.equals("timer."))
-				actualLine = ExpandedKeyWord(Run.Timer_KW, lcLine, actualLine, start);
-			else if (kw.equals("timezone."))
-				actualLine = ExpandedKeyWord(Run.TimeZone_KW, lcLine, actualLine, start);
+			String[] list = Run.getKeywordLists().get(kw);
+			if (list != null) {
+				actualLine = ExpandedKeyWord(list, lcLine, actualLine, start);
+			}
 		}
 		return actualLine;
     }
 
     private static String ExpandedKeyWord(String[] words, String lcLine, String actualLine, int start) {  // The stuff after xxx.
-    	for (int i = 0; i < words.length; ++i) {
-			if (lcLine.startsWith(words[i], start)) {
-     			String xkw = actualLine.substring(start, start + words[i].length());
-    			actualLine = actualLine.replaceFirst(xkw, words[i].toUpperCase());
+    	for (String word : words) {
+			if (lcLine.startsWith(word, start)) {
+     			String xkw = actualLine.substring(start, start + word.length());
+    			actualLine = actualLine.replaceFirst(xkw, word.toUpperCase(Locale.US));
 			}
     	}
     	return actualLine;
@@ -373,7 +334,7 @@ public class Format extends ListActivity {
 		if (k >= 0) {
 			int kl = kw.length();
 			String xkw = actualLine.substring(k, k + kl);
-			actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase());
+			actualLine = actualLine.replaceFirst(xkw, kw.toUpperCase(Locale.US));
 
 			if (kw.equals("then") || kw.equals("else")) {							// Special case THEN and ELSE
 				int start = k + kl + CountBlanks(lcLine, kl);						// Skip keyword and blanks
@@ -389,7 +350,7 @@ public class Format extends ListActivity {
 		if (k < 0) { return actualLine; }							// No instances of this keyword - quick exit
 
 		StringBuilder sb = new StringBuilder(actualLine);
-		String KW = kw.toUpperCase();								// Upper-case version of keyword
+		String KW = kw.toUpperCase(Locale.US);						// Upper-case version of keyword
 		int kl = kw.length();
 		int limit = lcLine.length() - (kl - 1);						// Another keyword won't fit after limit
 		int start = 0;
