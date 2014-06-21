@@ -46,7 +46,8 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import android.app.Activity;
-import android.app.ListActivity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
@@ -61,12 +62,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.ListView;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 
-public class Basic extends ListActivity  {
+public class Basic extends Activity  {
 
 	private static final String LOGTAG = "Basic";
 	private static final String CLASSTAG = Basic.class.getSimpleName();
@@ -97,9 +98,9 @@ public class Basic extends ListActivity  {
 	public static Intent theProgramRunner;
 
 	private Background theBackground;						// Background task ID
-	private ArrayAdapter<String> AA;
-	private ListView lv;									// The output screen list view
-	private ArrayList<String> output;						// The output screen text lines
+	private TextView mProgressText;
+	private Dialog mProgressDialog;
+	private ImageView mSplash;								// ImageView for splash screen
 
 	public static boolean checkSDCARD(char mount) {			// mount is 'w' for writable,
 															// 'r' for either readable or writable
@@ -190,8 +191,8 @@ public class Basic extends ListActivity  {
 		super.onCreate(savedInstanceState);					// Set up of fresh start
 		Log.v(LOGTAG, CLASSTAG + " onCreate");
 
-		Settings.setDefaultValues(this, isAPK);				// if isAPK, force to default settings
 		initVars();
+		Settings.setDefaultValues(this, isAPK);				// if isAPK, force to default settings
 		String base = Settings.getBaseDrive(this);
 		setFilePaths(base);
 
@@ -249,18 +250,25 @@ public class Basic extends ListActivity  {
 	}
 
 	private void runBackgroundLoader() {
-		// Establish an output screen so that file load progress can be shown.
 
-		output = new ArrayList<String>();
-		AA=new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);	// Establish the output screen
-		lv = getListView();
-		lv.setTextFilterEnabled(false);
-		lv.setSelection(0);
+		setContentView(R.layout.splash);		// always have a splash screen but sometimes it is blank
+		mSplash = (ImageView)findViewById(R.id.splash);
 
-		// In order to show progress in the user interface we have to start a background thread to
-		// do the actual loading. That background thread will make calls to the UI thread to show
-		// show the progress.
-		//
+		Resources res = getResources();
+		boolean displaySplash = res.getBoolean(R.bool.splash_display);	// Display splash screen?
+		int imageID = R.drawable.blank;
+		if (displaySplash) {
+			int id = res.getIdentifier("splash", "drawable", getPackageName());
+			if (id > 0) { imageID = id; }						// if a splash image exists use it
+		}
+		mSplash.setImageResource(imageID);
+
+		mProgressText = new TextView(this);						// Create dialog for displaying load progress
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		mProgressDialog = builder.setView(mProgressText).setCancelable(false).setIcon(R.drawable.icon).create();
+
+		// Loading can take a while, so we have to start a background thread to do it.
+		// The background thread will make calls to the UI thread to show the progress.
 		// Once the files are loaded, the background task will start the loaded program running.
 
 		theBackground = new Background();						// Start the background task to load
@@ -541,66 +549,70 @@ public class Basic extends ListActivity  {
 
 	public class Background extends AsyncTask<String, String, String>{
 
-		private String[] mLoadingMsg;						// Displayed while files are loading
 		private String mProgressMarker;						// Displayed as a unit of progress while files are loading
+		private boolean mDisplayProgress;
 		private Resources mRes;
+		private int mUpdates;
+		private int maxUpdateCount = 0;						// Change to maximum number of progress messages, if known.
 
 		@Override
 		protected void onPreExecute() {
 			mRes = BasicContext.getResources();
-			mLoadingMsg = mRes.getStringArray(R.array.loading_msg);
+			String[] loadingMsg = mRes.getStringArray(R.array.loading_msg);	// Displayed while files are loading
 			mProgressMarker = mRes.getString(R.string.progress_marker);
-			if ((mLoadingMsg != null) && (mLoadingMsg.length != 0)) {
-				for (String s : mLoadingMsg) { output.add(s); }			// The message lines that tell what we are doing.
-			}
-		}
+			mDisplayProgress = (loadingMsg != null) && (loadingMsg.length != 0);
+			if (!mDisplayProgress) { return; }
 
-		private final int CHAR_PER_LINE = 20;							// Number of dots per line
-		private final int LINES_PER_UPDATE = 30;						// Number of line between Progress Messages
-		private int maxUpdateCount = 0;									// Change to maximum number of progress messages, if known.
-		private int lineCount = 0;
+			String title = loadingMsg[0];
+			int last = loadingMsg.length - 1;
+			for (int m = 1; m < last; ++m) {
+				title += '\n' + loadingMsg[m];
+			}
+			if ((last > 0) && (loadingMsg[last].length() > 0)) {
+				title += '\n' + loadingMsg[last];
+			}
+			mProgressDialog.setTitle(title);
+			mProgressDialog.show();
+			// mProgressText.setGravity(Gravity.CENTER_HORIZONTAL);
+			mProgressText.setText(mProgressMarker);
+
+			mUpdates = 0;
+		}
 
 		@Override
 		protected void onProgressUpdate(String... str) {				// Called when publishProgress() is executed.
-			for (String s : str) {										// Form line of CHAR_PER_LINE progress characters
-				int linenum = output.size() - 1;
-				s = output.get(linenum) + s;
-				output.set(linenum, s);
+			if (!mDisplayProgress) return;
 
-				if (s.length() >= CHAR_PER_LINE) {						// After the CHAR_PER_LINEth character
-					++lineCount;										// output a new line
-
-					if ((lineCount % LINES_PER_UPDATE) == 0) {			// After every LINES_PER_UPDATE
-						StringBuilder msg = new StringBuilder();		// output a progress message
-
-						int updates = lineCount/LINES_PER_UPDATE;
-						if (maxUpdateCount != 0) {						// If the max is known
-							msg.append((updates * 100)/maxUpdateCount);	// convert progress to a percent
-							msg.append("%");
-						} else {
-							msg.append(updates);						// else just use the number of progress line
-						}
-						output.add("Continuing load (" + msg + ')');
-					}
-					output.add("");										// start a new line
-				}
+			++mUpdates;
+			for (String s : str) {
+				s = mProgressText.getText() + s;
+				mProgressText.setText(s);
 			}
-
-			setListAdapter(AA);						// show the output
-			lv.setSelection(output.size() - 1);		// set last line as the selected line to scroll
+			int h = mProgressText.getHeight();
+			int maxh = mSplash.getHeight() * 2 / 3;
+			if (h > maxh) {
+				StringBuilder msg = new StringBuilder("Continuing load (");
+				if (maxUpdateCount != 0) {						// If the max is known
+					msg.append((mUpdates * 100)/maxUpdateCount);// convert progress to a percent
+					msg.append('%');
+				} else {
+					msg.append(mUpdates);						// else just use the number of progress line
+				}
+				msg.append(")\n");
+				mProgressText.setText(msg);
+			}
 		}
 
 		@Override
 		protected String doInBackground(String... str) {
-			if (isAPK) {
-				doBGforAPK();
-			} else {
-				doBGforSB();
-			}
+			Intent doNext = (isAPK) ? doBGforAPK() : doBGforSB();
+			startActivity(doNext);			// Start program (APK) or the Editor (SB)
+			if (mProgressDialog != null) { mProgressDialog.dismiss(); }
+			finish();
 			return "";
 		}
 
-		private void doBGforSB() {								// Background code for Standard Basic
+		private Intent doBGforSB() {								// Background code for Standard Basic
 			SD_ProgramPath = SAMPLES_DIR;						// This setting will also force LoadFile to show the samples directory
 			if (new File(getFilePath()).exists()) {
 				copyAssets(AppPath);
@@ -609,11 +621,10 @@ public class Basic extends ListActivity  {
 				doCantLoad();									// Can't load: show an error message
 			}
 			DoAutoRun = false;
-			startActivity(new Intent(BasicContext, Editor.class));	// Goto the Editor
-			finish();
+			return new Intent(BasicContext, Editor.class);		// Goto the Editor
 		}
 
-		private void doBGforAPK() {								// Background code of APK
+		private Intent doBGforAPK() {								// Background code of APK
 			InitDirs();											// Initialize Basic directories every time
 			LoadGraphicsForAPK();								// Load the sound and graphics files
 
@@ -623,8 +634,7 @@ public class Basic extends ListActivity  {
 			theProgramRunner = new Intent(BasicContext, Run.class);	// now go run the program
 			theRunContext = null;
 			DoAutoRun = true;
-			startActivity(theProgramRunner);					// The program is now running
-			finish();
+			return theProgramRunner;							// Go run the program
 		}
 
 		private void copyAssets(String path) {	// Recursively copy all the assets in the named subdirectory to the SDCard

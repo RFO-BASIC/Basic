@@ -214,6 +214,10 @@ public class GR extends Activity {
 
     	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyDown " + keyCode);
 
+    	if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP) || (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+    	  return super.onKeyDown(keyCode, event);
+    	}
+
         return true;
     }
     

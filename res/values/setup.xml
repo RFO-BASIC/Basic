@@ -53,6 +53,10 @@ This file is part of BASIC! for Android
     <string name="select_name">BASIC! Select</string>
     <string name="textinput_name">BASIC! Text Input</string>
 
+    <!-- The splash screen settings: display and background color -->
+    <bool name="splash_display">true</bool>
+    <color name="splash_color">#FFFFFF</color>
+
     <!-- The default text and background colors selected in Preferences -->
     <integer name="color1">0xff000000</integer>
     <integer name="color2">0xffffffff</integer>
@@ -60,11 +64,10 @@ This file is part of BASIC! for Android
 
     <!--
         Message lines displayed on the opening screen while files are loading.
-        There must be at least one line, even if it is just an empty string.
+        If this array is empty, there will be no progress display while loading files.
     -->
     <string-array name="loading_msg">
         <item>Standby for initial file loading.</item>
-        <item></item>
     </string-array>
 
     <!-- String to be displayed as a unit of progress while files are loading -->

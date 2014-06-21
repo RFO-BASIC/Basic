@@ -25,16 +25,17 @@ This file is part of BASIC! for Android
 	
 	**********************************************************************************
 	-->
-	
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    >
-<TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
-    android:text="Stand by for initial load.\nThis may take a few minutes."
-    />
-</LinearLayout>
+    android:layout_height="fill_parent" >
+
+    <ImageView
+        android:id="@+id/splash"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:background="@color/splash_color"
+        android:scaleType="centerInside" />
+
+</RelativeLayout>
