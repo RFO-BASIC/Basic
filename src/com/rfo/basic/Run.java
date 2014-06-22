@@ -462,6 +462,38 @@ public class Run extends ListActivity {
     private int KeyWordValue = 0;								// Will contain an enumerated keyword value
     private String PossibleKeyWord = "";						// Used when TO, STEP, THEN are expected
 
+	private static HashMap<String, String[]> keywordLists = null;	// For Format: map associates a keyword group
+																	// with the prefix common to the group.
+	public static HashMap<String, String[]> getKeywordLists() {
+		if (keywordLists == null) {
+			keywordLists = new HashMap<String, String[]>();		// If you add a new keyword group, add it to this list!
+
+			keywordLists.put("array.",     Array_KW);
+			keywordLists.put("audio.",     Audio_KW);
+			keywordLists.put("bt.",        bt_KW);
+			keywordLists.put("bundle.",    Bundle_KW);
+			keywordLists.put("console.",   Console_KW);
+			keywordLists.put("debug.",     Debug_KW);
+			keywordLists.put("file.",      file_KW);
+			keywordLists.put("ftp.",       ftp_KW);
+			keywordLists.put("gps.",       GPS_KW);
+			keywordLists.put("gr.",        GR_KW);
+			keywordLists.put("html.",      html_KW);
+			keywordLists.put("list.",      List_KW);
+			keywordLists.put("sensors.",   Sensors_KW);
+			keywordLists.put("socket.",    Socket_KW);
+			keywordLists.put("soundpool.", sp_KW);
+			keywordLists.put("sql.",       SQL_KW);
+			keywordLists.put("stack.",     Stack_KW);
+			keywordLists.put("su.",        su_KW);
+			keywordLists.put("system.",    System_KW);
+			keywordLists.put("timer.",     Timer_KW);
+			keywordLists.put("timezone.",  TimeZone_KW);
+			keywordLists.put("tts.",       tts_KW);
+		}
+		return keywordLists;
+	}
+
     // **************** The variables for the math function names ************************
 
     public static final String MathFunctions[] = {
