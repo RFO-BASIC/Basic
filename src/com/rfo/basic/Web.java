@@ -34,6 +34,7 @@ import org.apache.http.util.EncodingUtils;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.Process;
 import android.speech.RecognizerIntent;
@@ -58,9 +59,12 @@ public class Web extends Activity {
 	public static AddData doAddData;
 	private static final String LOGTAG = "Web";
 	private static final String CLASSTAG = Web.class.getSimpleName();
-	
- //********************************Intercept BACK Key *************************************
-	
+
+	public static final String EXTRA_SHOW_STATUSBAR = "statusbar";
+	public static final String EXTRA_ORIENTATION = "orientation";
+
+	//******************************** Intercept BACK Key *************************************
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
     	// if BACK key restore original text
@@ -87,13 +91,18 @@ public class Web extends Activity {
        doAddData = new AddData();
        
        View v = findViewById(R.id.web_engine);
-       
-       if (Run.ShowStatusBar != 0){
-    	   getWindow().setFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN, WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
-       }else{
-	     getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-       }
-       
+
+		Intent intent = getIntent();
+		int showStatusBar = intent.getIntExtra(EXTRA_SHOW_STATUSBAR, 0);
+		int orientation = intent.getIntExtra(EXTRA_ORIENTATION, -1);
+
+		showStatusBar = (showStatusBar == 0)
+						? WindowManager.LayoutParams.FLAG_FULLSCREEN			// do not show status bar
+						: WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN;	// show status bar
+		getWindow().setFlags(showStatusBar, showStatusBar);
+
+		setOrientation(orientation);
+
        engine = (WebView)  v;
        
        WebSettings webSettings = engine.getSettings();
@@ -120,12 +129,19 @@ public class Web extends Activity {
     	                return super.onJsAlert(view, url, message, result);
     	       }
        });
-       
 
-       
     }
 
-    
+	private void setOrientation(int orientation) {	// Convert and apply orientation setting
+		switch (orientation) {
+			default:
+			case -1: orientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR; break;
+			case 0:  orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; break;
+			case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
+		}
+		setRequestedOrientation(orientation);
+	}
+
     //*****************************************  WebView Client Interface *****************************
     
 
@@ -197,8 +213,12 @@ public class Web extends Activity {
     	
     	public TheWebView(Context context){
     	}
-    	
-    	public void webLoadUrl(String URL){
+
+		public void setOrientation(int orientation) {
+			Web.this.setOrientation(orientation);
+		}
+
+		public void webLoadUrl(String URL){
     		if (engine != null)engine.loadUrl(URL);
     	}
 
@@ -286,6 +306,5 @@ public class Web extends Activity {
     		}
     	}
     }
-    
-    
-}	
+
+}

@@ -234,16 +234,24 @@ public class Run extends ListActivity {
 		public boolean run() { return false; }			// Run the command execution function
 	}
 
-	private boolean executeCommand(Command[] commands, String type){// If the current line starts with a keyword in a command list
-																	// execute the command. The "type" is used only to report errors.
+	// If the current line starts with a keyword in a command list execute the command.
+	// The "type" is used only to report errors.
+	private boolean executeCommand(Command[] commands, String type) {
+		Command c = findCommand(commands, type);
+		return (c != null) ? c.run() : false;
+	}
+
+	// If the current line starts with a keyword in a command list return the Command object.
+	// If not found return null. The "type" is used only to report errors.
+	private Command findCommand(Command[] commands, String type) {
 		for (Command c : commands) {								// loop through the command list
 			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) {// if there is a match
 				LineIndex += c.name.length();						// move the line index to end of keyword
-				return c.run();										// run the function and report back
+				return c;											// return the Command object
 			}
 		}
 		RunTimeError("Unknown " + type + " command");
-		return false;												// no keyword found
+		return null;												// no keyword found
 	}
 
 // **********  The variables for the Basic Keywords ****************************    
@@ -504,7 +512,7 @@ public class Run extends ListActivity {
     	"floor(", "mod(", "log(",
     	"round(", "toradians(", "todegrees(",
     	"time(", "exp(",
-    	"is_in(", "clock(", 
+    	"is_in(", "clock(",
     	"bor(", "band(", "bxor(",
     	"gr_collision(",
     	"ascii(", "starts_with(", "ends_with(",
@@ -579,7 +587,7 @@ public class Run extends ListActivity {
 	}};
 
     //*********************** The variables for the Operators  ************************
- 
+
     public static final String OperatorString[]={
     	"<=", "<>", ">=", ">", "<",
     	 "=","^", "*", "+", "-",
@@ -599,13 +607,13 @@ public class Run extends ListActivity {
     private static final int MUL = 7;
     private static final int PLUS = 8;
     private static final int MINUS = 9;
-    
+
     private static final int DIV = 10;
     private static final int NOT = 11;
     private static final int OR = 12;
     private static final int AND = 13;
     private static final int LPRN = 14;
-    
+
     private static final int RPRN = 15;
     private static final int ASSIGN = 16;
     private static final int UPLUS = 17;
@@ -619,7 +627,7 @@ public class Run extends ListActivity {
         8,  8,  8, 8, 8,
         8, 12, 10, 9,  9,
         10, 7,  5,  6, 15,
-        2, 15, 13, 13, 
+        2, 15, 13, 13,
         0, 0, 15,
         15, 15, 15, 15, 15, 15,
         15, 15,
@@ -629,18 +637,18 @@ public class Run extends ListActivity {
         15, 15, 15 };
 
     private static final int ComesOffPrecedence[] = {	// Precedence for coming off stack
-    	8, 8, 8, 8, 8,
-    	8, 12, 10, 9, 9, 
-    	10, 7, 5, 6, 2, 
-    	14, 1, 13, 13, 
-    	0, 0, 2,
+        8, 8, 8, 8, 8,
+        8, 12, 10, 9, 9,
+        10, 7, 5, 6, 2,
+        14, 1, 13, 13,
+        0, 0, 2,
         13,13,13,13,13,13,
         13, 13,
         13, 13, 13, 13,
         13, 13, 13, 13,
         13, 13, 13, 13,
         13, 13, 13 };
-    
+
     private int OperatorValue = 0;						// Will hold enumerated operator name value
 
     //**********************  The variables for the string functions  *******************
@@ -690,7 +698,7 @@ public class Run extends ListActivity {
     private boolean ConsoleLongTouch = false;
     private int TouchedConsoleLine = 0;					// first valid line number is 1
     private int interruptResume = -1;
- 
+
     private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer
     private String ExecutingLineBuffer ="";				// Holds the current line being executed
     private int ExecutingLineIndex = 0;					// Points to the current line in Basic.lines
@@ -727,7 +735,7 @@ public class Run extends ListActivity {
 	private static final int MESSAGE_DEBUG_DIALOG = MESSAGE_DEBUG_GROUP + 1;
 	private static final int MESSAGE_DEBUG_SWAP   = MESSAGE_DEBUG_GROUP + 2;
 	private static final int MESSAGE_DEBUG_SELECT = MESSAGE_DEBUG_GROUP + 3;
-	private boolean WaitForResume = false ; 
+	private boolean WaitForResume = false;
 	private boolean DebuggerStep = false;
 	private boolean DebuggerHalt = false;
 	private boolean WaitForSwap = false;
@@ -802,10 +810,28 @@ public class Run extends ListActivity {
 														// and index into ArrayTable
 
 	ClipboardManager clipboard;
+	private static long sTime;
 
-	// ********************************* File commands *********************************
+	// ******************************** Wakelock variables *********************************
 
-	public static final String file_KW[] = {
+	private static PowerManager.WakeLock theWakeLock;
+	private static final int partial = 1;
+	private static final int dim = 2;
+	private static final int bright = 3;
+	private static final int full = 4;
+	private static final int release = 5;
+
+	// ******************************** Wifilock variables *********************************
+
+	private static WifiManager.WifiLock theWifiLock;
+	private static final int wifi_mode_scan = 1;
+	private static final int wifi_mode_full = 2;
+	private static final int wifi_mode_high = 3;
+	private static final int wifi_release = 4;
+
+	// ******************************* File I/O operation variables ************************
+
+	private static final String file_KW[] = {			// Command list for Format
 		"delete", "size", "dir", "mkdir",
 		"rename", "root", "exists", "type"
 	};
@@ -821,38 +847,24 @@ public class Run extends ListActivity {
 		new Command("type")             { public boolean run() { return executeFILE_TYPE(); } }
 	};
 
-    // ******************************** Wakelock variables *********************************
+	private static final int FMR = 0;						// File Mode Read
+	private static final int FMW = 1;						// File Mode Write
+	private static final int FMRW = 2;						// File Mode Read-Write
 
-    private static PowerManager.WakeLock theWakeLock;
-    private static final int partial = 1;
-    private static final int dim = 2;
-    private static final int bright = 3;
-    private static final int full = 4;
-    private static final int release = 5;
+	public static ArrayList<Bundle> FileTable;				// File table list
+	public static ArrayList<BufferedReader> BRlist;			// A list of of file readers
+	public static ArrayList<FileWriter> FWlist;				// A list of file writers
+	public static ArrayList<DataOutputStream> DOSlist;		// A list of file writers
+	public static ArrayList<BufferedInputStream> BISlist;	// A list of file writers
 
-    // ******************************** Wifilock variables *********************************
+	// ******************** READ variables *******************************************
 
-    private static WifiManager.WifiLock theWifiLock;
-    private static final int wifi_mode_scan = 1;
-    private static final int wifi_mode_full = 2;
-    private static final int wifi_mode_high = 3;
-    private static final int wifi_release = 4;
+	private int readNext = 0;
+	private ArrayList <Bundle> readData;
 
-    // ******************************* File I/O operation variables  **************************
+	// ******************** Console Command variables ********************************
 
-    public static int FMR = 0;			// File Mode Read
-    public static int FMW = 1;			// File Mode Write
-    public static int FMRW = 2;			// File Mode Read-Write
-    
-    public static ArrayList<Bundle> FileTable;			// File table list
-    public static ArrayList<BufferedReader> BRlist;		// A list of of file readers
-    public static ArrayList<FileWriter> FWlist;			// A list of file writers
-    public static ArrayList<DataOutputStream> DOSlist;			// A list of file writers
-    public static ArrayList<BufferedInputStream> BISlist;			// A list of file writers
-
-	//  ******************  Console Command variables ********************************
-
-	public static final String Console_KW[] = {			// Console commands
+	private static final String Console_KW[] = {		// Console command list for Format
 		"front", "save", "title",
 		"line.count", "line.text", "line.touched",
 		"line.new", "line.char"
@@ -869,7 +881,7 @@ public class Run extends ListActivity {
 		new Command("line.char")        { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
 	};
 
-	//  ******************  Input Command variables ********************************
+	// ******************** Input Command variables ********************************
 
 	private boolean WaitForInput ;							// Signals between background task and foreground
 	private boolean BadInput = false;
@@ -881,27 +893,27 @@ public class Run extends ListActivity {
 	private boolean InputDismissed = false;					// These two will be used only if we dismiss the dialog in onPause
 	private AlertDialog theAlertDialog;
 
-    //  ******************  Popup Command variables ********************************
-    
-    public static String ToastMsg;
-    public static int ToastX;
-    public static int ToastY;
-    public static int ToastDuration;
-    
-    //  ******************* Variables for the SELECT Command ***********************
+	// ******************** Popup Command variables ********************************
 
-    public static int SelectedItem;						// The index of the selected item
-    public static boolean ItemSelected;					// Signal from Select.java saying an item has been selected 
-    public static boolean SelectLongClick;				// True if long click
+	public static String ToastMsg;
+	public static int ToastX;
+	public static int ToastY;
+	public static int ToastDuration;
 
-    // *********************  SQL Variables  **************************************
-    
-    public static final String SQL_KW[] = {				// SQL Commands
-    	"open", "close", "insert",
-    	"query.length", "query.position", "query",
-    	"next", "delete", "update", "exec",
-    	"raw_query", "drop_table", "new_table"
-    };
+	// ******************** Variables for the SELECT Command ***********************
+
+	public static int SelectedItem;						// The index of the selected item
+	public static boolean ItemSelected;					// Signal from Select.java saying an item has been selected 
+	public static boolean SelectLongClick;				// True if long click
+
+	// ******************** SQL Variables ******************************************
+
+	private static final String SQL_KW[] = {			// SQL command list for Format
+		"open", "close", "insert",
+		"query.length", "query.position", "query",
+		"next", "delete", "update", "exec",
+		"raw_query", "drop_table", "new_table"
+	};
 
 	private final Command[] SQL_cmd = new Command[] {	// Map SQL command keywords to their execution functions
 		new Command("open")             { public boolean run() { return execute_sql_open(); } },
@@ -919,23 +931,23 @@ public class Run extends ListActivity {
 		new Command("new_table")        { public boolean run() { return execute_sql_new_table(); } }
 	};
 
-    public static ArrayList<SQLiteDatabase> DataBases; 	 // List of created data bases
-    public static ArrayList<Cursor> Cursors; 	 		 // List of created data bases
-    
-    // ******************************** Variables for the INKEY$ command ***********************
-    													
-    public static boolean KeyPressed = false;
-    public static final String Numbers = "0123456789";    // translations for key codes
-    public static final String Chars = "abcdefghijklmnopqrstuvwxyz";
-    public static String Buffer = "0123456789";
-    public static ArrayList<String> InChar ;
-    public static int OnKeyLine;
-    
-    // ********************************* Variables for text.input command ********************
-    
-    public static String TextInputString = "";
-    public static boolean HaveTextInput;
-    
+	public static ArrayList<SQLiteDatabase> DataBases; 	 // List of created data bases
+	public static ArrayList<Cursor> Cursors; 	 		 // List of created data bases
+
+	// ******************************** Variables for the INKEY$ command ***********************
+
+	public static boolean KeyPressed = false;
+	public static final String Numbers = "0123456789";    // translations for key codes
+	public static final String Chars = "abcdefghijklmnopqrstuvwxyz";
+	public static String Buffer = "0123456789";
+	public static ArrayList<String> InChar ;
+	public static int OnKeyLine;
+
+	// ********************************* Variables for text.input command **********************
+
+	public static String TextInputString = "";
+	public static boolean HaveTextInput;
+
     // ******************************** Graphics Declarations **********************************
     
     public static Intent GRclass;						// Graphics Intent Class
@@ -958,31 +970,30 @@ public class Run extends ListActivity {
     public static int OnTouchLine;
     public static Canvas drawintoCanvas = null;
 
-    
-    public static final String GR_KW[] = {
-    	"open", "render", "color", "line", "rect",
-    	"arc", "circle", "oval", "cls", "hide",
-    	 "show", "touch2", "text.draw", "text.size",
-    	 "text.align", "text.underline", "text.skew",
-    	 "text.bold", "text.strike",
-    	 "bitmap.load", "get.position", "rotate.start",
-    	 "rotate.end", "modify", "orientation",
-    	 "screen.to_bitmap", "close", "bitmap.scale",
-    	 "front", "bounded.touch2", "bitmap.size",
-    	 "bitmap.delete", "set.pixels", "get.pixel",
-    	 "save", "text.width", "scale", "newdl",
-    	 "clip", "bitmap.crop", "set.stroke",
-    	 "poly", "statusbar.show","touch",
-    	 "bounded.touch", "bitmap.save",
-    	 "camera.shoot", "screen", "camera.autoshoot",
-    	 "camera.manualshoot", "paint.get", "brightness",
-    	 "bitmap.create", "bitmap.drawinto.start",
-    	 "bitmap.drawinto.end", "bitmap.draw",
-    	 "get.bmpixel", "get.value", "set.antialias",
-    	 "get.textbounds", "text.typeface", "ongrtouch.resume",
-    	 "camera.select", " ", "getdl", "point",			// placeholder for "camera.blindshoot"
-    	 "get.type", "get.params"
-    };
+	private static final String GR_KW[] = {				// Command list for Format
+		"open", "render", "color", "line", "rect",
+		"arc", "circle", "oval", "cls", "hide",
+		"show", "touch2", "text.draw", "text.size",
+		"text.align", "text.underline", "text.skew",
+		"text.bold", "text.strike",
+		"bitmap.load", "get.position", "rotate.start",
+		"rotate.end", "modify", "orientation",
+		"screen.to_bitmap", "close", "bitmap.scale",
+		"front", "bounded.touch2", "bitmap.size",
+		"bitmap.delete", "set.pixels", "get.pixel",
+		"save", "text.width", "scale", "newdl",
+		"clip", "bitmap.crop", "set.stroke",
+		"poly", "statusbar.show","touch",
+		"bounded.touch", "bitmap.save",
+		"camera.shoot", "screen", "camera.autoshoot",
+		"camera.manualshoot", "paint.get", "brightness",
+		"bitmap.create", "bitmap.drawinto.start",
+		"bitmap.drawinto.end", "bitmap.draw",
+		"get.bmpixel", "get.value", "set.antialias",
+		"get.textbounds", "text.typeface", "ongrtouch.resume",
+		"camera.select", " ", "getdl", "point",			// placeholder for "camera.blindshoot"
+		"get.type", "get.params"
+	};
 
     public static final int gr_open = 0;				// Graphics Commands enums
     public static final int gr_render = 1;
@@ -1055,14 +1066,14 @@ public class Run extends ListActivity {
 
     public static final int gr_none = 98;
 
-    // ******************************** Variables for Audio commands ****************************
+	// ******************************** Variables for Audio commands ****************************
 
-    public static final String Audio_KW[] ={
-    	"load", "play", "loop", "stop",
-    	"volume", "position.current", "position.seek",
-    	"length", "release", "pause",
-    	"isdone", "record.start", "record.stop"
-    };
+	private static final String Audio_KW[] = {			// Command list for Format
+		"load", "play", "loop", "stop",
+		"volume", "position.current", "position.seek",
+		"length", "release", "pause",
+		"isdone", "record.start", "record.stop"
+	};
 
     private static final int audio_load = 0;
     private static final int audio_play = 1;
@@ -1085,13 +1096,11 @@ public class Run extends ListActivity {
     private static boolean PlayIsDone;
     private MediaRecorder mRecorder = null;
 
-    // ******************************* Variables for Sensor Commands **********************************
+	// ******************************* Variables for Sensor Commands **********************************
 
-    private SensorActivity theSensors;
-
-    public static final String Sensors_KW[] = {
-    	"list","open","read","close", "rotate"
-    };
+	private static final String Sensors_KW[] = {		// Command list for Format
+		"list","open","read","close", "rotate"
+	};
 
     private static final int sensors_list = 0;
     private static final int sensors_open = 1;
@@ -1100,13 +1109,15 @@ public class Run extends ListActivity {
     private static final int sensors_rotate = 4;
     private static final int sensors_none = 98;
 
-    // ***********************  Variables for GPS Commands  ******************************************
+	private SensorActivity theSensors;
 
-    public static final String GPS_KW[] = {
-    	"altitude", "latitude", "longitude",
-    	"bearing", "accuracy", "speed",
-    	"provider", "open", "close", "time"
-    };
+	// ***********************  Variables for GPS Commands  ******************************************
+
+	private static final String GPS_KW[] = {			// Command list for Format
+		"altitude", "latitude", "longitude",
+		"bearing", "accuracy", "speed",
+		"provider", "open", "close", "time"
+	};
 
     private static final int gps_altitude = 0;
     private static final int gps_latitude = 1;
@@ -1119,11 +1130,11 @@ public class Run extends ListActivity {
     private static final int gps_close = 8;
     private static final int gps_time = 9;
 
-    private GPS theGPS;
+	private GPS theGPS;
 
 	// ************************* Variables for Array Commands
 
-	public static final String Array_KW[] = {
+	private static final String Array_KW[] = {			// Command list for Format
 		"length", "load", "sort",
 		"sum", "average", "reverse",
 		"shuffle", "min","max", "delete",
@@ -1156,11 +1167,9 @@ public class Run extends ListActivity {
 	private static boolean DoMax;
 	private static boolean DoSum;
 
-	private static long sTime;
-
 // ************************************ List command variables *********************************
 
-	public static final String List_KW[] = {
+	private static final String List_KW[] = {			// Command list for Format
 		"create", "add.list", "add.array", "add", "replace", 
 		"type","get", "clear", "remove", "insert", "size",
 		"contains", "toarray", "search"
@@ -1186,11 +1195,11 @@ public class Run extends ListActivity {
 	private static final int list_is_string = 0;
 
 	public static ArrayList <ArrayList> theLists;
-	public static ArrayList <Integer> theListsType;  
+	public static ArrayList <Integer> theListsType;
 
-// ************************************ Bundle Variables ****************************************
+	// ************************************ Bundle Variables ****************************************
 
-	public static final String Bundle_KW[]= {
+	private static final String Bundle_KW[] = {			// Command list for Format
 		"create", "put", "get", "type",
 		"keys", "copy", "clear", "contain"
 	};
@@ -1206,8 +1215,9 @@ public class Run extends ListActivity {
 
 	private static ArrayList <Bundle> theBundles;
 
-// *********************************** Stack Variables **********************************************
-	public static final String Stack_KW[]= {
+	// *********************************** Stack Variables **********************************************
+
+	private static final String Stack_KW[] = {			// Command list for Format
 		"create", "push", "pop", "peek",
 		"type", "isempty", "clear"
 	};
@@ -1228,7 +1238,7 @@ public class Run extends ListActivity {
 
 //  ******************************* Socket Variables **************************************************
 
-	public static final String Socket_KW[] = {
+	private static final String Socket_KW[] = {			// Command list for Format
 		"myip", "client.connect", "client.status",
 		"client.read.ready", "client.read.line",
 		"client.write.line", "client.write.bytes",
@@ -1246,8 +1256,8 @@ public class Run extends ListActivity {
 		new Command("server.")          { public boolean run() { return executeSocketServer(); } },
 		new Command("myip")             { public boolean run() { return executeMYIP(); } }
 	};
-                                    
-	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket client command keywords to their execution functions
+
+	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket.client command keywords to their execution functions
 		new Command("connect")          { public boolean run() { return executeCLIENT_CONNECT(); } },
 		new Command("status")           { public boolean run() { return executeCLIENT_STATUS(); } },
 		new Command("read.ready")       { public boolean run() { return executeCLIENT_READ_READY(); } },
@@ -1260,7 +1270,7 @@ public class Run extends ListActivity {
 		new Command("write.file")       { public boolean run() { return executeCLIENT_PUTFILE(); } }
 	};
 
-	private final Command[] SocketServer_cmd = new Command[] {	// Map Socket server command keywords to their execution functions
+	private final Command[] SocketServer_cmd = new Command[] {	// Map Socket.server command keywords to their execution functions
 		new Command("create")           { public boolean run() { return executeSERVER_CREATE(); } },
 		new Command("connect")          { public boolean run() { return executeSERVER_ACCEPT(); } },
 		new Command("status")           { public boolean run() { return executeSERVER_STATUS(); } },
@@ -1296,10 +1306,10 @@ public class Run extends ListActivity {
     private Socket theServerSocket ;
     private BufferedReader ServerBufferedReader ;
     private PrintWriter ServerPrintWriter ;
-	
+
 	// *************************************************** Debug Commands ****************************
-	
-	public static final String Debug_KW[] = {
+
+	private static final String Debug_KW[] = {			// Command list for Format
 		"on","off","print","echo.on",
 		"echo.off", "dump.scalars",
 		"dump.array", "dump.list",
@@ -1309,7 +1319,7 @@ public class Run extends ListActivity {
 		"show.bundle","show.watch","show.program",
 		"show","console"
 	};
-	
+
 	public static final int debug_on = 0;
 	public static final int debug_off = 1;
 	public static final int debug_print = 2;
@@ -1332,17 +1342,17 @@ public class Run extends ListActivity {
 	public static final int debug_show = 19;
 	public static final int debug_console = 20;
 	public static final int debug_none = 99;
-	
+
 	public static boolean Debug = false;
 	public static boolean Echo = false;
-	
+
 	// *********************************************** Text to Speech *******************************
 
-	public static final String tts_KW[] = {
+	private static final String tts_KW[] = {			// TTS command list for Format
 		"init", "speak.tofile", "speak", "stop"
 	};
 
-	private final Command[] tts_cmd = new Command[] {		// Map TTS command keywords to their execution functions
+	private final Command[] tts_cmd = new Command[] {	// Map TTS command keywords to their execution functions
 		new Command("init")             { public boolean run() { return executeTTS_INIT(); } },
 		new Command("speak.tofile")     { public boolean run() { return executeTTS_SPEAK_TOFILE(); } },
 		new Command("speak")            { public boolean run() { return executeTTS_SPEAK(); } },
@@ -1351,15 +1361,15 @@ public class Run extends ListActivity {
 
 	public static TextToSpeechActivity theTTS;
 	public static boolean ttsInit;
-	
+
 	// *********************************************** FTP Client *************************************
-	
-    public static final String ftp_KW[] = {				// SQL Commands
-    	"open", "close", "dir", "cd",
-    	"get", "put", "delete", "rmdir",
-    	"mkdir", "rename"
-    };
-    
+
+	private static final String ftp_KW[] = {			// FTP command list for Format
+		"open", "close", "dir", "cd",
+		"get", "put", "delete", "rmdir",
+		"mkdir", "rename"
+	};
+
     public static final int ftp_open = 0;
     public static final int ftp_close = 1;
     public static final int ftp_dir = 2;
@@ -1374,16 +1384,16 @@ public class Run extends ListActivity {
 
 	public FTPClient mFTPClient = null;
 	public String FTPdir = null;
-	
+
 	// *********************************************** Camera *****************************************
-	
+
 	public static Bitmap CameraBitmap;
 	public static boolean CameraDone;
 	private int CameraNumber;
 	private int NumberOfCameras;			// -1 if we don't know yet
 
 	// ***************************************  Bluetooth  ********************************************
-	
+
     // Message types sent from the BluetoothChatService
     public static final int MESSAGE_STATE_CHANGE = MESSAGE_BT_GROUP + 1;
     public static final int MESSAGE_READ         = MESSAGE_BT_GROUP + 2;
@@ -1423,14 +1433,14 @@ public class Run extends ListActivity {
     public static boolean btReadReady = false;
     public static int OnBTReadLine = 0;
 
-    public static final String bt_KW[] = {				// Bluetooth Commands
-    	"open", "close", "status", 
-    	"connect", "device.name",
-    	"write", "read.ready", "read.bytes",
-    	"set.uuid", "listen", "reconnect",
-    	"onreadready.resume", "disconnect"
-    };
-    
+	private static final String bt_KW[] = {				// Bluetooth command list for Format
+		"open", "close", "status", 
+		"connect", "device.name",
+		"write", "read.ready", "read.bytes",
+		"set.uuid", "listen", "reconnect",
+		"onreadready.resume", "disconnect"
+	};
+
     public static final int bt_open = 0;
     public static final int bt_close = 1;
     public static final int bt_status = 2;
@@ -1445,14 +1455,13 @@ public class Run extends ListActivity {
     public static final int bt_readready_resume = 11;
     public static final int bt_disconnect = 12;
 
-    /**************************************  Superuser and System  ***************************/
+	/**************************************  Superuser and System  ***************************/
 
-    public static final String su_KW[] = {
-    	"open", "write", "read.ready",
-    	"read.line", "close"
-    	
-    };
-    public static final String[] System_KW = su_KW;
+	private static final String su_KW[] = {				// Command list for Format
+		"open", "write", "read.ready",
+		"read.line", "close"
+	};
+	private static final String[] System_KW = su_KW;	// Command list for Format
 
 	private final Command[] SU_cmd = new Command[] {	// Map SU/System command keywords to their execution functions
 		new Command("open")             { public boolean run() { return execute_SU_open(); } },
@@ -1468,16 +1477,16 @@ public class Run extends ListActivity {
     private Process SUprocess;
     private ArrayList <String> SU_ReadBuffer;
     private SUReader theSUReader = null;
-    
-/***************************************  SOUND POOL  ************************************/
-    
-    public static final String sp_KW[] = {
-    	"open", "load","play", "stop",
-    	"unload", "pause", "resume", 
-    	"release", "setvolume","setpriority",
-    	"setloop", "setrate"
-    };
-    
+
+	/***************************************  SOUND POOL  ************************************/
+
+	private static final String sp_KW[] = {				// Command list for Format
+		"open", "load","play", "stop",
+		"unload", "pause", "resume", 
+		"release", "setvolume","setpriority",
+		"setloop", "setrate"
+	};
+
     public static final int sp_open = 0;
     public static final int sp_load = 1;
     public static final int sp_play = 2;
@@ -1490,93 +1499,96 @@ public class Run extends ListActivity {
     public static final int sp_setpriority = 9;
     public static final int sp_setloop = 10;
     public static final int sp_setrate = 11;
-    
-    public static SoundPool theSoundPool ;
-    
-    // **************** Headset Vars **************************************
-    
-    int headsetState;
-    String headsetName;
-    int headsetMic;
-    
-    //******************* html Vars ******************************************
-    
-    public static final String html_KW[]= {
-    	"open", "load.url", "load.string",
-    	"get.datalink", "close" , "go.back",
-    	"go.forward", "clear.cache", 
-    	"clear.history", "post"
-    };
-    
-    public static final int html_open = 0;
-    public static final int html_load_url = 1;
-    public static final int html_load_string = 2;
-    public static final int html_get_datalink = 3;
-    public static final int html_close = 4;
-    public static final int html_go_back = 5;
-    public static final int html_go_forward = 6;
-    public static final int html_clear_cache = 7;
-    public static final int html_clear_history = 8;
-    public static final int html_post = 9;
-    
-    // Message types for the HTML commands
-    private static final int MESSAGE_HTML_OPEN     = MESSAGE_HTML_GROUP + 1;
-    private static final int MESSAGE_GO_BACK       = MESSAGE_HTML_GROUP + 2;
-    private static final int MESSAGE_GO_FORWARD    = MESSAGE_HTML_GROUP + 3;
-    private static final int MESSAGE_CLEAR_CACHE   = MESSAGE_HTML_GROUP + 4;
-    private static final int MESSAGE_CLEAR_HISTORY = MESSAGE_HTML_GROUP + 5;
-    private static final int MESSAGE_LOAD_URL      = MESSAGE_HTML_GROUP + 6;
-    private static final int MESSAGE_LOAD_STRING   = MESSAGE_HTML_GROUP + 7;
-    private static final int MESSAGE_POST          = MESSAGE_HTML_GROUP + 8;
 
-    Intent htmlIntent;
-    public static ArrayList <String> htmlData_Buffer;
-    public boolean htmlOpening;
-    public String htmlCmd;
+	public static SoundPool theSoundPool ;
 
-    public static boolean Notified;
-   
+	// **************** Headset Vars **************************************
+
+	int headsetState;
+	String headsetName;
+	int headsetMic;
+
+	//******************* html Vars ******************************************
+
+	private static final String html_KW[] = {			// Command list for Format
+		"open", "orientation",
+		"load.url", "load.string",
+		"get.datalink", "close" , "go.back",
+		"go.forward", "clear.cache", 
+		"clear.history", "post"
+	};
+
+	private final Command[] html_cmd = new Command[] {	// Map HTML command keywords to their execution functions
+		new Command("open")             { public boolean run() { return execute_html_open(); } },
+		new Command("orientation")      { public boolean run() { return execute_html_orientation(); } },
+		new Command("load.url")         { public boolean run() { return execute_html_load_url(); } },
+		new Command("load.string")      { public boolean run() { return execute_html_load_string(); } },
+		new Command("get.datalink")     { public boolean run() { return execute_html_get_datalink(); } },
+		new Command("close")            { public boolean run() { return execute_html_close(); } },
+		new Command("go.back")          { public boolean run() { return execute_html_go_back(); } },
+		new Command("go.forward")       { public boolean run() { return execute_html_go_forward(); } },
+		new Command("clear.cache")      { public boolean run() { return execute_html_clear_cache(); } },
+		new Command("clear.history")    { public boolean run() { return execute_html_clear_history(); } },
+		new Command("post")             { public boolean run() { return execute_html_post(); } },
+	};
+
+	// Message types for the HTML commands
+	private static final int MESSAGE_HTML_OPEN     = MESSAGE_HTML_GROUP + 1;
+	private static final int MESSAGE_GO_BACK       = MESSAGE_HTML_GROUP + 2;
+	private static final int MESSAGE_GO_FORWARD    = MESSAGE_HTML_GROUP + 3;
+	private static final int MESSAGE_CLEAR_CACHE   = MESSAGE_HTML_GROUP + 4;
+	private static final int MESSAGE_CLEAR_HISTORY = MESSAGE_HTML_GROUP + 5;
+	private static final int MESSAGE_LOAD_URL      = MESSAGE_HTML_GROUP + 6;
+	private static final int MESSAGE_LOAD_STRING   = MESSAGE_HTML_GROUP + 7;
+	private static final int MESSAGE_POST          = MESSAGE_HTML_GROUP + 8;
+
+	public static ArrayList <String> htmlData_Buffer;
+	private Intent htmlIntent;
+	private boolean htmlOpening;
+
+	public static boolean Notified;
+
     //********************* SMS Receive Vars ***********************************
 
     public static ArrayList <String> smsRcvBuffer;
-    
-    // ******************** Speech to text Vars ********************************
-    
-    public static final int  VOICE_RECOGNITION_REQUEST_CODE = 1234;
-    public static ArrayList <String> sttResults;
-    public static boolean sttListening;
-    public static boolean sttDone;
-    
-    // ******************** Timer Variables *******************************
 
-	public static final String Timer_KW[] = {
+	// ******************** Speech to text Vars ********************************
+
+	public static final int VOICE_RECOGNITION_REQUEST_CODE = 1234;
+	public static ArrayList <String> sttResults;
+	public static boolean sttListening;
+	public static boolean sttDone;
+
+	// ******************** Timer Variables *******************************
+
+	private static final String Timer_KW[] = {			// Command list for Format
 		"set", "clear", "resume"
 	};
 
-	private final Command[] Timer_cmd = new Command[] {		// Map Timer command keywords to their execution functions
+	private final Command[] Timer_cmd = new Command[] {	// Map Timer command keywords to their execution functions
 		new Command("set")              { public boolean run() { return executeTIMER_SET(); } },
 		new Command("clear")            { public boolean run() { return executeTIMER_CLEAR(); } },
 		new Command("resume")           { public boolean run() { return executeTIMER_RESUME(); } }
 	};
 
-    public static int OnTimerLine;
-    public static Timer theTimer;
-    public static boolean timerExpired;
-    public static boolean timerStarting;
+	public static int OnTimerLine;
+	public static Timer theTimer;
+	public static boolean timerExpired;
+	public static boolean timerStarting;
 
-    // ******************** TimeZone Variables *******************************
-    
-    public static final String TimeZone_KW[] = {
-    	"set", "get", "list"
-    };
+	// ******************** TimeZone Variables *******************************
 
-	private final Command[] TimeZone_cmd = new Command[] {		// Map TimeZone command keywords to their execution functions
+	private static final String TimeZone_KW[] = {		// Command list for Format
+		"set", "get", "list"
+	};
+
+	private final Command[] TimeZone_cmd = new Command[] {	// Map TimeZone command keywords to their execution functions
 		new Command("set")              { public boolean run() { return executeTIMEZONE_SET(); } },
 		new Command("get")              { public boolean run() { return executeTIMEZONE_GET(); } },
 		new Command("list")             { public boolean run() { return executeTIMEZONE_LIST(); } }
-    };
+	};
 
-    public String theTimeZone = "";
+	public String theTimeZone = "";
 
     //********************** Phone RCV variables *************************
     
@@ -1584,32 +1596,24 @@ public class Run extends ListActivity {
 	public static String phoneNumber = "";
 	public static boolean phoneRcvInited = false;
 	public static TelephonyManager mTM;
-	
-	// ********************* READ variables *****************************
-	
-	public static int readNext =0;
-	public static ArrayList <Bundle> readData;
-	    
-    // ****************** Headset Broadcast Receiver ***********************
-    
-    
- 
-    public class BroadcastsHandler extends BroadcastReceiver {
 
-    	@Override
-    	public void onReceive(Context context, Intent intent) {
-    	    if (intent.getAction().equalsIgnoreCase(Intent.ACTION_HEADSET_PLUG)) {
-    	        String data = intent.getDataString();
-    	        Bundle extraData = intent.getExtras();
+	// ****************** Headset Broadcast Receiver ***********************
 
-    	         headsetState = intent.getIntExtra("state", -1);
-    	         headsetName = intent.getStringExtra("name");
-    	         headsetMic = intent.getIntExtra("microphone", -1);
+	public class BroadcastsHandler extends BroadcastReceiver {
 
-    	    }
-    	}
-    }
-    private BroadcastsHandler headsetBroadcastReceiver = null;
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			if (intent.getAction().equalsIgnoreCase(Intent.ACTION_HEADSET_PLUG)) {
+				String data = intent.getDataString();
+				Bundle extraData = intent.getExtras();
+
+				headsetState = intent.getIntExtra("state", -1);
+				headsetName = intent.getStringExtra("name");
+				headsetMic = intent.getIntExtra("microphone", -1);
+			}
+		}
+	}
+	private BroadcastsHandler headsetBroadcastReceiver = null;
 
 /*  ***********************************  Start of Basic's run program code **********************
  * 
@@ -2162,7 +2166,12 @@ private void InitVars(){
     
     clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 
-	//  ******************  Input Command variables ********************************
+	// ******************** READ variables *******************************************
+
+	readNext = 0;
+	readData = new ArrayList <Bundle>();
+
+	// ******************** Input Command variables ********************************
 
 	WaitForInput = false;
 	BadInput = false;
@@ -2174,14 +2183,14 @@ private void InitVars(){
 	InputDismissed = false;
 	theAlertDialog = null;
 
-    //  ******************  Popup Command variables ********************************
-    
-    ToastMsg = "";
-    ToastX = 0 ;
-    ToastY = 0;
-    ToastDuration = 1;
+	// ******************** Popup Command variables ********************************
 
-	// *********************  SQL Variables  **************************************
+	ToastMsg = "";
+	ToastX = 0 ;
+	ToastY = 0;
+	ToastDuration = 1;
+
+	// ******************** SQL Variables ******************************************
 
 	DataBases = new ArrayList<SQLiteDatabase>();	// List of created data bases
 	Cursors = new ArrayList<Cursor>();				// List of created data bases
@@ -2214,7 +2223,7 @@ private void InitVars(){
     theMPList.add(null);		// We don't use the [0] element of these Lists
     theMPNameList.add(null);
 
-    // ******************************* Variables for Sensor Commands **********************************
+// ******************************* Variables for Sensor Commands **********************************
 
     theSensors = null;
 
@@ -2306,10 +2315,6 @@ private void InitVars(){
 	 phoneNumber = "";
 	 phoneRcvInited = false;
 	 mTM = null;
-	 
-	 readNext =0;
-	 readData = new ArrayList <Bundle>();
-
 
 }
 
@@ -13121,7 +13126,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 
-	//*********************************** Clipboard Commands *****************************************
+	// ************************************ Clipboard Commands ************************************
 
 	/*
 	// This code does not work on devices with API level < 11
@@ -13170,8 +13175,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		clipboard.setText(StringConstant);                  // Put the user expression into the clipboard
 		return true;
 	}
-	
-	// ********************************Encryption commands *****************************************
+
+	// *********************************** Encryption Commands ************************************
 
 	@SuppressLint("NewApi")									// Uses value from API 8
 	private boolean executeENCRYPT(){
@@ -13293,19 +13298,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		return true;
 	}
-	
-//************************************** Socket Commands  ******************************************
+
+	// ************************************* Socket Commands **************************************
 
 	private boolean executeSOCKET(){								// Get Socket command keyword if it is there
 		return executeCommand(Socket_cmd, "Socket");
 	}
 
 	private boolean executeSocketServer(){							// Get Socket Server command keyword if it is there
-		return executeCommand(SocketServer_cmd, "Socket Server");
+		return executeCommand(SocketServer_cmd, "Socket.Server");
 	}
 
 	private boolean executeSocketClient(){							// Get Socket Client command keyword if it is there
-		return executeCommand(SocketClient_cmd, "Socket Client");
+		return executeCommand(SocketClient_cmd, "Socket.Client");
 	}
 
 	private boolean isServerSocketConnected() {
@@ -13781,7 +13786,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		StringVarValues.set(theValueIndex, IP);
 		return true;
 	}
-	
+
 	//****************************************** TTS *******************************************
 
 	private boolean executeTTS(){								// Get TTS command keyword if it is there
@@ -14570,7 +14575,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		    	return true;
 		    }
 
-//    ***********************************  Superuser and System ***************************
+	// *********************************** Superuser and System ***********************************
 
 	private boolean executeSU(boolean isSU) {	// SU command (isSU true) or system comand (isSU false)
 		for (Command c : SU_cmd) {								// loop through the command list
@@ -14662,8 +14667,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		    	return true;
 		    }
-		    
-/****************************************** CONSOLE Commands  ************************************/
+
+	// ************************************* CONSOLE Commands *************************************
 
 	private boolean executeCONSOLE() {							// Get Console command keyword if it is there
 		return executeCommand(Console_cmd, "Console");
@@ -15260,137 +15265,88 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			
 			return true;
  	  }
- 	  
-	  //********************************  EMAIL  ************************************
-	  
-	  private boolean executeEMAIL_SEND(){
-		  
-		  if (!evalStringExpression()) return false;
-		  String recipiant = "mailto:" + StringConstant;
 
-			char c = ExecutingLineBuffer.charAt(LineIndex);									
-			if ( c != ',') return false;
-			++LineIndex;
+	// ****************************************** EMAIL *******************************************
 
-		  if (!evalStringExpression()) return false;
-		  String subject = StringConstant;
+	private boolean executeEMAIL_SEND() {
 
-			c = ExecutingLineBuffer.charAt(LineIndex);										
-			if ( c != ',') return false;
-			++LineIndex;
+		if (!getStringArg()) return false;
+		String recipiant = "mailto:" + StringConstant;
+		if (!isNext(',')) return false;
 
-		  if (!evalStringExpression()) return false;
-		  String body = StringConstant;
-		  
-		  Intent intent = new Intent(Intent.ACTION_SENDTO); // it's not ACTION_SEND
-		  intent.setType("text/plain");
-		  intent.putExtra(Intent.EXTRA_SUBJECT, subject);
-		  intent.putExtra(Intent.EXTRA_TEXT, body);
-		  intent.setData(Uri.parse(recipiant)); // or just "mailto:" for blank
-		  intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // this will make such that when user returns to your app, your app is displayed, instead of the email app.
-		  try {
-			  startActivityForResult(intent, BASIC_GENERAL_INTENT);
-		  }catch (Exception e){
-			  return RunTimeError(e);
-		  }
-		  
-		  return true;
-	  }
-	  
-	  // *********************************** html ********************************************
-	  
-		public boolean executehtml(){
-			
-			if (htmlOpening){
-				while (Web.aWebView == null) Thread.yield();
-				htmlOpening = false;
-			}
-			
-			
-			if (!GethtmlKeyWord()){ return false;}
-			
-			if (KeyWordValue == html_open ||            // Allow open and get.datalink if not opened
-			    KeyWordValue == html_get_datalink){}
-			    else
-			
-			    	if (htmlIntent == null ||
-			    		Web.aWebView == null)
-			    	{
-			    		if (KeyWordValue != html_close) {      // If already closed and user asking
-			    			RunTimeError("html not opened");   // to close, then don't give an error
-			    			return false;
-			    		}
-			    		else return true;
-			    	}
+		if (!getStringArg()) return false;
+		String subject = StringConstant;
+		if (!isNext(',')) return false;
 
-			switch (KeyWordValue){
-			case html_open:
-				if (!execute_html_open()) return false;
-				break;
-			case html_load_url:
-				if (!execute_html_load_url()) return false;
-				break;
-			case html_load_string:
-				if (!execute_html_load_string()) return false;
-				break;
-			case html_get_datalink:
-				if (!execute_html_get_datalink()) return false;
-				break;
-			case html_close:
-				if (!execute_html_close()) return false;
-				break;
-			case html_go_back:
-				if (!execute_html_go_back()) return false;
-				break;
-			case html_go_forward:
-				if (!execute_html_go_forward()) return false;
-				break;
-			case html_clear_cache:
-				if (!execute_html_clear_cache()) return false;
-				break;
-			case html_clear_history:
-				if (!execute_html_clear_history()) return false;
-				break;
-			case html_post:
-				if (!execute_html_post()) return false;
-				break;
-			default:
-			}
-			return true;
-		}
+		if (!getStringArg()) return false;
+		String body = StringConstant;
+		if (!checkEOL()) return false;
 
-	private boolean GethtmlKeyWord(){						// Get n HTML keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < html_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(html_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += html_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = 99;									// no keyword found
-		return false;										// report fail
+		Intent intent = new Intent(Intent.ACTION_SENDTO);	// it's not ACTION_SEND
+		intent.setType("text/plain");
+		intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+		intent.putExtra(Intent.EXTRA_TEXT, body);
+		intent.setData(Uri.parse(recipiant));				// or just "mailto:" for blank
+		// this will make such that when user returns to your app, your app is displayed, instead of the email app.
+		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+		try { startActivityForResult(intent, BASIC_GENERAL_INTENT); }
+		catch (Exception e) { return RunTimeError(e); }
+
+		return true;
 	}
 
-	  private boolean execute_html_open(){
-		  if (Web.aWebView != null) {
-			return RunTimeError("HTML previously open and not closed");
-		  }
-		  
-		  ShowStatusBar = 0;
-		  if (evalNumericExpression()){
-			  ShowStatusBar = EvalNumericExpressionValue.intValue();
-		  }
-		  if (!checkEOL()) return false;
+	// ******************************************* HTML *******************************************
 
-          htmlIntent= new Intent(this, Web.class);         // Intent variable used to tell if opened
-          Web.aWebView = null;							   // Will be set int Web.java
-          htmlData_Buffer = new ArrayList<String>();	   // Initialize the datalink buffer
+	private boolean executehtml() {
+
+		if (htmlOpening) {
+			while (Web.aWebView == null) Thread.yield();
+			htmlOpening = false;
+		}
+
+		Command c = findCommand(html_cmd, "HTML");
+		if (c != null) {
+			if ((htmlIntent == null) || (Web.aWebView == null)) {
+				if (c.name.equals("close")) {				// Allow close if already closed
+					return true;
+				}
+				if (!c.name.equals("open") &&				// Allow open and get.datalink if not opened
+					!c.name.equals("get.datalink")) {
+					return RunTimeError("html not opened");
+				}
+			}
+			return c.run();
+		}
+		return false;
+	}
+
+	private boolean execute_html_open() {
+		if (Web.aWebView != null) {
+			return RunTimeError("HTML previously open and not closed");
+		}
+
+		int showStatusBar = 0;							// default to status bar not showing
+		int orientation = -1;							// default to orientation per sensor
+		if (evalNumericExpression()) {
+			showStatusBar = EvalNumericExpressionValue.intValue();
+			if (isNext(',')) {
+				if (!evalNumericExpression()) return false;
+				orientation = EvalNumericExpressionValue.intValue();
+			}
+		}
+		if (!checkEOL()) return false;
+
+		htmlIntent = new Intent(this, Web.class);			// Intent variable used to tell if opened
+		htmlIntent.putExtra(Web.EXTRA_SHOW_STATUSBAR, showStatusBar);
+		htmlIntent.putExtra(Web.EXTRA_ORIENTATION, orientation);
+		Web.aWebView = null;								// Will be set in Web.java
+		htmlData_Buffer = new ArrayList<String>();			// Initialize the datalink buffer
 		sendMessage(MESSAGE_HTML_OPEN);						// Start Web View in UI thread.
-          htmlOpening = true;
-          
-          return true;
-	  }
+		htmlOpening = true;
+
+		return true;
+	}
 
 	private String getURL(String path) {					// build a URL for a file or directory in the file system or assets
 		String urlPath = Basic.getDataPath(path);			// if path is null, get full path of default data directory
@@ -15406,7 +15362,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return "file://" + urlPath;							// make the path into a URL
 	}
 
-	private boolean execute_html_load_url(){				// Load an internet url
+	private boolean execute_html_orientation() {			// change the screen orientation
+		if (!evalNumericExpression() || !checkEOL()) return false;
+		Web.aWebView.setOrientation(EvalNumericExpressionValue.intValue());
+		return true;
+	}
+
+	private boolean execute_html_load_url() {				// Load an internet url
 		if (!getStringArg() || !checkEOL()) return false;
 
 		String urlString = StringConstant;
@@ -15420,7 +15382,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_html_load_string(){				// Load an html string
+	private boolean execute_html_load_string() {			// Load an html string
 		if (!getStringArg() || !checkEOL()) return false;
 		String baseURL = getURL(null) + File.separatorChar;	// baseURL is default data directory in file system or assets.
 															// If directory does not exist in either file system or assets,
@@ -15430,7 +15392,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_html_get_datalink(){			// Gets a data sring from datalink queue
+	private boolean execute_html_get_datalink() {			// Gets a data sring from datalink queue
 
 		if (!getSVar()) return false;						// The string return variable
 		if (!checkEOL()) return false;
@@ -15450,43 +15412,43 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_html_go_back(){
+	private boolean execute_html_go_back() {
 		if (!checkEOL()) return false;
 //		Web.aWebView.goBack();
 		sendMessage(MESSAGE_GO_BACK);
 		return true;
 	}
 
-	private boolean execute_html_go_forward(){
+	private boolean execute_html_go_forward() {
 		if (!checkEOL()) return false;
 //		Web.aWebView.goForward();
 		sendMessage(MESSAGE_GO_FORWARD);
 		return true;
 	}
 
-	private boolean execute_html_clear_cache(){
+	private boolean execute_html_clear_cache() {
 		if (!checkEOL()) return false;
 //		Web.aWebView.clearCache();
 		sendMessage(MESSAGE_CLEAR_CACHE);
 		return true;
 	}
 
-	private boolean execute_html_clear_history(){
+	private boolean execute_html_clear_history() {
 		if (!checkEOL()) return false;
 //		Web.aWebView.clearHistory();
 		sendMessage(MESSAGE_CLEAR_HISTORY);
 		return true;
 	}
 
-	  private boolean execute_html_close(){							// Close the html
-		  if (!checkEOL()) return false;
-		  if (Web.aWebView != null) Web.aWebView.webClose();        // if it is open
-		  while (Web.aWebView != null) Thread.yield();              // wait for the close signal
-		  htmlIntent = null;										// Indicate not open
-		  return true;
-	  }
+	private boolean execute_html_close() {					// Close the html
+		if (!checkEOL()) return false;
+		if (Web.aWebView != null) Web.aWebView.webClose();	// if it is open
+		while (Web.aWebView != null) Thread.yield();		// wait for the close signal
+		htmlIntent = null;									// indicate not open
+		return true;
+	}
 
-	private boolean execute_html_post(){
+	private boolean execute_html_post() {
 		if (!getStringArg()) return false;
 		String url = StringConstant;
 
@@ -15498,7 +15460,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (theListIndex < 1 || theListIndex >= theLists.size()) {
 			return RunTimeError("Invalid list pointer");
 		}
-		if (theListsType.get(theListIndex) == list_is_numeric){
+		if (theListsType.get(theListIndex) == list_is_numeric) {
 			return RunTimeError("List must be of string type.");
 		}
 		List<String> thisList = theLists.get(theListIndex);
@@ -15547,9 +15509,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;											// message handled
 	}
 
-	//************************************** Run Command ************************************
+	// *************************************** Run Command ****************************************
 
-	private boolean executeRUN(){
+	private boolean executeRUN() {
 
 		if (!getStringArg()) { return false; }								// get program filename
 		String fileName = StringConstant;
@@ -15588,20 +15550,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	  //**************************************** Empty Program Command *********************************
-	  
-	  private boolean executeEMPTY_PROGRAM(){
-		  Show("Nothing to execute.");
-		  Stop = true;
-		  return true;
-	  }
-	  
-	  // *************************************** Notify Command ***********************************
-	  
-	  private boolean executeNOTIFY(){
-		  
-		  int NOTIFICATION_ID = 1;    // These two constants are without meaning in this application
-		  int REQUEST_CODE = 2;
+	// ********************************** Empty Program Command ***********************************
+
+	private boolean executeEMPTY_PROGRAM() {
+		Show("Nothing to execute.");
+		Stop = true;
+		return true;
+	}
+
+	// ************************************** Notify Command **************************************
+
+	private boolean executeNOTIFY() {
+
+		int NOTIFICATION_ID = 1;	// These two constants are without meaning in this application
+		int REQUEST_CODE = 2;
 
 		if (!getStringArg()) return false;
 		String title = StringConstant;
@@ -15616,201 +15578,183 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) return false;
 		if (!evalNumericExpression()) return false;				// logical expression: wait flag
-		double wait = EvalNumericExpressionValue;
+		boolean wait = (EvalNumericExpressionValue != 0);
+		if (!checkEOL()) { return false; }
 
-		  Notified = false;
-		  
-		  NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		  Notification notification = new Notification(R.drawable.icon, msg, System.currentTimeMillis());
+		Notified = false;
 
-		  // The PendingIntent will launch activity if the user selects this notification
-		  PendingIntent contentIntent = PendingIntent.getActivity(this, REQUEST_CODE, new Intent(this, HandleNotify.class), 0);
+		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		Notification notification = new Notification(R.drawable.icon, msg, System.currentTimeMillis());
 
-		  notification.setLatestEventInfo(this, title, subtitle, contentIntent);
-		  notification.flags = Notification.FLAG_AUTO_CANCEL;
-		  
-		  manager.notify(NOTIFICATION_ID, notification);
-		  
-		  if (wait != 0) 
-			  while (!Notified) Thread.yield();
-		  
-		  return true;
-	  }
-	  
-	  // ***********************************  SWAP Command *********************************************
-	  
-	  private boolean executeSWAP(){
-		  
-		  if (getNVar()) {
-			  int aIndex = theValueIndex;
-			  double aValue = NumericVarValues.get(aIndex);
-			  
-			  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
-			  ++LineIndex;
-			  
-			  if (!getNVar()) return false;
-			  int bIndex = theValueIndex;
-			  double bValue = NumericVarValues.get(bIndex);
-			  
-			  NumericVarValues.set(aIndex, bValue);
-			  NumericVarValues.set(bIndex, aValue);
-			  
-			  return true;
-			  
-		  }
-		  else if (!getSVar()) return false;
-		  
-		  int aIndex = theValueIndex;
-		  String aValue = StringVarValues.get(aIndex);
-		  
-		  if (ExecutingLineBuffer.charAt(LineIndex)!=','){SyntaxError(); return false;} 
-		  ++LineIndex;
-		  
-		  if (!getSVar()) return false;
-		  int bIndex = theValueIndex;
-		  String bValue = StringVarValues.get(bIndex);
-		  
-		  StringVarValues.set(aIndex, bValue);
-		  StringVarValues.set(bIndex, aValue);
-		  
-		  
-		  return true;
-	  }
-	  
-	  // ****************************** Speach to text Command ******************************
-	  
-	  private boolean executeSTT_LISTEN(){
-		  
-	        PackageManager pm = getPackageManager();
-	        List<ResolveInfo> activities = pm.queryIntentActivities(
-	                new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0);
-	        if (activities.size() == 0) {
-	        	RunTimeError("Recognizer not present");
-	        	return false;
-	        }
-	        
-	        sttListening = true;
-	        sttDone = false;
-	        if (GRopen) GR.doSTT = true;
-	        else startVoiceRecognitionActivity();
-	        return true;
-	  }
-	        
-	  private boolean executeSTT_RESULTS(){
-		  if (!sttListening) {
-			  RunTimeError("STT_LISTEN not executed.");
-			  return false;
-		  }
-	        while (!sttDone) Thread.yield();
-	        sttListening = false;
-	        
-			int theIndex = theLists.size();
-			if (sttResults == null) {
-				sttResults = new ArrayList <String>();
-				sttResults.add("Recognition Cancelled");
-			}
-			theLists.add(sttResults);
-			theListsType.add(list_is_string);
-			
-			if (!getNVar()) return false;
-			NumericVarValues.set(theValueIndex, (double) theIndex);   		// Return the list pointer    
+		// The PendingIntent will launch activity if the user selects this notification
+		PendingIntent contentIntent = PendingIntent.getActivity(this, REQUEST_CODE, new Intent(this, HandleNotify.class), 0);
 
-		  return true;
-	  }
-	  
-	    private void startVoiceRecognitionActivity() {
-	        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-	        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-	                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-	        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "BASIC! Speech To Text");
-	        startActivityForResult(intent, VOICE_RECOGNITION_REQUEST_CODE);
-	    }
-	    
-	  // ******************************* Timer commands ***************************************
-	    
-	private boolean executeTIMER(){											// Get Timer command keyword if it is there
+		notification.setLatestEventInfo(this, title, subtitle, contentIntent);
+		notification.flags = Notification.FLAG_AUTO_CANCEL;
+
+		manager.notify(NOTIFICATION_ID, notification);
+
+		if (wait) {
+			while (!Notified) Thread.yield();
+		}
+		return true;
+	}
+
+	// *************************************** Swap Command ***************************************
+
+	private boolean executeSWAP() {
+
+		if (!getVar()) return false;
+		int aIndex = theValueIndex;
+		boolean aIsNumeric = VarIsNumeric;
+		if (!isNext(',')) return false;
+
+		if (!getVar()) return false;
+		int bIndex = theValueIndex;
+		if (aIsNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
+		if (!checkEOL()) return false;
+
+		if (VarIsNumeric) {
+			double aValue = NumericVarValues.get(aIndex);
+			double bValue = NumericVarValues.get(bIndex);
+			NumericVarValues.set(aIndex, bValue);
+			NumericVarValues.set(bIndex, aValue);
+		} else {
+			String aValue = StringVarValues.get(aIndex);
+			String bValue = StringVarValues.get(bIndex);
+			StringVarValues.set(aIndex, bValue);
+			StringVarValues.set(bIndex, aValue);
+		}
+		return true;
+	}
+
+	// ********************************* Speech-to-Text Commands **********************************
+
+	private boolean executeSTT_LISTEN() {
+
+		PackageManager pm = getPackageManager();
+		List<ResolveInfo> activities = pm.queryIntentActivities(
+				new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0);
+		if (activities.size() == 0) {
+			return RunTimeError("Recognizer not present");
+		}
+
+		sttListening = true;
+		sttDone = false;
+		if (GRopen)
+			GR.doSTT = true;
+		else
+			startVoiceRecognitionActivity();
+		return true;
+	}
+
+	private boolean executeSTT_RESULTS() {
+		if (!sttListening) {
+			return RunTimeError("STT_LISTEN not executed.");
+		}
+		while (!sttDone) Thread.yield();
+		sttListening = false;
+
+		int theIndex = theLists.size();
+		if (sttResults == null) {
+			sttResults = new ArrayList <String>();
+			sttResults.add("Recognition Cancelled");
+		}
+		theLists.add(sttResults);
+		theListsType.add(list_is_string);
+
+		if (!getNVar()) return false;
+
+		NumericVarValues.set(theValueIndex, (double) theIndex);		// Return the list pointer
+		return true;
+	}
+
+	private void startVoiceRecognitionActivity() {
+		Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+		intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+				RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+		intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "BASIC! Speech To Text");
+		startActivityForResult(intent, VOICE_RECOGNITION_REQUEST_CODE);
+	}
+
+	// ************************************** Timer Commands **************************************
+
+	private boolean executeTIMER() {								// Get Timer command keyword if it is there
 		return executeCommand(Timer_cmd, "Timer");
 	}
 
-	   private boolean executeTIMER_SET(){
-		   if (theTimer != null) {
-			   RunTimeError("Previous Timer Not Cleared");
-			   return false;
-		   }
-		   
-		   if (OnTimerLine == 0) {
-			   RunTimeError("No OnTimer: Label");
-			   return false;
-		   }
-		   
-		   
-		   if (!evalNumericExpression()) return false;
-		   long interval = EvalNumericExpressionValue.intValue();
-		   if (interval < 100) {
-			   RunTimeError("Interval Must Be >= 100");
-			   return false;
-		   }
-		   
-		   if (!checkEOL()) return false;
-		   
-		   TimerTask tt = new TimerTask() {
-			    public void run() {
-			        // Delegate to the same runnable each time.
-			        toRunRepeatedly.run();
-			    }
-			};
+	private boolean executeTIMER_SET() {
+		if (theTimer != null) {
+			return RunTimeError("Previous Timer Not Cleared");
+		}
 
-		   timerExpired= false;
-		   timerStarting = true;
-		   theTimer = new Timer();
-		   theTimer.scheduleAtFixedRate (tt, 100, interval);	   
-		   
-	    	return true;
-	    }
-	   
-		
-		   Runnable toRunRepeatedly = new Runnable() {
-			    public void run() {
-			    	if (timerStarting)
-			    		timerStarting = false;
-			    	else
-			    		timerExpired= true;
-			    }
-		   };
+		if (OnTimerLine == 0) {
+			return RunTimeError("No OnTimer: Label");
+		}
 
+		if (!evalNumericExpression()) return false;
+		long interval = EvalNumericExpressionValue.longValue();
+		if (interval < 100) {
+			return RunTimeError("Interval Must Be >= 100");
+		}
 
-	    
-	   private boolean executeTIMER_CLEAR(){
-		   if (!checkEOL()) return false;
-		   
-		   if (theTimer != null) {
-			   theTimer.cancel();
-			   theTimer = null;
-		   }
-	    	return true;
-	   }
-	   
-	   private boolean executeTIMER_RESUME(){
-		   if (interruptResume == -1) {
-			   RunTimeError("No timer interrupt to reseume");
-			   return false; 
-		   }
-	       return doResume();
-	    }
-	   
-	   // ***************************** Home Command **************************************
-	   
-	   private boolean executeHOME(){
-		   moveTaskToBack(true);
-		   return true;
-	   }
+		if (!checkEOL()) return false;
 
-	   private boolean executeBACKGROUND_RESUME() {
-		   if (interruptResume == -1) {
-			   RunTimeError("No background state change");
-			   return false;
-		   }
-		   return doResume();
-	   }
+		TimerTask tt = new TimerTask() {
+			public void run() {
+				// Delegate to the same runnable each time.
+				toRunRepeatedly.run();
+			}
+		};
+
+		timerExpired= false;
+		timerStarting = true;
+		theTimer = new Timer();
+		theTimer.scheduleAtFixedRate (tt, 100, interval);
+
+		return true;
+	}
+
+	Runnable toRunRepeatedly = new Runnable() {
+		public void run() {
+			if (timerStarting)
+				timerStarting = false;
+			else
+				timerExpired= true;
+		}
+	};
+
+	private boolean executeTIMER_CLEAR() {
+		if (!checkEOL()) return false;
+
+		if (theTimer != null) {
+			theTimer.cancel();
+			theTimer = null;
+		}
+		return true;
+	}
+
+	private boolean executeTIMER_RESUME() {
+		if (interruptResume == -1) {
+			return RunTimeError("No timer interrupt to reseume");
+		}
+		return doResume();
+	}
+
+	// *************************************** Home Command ***************************************
+
+	private boolean executeHOME() {
+		if (!checkEOL()) return false;
+
+		moveTaskToBack(true);
+		return true;
+	}
+
+	private boolean executeBACKGROUND_RESUME() {
+		if (interruptResume == -1) {
+			return RunTimeError("No background state change");
+		}
+		return doResume();
+	}
 
 } // End of Run
