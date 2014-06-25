@@ -730,7 +730,7 @@ public class Run extends ListActivity {
     private boolean SyntaxError = false;					// Set true when Syntax Error message has been output
 
     private boolean ProgressPending = false;
-	
+
 	// debugger dialog and ui thread vars
 	private static final int MESSAGE_DEBUG_DIALOG = MESSAGE_DEBUG_GROUP + 1;
 	private static final int MESSAGE_DEBUG_SWAP   = MESSAGE_DEBUG_GROUP + 2;
@@ -764,12 +764,12 @@ public class Run extends ListActivity {
 	private int WatchedBundle;
 	// end debugger ui vars
 
-    public static boolean Stop = false;	   						// Stops program from running
-    public static boolean Exit = false;	   						// Exits program and signals caller to exit, too
-    public static boolean GraphicsPaused = false;               // Signal from GR that it has been paused
-    public static boolean RunPaused = false;                    // Used to control the media player
-    public static boolean StopDisplay = false;
-    public static boolean DisplayStopped = false;
+	public static boolean Stop = false;					// Stops program from running
+	public static boolean Exit = false;					// Exits program and signals caller to exit, too
+	public static boolean GraphicsPaused = false;		// Signal from GR that it has been paused
+	public static boolean RunPaused = false;			// Used to control the media player
+	public static boolean StopDisplay = false;
+	public static boolean DisplayStopped = false;
 	private String PrintLine = "";						// Hold the Print line currently being built
 	private String textPrintLine = "";					// Hold the TextPrint line currently being built
 	private boolean PrintLineReady = false;				// Signals a line is ready to print or write
@@ -784,30 +784,30 @@ public class Run extends ListActivity {
 														// ArrayTable or
 														// FunctionTable
 	private int VarNumber = 0;							// An index for both VarNames and NVarValue
-	public static ArrayList<Double> NumericVarValues;	// if a Var is a number, the VarIndex is an
+	public static ArrayList<Double> NumericVarValues;	// if a var is a number, the VarIndex is an
 														// index into this list. The values of numeric
 														// array elements are also kept here
-	private ArrayList<String> StringVarValues;			// if a Var is a string, the VarIndex is an
+	private ArrayList<String> StringVarValues;			// if a var is a string, the VarIndex is an
 														// index into this list. The values of string
 														// array elements are also kept here
-	private ArrayList<Bundle> ArrayTable;				//Each DIMed array has an entry in this table
+	private ArrayList<Bundle> ArrayTable;				// Each DIMed array has an entry in this table
 	private String StringConstant = "";					// Storage for a string constant
 	private int theValueIndex;							// The index into the value table for the current var
-	private int ArrayValueStart = 0;					// Value index for newly created array 
+	private int ArrayValueStart = 0;					// Value index for newly created array
 
-	private boolean VarIsFunction = false;				// Flag set by parseVar() when var is a user function
 	private ArrayList<Bundle> FunctionTable;			// A bundle is created for each defined function
 	private Bundle ufBundle;							// Bundle set by isUserFunction and used by doUserFunction
 	private Stack<Bundle> FunctionStack;				// Stack contains the currently executing functions
-	private int VarSearchStart;							// Used to limit search for var names to executing function vars
-	private int interruptVarSearchStart;				// Save VarSearchStart across interrupt
 	private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
 
-	private boolean VarIsNew = true;					// Signal from get var that this var is new
-	private boolean VarIsNumeric = true;				// if false, Var is string
-	private boolean VarIsArray = false;					// if true, Var is an Array
-														// if the Var is any array, the VarIndex it
-														// and index into ArrayTable
+	private boolean VarIsNew = true;					// Signal from getVar() that this var is new
+	private boolean VarIsNumeric = true;				// if false, var is a string
+	private boolean VarIsArray = false;					// if true, var is an array
+														// if the var is an array, the VarIndex is
+														// an index into ArrayTable
+	private boolean VarIsFunction = false;				// Flag set by parseVar() when var is a user function
+	private int VarSearchStart;							// Used to limit search for var names to executing function vars
+	private int interruptVarSearchStart;				// Save VarSearchStart across interrupt
 
 	ClipboardManager clipboard;
 	private static long sTime;
@@ -854,8 +854,8 @@ public class Run extends ListActivity {
 	public static ArrayList<Bundle> FileTable;				// File table list
 	public static ArrayList<BufferedReader> BRlist;			// A list of of file readers
 	public static ArrayList<FileWriter> FWlist;				// A list of file writers
-	public static ArrayList<DataOutputStream> DOSlist;		// A list of file writers
-	public static ArrayList<BufferedInputStream> BISlist;	// A list of file writers
+	public static ArrayList<DataOutputStream> DOSlist;		// A list of output streams
+	public static ArrayList<BufferedInputStream> BISlist;	// A list of input streams
 
 	// ******************** READ variables *******************************************
 
@@ -1075,26 +1075,27 @@ public class Run extends ListActivity {
 		"isdone", "record.start", "record.stop"
 	};
 
-    private static final int audio_load = 0;
-    private static final int audio_play = 1;
-    private static final int audio_loop = 2;
-    private static final int audio_stop = 3;
-    private static final int audio_volume = 4;
-    private static final int audio_pcurrent = 5;
-    private static final int audio_pseek = 6;
-    private static final int audio_length = 7;
-    private static final int audio_release = 8;
-    private static final int audio_pause = 9;
-    private static final int audio_isdone = 10;
-    private static final int audio_record_start = 11;
-    private static final int audio_record_stop = 12;
-    private static final int audio_none = 98;
+	private final Command[] audio_cmd = new Command[] {	// Map audio command keywords to their execution functions
+		new Command("load")             { public boolean run() { return execute_audio_load(); } },
+		new Command("play")             { public boolean run() { return execute_audio_play(); } },
+		new Command("loop")             { public boolean run() { return execute_audio_loop(); } },
+		new Command("stop")             { public boolean run() { return execute_audio_stop(); } },
+		new Command("volume")           { public boolean run() { return execute_audio_volume(); } },
+		new Command("position.current") { public boolean run() { return execute_audio_pcurrent(); } },
+		new Command("position.seek")    { public boolean run() { return execute_audio_pseek(); } },
+		new Command("length")           { public boolean run() { return execute_audio_length(); } },
+		new Command("release")          { public boolean run() { return execute_audio_release(); } },
+		new Command("pause")            { public boolean run() { return execute_audio_pause(); } },
+		new Command("isdone")           { public boolean run() { return execute_audio_isdone(); } },
+		new Command("record.start")     { public boolean run() { return execute_audio_record_start(); } },
+		new Command("record.stop")      { public boolean run() { return execute_audio_record_stop(); } },
+	};
 
-    private static MediaPlayer theMP = null;
-    private static ArrayList<MediaPlayer> theMPList;
-    private static ArrayList<String> theMPNameList;
-    private static boolean PlayIsDone;
-    private MediaRecorder mRecorder = null;
+	private static MediaPlayer theMP = null;
+	private static ArrayList<MediaPlayer> theMPList;
+	private static ArrayList<String> theMPNameList;
+	private static boolean PlayIsDone;
+	private MediaRecorder mRecorder = null;
 
 	// ******************************* Variables for Sensor Commands **********************************
 
@@ -1102,12 +1103,13 @@ public class Run extends ListActivity {
 		"list","open","read","close", "rotate"
 	};
 
-    private static final int sensors_list = 0;
-    private static final int sensors_open = 1;
-    private static final int sensors_read = 2;
-    private static final int sensors_close = 3;
-    private static final int sensors_rotate = 4;
-    private static final int sensors_none = 98;
+	private final Command[] sensors_cmd = new Command[] {	// Map sensor command keywords to their execution functions
+		new Command("list")             { public boolean run() { return execute_sensors_list(); } },
+		new Command("open")             { public boolean run() { return execute_sensors_open(); } },
+		new Command("read")             { public boolean run() { return execute_sensors_read(); } },
+		new Command("close")            { public boolean run() { return execute_sensors_close(); } },
+		new Command("rotate")           { public boolean run() { return execute_sensors_rotate(); } },
+	};
 
 	private SensorActivity theSensors;
 
@@ -1119,16 +1121,18 @@ public class Run extends ListActivity {
 		"provider", "open", "close", "time"
 	};
 
-    private static final int gps_altitude = 0;
-    private static final int gps_latitude = 1;
-    private static final int gps_longitude = 2;
-    private static final int gps_bearing = 3;
-    private static final int gps_accuracy = 4;
-    private static final int gps_speed = 5;
-    private static final int gps_provider = 6;
-    private static final int gps_open = 7;
-    private static final int gps_close = 8;
-    private static final int gps_time = 9;
+	private final Command[] GPS_cmd = new Command[] {	// Map GPS command keywords to their execution functions
+		new Command("altitude")         { public boolean run() { return execute_gps_altitude(); } },
+		new Command("latitude")         { public boolean run() { return execute_gps_latitude(); } },
+		new Command("longitude")        { public boolean run() { return execute_gps_longitude(); } },
+		new Command("bearing")          { public boolean run() { return execute_gps_bearing(); } },
+		new Command("accuracy")         { public boolean run() { return execute_gps_accuracy(); } },
+		new Command("speed")            { public boolean run() { return execute_gps_speed(); } },
+		new Command("provider")         { public boolean run() { return execute_gps_provider(); } },
+		new Command("time")             { public boolean run() { return execute_gps_time(); } },
+		new Command("open")             { public boolean run() { return execute_gps_open(); } },
+		new Command("close")            { public boolean run() { return execute_gps_close(); } },
+	};
 
 	private GPS theGPS;
 
@@ -1167,7 +1171,7 @@ public class Run extends ListActivity {
 	private static boolean DoMax;
 	private static boolean DoSum;
 
-// ************************************ List command variables *********************************
+	// ************************************ List command variables *********************************
 
 	private static final String List_KW[] = {			// Command list for Format
 		"create", "add.list", "add.array", "add", "replace", 
@@ -1175,22 +1179,23 @@ public class Run extends ListActivity {
 		"contains", "toarray", "search"
 	};
 
-	private static final int list_new = 0;
-	private static final int list_addlist = 1;
-	private static final int list_addarray = 2;
-	private static final int list_add = 3;
-	private static final int list_set = 4;
-	private static final int list_gettype = 5;
-	private static final int list_get = 6;
-	private static final int list_clear = 7;
-	private static final int list_remove = 8;
-	private static final int list_insert = 9;
-	private static final int list_size = 10;
-	private static final int list_contains = 11;
-	private static final int list_toarray = 12;
-	private static final int list_search = 13;
-	private static final int list_none = 99;
-	
+	private final Command[] list_cmd = new Command[] {	// Map list command keywords to their execution functions
+		new Command("create")           { public boolean run() { return execute_LIST_NEW(); } },
+		new Command("add.list")         { public boolean run() { return execute_LIST_ADDLIST(); } },
+		new Command("add.array")        { public boolean run() { return execute_LIST_ADDARRAY(); } },
+		new Command("add")              { public boolean run() { return execute_LIST_ADD(); } },
+		new Command("replace")          { public boolean run() { return execute_LIST_SET(); } },
+		new Command("type")             { public boolean run() { return execute_LIST_GETTYPE(); } },
+		new Command("get")              { public boolean run() { return execute_LIST_GET(); } },
+		new Command("clear")            { public boolean run() { return execute_LIST_CLEAR(); } },
+		new Command("remove")           { public boolean run() { return execute_LIST_REMOVE(); } },
+		new Command("insert")           { public boolean run() { return execute_LIST_INSERT(); } },
+		new Command("size")             { public boolean run() { return execute_LIST_SIZE(); } },
+		new Command("contains")         { public boolean run() { return execute_LIST_CONTAINS(); } },
+		new Command("toarray")          { public boolean run() { return execute_LIST_TOARRAY(); } },
+		new Command("search")           { public boolean run() { return execute_LIST_SEARCH(); } },
+	};
+
 	private static final int list_is_numeric = 1;
 	private static final int list_is_string = 0;
 
@@ -1204,14 +1209,16 @@ public class Run extends ListActivity {
 		"keys", "copy", "clear", "contain"
 	};
 
-	private static final int bundle_create = 0;
-	private static final int bundle_put = 1;
-	private static final int bundle_get = 2;
-	private static final int bundle_type = 3;
-	private static final int bundle_keyset = 4;
-	private static final int bundle_copy = 5;
-	private static final int bundle_clear = 6;
-	private static final int bundle_contain = 7;         // ******* El Condor	
+	private final Command[] bundle_cmd = new Command[] {// Map bundle command keywords to their execution functions
+		new Command("create")           { public boolean run() { return execute_BUNDLE_CREATE(); } },
+		new Command("put")              { public boolean run() { return execute_BUNDLE_PUT(); } },
+		new Command("get")              { public boolean run() { return execute_BUNDLE_GET(); } },
+		new Command("type")             { public boolean run() { return execute_BUNDLE_TYPE(); } },
+		new Command("keys")             { public boolean run() { return execute_BUNDLE_KEYSET(); } },
+		new Command("copy")             { public boolean run() { return execute_BUNDLE_COPY(); } },
+		new Command("clear")            { public boolean run() { return execute_BUNDLE_CLEAR(); } },
+		new Command("contain")          { public boolean run() { return execute_BUNDLE_CONTAIN(); } },
+	};
 
 	private static ArrayList <Bundle> theBundles;
 
@@ -1222,13 +1229,15 @@ public class Run extends ListActivity {
 		"type", "isempty", "clear"
 	};
 
-	private static final int stack_create = 0;
-	private static final int stack_push = 1;
-	private static final int stack_pop = 2;
-	private static final int stack_peek = 3;
-	private static final int stack_type = 4;
-	private static final int stack_isempty = 5;
-	private static final int stack_clear = 6;
+	private final Command[] stack_cmd = new Command[] {	// Map stack command keywords to their execution functions
+		new Command("create")           { public boolean run() { return execute_STACK_CREATE(); } },
+		new Command("push")             { public boolean run() { return execute_STACK_PUSH(); } },
+		new Command("pop")              { public boolean run() { return execute_STACK_POP(); } },
+		new Command("peek")             { public boolean run() { return execute_STACK_PEEK(); } },
+		new Command("type")             { public boolean run() { return execute_STACK_TYPE(); } },
+		new Command("isempty")          { public boolean run() { return execute_STACK_ISEMPTY(); } },
+		new Command("clear")            { public boolean run() { return execute_STACK_CLEAR(); } },
+	};
 
 	private static ArrayList<Stack> theStacks;
 	private static ArrayList <Integer> theStacksType; 
@@ -1320,28 +1329,29 @@ public class Run extends ListActivity {
 		"show","console"
 	};
 
-	public static final int debug_on = 0;
-	public static final int debug_off = 1;
-	public static final int debug_print = 2;
-	public static final int debug_echo_on = 3;
-	public static final int debug_echo_off = 4;
-	public static final int debug_dump_scalars = 5;
-	public static final int debug_dump_array = 6;
-	public static final int debug_dump_list = 7;
-	public static final int debug_dump_stack = 8;
-	public static final int debug_dump_bundle = 9;
-	public static final int debug_watch_clear = 10;
-	public static final int debug_watch = 11;
-	public static final int debug_show_scalars = 12;
-	public static final int debug_show_array = 13;
-	public static final int debug_show_list = 14;
-	public static final int debug_show_stack = 15;
-	public static final int debug_show_bundle = 16;
-	public static final int debug_show_watch = 17;
-	public static final int debug_show_program = 18;
-	public static final int debug_show = 19;
-	public static final int debug_console = 20;
-	public static final int debug_none = 99;
+	private final Command[] debug_cmd = new Command[] {	// Map debug command keywords to their execution functions
+		new Command("on")               { public boolean run() { return executeDEBUG_ON(); } },
+		new Command("off")              { public boolean run() { return executeDEBUG_OFF(); } },
+		new Command("print")            { public boolean run() { return executeDEBUG_PRINT(); } },
+		new Command("echo.on")          { public boolean run() { return executeECHO_ON(); } },
+		new Command("echo.off")         { public boolean run() { return executeECHO_OFF(); } },
+		new Command("dump.scalars")     { public boolean run() { return executeDUMP_SCALARS(); } },
+		new Command("dump.array")       { public boolean run() { return executeDUMP_ARRAY(); } },
+		new Command("dump.list")        { public boolean run() { return executeDUMP_LIST(); } },
+		new Command("dump.stack")       { public boolean run() { return executeDUMP_STACK(); } },
+		new Command("dump.bundle")      { public boolean run() { return executeDUMP_BUNDLE(); } },
+		new Command("watch.clear")      { public boolean run() { return executeDEBUG_WATCH_CLEAR(); } },
+		new Command("watch")            { public boolean run() { return executeDEBUG_WATCH(); } },
+		new Command("show.scalars")     { public boolean run() { return executeDEBUG_SHOW_SCALARS(); } },
+		new Command("show.array")       { public boolean run() { return executeDEBUG_SHOW_ARRAY(); } },
+		new Command("show.list")        { public boolean run() { return executeDEBUG_SHOW_LIST(); } },
+		new Command("show.stack")       { public boolean run() { return executeDEBUG_SHOW_STACK(); } },
+		new Command("show.bundle")      { public boolean run() { return executeDEBUG_SHOW_BUNDLE(); } },
+		new Command("show.watch")       { public boolean run() { return executeDEBUG_SHOW_WATCH(); } },
+		new Command("show.program")     { public boolean run() { return executeDEBUG_SHOW_PROGRAM(); } },
+		new Command("show")             { public boolean run() { return executeDEBUG_SHOW(); } },
+		new Command("console")          { public boolean run() { return executeDEBUG_CONSOLE(); } },
+	};
 
 	public static boolean Debug = false;
 	public static boolean Echo = false;
@@ -1370,17 +1380,18 @@ public class Run extends ListActivity {
 		"mkdir", "rename"
 	};
 
-    public static final int ftp_open = 0;
-    public static final int ftp_close = 1;
-    public static final int ftp_dir = 2;
-    public static final int ftp_cd = 3;
-    public static final int ftp_get = 4;
-    public static final int ftp_put = 5;
-    public static final int ftp_delete = 6;
-    public static final int ftp_rmdir = 7;
-    public static final int ftp_mkdir = 8;
-    public static final int ftp_rename = 9;
-    
+	private final Command[] ftp_cmd = new Command[] {	// Map FTP command keywords to their execution functions
+		new Command("open")             { public boolean run() { return executeFTP_OPEN(); } },
+		new Command("close")            { public boolean run() { return executeFTP_CLOSE(); } },
+		new Command("dir")              { public boolean run() { return executeFTP_DIR(); } },
+		new Command("cd")               { public boolean run() { return executeFTP_CD(); } },
+		new Command("get")              { public boolean run() { return executeFTP_GET(); } },
+		new Command("put")              { public boolean run() { return executeFTP_PUT(); } },
+		new Command("delete")           { public boolean run() { return executeFTP_DELETE(); } },
+		new Command("rmdir")            { public boolean run() { return executeFTP_RMDIR(); } },
+		new Command("mkdir")            { public boolean run() { return executeFTP_MKDIR(); } },
+		new Command("rename")           { public boolean run() { return executeFTP_RENAME(); } },
+	};
 
 	public FTPClient mFTPClient = null;
 	public String FTPdir = null;
@@ -1441,19 +1452,21 @@ public class Run extends ListActivity {
 		"onreadready.resume", "disconnect"
 	};
 
-    public static final int bt_open = 0;
-    public static final int bt_close = 1;
-    public static final int bt_status = 2;
-    public static final int bt_connect = 3;
-    public static final int bt_device_name = 4;
-    public static final int bt_write = 5;
-    public static final int bt_read_ready = 6;
-    public static final int bt_read_bytes = 7;
-    public static final int bt_set_uuid = 8;
-    public static final int bt_listen = 9;
-    public static final int bt_reconnect = 10;
-    public static final int bt_readready_resume = 11;
-    public static final int bt_disconnect = 12;
+	private final Command[] bt_cmd = new Command[] {	// Map Bluetooth command keywords to their execution functions
+		new Command("open")                 { public boolean run() { return execute_BT_open(); } },
+		new Command("close")                { public boolean run() { return execute_BT_close(); } },
+		new Command("status")               { public boolean run() { return execute_BT_status(); } },
+		new Command("connect")              { public boolean run() { return execute_BT_connect(); } },
+		new Command("device.name")          { public boolean run() { return execute_BT_device_name(); } },
+		new Command("write")                { public boolean run() { return execute_BT_write(); } },
+		new Command("read.ready")           { public boolean run() { return execute_BT_read_ready(); } },
+		new Command("read.bytes")           { public boolean run() { return execute_BT_read_bytes(); } },
+		new Command("set.uuid")             { public boolean run() { return execute_BT_set_uuid(); } },
+		new Command("listen")               { public boolean run() { return execute_BT_listen(); } },
+		new Command("reconnect")            { public boolean run() { return execute_BT_reconnect(); } },
+		new Command("onreadready.resume")   { public boolean run() { return execute_BT_readReady_Resume(); } },
+		new Command("disconnect")           { public boolean run() { return execute_BT_disconnect(); } },
+	};
 
 	/**************************************  Superuser and System  ***************************/
 
@@ -1487,18 +1500,20 @@ public class Run extends ListActivity {
 		"setloop", "setrate"
 	};
 
-    public static final int sp_open = 0;
-    public static final int sp_load = 1;
-    public static final int sp_play = 2;
-    public static final int sp_stop = 3;
-    public static final int sp_unload = 4;
-    public static final int sp_pause = 5;
-    public static final int sp_resume = 6;
-    public static final int sp_release = 7;
-    public static final int sp_setvolume = 8;
-    public static final int sp_setpriority = 9;
-    public static final int sp_setloop = 10;
-    public static final int sp_setrate = 11;
+	private final Command[] sp_cmd = new Command[] {	// Map soundpool command keywords to their execution functions
+		new Command("open")             { public boolean run() { return execute_SP_open(); } },
+		new Command("load")             { public boolean run() { return execute_SP_load(); } },
+		new Command("play")             { public boolean run() { return execute_SP_play(); } },
+		new Command("stop")             { public boolean run() { return execute_SP_stop(); } },
+		new Command("unload")           { public boolean run() { return execute_SP_unload(); } },
+		new Command("pause")            { public boolean run() { return execute_SP_pause(); } },
+		new Command("resume")           { public boolean run() { return execute_SP_resume(); } },
+		new Command("release")          { public boolean run() { return execute_SP_release(); } },
+		new Command("setvolume")        { public boolean run() { return execute_SP_setvolume(); } },
+		new Command("setpriority")      { public boolean run() { return execute_SP_setpriority(); } },
+		new Command("setloop")          { public boolean run() { return execute_SP_setloop(); } },
+		new Command("setrate")          { public boolean run() { return execute_SP_setrate(); } },
+	};
 
 	public static SoundPool theSoundPool ;
 
@@ -2096,11 +2111,10 @@ private void InitVars(){
    ProgressPending = false;
    randomizer = null;
    background = false;
-   
-  
-    // debugger ui vars
-   Watch_VarNames = new ArrayList<String>(); // watch list of string names
-   WatchVarIndex = new ArrayList<Integer>();// watch list of variable indexes
+
+	// debugger ui vars
+	Watch_VarNames = new ArrayList<String>();			// watch list of string names
+	WatchVarIndex = new ArrayList<Integer>();			// watch list of variable indexes
 	dbDialogScalars = false;
 	dbDialogArray = false;
 	dbDialogList = false;
@@ -2120,51 +2134,53 @@ private void InitVars(){
 	dbSwapDialog = null;
 	dbSelectDialog = null;
 
-    Stop = false;	   						// Stops program from running
-    Exit = false;							// Exits program and signals caller to exit, too
-    GraphicsPaused = false;               // Signal from GR that it has been paused
-    RunPaused = false;                    // Used to control the media player
-   StopDisplay = false;
-   GRFront = false;
-   DisplayStopped = false;
-   ShowStatusBar = 0;
-   IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+	Stop = false;										// Stops program from running
+	Exit = false;										// Exits program and signals caller to exit, too
+	GraphicsPaused = false;								// Signal from GR that it has been paused
+	RunPaused = false;									// Used to control the media player
+	StopDisplay = false;
+	GRFront = false;
+	DisplayStopped = false;
+	ShowStatusBar = 0;
+	IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
 
-   PrintLine = "";					// Hold the Print line currently being built
-    PrintLineReady = false;			// Signals a line is ready to print or write
+	PrintLine = "";										// Hold the Print line currently being built
+	PrintLineReady = false;								// Signals a line is ready to print or write
 
-	Labels = new HashMap<String, Integer>();		// A list of all labels and associated line numbers
+	Labels = new HashMap<String, Integer>();			// A list of all labels and associated line numbers
 
-    VarNames = new ArrayList<String>() ;			// Each entry has the variable name string
-    VarIndex = new ArrayList<Integer>();			// Each entry is an index into
-    VarNumber = 0;				// An index for both VarNames and NVarValue
-    NumericVarValues = new ArrayList<Double>() ;   // if a Var is a number, the VarIndex is an
-   StringVarValues  =new ArrayList<String>() ;    // if a Var is a string, the VarIndex is an
-   ArrayTable = new ArrayList<Bundle>() ;			//Each DIMed array has an entry in this table
-   StringConstant = "";			// Storage for a string constant
-    theValueIndex = 0;				// The index into the value table for the current var
-	ArrayValueStart = 0;				// Value index for newly created array 
-	
-	VarIsFunction = false;							// Flag set by parseVar() when var is a user function
-	FunctionTable = new ArrayList<Bundle>();		// A bundle is created for each defined function
-	ufBundle = null ;								// Bundle set by isUserFunction and used by doUserFunction
-	FunctionStack = new Stack<Bundle>() ;			// Stack contains the currently executing functions
-	VarSearchStart = 0;								// Used to limit search for var names to executing function vars
-	interruptVarSearchStart = 0;					// Save VarSearchStart across interrupt
-	fnRTN = false;									// Set true by fn.rtn. Cause RunLoop() to return
+	VarNames = new ArrayList<String>() ;				// Each entry has the variable name string
+	VarIndex = new ArrayList<Integer>();				// Each entry is an index into [...]
+	VarNumber = 0;										// An index for both VarNames and NVarValue
+	NumericVarValues = new ArrayList<Double>();			// if a var is a number, the VarIndex is an [...]
+	StringVarValues  = new ArrayList<String>();			// if a var is a string, the VarIndex is an [...]
+	ArrayTable = new ArrayList<Bundle>();				// Each DIMed array has an entry in this table
+	StringConstant = "";								// Storage for a string constant
+	theValueIndex = 0;									// The index into the value table for the current var
+	ArrayValueStart = 0;								// Value index for newly created array 
+
+	FunctionTable = new ArrayList<Bundle>();			// A bundle is created for each defined function
+	ufBundle = null ;									// Bundle set by isUserFunction and used by doUserFunction
+	FunctionStack = new Stack<Bundle>() ;				// Stack contains the currently executing functions
+	fnRTN = false;										// Set true by fn.rtn. Cause RunLoop() to return
 	Debug = false;
 
-    VarIsNew = true;				// Signal from get var that this var is new
-    VarIsNumeric = true;			// if false, Var is string(
-    VarIsArray = false;			// if true, Var is an Array
-     
-    FileTable = new ArrayList<Bundle>() ;			// File table list
-    BRlist = new ArrayList<BufferedReader>() ;		// A list of of file readers
-    FWlist = new ArrayList<FileWriter>() ;			// A list of file writers
-    DOSlist = new ArrayList<DataOutputStream> () ;			// A list of file writers
-    BISlist = new ArrayList<BufferedInputStream> () ;			// A list of file writers
-    
-    clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+	VarIsNew = true;									// Signal from getVar() that this var is new
+	VarIsNumeric = true;								// if false, var is a string
+	VarIsArray = false;									// if true, var is an array
+	VarIsFunction = false;								// Flag set by parseVar() when var is a user function
+	VarSearchStart = 0;									// Used to limit search for var names to executing function vars
+	interruptVarSearchStart = 0;						// Save VarSearchStart across interrupt
+
+	clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+
+	// ******************************* File I/O operation variables ************************
+
+	FileTable = new ArrayList<Bundle>() ;				// File table list
+	BRlist = new ArrayList<BufferedReader>() ;			// A list of of file readers
+	FWlist = new ArrayList<FileWriter>() ;				// A list of file writers
+	DOSlist = new ArrayList<DataOutputStream> () ;		// A list of output streams
+	BISlist = new ArrayList<BufferedInputStream> () ;	// A list of input streams
 
 	// ******************** READ variables *******************************************
 
@@ -2223,12 +2239,12 @@ private void InitVars(){
     theMPList.add(null);		// We don't use the [0] element of these Lists
     theMPNameList.add(null);
 
-// ******************************* Variables for Sensor Commands **********************************
+	// ******************************* Variables for Sensor Commands **********************************
 
-    theSensors = null;
+	theSensors = null;
 
-    theGPS = null;
-	
+	theGPS = null;
+
 	DoAverage = false;
 	DoReverse = false;
 	DoShuffle = false;
@@ -3227,7 +3243,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		return true;     // Statement executed ok. Return to main looper.
 	}
-		
+
 	private  void SyntaxError(){						// Called to output Syntax Error Message
 /*		if (OnErrorLine != 0){
 			return;
@@ -5807,95 +5823,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return checkEOL();
 	}
 
+	// ************************************** Debug Commands **************************************
 
-// **************************************************  Debug Commands *********************************
-
-	private boolean executeDEBUG(){
-
-		if (!GetDebugKeyWord()) return false;
-
-		switch (KeyWordValue){
-
-			case debug_on:
-				if (!executeDEBUG_ON()){SyntaxError(); return false;}
-				break;
-			case debug_off:
-				if (!executeDEBUG_OFF()){SyntaxError(); return false;}
-				break;
-			case debug_print:
-				if (!executeDEBUG_PRINT()){SyntaxError(); return false;}
-				break;
-			case debug_echo_on:
-				if (!executeECHO_ON()){SyntaxError(); return false;}
-				break;				
-			case debug_echo_off:
-				if (!executeECHO_OFF()){SyntaxError(); return false;}
-				break;
-			case debug_dump_scalars:
-				if (!executeDUMP_SCALARS()){SyntaxError(); return false;}
-				break;
-			case debug_dump_array:
-				if (!executeDUMP_ARRAY()){SyntaxError(); return false;}
-				break;
-			case debug_dump_list:
-				if (!executeDUMP_LIST()){SyntaxError(); return false;}
-				break;
-			case debug_dump_stack:
-				if (!executeDUMP_STACK()){SyntaxError(); return false;}
-				break;
-			case debug_dump_bundle:
-				if (!executeDUMP_BUNDLE()){SyntaxError(); return false;}
-				break;
-			case debug_watch_clear:
-				if (!executeDEBUG_WATCH_CLEAR()){SyntaxError(); return false;}
-				break;
-			case debug_watch:
-				if(!executeDEBUG_WATCH()){SyntaxError(); return false;}
-				break;
-			case debug_show_scalars:
-				if (!executeDEBUG_SHOW_SCALARS()){SyntaxError(); return false;}
-				break;
-			case debug_show_array:
-				if (!executeDEBUG_SHOW_ARRAY()){SyntaxError(); return false;}
-				break;
-			case debug_show_list:
-				if (!executeDEBUG_SHOW_LIST()){SyntaxError(); return false;}
-				break;
-			case debug_show_stack:
-				if (!executeDEBUG_SHOW_STACK()){SyntaxError(); return false;}
-				break;
-			case debug_show_bundle:
-				if (!executeDEBUG_SHOW_BUNDLE()){SyntaxError(); return false;}
-				break;
-			case debug_show_watch:
-				if (!executeDEBUG_SHOW_WATCH()){SyntaxError(); return false;}
-				break;
-			case debug_show_program:
-				if (!executeDEBUG_SHOW_PROGRAM()){SyntaxError();return false;}
-				break;
-			case debug_show:
-				if (!executeDEBUG_SHOW()){SyntaxError(); return false;}
-				break;
-			case debug_console:
-				if (!executeDEBUG_CONSOLE()){SyntaxError();return false;}
-				break;
-			default:
-		}
-
-		return true;
-	}
-
-	private boolean GetDebugKeyWord(){						// Get a debug command keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < Debug_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(Debug_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += Debug_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = debug_none;							// no keyword found
-		return false;										// report fail
+	private boolean executeDEBUG() {							// Get debug command keyword if it is there
+		return executeCommand(debug_cmd, "Debug");				// and execute the command
 	}
 
 	private boolean executeDEBUG_ON() {
@@ -11193,69 +11124,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return doResume();
 	}
 
-//*************************************************************  Audio  ******************************************
-	  private boolean executeAUDIO(){
-	    	if (!GetAudioKeyWord()){
-  	    	  return false;
-  	      	}else {
-  	    	  switch (KeyWordValue){
-  	    	  	case audio_load:
-  	    	  		if (!execute_audio_load()){return false;}
-  	    	  		break;
-  	    	  	case audio_play:
-  	    	  		if (!execute_audio_play()){return false;}
-  	    	  		break;
-  	    	  	case audio_loop:
-  	    	  		if (!execute_audio_loop()){return false;}
-  	    	  		break;
-  	    	  	case audio_stop:
-  	    	  		if (!execute_audio_stop()){return false;}
-  	    	  		break;
-  	    	  	case audio_volume:
-  	    	  		if (!execute_audio_volume()){return false;}
-  	    	  		break;
-  	    	  	case audio_pcurrent:
-  	    	  		if (!execute_audio_pcurrent()){return false;}
-  	    	  		break;
-  	    	  	case audio_pseek:
-  	    	  		if (!execute_audio_pseek()){return false;}
-  	    	  		break;
-  	    	  	case audio_length:
-  	    	  		if (!execute_audio_length()){return false;}
-  	    	  		break;
-  	    	  	case audio_release:
-  	    	  		if (!execute_audio_release()){return false;}
-  	    	  		break;
-  	    	  	case audio_pause:
-  	    	  		if (!execute_audio_pause()){return false;}
-  	    	  		break;
-  	    	  	case audio_isdone:
-  	    	  		if (!execute_audio_isdone()){return false;}
-  	    	  		break;
-  	    	  	case audio_record_start:
-  	    	  		if (!execute_audio_record_start()){return false;}
-  	    	  		break;
-  	    	  	case audio_record_stop:
-  	    	  		if (!execute_audio_record_stop()){return false;}
-  	    	  		break;
-  	    	  	default:
-  	    	  		return false;
-  	    	  }
-  	      	}
-		  return true;
-	  }
+	// ****************************************** Audio *******************************************
 
-	private boolean GetAudioKeyWord(){						// Get an audio command keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < Audio_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(Audio_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += Audio_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = audio_none;							// no keyword found
-		return false;										// report fail
+	private boolean executeAUDIO() {							// Get Audio command keyword if it is there
+		return executeCommand(audio_cmd, "Audio");				// and execute the command
 	}
 
 	private MediaPlayer getMP(String fileName) {
@@ -11550,60 +11422,23 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        return true;
 
 	  }
-	  
-	  private boolean execute_audio_record_stop(){
-		    if (mRecorder == null) return true;
-		    try {
-		    	mRecorder.stop();
-		    	mRecorder.release();
-		    }
-		    catch (Exception e){}
-	        mRecorder = null;
 
-		  return true;
-	  }
+	private boolean execute_audio_record_stop() {
+		if (!checkEOL()) return false;
+		if (mRecorder == null) return true;
+		try {
+			mRecorder.stop();
+			mRecorder.release();
+		} catch (Exception e){}
+		mRecorder = null;
 
-	  
-// *********************************************  Sensors Package **********************************
-	  
-	  private boolean executeSENSORS(){
-	    	if (!GetSensorsKeyWord()){
-	    	  return false;
-	      	}else {
-	    	  switch (KeyWordValue){
-	    	  	case sensors_list:
-	    	  		if (!execute_sensors_list()){return false;}
-	    	  		break;
-	    	  	case sensors_open:
-	    	  		if (!execute_sensors_open()){return false;}
-	    	  		break;
-	    	  	case sensors_read:
-	    	  		if (!execute_sensors_read()){return false;}
-	    	  		break;
-	    	  	case sensors_close:
-	    	  		if (!execute_sensors_close()){return false;}
-	    	  		break;
-	    	  	case sensors_rotate:
-	    	  		if (!execute_sensors_rotate()){return false;}
-	    	  		break;
-	    	  	default:
-	    	  		return false;
-	    	  }
-	      	}
-		  return true;
-	  }
+		return true;
+	}
 
-	private boolean GetSensorsKeyWord(){					// Get a sensors commmand keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < Sensors_KW.length; ++i) {		// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(Sensors_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += Sensors_KW[i].length();		// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = sensors_none;						// no keyword found
-		return false;										// report fail
+	// ************************************* Sensors Package **************************************
+
+	private boolean executeSENSORS() {							// Get Sensor command keyword if it is there
+		return executeCommand(sensors_cmd, "Sensors");			// and execute the command
 	}
 
 		private boolean execute_sensors_list(){
@@ -11743,42 +11578,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return true;
 		}
 
-// ************************************************ GPS Package ***********************************
+	// *************************************** GPS Package ****************************************
 
-	private boolean executeGPS(){
-		if (!GetGPSKeyWord()){
-			return false;
-		}
-		if (theGPS == null && KeyWordValue != gps_open) {
-			return RunTimeError("GPS not opened at:");
-		}
-		switch (KeyWordValue) {
-			case gps_open:		return execute_gps_open();
-			case gps_close:		return execute_gps_close();
-			case gps_altitude:	return execute_gps_altitude();
-			case gps_longitude:	return execute_gps_longitude();
-			case gps_bearing:	return execute_gps_bearing();
-			case gps_accuracy:	return execute_gps_accuracy();
-			case gps_speed:		return execute_gps_speed();
-			case gps_latitude:	return execute_gps_latitude();
-			case gps_provider:	return execute_gps_provider();
-			case gps_time:		return execute_gps_time();
-			default:
-				return false;
-		}
-	}
-
-	private boolean GetGPSKeyWord(){						// Get a GPS command keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < GPS_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(GPS_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += GPS_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
+	private boolean executeGPS() {
+		Command c = findCommand(GPS_cmd, "GPS");
+		if (c != null) {
+			if ((theGPS == null) && !c.name.equals("open")) {
+				return RunTimeError("GPS not opened at:");
 			}
+			return c.run();
 		}
-		KeyWordValue = sensors_none;						// no keyword found
-		return false;										// report fail
+		return false;
 	}
 
 	public boolean execute_gps_open() {
@@ -11788,7 +11598,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		theGPS = new GPS(this);								// start GPS
 		return true;
 	}
-	  
+
 	public boolean execute_gps_close(){
 		if (!checkEOL()) return false;
 		if (theGPS != null) {
@@ -12259,65 +12069,33 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-//***********************************  List Package ************************************************
+	// *************************************** List Package ***************************************
 
-	private boolean executeLIST(){
-		if (GetListKeyWord()) {
-			switch (KeyWordValue) {
-				case list_new:		return execute_LIST_NEW();
-				case list_addarray:	return execute_LIST_ADDARRAY();
-				case list_addlist:	return execute_LIST_ADDLIST();
-				case list_add:		return execute_LIST_ADD();
-				case list_set:		return execute_LIST_SET();
-				case list_get:		return execute_LIST_GET();
-				case list_gettype:	return execute_LIST_GETTYPE();
-				case list_clear:	return execute_LIST_CLEAR();
-				case list_remove:	return execute_LIST_REMOVE();
-				case list_insert:	return execute_LIST_INSERT();
-				case list_size:		return execute_LIST_SIZE();
-				case list_contains:	return execute_LIST_CONTAINS();
-				case list_toarray:	return execute_LIST_TOARRAY();
-				case list_search:	return execute_LIST_SEARCH();
-				default: break;
-			}
-		}
-		return false;
+	private boolean executeLIST() {								// Get list command keyword if it is there
+		return executeCommand(list_cmd, "List");				// and execute the command
 	}
 
-	private boolean GetListKeyWord(){						// Get a list command keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < List_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(List_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += List_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = list_none;							// no keyword found
-		return false;										// report fail
-	}
-
-	private boolean execute_LIST_NEW(){
-		char c = ExecutingLineBuffer.charAt(LineIndex);    // Get the type, s or n
+	private boolean execute_LIST_NEW() {
+		char c = ExecutingLineBuffer.charAt(LineIndex);					// Get the type, s or n
 		++LineIndex;
 		int type = 0;
 		
 		if (c == 'n' ){
 			type = list_is_numeric;
-		} 
+		}
 		else if (c == 's'){
 			type = list_is_string;
 		} else return false;
 
-		if (!isNext(',')) { return false; }
-		
-		if (!getNVar()) { return false; }								// List pointer variable
+		if (!isNext(',')) return false;
+
+		if (!getNVar()) return false;									// List pointer variable
 		int SaveValueIndex = theValueIndex;
 
-		if (!checkEOL()) { return false; }
+		if (!checkEOL()) return false;
 
 		int theIndex = createNewList(type);								// Try to create list
-		if (theIndex < 0) { return false; }								// Create failed
+		if (theIndex < 0) return false;									// Create failed
 
 		NumericVarValues.set(SaveValueIndex, (double) theIndex);		// Return the list pointer
 		return true;
@@ -12706,39 +12484,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 	}
 
-// ***************************************Bundle Commands *******************************************
+	// ************************************** Bundle Package **************************************
 
-	private boolean executeBUNDLE(){
-		if (GetBundleKeyWord()) {
-			switch (KeyWordValue) {
-				case bundle_create:	return execute_BUNDLE_CREATE();
-				case bundle_put:	return execute_BUNDLE_PUT();
-				case bundle_get:	return execute_BUNDLE_GET();
-				case bundle_type:	return execute_BUNDLE_TYPE();
-				case bundle_keyset:	return execute_BUNDLE_KEYSET();
-				case bundle_copy:	return execute_BUNDLE_COPY();
-				case bundle_clear:	return execute_BUNDLE_CLEAR();
-				case bundle_contain:return execute_BUNDLE_CONTAIN();	// Condor
-				default: break;
-			}
-		}
-		return false;
+	private boolean executeBUNDLE() {							// Get bundle command keyword if it is there
+		return executeCommand(bundle_cmd, "Bundle");			// and execute the command
 	}
 
-	private boolean GetBundleKeyWord(){						// Get a bundle command keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < Bundle_KW.length; ++i) {		// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(Bundle_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += Bundle_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = list_none;							// no keyword found
-		return false;										// report fail
-	}
-
-	private boolean execute_BUNDLE_CREATE(){
+	private boolean execute_BUNDLE_CREATE() {
 
 		if (!getNVar()) return false;							// Bundle pointer variable
 		if (!checkEOL()) return false;
@@ -12904,55 +12656,30 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-// ************************************** Stack Commands ********************************************
+	// ************************************** Stack Package ***************************************
 
-	private boolean executeSTACK(){
-		if (GetStackKeyWord()) {
-			switch (KeyWordValue) {
-				case stack_create:	return execute_STACK_CREATE();
-				case stack_push:	return execute_STACK_PUSH();
-				case stack_pop:		return execute_STACK_POP();
-				case stack_peek:	return execute_STACK_PEEK();
-				case stack_type:	return execute_STACK_TYPE();
-				case stack_isempty:	return execute_STACK_ISEMPTY();
-				case stack_clear:	return execute_STACK_CLEAR();
-				default: break;
-			}
-		}
-		return false;
-	}
-
-	private boolean GetStackKeyWord(){						// Get a Basic keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < Stack_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(Stack_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += Stack_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = list_none;							// no keyword found
-		return false;										// report fail
+	private boolean executeSTACK() {							// Get stack command keyword if it is there
+		return executeCommand(stack_cmd, "Stack");				// and execute the command
 	}
 
 	private boolean execute_STACK_CREATE(){
-		char c = ExecutingLineBuffer.charAt(LineIndex);		// Get the type, s or n
+		char c = ExecutingLineBuffer.charAt(LineIndex);					// Get the type, s or n
 		++LineIndex;
 		int type = 0;
-		
-		if (c == 'n' ){
+
+		if (c == 'n') {
 			type = stack_is_numeric;
 		} 
-		else if (c == 's'){
+		else if (c == 's') {
 			type = stack_is_string;
 		} else return false;
 
-		if (!isNext(',')) { return false; }
+		if (!isNext(',')) return false;
 
-		if (!getNVar()) { return false; }								// Stack pointer variable
+		if (!getNVar()) return false;									// Stack pointer variable
 		int SaveValueIndex = theValueIndex;
 
-		if (!checkEOL()) { return false; }
+		if (!checkEOL()) return false;
 
 	 Stack theStack = new Stack();
 	 int theIndex = theStacks.size();
@@ -13883,58 +13610,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-// **********************************************  FTP **************************************************
+	// ******************************************* FTP ********************************************
 
-
-	public boolean executeFTP(){
-		if (!GetFTPKeyWord()){ return false;}
-		switch (KeyWordValue){
-		case ftp_open:
-			if (!executeFTP_OPEN()) return false;
-			break;
-		case ftp_close:
-			if (!executeFTP_CLOSE()) return false;
-			break;
-		case ftp_dir:
-			if (!executeFTP_DIR()) return false;
-			break;
-		case ftp_cd:
-			if (!executeFTP_CD()) return false;
-			break;
-		case ftp_put:
-			if (!executeFTP_PUT()) return false;
-			break;
-		case ftp_get:
-			if (!executeFTP_GET()) return false;
-			break;
-		case ftp_delete:
-			if (!executeFTP_DELETE()) return false;
-			break;
-		case ftp_rmdir:
-			if (!executeFTP_RMDIR()) return false;
-			break;
-		case ftp_mkdir:
-			if (!executeFTP_MKDIR()) return false;
-			break;
-		case ftp_rename:
-			if (!executeFTP_RENAME()) return false;
-			break;
-		default:
-		}
-		return true;
-	}
-
-	private boolean GetFTPKeyWord(){						// Get a Basic keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < ftp_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(ftp_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += ftp_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = 99;									// no keyword found
-		return false;										// report fail
+	private boolean executeFTP(){								// Get FTP command keyword if it is there
+		return executeCommand(ftp_cmd, "FTP");					// and execute the command
 	}
 
 	private boolean executeFTP_OPEN(){
@@ -14233,81 +13912,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return false;
 		}
 
-// *****************************************  Bluetooth ********************************
-		
-		public boolean executeBT(){
-			if (!GetBTKeyWord()){ return false;}
+	// **************************************** Bluetooth *****************************************
 
-			if (KeyWordValue == bt_status) { return execute_BT_status(); }
-
-			if ( mChatService == null && KeyWordValue != bt_open){
-				RunTimeError("Bluetooth not opened");
-				return false;
+	private boolean executeBT() {
+		Command c = findCommand(bt_cmd, "BT");
+		if (c != null) {
+			if ((mChatService == null) && !c.name.equals("open") && !c.name.equals("status")) {
+				return RunTimeError("Bluetooth not opened");
 			}
-
-			switch (KeyWordValue){
-			case bt_open:
-				if (!execute_BT_open()) return false;
-				break;
-			case bt_close:
-				if (!execute_BT_close()) return false;
-				break;
-			case bt_connect:
-				if (!execute_BT_connect()) return false;
-				break;
-			case bt_device_name:
-				if (!execute_BT_device_name()) return false;
-				break;
-			case bt_write:
-				if (!execute_BT_write()) return false;
-				break;
-			case bt_read_ready:
-				if (!execute_BT_read_ready()) return false;
-				break;
-			case bt_read_bytes:
-				if (!execute_BT_read_bytes()) return false;
-				break;
-			case bt_set_uuid:
-				if (!execute_BT_set_uuid()) return false;
-				break;
-			case bt_listen:
-				if (!execute_BT_listen()) return false;
-				break;
-			case bt_reconnect:
-				if (!execute_BT_reconnect()) return false;
-				break;
-			case bt_readready_resume:
-				if (!execute_BT_readReady_Resume()) return false;
-				break;
-			case bt_disconnect:
-				if (!execute_BT_disconnect()) return false;
-				break;
-			case bt_status:			// already handled
-			default:
-			}
-			return true;
+			return c.run();
 		}
-
-	private  boolean GetBTKeyWord(){						// Get a bluetooth command keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < bt_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(bt_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += bt_KW[i].length();				// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = 99;									// no keyword found
-		return false;										// report fail
+		return false;
 	}
 
-		private synchronized boolean execute_BT_status() {
-			if (!getNVar() || !checkEOL()) { return false; }
-			int state = (mBluetoothAdapter == null) ? STATE_NOT_ENABLED :
-						(mChatService == null)      ? STATE_NONE        : bt_state;
-			NumericVarValues.set(theValueIndex, (double) state);
-			return true;
-		}
+	private synchronized boolean execute_BT_status() {
+		if (!getNVar() || !checkEOL()) { return false; }
+		int state = (mBluetoothAdapter == null) ? STATE_NOT_ENABLED :
+					(mChatService == null)      ? STATE_NONE        : bt_state;
+		NumericVarValues.set(theValueIndex, (double) state);
+		return true;
+	}
 
 		  private synchronized boolean execute_BT_open(){
 
@@ -14780,89 +14404,33 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  Show("@@B" + c);
 		  return true;
 	  }
-	  
-/******************************************** SOUND POOL ******************************************/
-	  
-		public boolean executeSP(){
-			
-			if (!GetSPKeyWord()){ return false;}
-			
-			if (theSoundPool == null &&
-				KeyWordValue != sp_open){
-				RunTimeError("SoundPool not opened");
-				return false;
-			}
 
-			switch (KeyWordValue){
-			case sp_open:
-				if (!execute_SP_open()) return false;
-				break;
-			case sp_load:
-				if (!execute_SP_load()) return false;
-				break;
-			case sp_play:
-				if (!execute_SP_play()) return false;
-				break;
-			case sp_stop:
-				if (!execute_SP_stop()) return false;
-				break;
-			case sp_unload:
-				if (!execute_SP_unload()) return false;
-				break;
-			case sp_pause:
-				if (!execute_SP_pause()) return false;
-				break;
-			case sp_resume:
-				if (!execute_SP_resume()) return false;
-				break;
-			case sp_release:
-				if (!execute_SP_release()) return false;
-				break;
-			case sp_setvolume:
-				if (!execute_SP_setvolume()) return false;
-				break;
-			case sp_setpriority:
-				if (!execute_SP_setpriority()) return false;
-				break;
-			case sp_setloop:
-				if (!execute_SP_setloop()) return false;
-				break;
-			case sp_setrate:
-				if (!execute_SP_setrate()) return false;
-				break;
-					
-			default:
-			}
-			return true;
-		}
+	// **************************************** SOUND POOL ****************************************
 
-	private  boolean GetSPKeyWord(){						// Get a soundpool keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < sp_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(sp_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += sp_KW[i].length();				// move the line index to end of keyword
-				return true;								// and report back
+	private boolean executeSP() {
+		Command c = findCommand(sp_cmd, "Soundpool");
+		if (c != null) {
+			if ((theSoundPool == null) && !c.name.equals("open")) {
+				return RunTimeError("SoundPool not opened");
 			}
+			return c.run();
 		}
-		KeyWordValue = 99;									// no keyword found
-		return false;										// report fail
+		return false;
 	}
 
-	  private boolean execute_SP_open(){
-		  
-		  if (!evalNumericExpression()) return false;
-		  if (!checkEOL()) return false;
-		  int SP_max = EvalNumericExpressionValue.intValue();
-		  if (SP_max <=0 ){
-			  RunTimeError("Stream count must be > 0");
-			  return false;			  
-		  }
-//		  this.setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		  theSoundPool = new SoundPool(SP_max,  AudioManager.STREAM_MUSIC, 0);
-		  
-		  return true;
-	  }
+	private boolean execute_SP_open() {
+
+		if (!evalNumericExpression()) return false;
+		if (!checkEOL()) return false;
+		int SP_max = EvalNumericExpressionValue.intValue();
+		if (SP_max <= 0) {
+			return RunTimeError("Stream count must be > 0");
+		}
+//		this.setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		theSoundPool = new SoundPool(SP_max,  AudioManager.STREAM_MUSIC, 0);
+
+		return true;
+	}
 
 	private boolean execute_SP_load(){
 		if (!getNVar()) return false;
@@ -15085,9 +14653,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			theSoundPool.setRate(streamID, rate);
 		  return true;
 	  }
-	  
-	  //*********************************** Get my phone number ************************
-	  
+
+	// *********************************** Get my phone number ************************************
+
 	  private boolean execute_my_phone_number(){
 		  
 		  if (!getSVar()) return false;
@@ -15104,9 +14672,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        
 		  return true;
 	  }
-	  
-	  // ********************************* Headset *****************************************
-	  
+
+	// ***************************************** Headset ******************************************
+
 	  private boolean executeHEADSET(){
 		  
 		if (!getNVar()) return false;
@@ -15128,9 +14696,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  
 		  return true;
 	  }
-	  
-	  // ******************************** SMS ***************************************
-	  
+
+	// ******************************************* SMS ********************************************
+
 	  private boolean executeSMS_SEND(){
 		  
 		  if (!evalStringExpression()) return false;
@@ -15200,10 +14768,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
               }
           }
       };
-	  
-	  //******************************* Phone Call ***********************************
-	  
- 	  private boolean executePHONE_CALL(){
+
+	// **************************************** Phone Call ****************************************
+
+      private boolean executePHONE_CALL(){
 		  if (!evalStringExpression()) return false;
 		  String number = "tel:" + StringConstant;
 
@@ -15631,6 +15199,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// ********************************* Speech-to-Text Commands **********************************
 
 	private boolean executeSTT_LISTEN() {
+		if (!checkEOL()) return false;
 
 		PackageManager pm = getPackageManager();
 		List<ResolveInfo> activities = pm.queryIntentActivities(
@@ -15649,6 +15218,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeSTT_RESULTS() {
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+
 		if (!sttListening) {
 			return RunTimeError("STT_LISTEN not executed.");
 		}
@@ -15662,8 +15234,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		theLists.add(sttResults);
 		theListsType.add(list_is_string);
-
-		if (!getNVar()) return false;
 
 		NumericVarValues.set(theValueIndex, (double) theIndex);		// Return the list pointer
 		return true;
