@@ -221,7 +221,7 @@ public class AddProgramLine {
 			return line.substring(0, ii) + shorthand(line.substring(ii));
 		}
 		if (line.startsWith("++") || line.startsWith("--")) {
-			line = line.substring(2) + "=1" + line.substring(1);
+			line = line.substring(2) + "=" + line.substring(2) + line.charAt(0) + "1";
 		} else
 		if (line.endsWith("++") || line.endsWith("--")) {
 			int ll = line.length();
