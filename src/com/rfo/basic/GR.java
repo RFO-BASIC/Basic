@@ -27,12 +27,14 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 import java.util.ArrayList;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Process;
 import android.speech.RecognizerIntent;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
@@ -55,18 +57,19 @@ import android.graphics.Bitmap;
 
 
 public class GR extends Activity {
-    private static final String LOGTAG = "GR";
-    private static final String CLASSTAG = GR.class.getSimpleName();
+	private static final String LOGTAG = "GR";
+	private static final String CLASSTAG = GR.class.getSimpleName();
+
+	public static final String EXTRA_SHOW_STATUSBAR = "statusbar";
+	public static final String EXTRA_ORIENTATION = "orientation";
+	public static final String EXTRA_BACKGROUND_COLOR = "background";
+
     public static Context context;
     public static DrawView drawView;
     public static Bitmap screenBitmap = null;
-    public static int theBackGround;
 //    public static boolean NewTouch[] = {false, false};
 //    public static double TouchX[] = {0,0};
 //    public static double TouchY[] = {0,0};
-    public static int Width = 0;
-    public static int Heigth = 0;
-    public static boolean OrientationChanged = false;
     public static float scaleX = 1f;
     public static float scaleY = 1f;
     public static Boolean Rendering = false;	// Boolean (not boolean) so it has a lock
@@ -121,39 +124,27 @@ public class GR extends Activity {
 //    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " On Create  ");
         super.onCreate(savedInstanceState);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
-        
-    	if (Run.ShowStatusBar != 0){
-    		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN, WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
-    	}else{
-    	     getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-    	}
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        
-        int Mode = Run.GRorientation;
-    	if (Mode == -1) setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
-    	else if (Mode == 0) setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-		else setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-    	
-        drawView = new DrawView(this);
-        setContentView(drawView);
-        drawView.requestFocus();
-        drawView.setBackgroundColor(theBackGround);
-        drawView.setId(33);
-        Display display = getWindowManager().getDefaultDisplay(); 
-        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-        int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
-        level = 12; // Until the problem can be fixed.
-        if (level <13) {
-        	Width = display.getWidth();
-        	Heigth = display.getHeight();
-        } else {
-        	Point p = new Point();
-        	display.getSize(p);
-        	Width = drawView.getMeasuredWidth();
-        	Heigth = drawView.getMeasuredHeight();
-        }
-    	
+		Intent intent = getIntent();
+		int showStatusBar = intent.getIntExtra(EXTRA_SHOW_STATUSBAR, 0);
+		int orientation = intent.getIntExtra(EXTRA_ORIENTATION, -1);
+		int backgroundColor = intent.getIntExtra(EXTRA_BACKGROUND_COLOR, 0xFF000000);
+
+		showStatusBar = (showStatusBar == 0)
+				? WindowManager.LayoutParams.FLAG_FULLSCREEN			// do not show status bar
+				: WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN;	// show status bar
+		getWindow().setFlags(showStatusBar, showStatusBar);
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+		drawView = new DrawView(this);
+		setContentView(drawView);
+		drawView.requestFocus();
+		drawView.setBackgroundColor(backgroundColor);
+		drawView.setId(33);
+		drawView.setOrientation(orientation);		// Set orientation, get screen height and width
+
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
         scaleX = 1.0f;
         scaleY = 1.0f;
         Brightness = -1;
@@ -361,39 +352,45 @@ public class GR extends Activity {
         Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
         startActivityForResult(enableIntent, Run.REQUEST_ENABLE_BT);
     }
-    
-    public class DrawView extends View  {
-        private static final String TAG = "DrawView";
 
+	public class DrawView extends View  {
+		private static final String TAG = "DrawView";
 
-        public DrawView(Context context) {
-            super(context);
-            setFocusable(true);
-            setFocusableInTouchMode(true);
-            GraphicsImm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+		public DrawView(Context context) {
+			super(context);
+			setFocusable(true);
+			setFocusableInTouchMode(true);
+			GraphicsImm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+		}
 
-        }
-        
-        public void DoInvalidate(){
-        	invalidate();
-        }
-        
+		public void setOrientation(int orientation) {	// Convert and apply orientation setting
+//			Log.v(GR.LOGTAG, "Set orientation " + orientation);
+			switch (orientation) {
+				default:
+				case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
+				case 0:  orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; break;
+				case -1: orientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR; break;
+			}
+			setRequestedOrientation(orientation);
+		}
 
-               
-        public void SetOrientation(int Mode){
-//        	Log.v(GR.LOGTAG, "Set orientation " + Mode);
-        	if (Mode == -1) setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
-        	else if (Mode == 0) setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-			else setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        	
-        	Run.GRorientation = Mode;
-        	
-            Display display = getWindowManager().getDefaultDisplay(); 
-            Width = display.getWidth();
-            Heigth = display.getHeight();
+		@SuppressWarnings("deprecation")
+		@SuppressLint("NewApi")
+		public int getWindowMetrics(Point outSize) {	// return size in Point, density as return value
+			// This can be called when the DrawView does not yet know what size it is,
+			// so get the size from the WindowManager.
+			Display display = getWindowManager().getDefaultDisplay();
+			int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
+			if (level < 13) {
+				outSize.set(display.getWidth(), display.getHeight());
+			} else {
+				display.getSize(outSize);
+			}
+			DisplayMetrics dm = new DisplayMetrics();
+			display.getMetrics(dm);
+			return dm.densityDpi;
+		}
 
-        }
-        
         public boolean onTouchEvent(MotionEvent event){
         	super.onTouchEvent(event);
         	int action = event.getAction();  // Get action type
@@ -432,24 +429,9 @@ public class GR extends Activity {
 		  return rPaint;
 	  }
 
-        @Override
-        public  void onDraw(Canvas canvas) {
-        	
-        	
-            Display display = getWindowManager().getDefaultDisplay(); 
-
-            int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
-            level = 12; // Until the problem can be fixed
-            if (level <13) {
-            	Width = display.getWidth();
-            	Heigth = display.getHeight();
-            } else {
-            	Point p = new Point();
-            	display.getSize(p);
-            	Width = drawView.getMeasuredWidth();
-            	Heigth = drawView.getMeasuredHeight();
-            }
-            
+		@Override
+		public  void onDraw(Canvas canvas) {
+//			Log.d(LOGTAG,"onDraw " + getWidth() + " x " + getHeight());
             if (doEnableBT) {							// If this activity is running
             	enableBT();								// Bluetooth must be enabled here
             	doEnableBT = false;

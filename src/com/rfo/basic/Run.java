@@ -34,7 +34,6 @@ package com.rfo.basic;
 
 //Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
-import android.util.DisplayMetrics;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -83,12 +82,16 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 
+import java.security.spec.AlgorithmParameterSpec;
+import java.security.spec.KeySpec;
+
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.PBEParameterSpec;
 
+import org.apache.commons.net.ftp.*;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
@@ -100,12 +103,8 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.ByteArrayBuffer;
 
-import java.security.spec.AlgorithmParameterSpec;
-import java.security.spec.KeySpec;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.Intent;
 import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.app.Notification;
@@ -117,8 +116,9 @@ import android.bluetooth.BluetoothDevice;
 //import android.content.ClipData;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
-import android.content.DialogInterface;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -126,6 +126,23 @@ import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.content.res.Resources.NotFoundException;
 //import android.content.ClipboardManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Point;
+import android.graphics.Rect;
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+
+import android.hardware.Camera;
+import android.hardware.Camera.CameraInfo;
+import android.hardware.SensorManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -148,11 +165,11 @@ import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.text.format.Time;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.EditText;
-import android.widget.ListView;
-import android.widget.Toast;
+import android.text.ClipboardManager;
+
+import android.util.Base64;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -163,28 +180,13 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
-import android.graphics.Bitmap;
-import android.hardware.Camera;
-import android.hardware.Camera.CameraInfo;
-import android.hardware.SensorManager;
-import android.text.ClipboardManager;
-import android.util.Base64;
-
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap.CompressFormat;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.BitmapFactory;
-import android.graphics.Rect;
-import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
-
-import org.apache.commons.net.ftp.*;
-
+import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.Toast;
 
 
 /* Executes the Basic program. Run splits into two parts.
@@ -283,10 +285,11 @@ public class Run extends ListActivity {
     	"sw.default", "sw.end", "vibrate",
     	"kb.toggle", "kb.hide", "echo.on",
     	"echo.off", "text.input",
-    	" ",  " ",  " ",  " ",	" ",				// moved all file commands to file_cmd
+    	" ",  " ",  " ",							// moved all file commands to file_cmd
+    	"device.screen", "device",
     	"grabfile", "wakelock", "wifilock",
     	"tone", "list.", "bundle.",
-    	"stack.", "socket.", "http.post", "device",
+    	"stack.", "socket.", "http.post", " ",
     	"debug.", "console.",
     	"tts.","ftp.", "bt.",						// moved three "tts" commands to tts_cmd
     	"f_n.continue", "w_r.continue", "d_u.continue",
@@ -390,8 +393,8 @@ public class Run extends ListActivity {
     private static final int BKWnull71 = 71;				// All file commands moved to file_cmd
     private static final int BKWnull72 = 72;
     private static final int BKWnull73 = 73;
-    private static final int BKWnull74 = 74;
-    private static final int BKWnull75 = 75;
+    private static final int BKWdevice_screen = 74;
+    private static final int BKWdevice = 75;
     private static final int BKWgrabfile = 76;
     private static final int BKWwakelock = 77;
     private static final int BKWwifilock = 78;
@@ -401,7 +404,7 @@ public class Run extends ListActivity {
     private static final int BKWstack = 82;
     private static final int BKWsocket = 83;
     private static final int BKWhttp_post = 84;
-    private static final int BKWdevice = 85;
+    private static final int BKWnull85 = 85;
     private static final int BKWdebug = 86;
     private static final int BKWconsole = 87;
     private static final int BKWtts = 88;					// TTS commands moved to tts_cmd
@@ -948,27 +951,25 @@ public class Run extends ListActivity {
 	public static String TextInputString = "";
 	public static boolean HaveTextInput;
 
-    // ******************************** Graphics Declarations **********************************
-    
-    public static Intent GRclass;						// Graphics Intent Class
-    public static boolean GRopen = false;				// Graphics Open Flag
-    public static ArrayList<Bundle> DisplayList;
-    public static ArrayList<Integer> RealDisplayList;
-    public static ArrayList<Paint> PaintList;
-    public static ArrayList<Bitmap> BitmapList;
-    public static ArrayList<Float> PixelPoints;
-    public static Paint aPaint;
-    public static Bitmap aBitmap ;
-    public static boolean GRrunning;
-    public static boolean GRFront;
-    public static int ShowStatusBar;
-    public static int GRorientation;
-    public static boolean Touched;
-    public static double TouchX[] = {0,0,0};
-    public static double TouchY[] = {0,0,0};
-    public static boolean NewTouch[] = {false, false, false};
-    public static int OnTouchLine;
-    public static Canvas drawintoCanvas = null;
+	// ******************************** Graphics Declarations **********************************
+
+	public static Intent GRclass;						// Graphics Intent Class
+	public static boolean GRopen = false;				// Graphics Open Flag
+	public static ArrayList<Bundle> DisplayList;
+	public static ArrayList<Integer> RealDisplayList;
+	public static ArrayList<Paint> PaintList;
+	public static ArrayList<Bitmap> BitmapList;
+	public static ArrayList<Float> PixelPoints;
+	public static Paint aPaint;
+	public static Bitmap aBitmap ;
+	public static boolean GRrunning;
+	public static boolean GRFront;
+	public static boolean Touched;
+	public static double TouchX[] = {0,0,0};
+	public static double TouchY[] = {0,0,0};
+	public static boolean NewTouch[] = {false, false, false};
+	public static int OnTouchLine;
+	public static Canvas drawintoCanvas = null;
 
 	private static final String GR_KW[] = {				// Command list for Format
 		"open", "render", "color", "line", "rect",
@@ -995,76 +996,94 @@ public class Run extends ListActivity {
 		"get.type", "get.params"
 	};
 
-    public static final int gr_open = 0;				// Graphics Commands enums
-    public static final int gr_render = 1;
-    public static final int gr_color = 2;
-    public static final int gr_line = 3;
-    public static final int gr_rect = 4;
-    public static final int gr_arc = 5;
-    public static final int gr_circle = 6;
-    public static final int gr_oval = 7;
-    public static final int gr_cls = 8;
-    public static final int gr_hide = 9;
-    public static final int gr_show = 10;
-    public static final int gr_touch2 = 11;
-    public static final int gr_text_draw =12;
-    public static final int gr_text_size =13;
-    public static final int gr_text_align =14;
-    public static final int gr_text_underline =15;
-    public static final int gr_text_skew =16;
-    public static final int gr_text_bold =17;
-    public static final int gr_text_strike =18;
-    public static final int gr_bitmap_load =19;
-    public static final int gr_get_position = 20;
-    public static final int gr_rotate_start = 21;
-    public static final int gr_rotate_end = 22;
-    public static final int gr_modify = 23;
-    public static final int gr_orientation = 24;
-    public static final int gr_screen_to_bitmap = 25;
-    public static final int gr_close = 26;
-    public static final int gr_bitmap_scale = 27;
-    public static final int gr_front = 28;
-    public static final int gr_bound_touch2 = 29;
-    public static final int gr_bitmap_size = 30;
-    public static final int gr_bitmap_delete = 31;
-    public static final int gr_set_pixels = 32;
-    public static final int gr_get_pixel = 33;
-    public static final int gr_save = 34;
-    public static final int gr_text_width = 35;
-    public static final int gr_scale = 36;
-    public static final int gr_newdl = 37;
-    public static final int gr_clip = 38;
-    public static final int gr_bitmap_crop = 39;
-    public static final int gr_stroke_width = 40;
-    public static final int gr_poly = 41;
-    public static final int gr_statusbar_show = 42;
-    public static final int gr_touch = 43;
-    public static final int gr_bound_touch = 44;
-    public static final int gr_bitmap_save = 45;
-    public static final int gr_camera_shoot = 46;
-    public static final int gr_screen = 47;
-    public static final int gr_camera_autoshoot = 48;
-    public static final int gr_camera_manualshoot = 49;
-    public static final int gr_paint_get = 50;
-    public static final int gr_brightness =51;
-    public static final int gr_bitmap_create =52;
-    public static final int gr_bitmap_drawinto_start =53;
-    public static final int gr_bitmap_drawinto_end  =54;
-    public static final int gr_bitmap_draw = 55;    
-    public static final int gr_get_bmpixel = 56;
-    public static final int gr_get_value = 57;
-    public static final int gr_antialias = 58;
-    public static final int gr_get_textbounds = 59;
-    public static final int gr_text_typeface = 60;
-    public static final int gr_ontouch_resume = 61;
-    public static final int gr_camera_select = 62;
-    public static final int gr_camera_blindshoot = 63;
-    public static final int gr_getdl = 64;
-    public static final int gr_point = 65;
-    public static final int gr_get_type = 66;
-    public static final int gr_get_params = 67;
+	private final Command[] GR_cmd = new Command[] {	// Map GR command keywords to their execution functions
+		new Command("render")               { public boolean run() { return execute_gr_render(); } },
+		new Command("modify")               { public boolean run() { return execute_gr_modify(); } },
+		new Command("bounded.touch2")       { public boolean run() { return execute_gr_bound_touch(1); } },
+		new Command("bounded.touch")        { public boolean run() { return execute_gr_bound_touch(0); } },
+		new Command("touch2")               { public boolean run() { return execute_gr_touch(1); } },
+		new Command("touch")                { public boolean run() { return execute_gr_touch(0); } },
 
-    public static final int gr_none = 98;
+		new Command("bitmap.")              { public boolean run() { return executeGR_BITMAP(); } },
+		new Command("camera.")              { public boolean run() { return executeGR_CAMERA(); } },
+		new Command("get.")                 { public boolean run() { return executeGR_GET(); } },
+		new Command("text.")                { public boolean run() { return executeGR_TEXT(); } },
+
+		new Command("arc")                  { public boolean run() { return execute_gr_arc(); } },
+		new Command("brightness")           { public boolean run() { return execute_brightness(); } },
+		new Command("circle")               { public boolean run() { return execute_gr_circle(); } },
+		new Command("clip")                 { public boolean run() { return execute_gr_clip(); } },
+		new Command("close")                { public boolean run() { return execute_gr_close(); } },
+		new Command("cls")                  { public boolean run() { return execute_gr_cls(); } },
+		new Command("color")                { public boolean run() { return execute_gr_color(); } },
+		new Command("front")                { public boolean run() { return execute_gr_front(); } },
+		new Command("getdl")                { public boolean run() { return execute_gr_getdl(); } },
+		new Command("hide")                 { public boolean run() { return execute_gr_hide(); } },
+		new Command("line")                 { public boolean run() { return execute_gr_line(); } },
+		new Command("newdl")                { public boolean run() { return execute_gr_newdl(); } },
+		new Command("ongrtouch.resume")     { public boolean run() { return execute_gr_touch_resume(); } },
+		new Command("open")                 { public boolean run() { return execute_gr_open(); } },
+		new Command("orientation")          { public boolean run() { return execute_gr_orientation(); } },
+		new Command("oval")                 { public boolean run() { return execute_gr_oval(); } },
+		new Command("paint.get")            { public boolean run() { return execute_paint_get(); } },
+		new Command("point")                { public boolean run() { return execute_gr_point(); } },
+		new Command("poly")                 { public boolean run() { return execute_gr_poly(); } },
+		new Command("rect")                 { public boolean run() { return execute_gr_rect(); } },
+		new Command("rotate.end")           { public boolean run() { return execute_gr_rotate_end(); } },
+		new Command("rotate.start")         { public boolean run() { return execute_gr_rotate_start(); } },
+		new Command("save")                 { public boolean run() { return execute_gr_save(); } },
+		new Command("scale")                { public boolean run() { return execute_gr_scale(); } },
+		new Command("screen.to_bitmap")     { public boolean run() { return execute_screen_to_bitmap(); } },
+		new Command("screen")               { public boolean run() { return execute_gr_screen(); } },
+		new Command("set.antialias")        { public boolean run() { return execute_gr_antialias(); } },
+		new Command("set.pixels")           { public boolean run() { return execute_gr_set_pixels(); } },
+		new Command("set.stroke")           { public boolean run() { return execute_gr_stroke_width(); } },
+		new Command("show")                 { public boolean run() { return execute_gr_show(); } },
+		new Command("statusbar.show")       { public boolean run() { return execute_statusbar_show(); } },
+	};
+
+	private final Command[] GrBitmap_cmd = new Command[] {	// Map GR.bitmap command keywords to their execution functions
+		new Command("create")               { public boolean run() { return execute_gr_bitmap_create(); } },
+		new Command("crop")                 { public boolean run() { return execute_gr_bitmap_crop(); } },
+		new Command("delete")               { public boolean run() { return execute_gr_bitmap_delete(); } },
+		new Command("drawinto.end")         { public boolean run() { return execute_gr_bitmap_drawinto_end(); } },
+		new Command("drawinto.start")       { public boolean run() { return execute_gr_bitmap_drawinto_start(); } },
+		new Command("draw")                 { public boolean run() { return execute_gr_bitmap_draw(); } },
+		new Command("load")                 { public boolean run() { return execute_gr_bitmap_load(); } },
+		new Command("save")                 { public boolean run() { return execute_bitmap_save(); } },
+		new Command("scale")                { public boolean run() { return execute_gr_bitmap_scale(); } },
+		new Command("size")                 { public boolean run() { return execute_gr_bitmap_size(); } },
+	};
+
+	private final Command[] GrCamera_cmd = new Command[] {	// Map GR.camera command keywords to their execution functions
+		new Command("autoshoot")            { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_AUTO); } },
+		// new Command("blindshoot")           { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_BLIND); } },
+		new Command("manualshoot")          { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_MANUAL); } },
+		new Command("select")               { public boolean run() { return execute_gr_camera_select(); } },
+		new Command("shoot")                { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_USE_UI); } },
+	};
+
+	private final Command[] GrGet_cmd = new Command[] {		// Map GR.get command keywords to their execution functions
+		new Command("bmpixel")              { public boolean run() { return execute_gr_get_bmpixel(); } },
+		new Command("params")               { public boolean run() { return execute_gr_get_params(); } },
+		new Command("pixel")                { public boolean run() { return execute_gr_get_pixel(); } },
+		new Command("position")             { public boolean run() { return execute_gr_get_position(); } },
+		new Command("textbounds")           { public boolean run() { return execute_gr_get_texbounds(); } },
+		new Command("type")                 { public boolean run() { return execute_gr_get_type(); } },
+		new Command("value")                { public boolean run() { return execute_gr_get_value(); } },
+	};
+
+	private final Command[] GrText_cmd = new Command[] {	// Map GR.text command keywords to their execution functions
+		new Command("align")                { public boolean run() { return execute_gr_text_align(); } },
+		new Command("bold")                 { public boolean run() { return execute_gr_text_bold(); } },
+		new Command("draw")                 { public boolean run() { return execute_gr_text_draw(); } },
+		new Command("size")                 { public boolean run() { return execute_gr_text_size(); } },
+		new Command("skew")                 { public boolean run() { return execute_gr_text_skew(); } },
+		new Command("strike")               { public boolean run() { return execute_gr_text_strike(); } },
+		new Command("typeface")             { public boolean run() { return execute_gr_text_typeface(); } },
+		new Command("underline")            { public boolean run() { return execute_gr_text_underline(); } },
+		new Command("width")                { public boolean run() { return execute_gr_text_width(); } },
+	};
 
 	// ******************************** Variables for Audio commands ****************************
 
@@ -1136,7 +1155,10 @@ public class Run extends ListActivity {
 
 	private GPS theGPS;
 
-	// ************************* Variables for Array Commands
+	// ************************* Variables for Array Commands *********************************
+
+	private enum ArrayOrderOps { DoSort, DoShuffle, DoReverse }
+	private enum ArrayMathOps { DoSum, DoAverage, DoMin, DoMax, DoVariance, DoStdDev }
 
 	private static final String Array_KW[] = {			// Command list for Format
 		"length", "load", "sort",
@@ -1145,31 +1167,22 @@ public class Run extends ListActivity {
 		"variance", "std_dev", "copy", "search"
 	};
 
-	private static final int array_length = 0;
-	private static final int array_load = 1;
-	private static final int array_sort = 2;
-	private static final int array_sum = 3;
-	private static final int array_average = 4;
-	private static final int array_reverse = 5;
-	private static final int array_shuffle = 6;
-	private static final int array_min = 7;
-	private static final int array_max = 8;
-	private static final int array_delete = 9;
-	private static final int array_variance = 10;
-	private static final int array_std_dev = 11;
-	private static final int array_copy = 12;
-	private static final int array_search = 13;
-	private static final int array_none =99;
-
-	private static boolean DoAverage;
-	private static boolean DoReverse;
-	private static boolean DoShuffle;
-	private static boolean DoVariance;
-	private static boolean DoStdDev;
-	private static boolean DoSort;
-	private static boolean DoMin;
-	private static boolean DoMax;
-	private static boolean DoSum;
+	private final Command[] array_cmd = new Command[] {	// Map array command keywords to their execution functions
+		new Command("length")           { public boolean run() { return execute_array_length(); } },
+		new Command("load")             { public boolean run() { return execute_array_load(); } },
+		new Command("delete")           { public boolean run() { return executeUNDIM(); } },
+		new Command("reverse")          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoReverse); } },
+		new Command("shuffle")          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoShuffle); } },
+		new Command("sort")             { public boolean run() { return execute_array_collection(ArrayOrderOps.DoSort); } },
+		new Command("sum")              { public boolean run() { return execute_array_sum(ArrayMathOps.DoSum); } },
+		new Command("average")          { public boolean run() { return execute_array_sum(ArrayMathOps.DoAverage); } },
+		new Command("min")              { public boolean run() { return execute_array_sum(ArrayMathOps.DoMin); } },
+		new Command("max")              { public boolean run() { return execute_array_sum(ArrayMathOps.DoMax); } },
+		new Command("variance")         { public boolean run() { return execute_array_sum(ArrayMathOps.DoVariance); } },
+		new Command("std_dev")          { public boolean run() { return execute_array_sum(ArrayMathOps.DoStdDev); } },
+		new Command("copy")             { public boolean run() { return execute_array_copy(); } },
+		new Command("search")           { public boolean run() { return execute_array_search(); } },
+	};
 
 	// ************************************ List command variables *********************************
 
@@ -2141,7 +2154,6 @@ private void InitVars(){
 	StopDisplay = false;
 	GRFront = false;
 	DisplayStopped = false;
-	ShowStatusBar = 0;
 	IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
 
 	PrintLine = "";										// Hold the Print line currently being built
@@ -2245,16 +2257,6 @@ private void InitVars(){
 
 	theGPS = null;
 
-	DoAverage = false;
-	DoReverse = false;
-	DoShuffle = false;
-	DoVariance = false;
-	DoStdDev = false;
-	DoSort = false;
-	DoMin = false;
-	DoMax = false;
-	DoSum = false;
-	
 	theLists = new ArrayList <ArrayList>();
 	ArrayList<ArrayList> aList = new ArrayList <ArrayList>();
 	theLists.add(aList);
@@ -3081,6 +3083,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        		break;
 	        	case BKWstack:
 	        		if (!executeSTACK()){SyntaxError(); return false;}
+	        		break;
+	        	case BKWdevice_screen:
+	        		if (!executeDEVICE_SCREEN()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWdevice:
 	        		if (!executeDEVICE()){SyntaxError(); return false;}
@@ -8528,23 +8533,54 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeDEVICE(){
-		  
-		  if (!getSVar()) return false;
-		  
-		  String info = "";
-		  info = info + "Brand = " + Build.BRAND + "\n";
-		  info = info + "Model = " + Build.MODEL + "\n";
-		  info = info + "Device = " + Build.DEVICE + "\n";
-		  info = info + "Product = " + Build.PRODUCT + "\n";
-		  info = info + "OS = " + Build.VERSION.RELEASE;
-		  
-		  StringVarValues.set(theValueIndex, info);
-		  
-		  return true;
+	private boolean executeDEVICE_SCREEN() {
+		if (!getNVar()) return false;						// width variable
+		int widthIndex = theValueIndex;
+
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;						// height Variable
+		int heightIndex = theValueIndex;
+
+		int xDensityIndex = -1;
+		int yDensityIndex = -1;
+		if (isNext(',')) {
+			if (!getNVar()) return false;					// optional x,y density variables
+			xDensityIndex = theValueIndex;
+
+			if (!isNext(',')) return false;
+			if (!getNVar()) return false;
+			yDensityIndex = theValueIndex;
+		}
+		if (!checkEOL()) return false;
+
+		DisplayMetrics dm = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(dm);
+
+		NumericVarValues.set(widthIndex, (double)dm.widthPixels);
+		NumericVarValues.set(heightIndex, (double)dm.heightPixels);
+		if (xDensityIndex != -1) {
+			NumericVarValues.set(xDensityIndex, (double)dm.xdpi);
+			NumericVarValues.set(yDensityIndex, (double)dm.ydpi);
+		}
+		return true;
 	}
 
-	private boolean executeHTTP_POST(){
+	private boolean executeDEVICE() {
+
+		if (!getSVar()) return false;
+
+		String info =
+				"Brand = " + Build.BRAND + "\n" +
+				"Model = " + Build.MODEL + "\n" +
+				"Device = " + Build.DEVICE + "\n" +
+				"Product = " + Build.PRODUCT + "\n" +
+				"OS = " + Build.VERSION.RELEASE;
+		StringVarValues.set(theValueIndex, info);
+
+		return true;
+	}
+
+	private boolean executeHTTP_POST() {
 		if (!getStringArg()) return false;
 		String url = StringConstant;
 		if (!isNext(',')) return false;
@@ -9058,237 +9094,33 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
     	  return true;
       }
 
-// **********************************************  Graphics Package **********************************************
-   
-   public  boolean executeGR(){
-   	if (!GetGRKeyWord()){ return false;
-   	}else if (!GRopen && KeyWordValue != gr_open) {
-   		RunTimeError("Graphics not opened at:");
-   		return false;
-   		}
-   		else{
-   	    	  switch (KeyWordValue){
-   	    	  	case gr_open:
-   	    	  		if (!execute_gr_open()){return false;}
-   	    	  		break;
-   	    	  	case gr_render:
-   	    	  		if (!execute_gr_render()){return false;}
-   	    	  		break;
-   	    	  	case gr_color:
-   	    	  		if (!execute_gr_color()){return false;}
-   	    	  		break;
-   	    	  	case gr_point:
-   	    	  		if (!execute_gr_point()){return false;}
-   	    	  		break;
-   	    	  	case gr_line:
-   	    	  		if (!execute_gr_line()){return false;}
-   	    	  		break;
-   	    	  	case gr_rect:
-   	    	  		if (!execute_gr_rect()){return false;}
-   	    	  		break;
-   	    	  	case gr_arc:
-   	    	  		if (!execute_gr_arc()){return false;}
-   	    	  		break;
-   	    	  	case gr_circle:
-   	    	  		if (!execute_gr_circle()){return false;}
-   	    	  		break;
-   	    	  	case gr_oval:
-   	    	  		if (!execute_gr_oval()){return false;}
-   	    	  		break;
-   	    	  	case gr_cls:
-   	    	  		if (!execute_gr_cls()){return false;}
-   	    	  		break;
-   	    	  	case gr_hide:
-   	    	  		if (!execute_gr_hide()){return false;}
-   	    	  		break;
-   	    	  	case gr_show:
-   	    	  		if (!execute_gr_show()){return false;}
-   	    	  		break;
-   	    	  	case gr_touch:
-   	    	  		if (!execute_gr_touch(0)){return false;}
-   	    	  		break;
-   	    	  	case gr_touch2:
-   	    	  		if (!execute_gr_touch(1)){return false;}
-   	    	  		break;
-  	    	  	case gr_text_draw:
-   	    	  		if (!execute_gr_text_draw()){return false;}
-   	    	  		break;
-   	    	  	case gr_text_align:
-   	    	  		if (!execute_gr_text_align()){return false;}
-   	    	  		break;
-   	    	  	case gr_text_size:
-   	    	  		if (!execute_gr_text_size()){return false;}
-   	    	  		break;
-   	    	  	case gr_text_underline:
-   	    	  		if (!execute_gr_text_underline()){return false;}
-   	    	  		break;
-   	    	  	case gr_text_skew:
-   	    	  		if (!execute_gr_text_skew()){return false;}
-   	    	  		break;
-   	    	  	case gr_text_bold:
-   	    	  		if (!execute_gr_text_bold()){return false;}
-   	    	  		break;
-   	    	  	case gr_text_strike:
-   	    	  		if (!execute_gr_text_strike()){return false;}
-   	    	  		break;
-   	    	  	case gr_bitmap_load:
-   	    	  		if (!execute_gr_bitmap_load()){return false;}
-   	    	  		break;
-   	    	  	case gr_bitmap_scale:
-   	    	  		if (!execute_gr_bitmap_scale()){return false;}
-   	    	  		break;
-   	    	  	case gr_bitmap_draw:
-   	    	  		if (!execute_gr_bitmap_draw()){return false;}
-   	    	  		break;
-   	    	  	case gr_rotate_start:
-   	    	  		if (!execute_gr_rotate_start()){return false;}
-   	    	  		break;
-   	    	  	case gr_rotate_end:
-   	    	  		if (!execute_gr_rotate_end()){return false;}
-   	    	  		break;
-   	    	  	case gr_modify:
-   	    	  		if (!execute_gr_modify()){return false;}
-   	    	  		break;
-   	    	  	case gr_orientation:
-   	    	  		if (!execute_gr_orientation()){return false;}
-   	    	  		break;
-   	    	  	case gr_screen:
-   	    	  		if (!execute_gr_screen()){return false;}
-   	    	  		break;
-   	    	  	case gr_close:
-   	    	  		if (!execute_gr_close()){return false;}
-   	    	  		break;
-   	    	  	case gr_front:
-   	    	  		if (!execute_gr_front()){return false;}
-   	    	  		break;
-   	    	  	case gr_bound_touch:
-   	    	  		if (!execute_gr_bound_touch(0)){return false;}
-   	    	  		break;
-   	    	  	case gr_bound_touch2:
-   	    	  		if (!execute_gr_bound_touch(1)){return false;}
-   	    	  		break;
-   	    	  	case gr_bitmap_size:
-   	    	  		if (!execute_gr_bitmap_size()){return false;}
-   	    	  		break;
-   	    	  	case gr_bitmap_delete:
-   	    	  		if (!execute_gr_bitmap_delete()){return false;}
-   	    	  		break;
-   	    	  	case gr_set_pixels:
-   	    	  		if (!execute_gr_set_pixels()){return false;}
-   	    	  		break;
-   	    	  	case gr_get_pixel:
-   	    	  		if (!execute_gr_get_pixel()){return false;}
-   	    	  		break;
-   	    	  	case gr_save:
-   	    	  		if (!execute_gr_save()){return false;}
-   	    	  		break;
-   	    	  	case gr_text_width:
-   	    	  		if (!execute_gr_text_width()){return false;}
-   	    	  		break;
-   	    	  	case gr_scale:
-   	    	  		if (!execute_gr_scale()){return false;}
-   	    	  		break;
-   	    	  	case gr_getdl:
-   	    	  		if (!execute_gr_getdl()){return false;}
-   	    	  		break;
-   	    	  	case gr_newdl:
-   	    	  		if (!execute_gr_newdl()){return false;}
-   	    	  		break;
-   	    	  	case gr_clip:
-   	    	  		if (!execute_gr_clip()){return false;}
-   	    	  		break;
-   	    	  	case gr_bitmap_crop:
-   	    	  		if (!execute_gr_bitmap_crop()){return false;}
-   	    	  		break;
-   	    	  	case gr_stroke_width:
-   	    	  		if (!execute_gr_stroke_width()){return false;}
-   	    	  		break;
-   	    	  	case gr_poly:
-   	    	  		if (!execute_gr_poly()){return false;}
-   	    	  		break;
-   	    	  	case gr_statusbar_show:
-   	    	  		if (!execute_statusbar_show()){return false;}
-   	    	  		break;
-   	    	  	case gr_bitmap_save:
-   	    	  		if (!execute_bitmap_save()){return false;}
-   	    	  		break;
-   	    	  	case gr_camera_shoot:
-   	    	  		if (!execute_camera_shoot(CameraView.PICTURE_MODE_USE_UI)){return false;}
-   	    	  		break;
-   	    	  	case gr_camera_autoshoot:
-   	    	  		if (!execute_camera_shoot(CameraView.PICTURE_MODE_AUTO)){return false;}
-   	    	  		break;
-   	    	  	case gr_camera_manualshoot:
-   	    	  		if (!execute_camera_shoot(CameraView.PICTURE_MODE_MANUAL)){return false;}
-   	    	  		break;
-   	    	  	case gr_camera_blindshoot:
-   	    	  		if (!execute_camera_shoot(CameraView.PICTURE_MODE_BLIND)){return false;}
-   	    	  		break;
-   	    	  	case gr_screen_to_bitmap:
-   	    	  		if (!execute_screen_to_bitmap()){return false;}
-   	    	  		break;
-   	    	  	case gr_paint_get:
-   	    	  		if (!execute_paint_get()){return false;}
-   	    	  		break;
-   	    	  	case gr_brightness:
-   	    	  		if (!execute_brightness()) return false;
-   	    	  		break;
-   	    	  	case gr_bitmap_create:
-   	    	  		if (!execute_gr_bitmap_create()) return false;
-   	    	  		break;
-   	    	  	case gr_bitmap_drawinto_start:
-   	    	  		if (!execute_gr_bitmap_drawinto_start()) return false;
-   	    	  		break;
-   	    	  	case gr_bitmap_drawinto_end:
-   	    	  		if (!execute_gr_bitmap_drawinto_end()) return false;
-   	    	  		break;
-   	    	  	case gr_get_position:
-   	    	  		if (!execute_gr_get_position()) return false;
-   	    	  		break;
-   	    	  	case gr_get_bmpixel:
-   	    	  		if (!execute_gr_get_bmpixel()) return false;
-   	    	  		break;
-   	    	  	case gr_get_value:
-   	    	  		if (!execute_gr_get_value()) return false;
-   	    	  		break;
-   	    	  	case gr_get_type:
-   	    	  		 return execute_gr_get_type();
-   	    	  	case gr_get_params:
-  	    	  		 return execute_gr_get_params();
-   	    	  	case gr_antialias:
-   	    	  		if (!execute_gr_antialias()) return false;
-   	    	  		break;
-   	    	  	case gr_get_textbounds:
-   	    	  		if (!execute_gr_get_texbounds()) return false;
-   	    	  		break;
-   	    	  	case gr_text_typeface:
-   	    	  		if (!execute_gr_text_typeface()) return false;
-   	    	  		break;
-   	    	  	case gr_ontouch_resume:
-   	    	  		if (!execute_gr_touch_resume()) return false;
-   	    	  		break;
-   	    	  	case gr_camera_select:
-   	    	  		if (!execute_gr_camera_select()) return false;
-   	    	  		break;
-   	    	  		
-   	    	  	default:
-   	    	  		return false;
-   	    	  }
-   	    	  return true;
-   	      }
-   	   }
- 
-	private boolean GetGRKeyWord(){							// Get a GR command keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < GR_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(GR_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += GR_KW[i].length();				// move the line index to end of keyword
-				return true;								// and report back
+	// ************************************  Graphics Package ***********************************
+
+	private boolean executeGR() {
+		Command c = findCommand(GR_cmd, "GR");
+		if (c != null) {
+			if (!GRopen && !c.name.equals("open")) {
+				return RunTimeError("Graphics not opened at:");
 			}
+			return c.run();
 		}
-		KeyWordValue = gr_none;								// no keyword found
-		return false;										// report fail
+		return false;
+	}
+
+	private boolean executeGR_BITMAP(){
+		return executeCommand(GrBitmap_cmd, "Gr.Bitmap");
+	}
+
+	private boolean executeGR_CAMERA(){
+		return executeCommand(GrCamera_cmd, "Gr.Camera");
+	}
+
+	private boolean executeGR_GET(){
+		return executeCommand(GrGet_cmd, "Gr.Get");
+	}
+
+	private boolean executeGR_TEXT(){
+		return executeCommand(GrText_cmd, "Gr.Text");
 	}
 
 	  public void DisplayListAdd(Bundle b){
@@ -9426,53 +9258,53 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	  public void PaintListAdd(Paint p){
-		  PaintList.add(p);
-	  }
-	  
-	  public Paint newPaint(Paint fromPaint){				// Does a new Paint
-		  Typeface tf = fromPaint.getTypeface();			// while prsereving the type face
-		  Paint rPaint = new Paint(fromPaint);
-		  rPaint.setTypeface(tf);
-		  return rPaint;
-	  }
+	public void PaintListAdd(Paint p){
+		PaintList.add(p);
+	}
+
+	public Paint newPaint(Paint fromPaint){							// Does a new Paint
+		Typeface tf = fromPaint.getTypeface();						// while preserving the type face
+		Paint rPaint = new Paint(fromPaint);
+		rPaint.setTypeface(tf);
+		return rPaint;
+	}
 
 	private boolean execute_gr_open(){
 		if (GRopen) {
 			return RunTimeError("Graphics already Opened");
 		}
 
-		if (!evalNumericExpression()) return false;							// Get alpha
+		if (!evalNumericExpression()) return false;					// Get alpha
 		int a = EvalNumericExpressionValue.intValue();
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get red
+		if (!evalNumericExpression()) return false;					// Get red
 		int r = EvalNumericExpressionValue.intValue();
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get green
+		if (!evalNumericExpression()) return false;					// Get green
 		int g = EvalNumericExpressionValue.intValue();
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get blue
+		if (!evalNumericExpression()) return false;					// Get blue
 		int b = EvalNumericExpressionValue.intValue();
 
-		ShowStatusBar = 0;
-		GRorientation = 0;
+		int showStatusBar = 0;										// default to status bar not showing
+		int orientation = 0;										// default to landscape
 		if (isNext(',')) {
 			if (!evalNumericExpression()) return false;
-			ShowStatusBar = EvalNumericExpressionValue.intValue();
+			showStatusBar = EvalNumericExpressionValue.intValue();
 			if (isNext(',')) {
 				if (!evalNumericExpression()) return false;
-				GRorientation = EvalNumericExpressionValue.intValue();
+				orientation = EvalNumericExpressionValue.intValue();
 			}
 		}
 		if (!checkEOL()) return false;
 
-			  GR.theBackGround = a * 0x1000000 +									// Set the appropriate bytes
-			  					 r * 0x10000 +
-			  					 g * 0x100 +
-			  					 b ;
+		int backgroundColor =	a * 0x1000000 +						// Set the appropriate bytes
+								r * 0x10000 +
+								g * 0x100 +
+								b;
 
 		  drawintoCanvas = null;
 		  DisplayListClear();
@@ -9489,11 +9321,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		   aPaint = newPaint(tPaint);							// Copy the temp paint to aPaint
 	       PaintListAdd(aPaint);								// Add the newPaint to the Paint List as element 1
 
-		  GraphicsPaused = false;							// Set up the signals
-		  GRrunning = false;
-     	  GRclass = new Intent(this, GR.class);				// Start the Graphics
-     	  startActivityForResult(GRclass, BASIC_GENERAL_INTENT);
-	       while (!GRrunning) Thread.yield();				// Do not continue until GR signals it is running
+		GRclass = new Intent(this, GR.class);						// Set up parameters for the Graphics Activity
+		GRclass.putExtra(GR.EXTRA_SHOW_STATUSBAR, showStatusBar);
+		GRclass.putExtra(GR.EXTRA_ORIENTATION, orientation);
+		GRclass.putExtra(GR.EXTRA_BACKGROUND_COLOR, backgroundColor);
+
+		GraphicsPaused = false;										// Set up the signals
+		GRrunning = false;
+		startActivityForResult(GRclass, BASIC_GENERAL_INTENT);		// Start the Graphics Activity
+		while (!GRrunning) Thread.yield();							// Do not continue until GR signals it is running
+
 	       background = false;
 	       GRopen = true;									// Set some more signals
 	       RunPaused = false;
@@ -10533,27 +10370,35 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!evalNumericExpression()) return false;		// get the mode (landscape or portrait)
 		if (!checkEOL()) return false;
 		int mode = EvalNumericExpressionValue.intValue();
-		GR.drawView.SetOrientation(mode);
+		GR.drawView.setOrientation(mode);
 		return true;
 	}
 
-	  private boolean execute_gr_screen(){
-		   if (!getNVar()) return false;						// Width variable
-		   NumericVarValues.set(theValueIndex,(double) GR.Width); 
-		   if (!isNext(',')) return false;
+	private boolean execute_gr_screen() {
+		if (!getNVar()) return false;						// width variable
+		int widthIndex = theValueIndex;
 
-		   if (!getNVar()) return false;						// Heigth Variable
-		   NumericVarValues.set(theValueIndex, (double) GR.Heigth); 
-		   if (isNext(',')) {
-			   if (!getNVar()) return false;					// Optional Density variable
-			   DisplayMetrics dm = new DisplayMetrics();
-			   getWindowManager().getDefaultDisplay().getMetrics(dm);
-			   NumericVarValues.set(theValueIndex, (double) dm.densityDpi);
-		   }
-		   if (!checkEOL()) return false;
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;						// height variable
+		int heightIndex = theValueIndex;
 
-		  return true;
-	  }
+		int densityIndex = -1;
+		if (isNext(',')) {
+			if (!getNVar()) return false;					// optional density variable
+			densityIndex = theValueIndex;
+		}
+		if (!checkEOL()) return false;
+
+		Point size = new Point();
+		int densityDpi = GR.drawView.getWindowMetrics(size);
+
+		NumericVarValues.set(widthIndex, (double)size.x);
+		NumericVarValues.set(heightIndex, (double)size.y);
+		if (densityIndex != -1) {
+			NumericVarValues.set(densityIndex, (double)densityDpi);
+		}
+		return true;
+	}
 
 	private boolean execute_gr_front(){
 		if (!evalNumericExpression()) return false;						// Get flag
@@ -11667,90 +11512,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-// ********************************************  Array Package  ***************************************
-	  
-	  private boolean executeARRAY(){
-		  DoShuffle = false;
-		  DoReverse = false;
-		  DoAverage = false;
-		  DoVariance = false;
-		  DoStdDev = false;
-		  DoSort = false;
-		  DoSum = false;
-		  DoMin = false;
-		  DoMax = false;
-	    	if (!GetArrayKeyWord()){ return false;}
-		    	  switch (KeyWordValue){
-		    	  	case array_length:
-		    	  		if (!execute_array_length()){return false;}
-		    	  		break;
-		    	  	case array_load:
-		    	  		if (!execute_array_load()){return false;}
-		    	  		break;
-		    	  	case array_delete:
-		    	  		if (!executeUNDIM()){return false;}
-		    	  		break;
-		    	  	case array_sort:
-		    	  		DoSort = true;
-		    	  		if (!execute_array_collection()){return false;}
-		    	  		break;
-		    	  	case array_shuffle:
-		    	  		DoShuffle = true;
-		    	  		if (!execute_array_collection()){return false;}
-		    	  		break;
-		    	  	case array_reverse:
-		    	  		DoReverse = true;
-		    	  		if (!execute_array_collection()){return false;}
-		    	  		break;
-		    	  	case array_sum:
-		    	  		DoSum = true;
-		    	  		if (!execute_array_sum()){return false;}
-		    	  		break;
-		    	  	case array_average:
-		    	  		DoAverage = true;
-		    	  		if (!execute_array_sum()){return false;}
-		    	  		break;
-		    	  	case array_min:
-		    	  		DoMin = true;
-		    	  		if (!execute_array_sum()){return false;}
-		    	  		break;
-		    	  	case array_max:
-		    	  		DoMax = true;
-		    	  		if (!execute_array_sum()){return false;}
-		    	  		break;
-		    	  	case array_variance:
-		    	  		DoVariance = true;
-		    	  		if (!execute_array_sum())return false;
-		    	  		break;
-		    	  	case array_std_dev:
-		    	  		DoVariance = true;
-		    	  		DoStdDev = true;
-		    	  		if (!execute_array_sum())return false;
-		    	  		break;
-		    	  	case array_copy:
-		    	  		if (!execute_array_copy()){return false;}
-		    	  		break;
-		    	  	case array_search:
-		    	  		if (!execute_array_search()){return false;}
-		    	  		break;
-		    	  	default:
-		    	  		return false;
-		    	  	}
-		      	
-		  return true;
-	  }
+	// ************************************* Array Package ****************************************
 
-	private boolean GetArrayKeyWord(){						// Get an array command keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < Array_KW.length; ++i) {			// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(Array_KW[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += Array_KW[i].length();			// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = array_none;							// no keyword found
-		return false;										// report fail
+	private boolean executeARRAY() {							// Get array command keyword if it is there
+		return executeCommand(array_cmd, "Array");				// and execute the command
 	}
 
 	private boolean execute_array_length(){
@@ -11824,7 +11589,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_array_collection(){
+	private boolean execute_array_collection(ArrayOrderOps op) {
 
 		// This method implements several array commands
 
@@ -11845,12 +11610,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			for (int i = 0; i < length; ++i) {						// Copy the array values into that list
 				Values.add(NumericVarValues.get(base+i));
 			}
-																	// Execute the command specific procedure
-			if (DoReverse)		{ Collections.reverse(Values); }	// Reverse
-			else if (DoSort)	{ Collections.sort(Values); }		// Sort
-			else if (DoShuffle)	{ Collections.shuffle(Values); }	// Shuffle
-
-			for (int i =0; i<length; ++i) {							// Copy the results back to the array
+			switch (op) {											// Execute the command specific procedure
+				case DoReverse:		Collections.reverse(Values);	break;
+				case DoSort:		Collections.sort(Values);		break;
+				case DoShuffle:		Collections.shuffle(Values);	break;
+			}
+			for (int i = 0; i < length; ++i) {						// Copy the results back to the array
 				NumericVarValues.set(base + i, Values.get(i));
 			}
 
@@ -11859,11 +11624,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			for (int i = 0; i < length; ++i) {
 				Values.add(StringVarValues.get(base + i));
 			}
-
-			if (DoReverse)		{ Collections.reverse(Values); }	// Reverse
-			else if (DoSort)	{ Collections.sort(Values); }		// Sort
-			else if (DoShuffle)	{ Collections.shuffle(Values); }	// Shuffle
-
+			switch (op) {											// Execute the command specific procedure
+				case DoReverse:		Collections.reverse(Values);	break;
+				case DoSort:		Collections.sort(Values);		break;
+				case DoShuffle:		Collections.shuffle(Values);	break;
+			}
 			for (int i = 0; i < length; ++i) {
 				StringVarValues.set(base + i, Values.get(i));
 			}
@@ -11872,7 +11637,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_array_sum(){
+	private boolean execute_array_sum(ArrayMathOps op) {
 
 		if (!getNVar()) { return false; }							// The value return variable
 		int SaveValueIndex = theValueIndex;
@@ -11900,14 +11665,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (d < Min) { Min = d; }								// find the minimum value
 			if (d > Max) { Max = d; }								// and the maxium value
 		}
-
 		double Average = Sum / length;								// Calculate the average
-																	// Set the return value according to the command
-		if (DoAverage)	{ NumericVarValues.set(SaveValueIndex, Average); }
-		else if (DoSum)	{ NumericVarValues.set(SaveValueIndex, Sum); }
-		else if (DoMax)	{ NumericVarValues.set(SaveValueIndex, Max); }
-		else if (DoMin)	{ NumericVarValues.set(SaveValueIndex, Min); }
-		else if (DoVariance) {
+
+		switch (op) {												// Set the return value according to the command
+			case DoAverage:	NumericVarValues.set(SaveValueIndex, Average);	break;
+			case DoSum:		NumericVarValues.set(SaveValueIndex, Sum);		break;
+			case DoMax:		NumericVarValues.set(SaveValueIndex, Max);		break;
+			case DoMin:		NumericVarValues.set(SaveValueIndex, Min);		break;
+			case DoVariance:
+			case DoStdDev:
 				double T = 0;
 				double W = 0;
 				for (int i = 0; i <length; ++i) {
@@ -11916,9 +11682,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					T = T + W*W;
 				}
 				double variance = T/(length-1);
-				double sd = Math.sqrt(variance);
-				if (DoStdDev) NumericVarValues.set(SaveValueIndex, sd);
-				else NumericVarValues.set(SaveValueIndex, variance);
+				if (op == ArrayMathOps.DoVariance) {
+					NumericVarValues.set(SaveValueIndex, variance);
+				} else {											// DoStdDev
+					double sd = Math.sqrt(variance);
+					NumericVarValues.set(SaveValueIndex, sd);
+				}
+				break;
 		}
 
 		return true;
