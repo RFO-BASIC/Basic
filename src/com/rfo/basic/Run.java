@@ -265,7 +265,7 @@ public class Run extends ListActivity {
     	"if", "onerror", "else", "end",					// onerror here for Format
     	"for", "include", " ", "next",					// to and step deleted
     	"goto", "gosub", "return",
-    	"text.open","text.close","text.readln","text.writeln",
+    	"text."," "," "," ",
     	"while","repeat","do","until",
     	"onbackkey", 									// onbackkey for Format	
     	"dir", "mkdir", "rename",						// same as file.dir, file.mkdir, file.rename
@@ -276,16 +276,14 @@ public class Run extends ListActivity {
     	"cls", "array.", "select",
     	"exit", "clipboard.get",
     	"clipboard.put",
-    	"encrypt", "decrypt", "split.all",		// split.all new/2013-07-25 gt
-    	"split", "byte.open", "byte.close",
-    	"byte.read.byte", "byte.write.byte",
-    	"graburl", "fn.def", "fn.rtn",
-    	"fn.end", "byte.copy",
-    	"sw.begin", "sw.case","sw.break",
-    	"sw.default", "sw.end", "vibrate",
+    	"encrypt", "decrypt", "split.all",			// split.all new/2013-07-25 gt
+    	"split", "byte.", " ", " ", " ",
+    	"graburl", "fn.", " ", " ", " ",
+    	"sw.", " ", " ", " ", " ",
+    	"vibrate",
     	"kb.toggle", "kb.hide", "echo.on",
-    	"echo.off", "text.input",
-    	" ",  " ",  " ",							// moved all file commands to file_cmd
+    	"echo.off", " ",
+    	" ", " ", " ",								// moved all file commands to file_cmd
     	"device.screen", "device",
     	"grabfile", "wakelock", "wifilock",
     	"tone", "list.", "bundle.",
@@ -296,21 +294,21 @@ public class Run extends ListActivity {
     	"call", "su.", "system.",
     	"undim", "tget",
     	"f_n.break", "w_r.break", "d_u.break",
-    	"text.position.get", "text.position.set",
-    	"byte.position.get", "byte.position.set",
-    	"byte.read.buffer", "byte.write.buffer",
+    	" ", " ",
+    	" ", " ",
+    	" ", " ",
     	"soundpool.", "myphonenumber", "headset",
-    	"sms.send", "phone.call", "email.send",
+    	"sms.", "phone.", "email.send",
     	"html.", "run", "@@@", "back.resume",
-    	"notify", "swap", "sms.rcv.init",
-    	"sms.rcv.next", "stt.listen", "stt.results",
+    	"notify", "swap", " ", " ",
+    	"stt.listen", "stt.results",
     	"timer.", "timezone.", "time",				// moved three "timer" commands to Timer_cmd
     	" ", "key.resume", "menukey.resume",
     	"onmenukey","ontimer", "onkeypress",			// For Format
     	"ongrtouch", "onbtreadready",						// For Format
     	"home", "background.resume","onbackground",
-    	"phone.rcv.init", "phone.rcv.next",
-    	"read.data", "read.next", "read.from",
+    	" ", " ",
+    	"read.", " ", " ",
     	"onconsoletouch", "consoletouch.resume"
     	
     };
@@ -337,10 +335,10 @@ public class Run extends ListActivity {
     private static final int BKWgoto = 15;
     private static final int BKWgosub = 16;
     private static final int BKWreturn = 17;
-    private static final int BKWtext_open = 18;
-    private static final int BKWtext_close = 19;
-    private static final int BKWtext_readln = 20;
-    private static final int BKWtext_writeln = 21;
+    private static final int BKWtext = 18;
+    private static final int BKWnull19 = 19;
+    private static final int BKWnull20 = 20;
+    private static final int BKWnull21 = 21;
     private static final int BKWwhile = 22;
     private static final int BKWrepeat = 23;
     private static final int BKWdo = 24;
@@ -370,26 +368,26 @@ public class Run extends ListActivity {
     private static final int BKWdecrypt =48;
     private static final int BKWsplit_all =49;
     private static final int BKWsplit =50;
-    private static final int BKWbyte_open =51;
-    private static final int BKWbyte_close =52;
-    private static final int BKWbyte_read_byte =53;
-    private static final int BKWbyte_write_byte =54;
+    private static final int BKWbyte =51;
+    private static final int BKWnull52 =52;
+    private static final int BKWnull53 =53;
+    private static final int BKWnull54 =54;
     private static final int BKWgraburl = 55;
-    private static final int BKWfn_def = 56;
-    private static final int BKWfn_rtn = 57;
-    private static final int BKWfn_end = 58;
-    private static final int BKWbyte_copy = 59;
-    private static final int BKWsw_begin = 60;
-    private static final int BKWsw_case = 61;
-    private static final int BKWsw_break = 62;
-    private static final int BKWsw_default = 63;
-    private static final int BKWsw_end = 64;
+    private static final int BKWfn = 56;
+    private static final int BKWnull57 = 57;
+    private static final int BKWnull58 = 58;
+    private static final int BKWnull59 = 59;
+    private static final int BKWsw = 60;
+    private static final int BKWnull61 = 61;
+    private static final int BKWnull62 = 62;
+    private static final int BKWnull63 = 63;
+    private static final int BKWnull64 = 64;
     private static final int BKWvibrate = 65;
     private static final int BKWkbshow = 66;
     private static final int BKWkbhide = 67;
     private static final int BKWecho_on = 68;
     private static final int BKWecho_off = 69;
-    private static final int BKWtext_input = 70;
+    private static final int BKWnull70 = 70;
     private static final int BKWnull71 = 71;				// All file commands moved to file_cmd
     private static final int BKWnull72 = 72;
     private static final int BKWnull73 = 73;
@@ -421,17 +419,17 @@ public class Run extends ListActivity {
     private static final int BKWf_n_break = 99;
     private static final int BKWw_r_break = 100;
     private static final int BKWd_u_break = 101;
-    private static final int BKWtext_position_get = 102;
-    private static final int BKWtext_position_set = 103;
-    private static final int BKWbyte_position_get = 104;
-    private static final int BKWbyte_position_set = 105;
-    private static final int BKWbyte_read_buffer = 106;
-    private static final int BKWbyte_write_buffer = 107;
+    private static final int BKWnull102 = 102;
+    private static final int BKWnull103 = 103;
+    private static final int BKWnull104 = 104;
+    private static final int BKWnull105 = 105;
+    private static final int BKWnull106 = 106;
+    private static final int BKWnull107 = 107;
     private static final int BKWsound_pool = 108;
     private static final int BKWmy_phone_number = 109;
     private static final int BKWheadset = 110;
-    private static final int BKWsms_send = 111;
-    private static final int BKWphone_call = 112;
+    private static final int BKWsms = 111;
+    private static final int BKWphone = 112;
     private static final int BKWemail_send = 113;
     private static final int BKWhtml = 114;
     private static final int BKWrun = 115;
@@ -439,8 +437,8 @@ public class Run extends ListActivity {
     private static final int BKWback_resume = 117;
     private static final int BKWnotify = 118;
     private static final int BKWswap = 119;
-    private static final int BKWsms_rcv_init = 120;
-    private static final int BKWsms_rcv_next = 121;
+    private static final int BKWnull120 = 120;
+    private static final int BKWnull121 = 121;
     private static final int BKWstt_listen = 122;
     private static final int BKWstt_results = 123;
     private static final int BKWtimer = 124;
@@ -459,11 +457,11 @@ public class Run extends ListActivity {
     private static final int BKWhome = 135;
     private static final int BKWbackground_resume = 136;
     private static final int BKWonbackground = BKWonerror;		//137
-    private static final int BKWphone_rcv_init = 138;
-    private static final int BKWphone_rcv_next = 139;
-    private static final int BKWread_data = 140;
-    private static final int BKWread_next = 141;
-    private static final int BKWread_from = 142;
+    private static final int BKWnull138 = 138;
+    private static final int BKWnull139 = 139;
+    private static final int BKWread = 140;
+    private static final int BKWnull141 = 141;
+    private static final int BKWnull142 = 142;
     private static final int BKWonconsoletouch = BKWonerror;	//143
     private static final int BKWconsole_resume = 144;
 
@@ -483,21 +481,28 @@ public class Run extends ListActivity {
 			keywordLists.put("audio.",     Audio_KW);
 			keywordLists.put("bt.",        bt_KW);
 			keywordLists.put("bundle.",    Bundle_KW);
+			keywordLists.put("byte.",      byte_KW);
 			keywordLists.put("console.",   Console_KW);
 			keywordLists.put("debug.",     Debug_KW);
 			keywordLists.put("file.",      file_KW);
+			keywordLists.put("fn.",        fn_KW);
 			keywordLists.put("ftp.",       ftp_KW);
 			keywordLists.put("gps.",       GPS_KW);
 			keywordLists.put("gr.",        GR_KW);
 			keywordLists.put("html.",      html_KW);
 			keywordLists.put("list.",      List_KW);
+			keywordLists.put("phone.",     phone_KW);
+			keywordLists.put("read.",      read_KW);
 			keywordLists.put("sensors.",   Sensors_KW);
+			keywordLists.put("sms.",       SMS_KW);
 			keywordLists.put("socket.",    Socket_KW);
 			keywordLists.put("soundpool.", sp_KW);
 			keywordLists.put("sql.",       SQL_KW);
 			keywordLists.put("stack.",     Stack_KW);
 			keywordLists.put("su.",        su_KW);
+			keywordLists.put("sw.",        sw_KW);
 			keywordLists.put("system.",    System_KW);
+			keywordLists.put("text.",      text_KW);
 			keywordLists.put("timer.",     Timer_KW);
 			keywordLists.put("timezone.",  TimeZone_KW);
 			keywordLists.put("tts.",       tts_KW);
@@ -815,6 +820,32 @@ public class Run extends ListActivity {
 	ClipboardManager clipboard;
 	private static long sTime;
 
+	// ******************* Variables for User-defined Functions ************************
+
+	private static final String fn_KW[] = {				// Command list for Format
+		"def", "rtn", "end"
+	};
+
+	private final Command[] fn_cmd = new Command[] {	// Map user function command keywords to their execution functions
+		new Command("def")              { public boolean run() { return executeFN_DEF(); } },
+		new Command("rtn")              { public boolean run() { return executeFN_RTN(); } },
+		new Command("end")              { public boolean run() { return executeFN_END(); } },
+	};
+
+	// ******************************** SWITCH variables ********************************
+
+	private static final String sw_KW[] = {				// Command list for Format
+		"begin", "case", "break", "default", "end"
+	};
+
+	private final Command[] sw_cmd = new Command[] {	// Map sw (switch) command keywords to their execution functions
+		new Command("begin")            { public boolean run() { return executeSW_BEGIN(); } },
+		new Command("case")             { public boolean run() { return executeSW_CASE(); } },
+		new Command("break")            { public boolean run() { return executeSW_BREAK(); } },
+		new Command("default")          { public boolean run() { return executeSW_DEFAULT(); } },
+		new Command("end")              { public boolean run() { return executeSW_END(); } },
+	};
+
 	// ******************************** Wakelock variables *********************************
 
 	private static PowerManager.WakeLock theWakeLock;
@@ -860,7 +891,55 @@ public class Run extends ListActivity {
 	public static ArrayList<DataOutputStream> DOSlist;		// A list of output streams
 	public static ArrayList<BufferedInputStream> BISlist;	// A list of input streams
 
+	// ********************************* TEXT I/O variables *********************************
+
+	private static final String text_KW[] = {			// Command list for Format
+		"open", "close", "readln", "writeln",
+		"input", "position.get", "position.set"
+	};
+
+	private final Command[] text_cmd = new Command[] {	// Map Text I/O command keywords to their execution functions
+		new Command("open")             { public boolean run() { return executeTEXT_OPEN(); } },
+		new Command("close")            { public boolean run() { return executeTEXT_CLOSE(); } },
+		new Command("readln")           { public boolean run() { return executeTEXT_READLN(); } },
+		new Command("writeln")          { public boolean run() { return executeTEXT_WRITELN(); } },
+		new Command("input")            { public boolean run() { return executeTEXT_INPUT(); } },
+		new Command("position.get")     { public boolean run() { return executeTEXT_POSITION_GET(); } },
+		new Command("position.set")     { public boolean run() { return executeTEXT_POSITION_SET(); } },
+	};
+
+	// ******************************* BYTE I/O variables *******************************
+
+	private static final String byte_KW[] = {			// Command list for Format
+		"open", "close", "read.byte", "write.byte",
+		"read.buffer", "write.buffer",
+		"copy", "position.get", "position.set"
+	};
+
+	private final Command[] byte_cmd = new Command[] {	// Map Byte I/O command keywords to their execution functions
+		new Command("open")             { public boolean run() { return executeBYTE_OPEN(); } },
+		new Command("close")            { public boolean run() { return executeBYTE_CLOSE(); } },
+		new Command("read.byte")        { public boolean run() { return executeBYTE_READ_BYTE(); } },
+		new Command("write.byte")       { public boolean run() { return executeBYTE_WRITE_BYTE(); } },
+		new Command("read.buffer")      { public boolean run() { return executeBYTE_READ_BUFFER(); } },
+		new Command("write.buffer")     { public boolean run() { return executeBYTE_WRITE_BUFFER(); } },
+		new Command("copy")             { public boolean run() { return executeBYTE_COPY(); } },
+		new Command("position.get")     { public boolean run() { return executeBYTE_POSITION_GET(); } },
+		new Command("position.set")     { public boolean run() { return executeBYTE_POSITION_SET(); } },
+	};
+
 	// ******************** READ variables *******************************************
+
+	private static final String read_KW[] = {			// Command list for Format
+		"data", "next", "read"
+	};
+
+	private final Command[] read_cmd = new Command[] {	// Map Read command keywords to their execution functions
+										// Do NOT call executeREAD_DATA, that was done in PreScan
+		new Command("data")             { public boolean run() { return true; } },
+		new Command("next")             { public boolean run() { return executeREAD_NEXT(); } },
+		new Command("from")             { public boolean run() { return executeREAD_FROM(); } },
+	};
 
 	private int readNext = 0;
 	private ArrayList <Bundle> readData;
@@ -1576,9 +1655,19 @@ public class Run extends ListActivity {
 
 	public static boolean Notified;
 
-    //********************* SMS Receive Vars ***********************************
+	//********************* SMS Vars ***********************************
 
-    public static ArrayList <String> smsRcvBuffer;
+	private static final String SMS_KW[] = {			// Command list for Format
+		"rcv.init", "rcv.next", "send"
+	};
+
+	private final Command[] sms_cmd = new Command[] {	// Map SMS command keywords to their execution functions
+		new Command("rcv.init")         { public boolean run() { return executeSMS_RCV_INIT(); } },
+		new Command("rcv.next")         { public boolean run() { return executeSMS_RCV_NEXT(); } },
+		new Command("send")             { public boolean run() { return executeSMS_SEND(); } }
+	};
+
+	public static ArrayList <String> smsRcvBuffer;
 
 	// ******************** Speech to text Vars ********************************
 
@@ -1618,8 +1707,18 @@ public class Run extends ListActivity {
 
 	public String theTimeZone = "";
 
-    //********************** Phone RCV variables *************************
-    
+	//************************ Phone variables ***************************
+
+	private static final String phone_KW[] = {			// Command list for Format
+		"call", "rcv.init", "rcv.next"
+	};
+
+	private final Command[] phone_cmd = new Command[] {	// Map phone command keywords to their execution functions
+		new Command("call")             { public boolean run() { return executePHONE_CALL(); } },
+		new Command("rcv.init")         { public boolean run() { return executePHONE_RCV_INIT(); } },
+		new Command("rcv.next")         { public boolean run() { return executePHONE_RCV_NEXT(); } }
+	};
+
 	public static int phoneState = 0;
 	public static String phoneNumber = "";
 	public static boolean phoneRcvInited = false;
@@ -2902,17 +3001,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        		}
 	        		ExecutingLineIndex = GosubStack.pop();
 	        		break;
-	        	case BKWtext_open:
-	        		if (!executeTEXT_OPEN()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtext_close:
-	        		if (!executeTEXT_CLOSE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtext_readln:
-	        		if (!executeTEXT_READLN()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtext_writeln:
-	        		if (!executeTEXT_WRITELN()){SyntaxError(); return false;}
+	        	case BKWtext:
+	        		if (!executeTEXT()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWwhile:
 	        		if (!executeWHILE()){SyntaxError(); return false;}
@@ -3003,47 +3093,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        	case BKWundim:
 	        		if (!executeUNDIM()){SyntaxError(); return false;}
 	        		break;
-	        	case BKWbyte_open:
-	        		if (!executeBYTE_OPEN()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte_close:
-	        		if (!executeBYTE_CLOSE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte_read_byte:
-	        		if (!executeBYTE_READ_BYTE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte_write_byte:
-	        		if (!executeBYTE_WRITE_BYTE()){SyntaxError(); return false;}
+	        	case BKWbyte:
+	        		if (!executeBYTE()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWgraburl:
 	        		if (!executeGRABURL()){SyntaxError(); return false;}
 	        		break;
-	        	case BKWfn_def:
-	        		if (!executeFN_DEF()){SyntaxError(); return false;}
+	        	case BKWfn:
+	        		if (!executeFN()){SyntaxError(); return false;}
 	        		break;
-	        	case BKWfn_rtn:
-	        		if (!executeFN_RTN()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfn_end:
-	        		if (!executeFN_END()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte_copy:
-	        		if (!executeBYTE_COPY()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsw_begin:
-	        		if (!executeSW_BEGIN()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsw_case:
-	        		if (!executeSW_CASE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsw_break:
-	        		if (!executeSW_BREAK()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsw_default:
-	        		if (!executeSW_DEFAULT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsw_end:
-	        		if (!executeSW_END()){SyntaxError(); return false;}
+	        	case BKWsw:
+	        		if (!executeSW()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWvibrate:
 	        		if (!executeVIBRATE()){SyntaxError(); return false;}
@@ -3059,9 +3119,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        		break;
 	        	case BKWecho_off:
 	        		if (!executeECHO_OFF()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtext_input:
-	        		if (!executeTEXT_INPUT()){SyntaxError(); return false;}
 	        		break;
 	        	case BKWgrabfile:
 	        		if (!executeGRABFILE()){SyntaxError(); return false;}
@@ -3141,24 +3198,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        	case BKWd_u_break:
         			if (!executeD_U_BREAK()) {SyntaxError(); return false;}
         			break;
-	        	case BKWtext_position_get:
-	        		if (!executeTEXT_POSITION_GET()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWtext_position_set:
-	        		if (!executeTEXT_POSITION_SET()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte_position_set:
-	        		if (!executeBYTE_POSITION_SET()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte_position_get:
-	        		if (!executeBYTE_POSITION_GET()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte_read_buffer:
-	        		if (!executeBYTE_READ_BUFFER()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte_write_buffer:
-	        		if (!executeBYTE_WRITE_BUFFER()) {SyntaxError(); return false;}
-	        		break;
 	        	case BKWsound_pool:
 	        		if (!executeSP()) {SyntaxError(); return false;}
 	        		break;
@@ -3168,11 +3207,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        	case BKWheadset:
 	        		if (!executeHEADSET())  {SyntaxError(); return false;}
 	        		break;
-	        	case BKWsms_send:
-	        		if (!executeSMS_SEND())  {SyntaxError(); return false;}
+	        	case BKWsms:
+	        		if (!executeSMS())  {SyntaxError(); return false;}
 	        		break;
-	        	case BKWphone_call:
-	        		if (!executePHONE_CALL())  {SyntaxError(); return false;}
+	        	case BKWphone:
+	        		if (!executePHONE())  {SyntaxError(); return false;}
 	        		break;
 	        	case BKWemail_send:
 	        		if (!executeEMAIL_SEND())  {SyntaxError(); return false;}
@@ -3194,12 +3233,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        		break;
 	        	case BKWswap:
 	        		if (!executeSWAP())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWsms_rcv_init:
-	        		if (!executeSMS_RCV_INIT())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWsms_rcv_next:
-	        		if (!executeSMS_RCV_NEXT())   {SyntaxError(); return false;}
 	        		break;
 	        	case BKWstt_listen:
 	        		if (!executeSTT_LISTEN())   {SyntaxError(); return false;}
@@ -3225,19 +3258,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        	case BKWbackground_resume:
 	        		if (!executeBACKGROUND_RESUME())   {SyntaxError(); return false;}
 	        		break;
-	        	case BKWphone_rcv_init:
-	        		if (!executePHONE_RCV_INIT())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWphone_rcv_next:
-	        		if (!executePHONE_RCV_NEXT())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWread_data:
-	        		return true;		// Do NOT call executeREAD_DATA, that was done in PreScan
-	        	case BKWread_next:
-	        		if (!executeREAD_NEXT())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWread_from:
-	        		if (!executeREAD_FROM())   {SyntaxError(); return false;}
+	        	case BKWread:
+	        		if (!executeREAD())   {SyntaxError(); return false;}
 	        		break;
 	        	case BKWconsole_resume:
 	        		if (!executeCONSOLE_RESUME())   {SyntaxError(); return false;}
@@ -5745,9 +5767,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				
 		return true;
 	}
-	
-// ************************************************** Read Commands **********************************
-	
+
+	// ************************************** Read Commands ***************************************
+
+	private boolean executeREAD() {								// Get READ command keyword if it is there
+		return executeCommand(read_cmd, "Read");				// and execute the command
+	}
+
 	// Parse and bundle the data list of a READ.DATA statement
 	// Called from PreScan() and NOT from statementExecuter().
 	private boolean executeREAD_DATA() {
@@ -6462,7 +6488,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;											// message handled
 	}
 
-// ******************************* User Defined Functions ******************************
+	// ********************************** User-Defined Functions **********************************
+
+	private boolean executeFN() {									// Get User-defined Function (FN) command keyword if it is there
+		return executeCommand(fn_cmd, "FN");
+	}
 
 	private boolean  executeFN_DEF(){								// Define Function
 
@@ -6703,7 +6733,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	return flag;                                      // Pass on the pass/fail state from the function
 	}
 
-// **************************** SWITCH Statements *************************************
+	// ************************************ Switch Statements *************************************
+
+	private boolean executeSW() {								// Get Switch (SW) command keyword if it is there
+		return executeCommand(sw_cmd, "SW");
+	}
 
 	private boolean executeSW_BEGIN(){
 		boolean isNumeric;
@@ -6853,6 +6887,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		else if (closed)          { RunTimeError("File is closed"); }
 		else if (FileMode != FMW) { RunTimeError("File not opened for write at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
+	}
+
+	// ************************************* Text Stream I/O **************************************
+
+	private boolean executeTEXT() {									// Get Text command keyword if it is there
+		return executeCommand(text_cmd, "Text");
 	}
 
 	private boolean executeTEXT_OPEN(){										// Open a file
@@ -7189,6 +7229,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		StringVarValues.set(saveValueIndex, TextInputString);
 		return true;
+	}
+
+	// ************************************* Byte Stream I/O **************************************
+
+	private boolean executeBYTE() {							// Get Byte command keyword if it is there
+		return executeCommand(byte_cmd, "Byte");
 	}
 
 	private boolean executeBYTE_OPEN(){										// Open a file
@@ -7614,7 +7660,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	// ***************************** File Operations ***********************************
+	// ************************************* File Operations **************************************
 
 	private boolean checkSDCARD(char mount) {				// mount is 'w' for writable,
 															// 'r' for either readable or writable 
@@ -14426,140 +14472,146 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// *********************************** Get my phone number ************************************
 
-	  private boolean execute_my_phone_number(){
-		  
-		  if (!getSVar()) return false;
-		  if (!checkEOL()) return false;
-		  
-		  TelephonyManager mTelephonyMgr;
-	        mTelephonyMgr = (TelephonyManager)
-	            getSystemService(Context.TELEPHONY_SERVICE);
-	      String pn =  mTelephonyMgr.getLine1Number();
-	      
-	      if (pn == null) pn = "Get phone number failed." ;
-	      
-	      StringVarValues.set(theValueIndex, pn);
-	        
-		  return true;
-	  }
+	private boolean execute_my_phone_number() {
+
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+
+		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+		String pn = tm.getLine1Number();
+
+		if (pn == null) pn = "Get phone number failed.";
+
+		StringVarValues.set(theValueIndex, pn);
+
+		return true;
+	}
 
 	// ***************************************** Headset ******************************************
 
-	  private boolean executeHEADSET(){
-		  
+	private boolean executeHEADSET() {
+
 		if (!getNVar()) return false;
-		NumericVarValues.set(theValueIndex, (double) headsetState) ;
-		  
-			char c = ExecutingLineBuffer.charAt(LineIndex);					// Loop value					
-			if ( c != ',') return false;
-			++LineIndex;
+		int stateIndex = theValueIndex;
+		if (!isNext(',')) return false;
 
 		if (!getSVar()) return false;
-	    StringVarValues.set(theValueIndex, headsetName);
-	      
-			c = ExecutingLineBuffer.charAt(LineIndex);					// Loop value					
-			if ( c != ',') return false;
-			++LineIndex;
-			
+		int nameIndex = theValueIndex;
+		if (!isNext(',')) return false;
+
 		if (!getNVar()) return false;
-		NumericVarValues.set(theValueIndex, (double) headsetMic) ;
-		  
-		  return true;
-	  }
+		int micIndex = theValueIndex;
+		if (!checkEOL()) return false;
+
+		NumericVarValues.set(stateIndex, (double)headsetState);
+		StringVarValues.set(nameIndex, headsetName);
+		NumericVarValues.set(micIndex, (double)headsetMic);
+
+		return true;
+	}
 
 	// ******************************************* SMS ********************************************
 
-	  private boolean executeSMS_SEND(){
-		  
-		  if (!evalStringExpression()) return false;
-		  String number = StringConstant;
+	private boolean executeSMS() {								// Get SMS command keyword if it is there
+		return executeCommand(sms_cmd, "SMS");					// and execute the command
+	}
 
-			char c = ExecutingLineBuffer.charAt(LineIndex);					// Loop value					
-			if ( c != ',') return false;
-			++LineIndex;
+	private boolean executeSMS_SEND() {
 
-		  if (!evalStringExpression()) return false;
-		  String msg = StringConstant;
-		  
-		  SmsManager sm = android.telephony.SmsManager.getDefault();
-		  try {
-			  sm.sendTextMessage(number, null, msg, null, null);
-		  } catch (Exception e) {
-			  return RunTimeError(e);
-		  }
-		  
-		  return true;
-	  }
-	  
-	  private boolean executeSMS_RCV_INIT(){
-		  
-		  registerReceiver(receiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
-		  smsRcvBuffer = new ArrayList <String>();
-		  return true;
-	  }
-	  
-	  private boolean executeSMS_RCV_NEXT(){
-		  if (smsRcvBuffer == null){
-			  RunTimeError("SMS.RCV.INIT not executed)");
-			  return false;
-		  }
-		  
-		  if (!getSVar()) return false;
-		  
-		  if (smsRcvBuffer.size() == 0){
-			  StringVarValues.set(theValueIndex, "@");
-			  return true;
-		  }
-		  
-		  StringVarValues.set(theValueIndex, smsRcvBuffer.get(0));
-		  smsRcvBuffer.remove(0);
-		  
-		  return true;
-	  }
-	  
-	  private BroadcastReceiver receiver = new BroadcastReceiver () {
+		if (!getStringArg()) return false;
+		String number = StringConstant;
+		if (!isNext(',')) return false;
 
-          @Override
-          public void onReceive(Context arg0, Intent arg1) {
-              Bundle bundle = arg1.getExtras();
-              SmsMessage[] recievedMsgs = null;
-              String str = "";
-              if (bundle != null)
-              {
-                  Object[] pdus = (Object[]) bundle.get("pdus");
-                  recievedMsgs = new SmsMessage[pdus.length];
-                  for (int i=0; i < recievedMsgs.length; ++i)
-                  {
-                  	  recievedMsgs[i] = SmsMessage.createFromPdu((byte[])pdus[i]);
-                      str += "SMS from " + recievedMsgs[i].getOriginatingAddress()+ " :" + recievedMsgs[i].getMessageBody().toString();
-                      if (smsRcvBuffer != null)
-                    	  smsRcvBuffer.add(str);
-                  }
-              }
-          }
-      };
+		if (!getStringArg()) return false;
+		String msg = StringConstant;
+		if (!checkEOL()) return false;
+
+		SmsManager sm = android.telephony.SmsManager.getDefault();
+		try {
+			sm.sendTextMessage(number, null, msg, null, null);
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
+
+		return true;
+	}
+
+	private boolean executeSMS_RCV_INIT() {
+		if (!checkEOL()) return false;
+
+		registerReceiver(receiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
+		smsRcvBuffer = new ArrayList <String>();
+		return true;
+	}
+
+	private boolean executeSMS_RCV_NEXT() {
+		if (!checkEOL()) return false;
+
+		if (smsRcvBuffer == null) {
+			return RunTimeError("SMS.RCV.INIT not executed)");
+		}
+
+		if (!getSVar()) return false;
+
+		if (smsRcvBuffer.size() == 0) {
+			StringVarValues.set(theValueIndex, "@");
+			return true;
+		}
+
+		StringVarValues.set(theValueIndex, smsRcvBuffer.get(0));
+		smsRcvBuffer.remove(0);
+
+		return true;
+	}
+
+	private BroadcastReceiver receiver = new BroadcastReceiver() {
+
+		@Override
+		public void onReceive(Context arg0, Intent arg1) {
+			Bundle bundle = arg1.getExtras();
+			SmsMessage[] recievedMsgs = null;
+			String str = "";
+			if (bundle != null)
+			{
+				Object[] pdus = (Object[]) bundle.get("pdus");
+				recievedMsgs = new SmsMessage[pdus.length];
+				for (int i = 0; i < recievedMsgs.length; ++i)
+				{
+					recievedMsgs[i] = SmsMessage.createFromPdu((byte[])pdus[i]);
+					str += "SMS from " + recievedMsgs[i].getOriginatingAddress()+ " :" + recievedMsgs[i].getMessageBody().toString();
+					if (smsRcvBuffer != null)
+						smsRcvBuffer.add(str);
+				}
+			}
+		}
+	};
 
 	// **************************************** Phone Call ****************************************
 
-      private boolean executePHONE_CALL(){
-		  if (!evalStringExpression()) return false;
-		  String number = "tel:" + StringConstant;
+	private boolean executePHONE() {							// Get phone command keyword if it is there
+		return executeCommand(phone_cmd, "Phone");				// and execute the command
+	}
 
-		  Intent callIntent = new Intent(Intent.ACTION_CALL);  
-		  callIntent.setData(Uri.parse(number));
-		  callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // this will make such that when user returns to your app, your app is displayed, instead of the email app.
+	private boolean executePHONE_CALL() {
+		if (!getStringArg()) return false;
+		if (!checkEOL()) return false;
+		String number = "tel:" + StringConstant;
 
-		  try {
-			  startActivityForResult(callIntent, BASIC_GENERAL_INTENT);  
-		  } catch (Exception e){
-			  return RunTimeError(e);
-		  }
-		  return true;
-	  }
+		Intent callIntent = new Intent(Intent.ACTION_CALL);
+		callIntent.setData(Uri.parse(number));
+		// this will make such that when user returns to your app, your app is displayed, instead of the phone app.
+		callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-	private boolean executePHONE_RCV_INIT(){
+		try { startActivityForResult(callIntent, BASIC_GENERAL_INTENT); }
+		catch (Exception e) { return RunTimeError(e); }
+
+		return true;
+	}
+
+	private boolean executePHONE_RCV_INIT() {
+		if (!checkEOL()) return false;
+
 		if (phoneRcvInited) return true;
-
 		phoneRcvInited = true;
 
 		mTM = (TelephonyManager)this.getSystemService(Context.TELEPHONY_SERVICE);
@@ -14568,41 +14620,36 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-		PhoneStateListener PSL = new PhoneStateListener() {
- 			public void onCallStateChanged(int state,  String incomingNumber) {
- 				phoneState = state;
- 				if (phoneState == TelephonyManager.CALL_STATE_RINGING) phoneNumber = incomingNumber;
- 			}
- 		};
+	PhoneStateListener PSL = new PhoneStateListener() {
+		public void onCallStateChanged(int state,  String incomingNumber) {
+			phoneState = state;
+			if (phoneState == TelephonyManager.CALL_STATE_RINGING) {
+				phoneNumber = incomingNumber;
+			}
+		}
+	};
 
- 	  
- 	  private boolean executePHONE_RCV_NEXT(){
- 		 if (!phoneRcvInited) {
- 			 RunTimeError("phone.rcv.init not executed");
- 			 return false;
- 		 }
- 		 
- 		 
- 		 int callState = mTM.getCallState();
- 		 if (callState == TelephonyManager.CALL_STATE_IDLE) phoneNumber = "";
- 		 
- 		  if (!getNVar()) return false;
- 		  int stateIndex = theValueIndex;
- 		  
-			char c = ExecutingLineBuffer.charAt(LineIndex);									
-			if ( c != ',') return false;
-			++LineIndex;
-			
-			if (!getSVar()) return false;
-			int numberIndex = theValueIndex;
-			
-			
-			NumericVarValues.set(stateIndex, (double)callState);
-			StringVarValues.set(numberIndex, phoneNumber);
-			
-			
-			return true;
- 	  }
+	private boolean executePHONE_RCV_NEXT() {
+		if (!phoneRcvInited) {
+			return RunTimeError("phone.rcv.init not executed");
+		}
+
+		if (!getNVar()) return false;
+		int stateIndex = theValueIndex;
+		if (!isNext(',')) return false;
+
+		if (!getSVar()) return false;
+		int numberIndex = theValueIndex;
+		if (!checkEOL()) return false;
+
+		int callState = mTM.getCallState();
+		if (callState == TelephonyManager.CALL_STATE_IDLE) { phoneNumber = ""; }
+
+		NumericVarValues.set(stateIndex, (double)callState);
+		StringVarValues.set(numberIndex, phoneNumber);
+
+		return true;
+	}
 
 	// ****************************************** EMAIL *******************************************
 
