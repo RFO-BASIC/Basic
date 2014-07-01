@@ -232,7 +232,9 @@ public class Run extends ListActivity {
 
 	public static class Command {						// Map a command keyword string to its execution function
 		public final String name;						// The command keyword
-		public Command(String name) { this.name = name; }
+		public final int id;							// Normally 0, may be set non-zero to indicate special case
+		public Command(String name) { this(name, 0); }
+		public Command(String name, int id) { this.name = name; this.id = id; }
 		public boolean run() { return false; }			// Run the command execution function
 	}
 
@@ -244,232 +246,198 @@ public class Run extends ListActivity {
 	}
 
 	// If the current line starts with a keyword in a command list return the Command object.
-	// If not found return null. The "type" is used only to report errors.
-	private Command findCommand(Command[] commands, String type) {
+	// If not found return null.
+	private Command findCommand(Command[] commands) {
 		for (Command c : commands) {								// loop through the command list
 			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) {// if there is a match
 				LineIndex += c.name.length();						// move the line index to end of keyword
 				return c;											// return the Command object
 			}
 		}
+		return null;												// no keyword found
+	}
+
+	// If the current line starts with a keyword in a command list return the Command object.
+	// If not found return null. The "type" is used only to report errors.
+	private Command findCommand(Command[] commands, String type) {
+		Command c = findCommand(commands, type);
 		RunTimeError("Unknown " + type + " command");
 		return null;												// no keyword found
 	}
 
-// **********  The variables for the Basic Keywords ****************************    
+	// **********  The variables for the Basic Keywords ****************************
 
 	public static final String BasicKeyWords[] = {
-    	"rem", "dim", "let", 
-    	"elseif", 									
-    	"endif", "print", "input",
-    	"if", "onerror", "else", "end",					// onerror here for Format
-    	"for", "include", " ", "next",					// to and step deleted
-    	"goto", "gosub", "return",
-    	"text."," "," "," ",
-    	"while","repeat","do","until",
-    	"onbackkey", 									// onbackkey for Format	
-    	"dir", "mkdir", "rename",						// same as file.dir, file.mkdir, file.rename
-    	"file.",										// moved all file commands to file_cmd
-    	"sql.", " ", "gr.", "pause",
-    	"browse", "inkey$", "audio.", 
-    	"popup", "sensors.", "gps.",
-    	"cls", "array.", "select",
-    	"exit", "clipboard.get",
-    	"clipboard.put",
-    	"encrypt", "decrypt", "split.all",			// split.all new/2013-07-25 gt
-    	"split", "byte.", " ", " ", " ",
-    	"graburl", "fn.", " ", " ", " ",
-    	"sw.", " ", " ", " ", " ",
-    	"vibrate",
-    	"kb.toggle", "kb.hide", "echo.on",
-    	"echo.off", " ",
-    	" ", " ", " ",								// moved all file commands to file_cmd
-    	"device.screen", "device",
-    	"grabfile", "wakelock", "wifilock",
-    	"tone", "list.", "bundle.",
-    	"stack.", "socket.", "http.post", " ",
-    	"debug.", "console.",
-    	"tts.","ftp.", "bt.",						// moved three "tts" commands to tts_cmd
-    	"f_n.continue", "w_r.continue", "d_u.continue",
-    	"call", "su.", "system.",
-    	"undim", "tget",
-    	"f_n.break", "w_r.break", "d_u.break",
-    	" ", " ",
-    	" ", " ",
-    	" ", " ",
-    	"soundpool.", "myphonenumber", "headset",
-    	"sms.", "phone.", "email.send",
-    	"html.", "run", "@@@", "back.resume",
-    	"notify", "swap", " ", " ",
-    	"stt.listen", "stt.results",
-    	"timer.", "timezone.", "time",				// moved three "timer" commands to Timer_cmd
-    	" ", "key.resume", "menukey.resume",
-    	"onmenukey","ontimer", "onkeypress",			// For Format
-    	"ongrtouch", "onbtreadready",						// For Format
-    	"home", "background.resume","onbackground",
-    	" ", " ",
-    	"read.", " ", " ",
-    	"onconsoletouch", "consoletouch.resume"
-    	
-    };
+		"let", "print",
+		"if", "elseif", "else", "endif",
+		"for", "next",
+		"while", "repeat", "do", "until",
+		"f_n.break", "w_r.break", "d_u.break",
+		"f_n.continue", "w_r.continue", "d_u.continue",
+		"sw.", "fn.", "call",
+		"goto", "gosub", "return",
+		"gr.", "dim", "undim",
+		"array.", "bundle.", "list.", "stack.",
+		"inkey$", "input", "select", "tget",
+		"file.", "text.", "byte.", "read.",
+		"dir", "mkdir", "rename",						// same as file.dir, file.mkdir, file.rename
+		"grabfile", "graburl",
+		"browse", "bt.", "ftp.",
+		"html.", "http.post", "socket.", "sql.",
+		"gps.", "popup", "sensors.",
+		"audio.", "soundpool.", "tone",
+		"clipboard.get", "clipboard.put",
+		"encrypt", "decrypt", "swap",
+		"split.all", "split",							// split.all new/2013-07-25 gt
+		"cls", "console.", "debug.",
+		"device", "echo.on", "echo.off",
+		"kb.toggle", "kb.hide",
+		"notify", "run", "@@@",
+		"su.", "system.",
+		"stt.listen", "stt.results", "tts.",
+		"timer.", "timezone.", "time",
+		"vibrate", "wakelock", "wifilock",
+		"end", "exit", "home", "include", "pause", "rem",
+		"headset", "myphonenumber",
+		"email.send", "phone.", "sms.",
+		"back.resume", "background.resume",
+		"consoletouch.resume",
+		"key.resume", "menukey.resume",
+		"onerror",
+		"onbackkey", "onbackground", "onbtreadready",
+		"onconsoletouch", "ongrtouch",
+		"onkeypress", "onmenukey", "ontimer",
+	};
 
-    private static final int BKWrem  = 0;		// Enumerated names for the keywords
-    private static final int BKWdim = 1;
-    private static final int BKWlet = 2;
-    private static final int BKWelseif = 3;
-    private static final int BKWendif = 4;
+	/* Markers for IF, etc., to facilitate skipping them in StatementExecuter() */
+	private final int CID_SKIP_TO_ELSE  = 1;	// Ok to execute when skipping to ELSE or ENDIF
+	private final int CID_SKIP_TO_ENDIF = 2;	// Ok to execute when skipping to ENDIF
+	/* Other markers to make special-case handling faster */
+	private final int CID_OPEN = 3;
+	private final int CID_CLOSE = 4;
+	private final int CID_STATUS = 5;
+	private final int CID_DATALINK = 6;
 
-    private static final int BKWprint = 5;
-    private static final int BKWinput = 6;
+	/* Special case: need a reference to LET */
+	private final Command CMD_LET = new Command("let") { public boolean run() { return executeLET(); } };
 
-    private static final int BKWif = 7;
-    private static final int BKWonerror = 8;
-    private static final int BKWelse = 9;
-    private static final int BKWend = 10;
+	private final Command[] BASIC_cmd = new Command[] {	// Map BASIC! command keywords to their execution functions
+		CMD_LET,
+		new Command("if",     CID_SKIP_TO_ENDIF) { public boolean run() { return executeIF(); } },
+		new Command("endif",  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
+		new Command("elseif", CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
+		new Command("else",   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
+		new Command("print")            { public boolean run() { return executePRINT(); } },
+		new Command("for")              { public boolean run() { return executeFOR(); } },
+		new Command("next")             { public boolean run() { return executeNEXT(); } },
+		new Command("while")            { public boolean run() { return executeWHILE(); } },
+		new Command("repeat")           { public boolean run() { return executeREPEAT(); } },
+		new Command("do")               { public boolean run() { return executeDO(); } },
+		new Command("until")            { public boolean run() { return executeUNTIL(); } },
+		new Command("f_n.break")        { public boolean run() { return executeF_N_BREAK(); } },
+		new Command("w_r.break")        { public boolean run() { return executeW_R_BREAK(); } },
+		new Command("d_u.break")        { public boolean run() { return executeD_U_BREAK(); } },
+		new Command("f_n.continue")     { public boolean run() { return executeF_N_CONTINUE(); } },
+		new Command("w_r.continue")     { public boolean run() { return executeW_R_CONTINUE(); } },
+		new Command("d_u.continue")     { public boolean run() { return executeD_U_CONTINUE(); } },
+		new Command("sw.")              { public boolean run() { return executeSW(); } },
+		new Command("fn.")              { public boolean run() { return executeFN(); } },
+		new Command("call")             { public boolean run() { return executeCALL(); } },
+		new Command("goto")             { public boolean run() { return executeGOTO(); } },
+		new Command("gosub")            { public boolean run() { return executeGOSUB(); } },
+		new Command("return")           { public boolean run() { return executeRETURN(); } },
+		new Command("gr.")              { public boolean run() { return executeGR(); } },
+		new Command("dim")              { public boolean run() { return executeDIM(); } },
+		new Command("undim")            { public boolean run() { return executeUNDIM(); } },
+		new Command("array.")           { public boolean run() { return executeARRAY(); } },
+		new Command("bundle.")          { public boolean run() { return executeBUNDLE(); } },
+		new Command("list.")            { public boolean run() { return executeLIST(); } },
+		new Command("stack.")           { public boolean run() { return executeSTACK(); } },
+		new Command("inkey$")           { public boolean run() { return executeINKEY(); } },
+		new Command("input")            { public boolean run() { return executeINPUT(); } },
+		new Command("select")           { public boolean run() { return executeSELECT(); } },
+		new Command("tget")             { public boolean run() { return executeTGET(); } },
+		new Command("file.")            { public boolean run() { return executeFILE(); } },
+		new Command("text.")            { public boolean run() { return executeTEXT(); } },
+		new Command("byte.")            { public boolean run() { return executeBYTE(); } },
+		new Command("read.")            { public boolean run() { return executeREAD(); } },
+		new Command("dir")              { public boolean run() { return executeDIR(); } },
+		new Command("mkdir")            { public boolean run() { return executeMKDIR(); } },
+		new Command("rename")           { public boolean run() { return executeRENAME(); } },
+		new Command("grabfile")         { public boolean run() { return executeGRABFILE(); } },
+		new Command("graburl")          { public boolean run() { return executeGRABURL(); } },
+		new Command("browse")           { public boolean run() { return executeBROWSE(); } },
+		new Command("bt.")              { public boolean run() { return executeBT(); } },
+		new Command("ftp.")             { public boolean run() { return executeFTP(); } },
+		new Command("html.")            { public boolean run() { return executeHTML(); } },
+		new Command("http.post")        { public boolean run() { return executeHTTP_POST(); } },
+		new Command("socket.")          { public boolean run() { return executeSOCKET(); } },
+		new Command("sql.")             { public boolean run() { return executeSQL(); } },
+		new Command("gps.")             { public boolean run() { return executeGPS(); } },
+		new Command("popup")            { public boolean run() { return executePOPUP(); } },
+		new Command("sensors.")         { public boolean run() { return executeSENSORS(); } },
+		new Command("audio.")           { public boolean run() { return executeAUDIO(); } },
+		new Command("soundpool.")       { public boolean run() { return executeSOUNDPOOL(); } },
+		new Command("tone")             { public boolean run() { return executeTONE(); } },
+		new Command("clipboard.get")    { public boolean run() { return executeCLIPBOARD_GET(); } },
+		new Command("clipboard.put")    { public boolean run() { return executeCLIPBOARD_PUT(); } },
+		new Command("encrypt")          { public boolean run() { return executeENCRYPT(); } },
+		new Command("decrypt")          { public boolean run() { return executeDECRYPT(); } },
+		new Command("swap")             { public boolean run() { return executeSWAP(); } },
+		new Command("split.all")        { public boolean run() { return executeSPLIT(-1); } },
+		new Command("split")            { public boolean run() { return executeSPLIT(0); } },
+		new Command("cls")              { public boolean run() { return executeCLS(); } },
+		new Command("console.")         { public boolean run() { return executeCONSOLE(); } },
+		new Command("debug.")           { public boolean run() { return executeDEBUG(); } },
+		new Command("device")           { public boolean run() { return executeDEVICE(); } },
+		new Command("echo.on")          { public boolean run() { return executeECHO_ON(); } },
+		new Command("echo.off")         { public boolean run() { return executeECHO_OFF(); } },
+		new Command("kb.toggle")        { public boolean run() { return executeKB_TOGGLE(); } },
+		new Command("kb.hide")          { public boolean run() { return executeKB_HIDE(); } },
+		new Command("notify")           { public boolean run() { return executeNOTIFY(); } },
+		new Command("run")              { public boolean run() { return executeRUN(); } },
+		new Command("@@@")              { public boolean run() { return executeEMPTY_PROGRAM(); } },
+		new Command("su.")              { public boolean run() { return executeSU(true); } },
+		new Command("system.")          { public boolean run() { return executeSU(false); } },
+		new Command("stt.listen")       { public boolean run() { return executeSTT_LISTEN(); } },
+		new Command("stt.results")      { public boolean run() { return executeSTT_RESULTS(); } },
+		new Command("tts.")             { public boolean run() { return executeTTS(); } },
+		new Command("timer.")           { public boolean run() { return executeTIMER(); } },
+		new Command("timezone.")        { public boolean run() { return executeTIMEZONE(); } },
+		new Command("time")             { public boolean run() { return executeTIME(); } },
+		new Command("vibrate")          { public boolean run() { return executeVIBRATE(); } },
+		new Command("wakelock")         { public boolean run() { return executeWAKELOCK(); } },
+		new Command("wifilock")         { public boolean run() { return executeWIFILOCK(); } },
+		new Command("end")              { public boolean run() { return executeEND(); } },
+		new Command("exit")             { public boolean run() { Stop = Exit = true; return true; } },
+		new Command("home")             { public boolean run() { return executeHOME(); } },
+		new Command("include")          { public boolean run() { return true; } },
+		new Command("pause")            { public boolean run() { return executePAUSE(); } },
+		new Command("rem")              { public boolean run() { return true; } },
+		new Command("headset")          { public boolean run() { return executeHEADSET(); } },
+		new Command("myphonenumber")    { public boolean run() { return executeMYPHONENUMBER(); } },
+		new Command("email.send")       { public boolean run() { return executeEMAIL_SEND(); } },
+		new Command("phone.")           { public boolean run() { return executePHONE(); } },
+		new Command("sms.")             { public boolean run() { return executeSMS(); } },
 
-    private static final int BKWfor = 11;
-    private static final int BKWinclude = 12;
-    private static final int BKWstep = 13;
-    private static final int BKWnext = 14;
+		new Command("back.resume")      { public boolean run() { return executeBACK_RESUME(); } },
+		new Command("background.resume") { public boolean run() { return executeBACKGROUND_RESUME(); } },
+		new Command("consoletouch.resume") { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
+		new Command("key.resume")       { public boolean run() { return executeKEY_RESUME(); } },
+		new Command("menukey.resume")   { public boolean run() { return executeMENUKEY_RESUME(); } },
 
-    private static final int BKWgoto = 15;
-    private static final int BKWgosub = 16;
-    private static final int BKWreturn = 17;
-    private static final int BKWtext = 18;
-    private static final int BKWnull19 = 19;
-    private static final int BKWnull20 = 20;
-    private static final int BKWnull21 = 21;
-    private static final int BKWwhile = 22;
-    private static final int BKWrepeat = 23;
-    private static final int BKWdo = 24;
-    private static final int BKWuntil = 25;
-    private static final int BKWonbreak = 26;
-    private static final int BKWdir = 27;
-    private static final int BKWmkdir = 28;
-    private static final int BKWrename = 29;
-    private static final int BKWfile = 30;
-    private static final int BKWsql = 31;
-    private static final int BKWnull32 = 32;             // Time moved to after Timer
-    private static final int BKWgr = 33;
-    private static final int BKWpause = 34;
-    private static final int BKWbrowse = 35;
-    private static final int BKWinkey = 36;
-    private static final int BKWaudio = 37;
-    private static final int BKWpopup = 38;
-    private static final int BKWsensors = 39;
-    private static final int BKWgps = 40;
-    private static final int BKWcls = 41;
-    private static final int BKWarray = 42;
-    private static final int BKWselect = 43;
-    private static final int BKWexit =44;
-    private static final int BKWclipboard_get =45;
-    private static final int BKWclipboard_put =46;
-    private static final int BKWencrypt =47;
-    private static final int BKWdecrypt =48;
-    private static final int BKWsplit_all =49;
-    private static final int BKWsplit =50;
-    private static final int BKWbyte =51;
-    private static final int BKWnull52 =52;
-    private static final int BKWnull53 =53;
-    private static final int BKWnull54 =54;
-    private static final int BKWgraburl = 55;
-    private static final int BKWfn = 56;
-    private static final int BKWnull57 = 57;
-    private static final int BKWnull58 = 58;
-    private static final int BKWnull59 = 59;
-    private static final int BKWsw = 60;
-    private static final int BKWnull61 = 61;
-    private static final int BKWnull62 = 62;
-    private static final int BKWnull63 = 63;
-    private static final int BKWnull64 = 64;
-    private static final int BKWvibrate = 65;
-    private static final int BKWkbshow = 66;
-    private static final int BKWkbhide = 67;
-    private static final int BKWecho_on = 68;
-    private static final int BKWecho_off = 69;
-    private static final int BKWnull70 = 70;
-    private static final int BKWnull71 = 71;				// All file commands moved to file_cmd
-    private static final int BKWnull72 = 72;
-    private static final int BKWnull73 = 73;
-    private static final int BKWdevice_screen = 74;
-    private static final int BKWdevice = 75;
-    private static final int BKWgrabfile = 76;
-    private static final int BKWwakelock = 77;
-    private static final int BKWwifilock = 78;
-    private static final int BKWtone = 79;
-    private static final int BKWlist = 80;
-    private static final int BKWbundle = 81;
-    private static final int BKWstack = 82;
-    private static final int BKWsocket = 83;
-    private static final int BKWhttp_post = 84;
-    private static final int BKWnull85 = 85;
-    private static final int BKWdebug = 86;
-    private static final int BKWconsole = 87;
-    private static final int BKWtts = 88;					// TTS commands moved to tts_cmd
-    private static final int BKWftp = 89;
-    private static final int BKWbt = 90;
-    private static final int BKWf_n_continue = 91;
-    private static final int BKWw_r_continue = 92;
-    private static final int BKWd_u_continue = 93;
-    private static final int BKWcall = 94;
-    private static final int BKWsu = 95;
-    private static final int BKWsystem = 96;
-    private static final int BKWundim = 97;
-    private static final int BKWtget = 98;
-    private static final int BKWf_n_break = 99;
-    private static final int BKWw_r_break = 100;
-    private static final int BKWd_u_break = 101;
-    private static final int BKWnull102 = 102;
-    private static final int BKWnull103 = 103;
-    private static final int BKWnull104 = 104;
-    private static final int BKWnull105 = 105;
-    private static final int BKWnull106 = 106;
-    private static final int BKWnull107 = 107;
-    private static final int BKWsound_pool = 108;
-    private static final int BKWmy_phone_number = 109;
-    private static final int BKWheadset = 110;
-    private static final int BKWsms = 111;
-    private static final int BKWphone = 112;
-    private static final int BKWemail_send = 113;
-    private static final int BKWhtml = 114;
-    private static final int BKWrun = 115;
-    private static final int BKWempty_program = 116;
-    private static final int BKWback_resume = 117;
-    private static final int BKWnotify = 118;
-    private static final int BKWswap = 119;
-    private static final int BKWnull120 = 120;
-    private static final int BKWnull121 = 121;
-    private static final int BKWstt_listen = 122;
-    private static final int BKWstt_results = 123;
-    private static final int BKWtimer = 124;
-    private static final int BKWtimezone = 125;
-    private static final int BKWtime = 126;             // Timer commands moved to Timer_cmd
-    private static final int BKWnull127 = 127;
-    private static final int BKWonkey_resume = 128;
-    private static final int BKWmenukey_resume = 129;
+		new Command("onerror")          { public boolean run() { return true; } },
+		new Command("onbackkey")        { public boolean run() { return true; } },
+		new Command("onbackground")     { public boolean run() { return true; } },
+		new Command("onbtreadready")    { public boolean run() { return true; } },
+		new Command("onconsoletouch")   { public boolean run() { return true; } },
+		new Command("ongrtouch")        { public boolean run() { return true; } },
+		new Command("onkeypress")       { public boolean run() { return true; } },
+		new Command("onmenukey")        { public boolean run() { return true; } },
+		new Command("ontimer")          { public boolean run() { return true; } },
+	};
 
-    public static final int BKWonmenukey = BKWonerror;			//130    Dummy entries for Format
-    public static final int BKWontimer = BKWonerror;			//131
-    public static final int BKWonkeypress = BKWonerror;			//132
-    public static final int BKWontouch = BKWonerror;			//133
-    public static final int BKWonbtreadready = BKWonerror;		//134
-    
-    private static final int BKWhome = 135;
-    private static final int BKWbackground_resume = 136;
-    private static final int BKWonbackground = BKWonerror;		//137
-    private static final int BKWnull138 = 138;
-    private static final int BKWnull139 = 139;
-    private static final int BKWread = 140;
-    private static final int BKWnull141 = 141;
-    private static final int BKWnull142 = 142;
-    private static final int BKWonconsoletouch = BKWonerror;	//143
-    private static final int BKWconsole_resume = 144;
-
-    private static final int BKWnone= 198;
-    private static final int SKIP = 199;
-
-    private int KeyWordValue = 0;								// Will contain an enumerated keyword value
-    private String PossibleKeyWord = "";						// Used when TO, STEP, THEN are expected
+	private String PossibleKeyWord = "";						// Used when TO, STEP, THEN are expected
 
 	private static HashMap<String, String[]> keywordLists = null;	// For Format: map associates a keyword group
 																	// with the prefix common to the group.
@@ -594,15 +562,15 @@ public class Run extends ListActivity {
 		put("c",  BigDecimal.ROUND_CEILING);
 	}};
 
-    //*********************** The variables for the Operators  ************************
+	//*********************** The variables for the Operators  ************************
 
-    public static final String OperatorString[]={
-    	"<=", "<>", ">=", ">", "<",
-    	 "=","^", "*", "+", "-",
-    	"/", "!", "|", "&", "(",
-    	")", "=", "+", "-"," ",
-    	"\n"
-    	};
+	public static final String OperatorString[]={
+		"<=", "<>", ">=", ">", "<",
+		"=", "^", "*", "+", "-",
+		"/", "!", "|", "&", "(",
+		")", "=", "+", "-", " ",
+		"\n"
+	};
 
     private static final int LE = 0;					// Enumerated names of operators
     private static final int NE = 1;
@@ -1063,7 +1031,7 @@ public class Run extends ListActivity {
 		"bitmap.delete", "set.pixels", "get.pixel",
 		"save", "text.width", "scale", "newdl",
 		"clip", "bitmap.crop", "set.stroke",
-		"poly", "statusbar.show","touch",
+		"poly", "statusbar.show", "touch",
 		"bounded.touch", "bitmap.save",
 		"camera.shoot", "screen", "camera.autoshoot",
 		"camera.manualshoot", "paint.get", "brightness",
@@ -1101,7 +1069,7 @@ public class Run extends ListActivity {
 		new Command("line")                 { public boolean run() { return execute_gr_line(); } },
 		new Command("newdl")                { public boolean run() { return execute_gr_newdl(); } },
 		new Command("ongrtouch.resume")     { public boolean run() { return execute_gr_touch_resume(); } },
-		new Command("open")                 { public boolean run() { return execute_gr_open(); } },
+		new Command("open", CID_OPEN)       { public boolean run() { return execute_gr_open(); } },
 		new Command("orientation")          { public boolean run() { return execute_gr_orientation(); } },
 		new Command("oval")                 { public boolean run() { return execute_gr_oval(); } },
 		new Command("paint.get")            { public boolean run() { return execute_paint_get(); } },
@@ -1198,7 +1166,7 @@ public class Run extends ListActivity {
 	// ******************************* Variables for Sensor Commands **********************************
 
 	private static final String Sensors_KW[] = {		// Command list for Format
-		"list","open","read","close", "rotate"
+		"list", "open", "read", "close", "rotate"
 	};
 
 	private final Command[] sensors_cmd = new Command[] {	// Map sensor command keywords to their execution functions
@@ -1228,7 +1196,7 @@ public class Run extends ListActivity {
 		new Command("speed")            { public boolean run() { return execute_gps_speed(); } },
 		new Command("provider")         { public boolean run() { return execute_gps_provider(); } },
 		new Command("time")             { public boolean run() { return execute_gps_time(); } },
-		new Command("open")             { public boolean run() { return execute_gps_open(); } },
+		new Command("open", CID_OPEN)   { public boolean run() { return execute_gps_open(); } },
 		new Command("close")            { public boolean run() { return execute_gps_close(); } },
 	};
 
@@ -1242,7 +1210,7 @@ public class Run extends ListActivity {
 	private static final String Array_KW[] = {			// Command list for Format
 		"length", "load", "sort",
 		"sum", "average", "reverse",
-		"shuffle", "min","max", "delete",
+		"shuffle", "min", "max", "delete",
 		"variance", "std_dev", "copy", "search"
 	};
 
@@ -1267,7 +1235,7 @@ public class Run extends ListActivity {
 
 	private static final String List_KW[] = {			// Command list for Format
 		"create", "add.list", "add.array", "add", "replace", 
-		"type","get", "clear", "remove", "insert", "size",
+		"type", "get", "clear", "remove", "insert", "size",
 		"contains", "toarray", "search"
 	};
 
@@ -1411,14 +1379,14 @@ public class Run extends ListActivity {
 	// *************************************************** Debug Commands ****************************
 
 	private static final String Debug_KW[] = {			// Command list for Format
-		"on","off","print","echo.on",
+		"on", "off", "print", "echo.on",
 		"echo.off", "dump.scalars",
 		"dump.array", "dump.list",
 		"dump.stack", "dump.bundle",
-		"watch.clear","watch", "show.scalars",
-		"show.array","show.list","show.stack",
-		"show.bundle","show.watch","show.program",
-		"show","console"
+		"watch.clear", "watch", "show.scalars",
+		"show.array", "show.list", "show.stack",
+		"show.bundle", "show.watch", "show.program",
+		"show", "console"
 	};
 
 	private final Command[] debug_cmd = new Command[] {	// Map debug command keywords to their execution functions
@@ -1545,9 +1513,9 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] bt_cmd = new Command[] {	// Map Bluetooth command keywords to their execution functions
-		new Command("open")                 { public boolean run() { return execute_BT_open(); } },
+		new Command("open",   CID_OPEN)     { public boolean run() { return execute_BT_open(); } },
 		new Command("close")                { public boolean run() { return execute_BT_close(); } },
-		new Command("status")               { public boolean run() { return execute_BT_status(); } },
+		new Command("status", CID_STATUS)   { public boolean run() { return execute_BT_status(); } },
 		new Command("connect")              { public boolean run() { return execute_BT_connect(); } },
 		new Command("device.name")          { public boolean run() { return execute_BT_device_name(); } },
 		new Command("write")                { public boolean run() { return execute_BT_write(); } },
@@ -1569,7 +1537,7 @@ public class Run extends ListActivity {
 	private static final String[] System_KW = su_KW;	// Command list for Format
 
 	private final Command[] SU_cmd = new Command[] {	// Map SU/System command keywords to their execution functions
-		new Command("open")             { public boolean run() { return execute_SU_open(); } },
+		new Command("open", CID_OPEN)   { public boolean run() { return execute_SU_open(); } },
 		new Command("write")            { public boolean run() { return execute_SU_write(); } },
 		new Command("read.ready")       { public boolean run() { return execute_SU_read_ready(); } },
 		new Command("read.line")        { public boolean run() { return execute_SU_read_line(); } },
@@ -1586,14 +1554,14 @@ public class Run extends ListActivity {
 	/***************************************  SOUND POOL  ************************************/
 
 	private static final String sp_KW[] = {				// Command list for Format
-		"open", "load","play", "stop",
+		"open", "load", "play", "stop",
 		"unload", "pause", "resume", 
-		"release", "setvolume","setpriority",
+		"release", "setvolume", "setpriority",
 		"setloop", "setrate"
 	};
 
 	private final Command[] sp_cmd = new Command[] {	// Map soundpool command keywords to their execution functions
-		new Command("open")             { public boolean run() { return execute_SP_open(); } },
+		new Command("open", CID_OPEN)   { public boolean run() { return execute_SP_open(); } },
 		new Command("load")             { public boolean run() { return execute_SP_load(); } },
 		new Command("play")             { public boolean run() { return execute_SP_play(); } },
 		new Command("stop")             { public boolean run() { return execute_SP_stop(); } },
@@ -1626,12 +1594,13 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] html_cmd = new Command[] {	// Map HTML command keywords to their execution functions
-		new Command("open")             { public boolean run() { return execute_html_open(); } },
+		new Command("open", CID_OPEN)   { public boolean run() { return execute_html_open(); } },
 		new Command("orientation")      { public boolean run() { return execute_html_orientation(); } },
 		new Command("load.url")         { public boolean run() { return execute_html_load_url(); } },
 		new Command("load.string")      { public boolean run() { return execute_html_load_string(); } },
-		new Command("get.datalink")     { public boolean run() { return execute_html_get_datalink(); } },
-		new Command("close")            { public boolean run() { return execute_html_close(); } },
+		new Command("get.datalink",
+						CID_DATALINK)   { public boolean run() { return execute_html_get_datalink(); } },
+		new Command("close", CID_CLOSE) { public boolean run() { return execute_html_close(); } },
 		new Command("go.back")          { public boolean run() { return execute_html_go_back(); } },
 		new Command("go.forward")       { public boolean run() { return execute_html_go_forward(); } },
 		new Command("clear.cache")      { public boolean run() { return execute_html_clear_cache(); } },
@@ -2137,7 +2106,7 @@ public class Run extends ListActivity {
 		}
 	
 //		IMM.restartInput(lv);
-		executeKBHIDE();
+		executeKB_HIDE();
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		setRequestedOrientation(Settings.getSreenOrientation(this));
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -2918,357 +2887,28 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 }
 
 
-	private  boolean StatementExecuter(){					// Execute one basic line (statement)
+	private  boolean StatementExecuter() {				// Execute one basic line (statement)
 
 		PossibleKeyWord = "";
-		GetKeyWord();												// Get the keyword that may start the line
+		Command c = findCommand(BASIC_cmd);				// get the keyword that may start the line
+		if (c == null) { c = CMD_LET; }					// if no keyword, then assume pseudo LET
 
-			if (KeyWordValue == BKWnone) KeyWordValue = BKWlet;    // If no keyword, then assume pseudo LET
-
-			if (!IfElseStack.empty()){					// if inside IF-ELSE-ENDIF
-				Integer q = IfElseStack.peek();			// decide if we should skip to ELSE or ENDIF
-				if (q == IEskip1) {
-						if (KeyWordValue == BKWelse || 
-								KeyWordValue == BKWelseif ||
-								KeyWordValue == BKWif ||
-								KeyWordValue == BKWendif){}
-						else{KeyWordValue = SKIP;}
-				} else if (q == IEskip2) {
-						if (KeyWordValue == BKWendif ||
-							KeyWordValue == BKWif ){}
-						else {KeyWordValue = SKIP;}
-				}
+		if (!IfElseStack.empty()) {						// if inside IF-ELSE-ENDIF
+			Integer q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
+			if ((q == IEskip1) &&(c.id != CID_SKIP_TO_ELSE)
+							   && (c.id != CID_SKIP_TO_ENDIF)) {
+				return true;							// skip unless IF, ELSEIF, ELSE, or ENDIF
+			} else if ((q == IEskip2) && (c.id != CID_SKIP_TO_ENDIF)) {
+				return true;							// skip unless IF or ENDIF
 			}
-			
-			if (KeyWordValue != SKIP)
-        		if (Echo)
-        			{PrintShow(ExecutingLineBuffer.substring(0, ExecutingLineBuffer.length()-1));}
+		}
 
-	        switch (KeyWordValue){						// Execute the keyword
-	        
-	        	case BKWrem:
-	        		break;
-	        	case BKWdim:
-	        		if (!executeDIM()){SyntaxError();return false;}
-	        		break;
-	        	case BKWlet:
-	        		if (!executeLET()){SyntaxError();return false;}
-	        		break;
-	        	case BKWelseif:
-	        		if (!executeELSEIF()){SyntaxError();return false;}
-	        		break;
-	        	case BKWend:
-	        		if (!executeEND()){SyntaxError();return false;}
-	        		break;
-	        	case BKWprint:
-	        		if (!executePRINT()){SyntaxError();return false;}
-	        		break;
-	        	case BKWinput:
-	        		if (!executeINPUT()){SyntaxError();return false;}
-	        		break;
-	        	case BKWif:
-	        		if (!executeIF()){SyntaxError();return false;}
-	        		break;
-	        	case BKWonerror:
-	        		return true;
-	        	case BKWelse:
-	        		if (!executeELSE()){SyntaxError();return false;}
-	        		break;
-	        	case BKWendif:
-	        		if (!executeENDIF()){SyntaxError();return false;}
-	        		break;
-	        	case BKWfor:
-	        		if (!executeFOR()){SyntaxError();return false;}
-	        		break;
-	        	case BKWinclude:
-	        		break;
-	        	case BKWstep:
-	        		break;
-	        	case BKWnext:
-	        		if (!executeNEXT()){SyntaxError();return false;}
-	        		break;
-	        	case BKWgoto:
-	        		if (!executeGOTO()){SyntaxError();return false;}
-	        		break;
-	        	case BKWgosub:
-	        		if (!executeGOSUB()){SyntaxError();return false;}
-	        		break;
-	        	case BKWreturn:
-	        		if (!checkEOL()) return false;
-	        		if (GosubStack.empty()){
-	        			RunTimeError("RETURN without GOSUB");
-	        			return false;
-	        		}
-	        		ExecutingLineIndex = GosubStack.pop();
-	        		break;
-	        	case BKWtext:
-	        		if (!executeTEXT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWwhile:
-	        		if (!executeWHILE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWrepeat:
-	        		if (!executeREPEAT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWdo:
-	        		if (!executeDO()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWuntil:
-	        		if (!executeUNTIL()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWonbreak:
-	        		return true;
-	        	case BKWdir:
-	        		if (!executeDIR()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWmkdir:
-	        		if (!executeMKDIR()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWrename:
-	        		if (!executeRENAME()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfile:
-	        		if (!executeFILE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsql:
-	        		if (!executeSQL()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtime:
-	        		if (!executeTIME()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWgr:
-	        		if (!executeGR()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWpause:
-	        		if (!executePAUSE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWbrowse:
-	        		if (!executeBROWSE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWinkey:
-	        		if (!executeINKEY()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWaudio:
-	        		if (!executeAUDIO()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWpopup:
-	        		if (!executePOPUP()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsensors:
-	        		if (!executeSENSORS()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWgps:
-	        		if (!executeGPS()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWcls:
-	        		if (!executeCLS()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWarray:
-	        		if (!executeARRAY()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWselect:
-	        		if (!executeSELECT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWexit:
-	        		Stop = Exit = true;
-	                break;
-	        	case BKWclipboard_get:
-	        		if (!executeCLIPBOARD_GET()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWclipboard_put:
-	        		if (!executeCLIPBOARD_PUT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWencrypt:
-	        		if (!executeENCRYPT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWdecrypt:
-	        		if (!executeDECRYPT()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsplit:
-	        		if (!executeSPLIT(0)){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsplit_all:		// split.all new/2013-07-25 gt
-	        		if (!executeSPLIT(-1)){SyntaxError(); return false;}
-	        		break;
-	        	case BKWundim:
-	        		if (!executeUNDIM()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWbyte:
-	        		if (!executeBYTE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWgraburl:
-	        		if (!executeGRABURL()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWfn:
-	        		if (!executeFN()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsw:
-	        		if (!executeSW()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWvibrate:
-	        		if (!executeVIBRATE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWkbshow:
-	        		if (!executeKBSHOW()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWkbhide:
-	        		if (!executeKBHIDE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWecho_on:
-	        		if (!executeECHO_ON()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWecho_off:
-	        		if (!executeECHO_OFF()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWgrabfile:
-	        		if (!executeGRABFILE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWwakelock:
-	        		if (!executeWAKELOCK()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWwifilock:
-	        		if (!executeWIFILOCK()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtone:
-	        		if (!executeTONE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWlist:
-	        		if (!executeLIST()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWbundle:
-	        		if (!executeBUNDLE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWstack:
-	        		if (!executeSTACK()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWdevice_screen:
-	        		if (!executeDEVICE_SCREEN()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWdevice:
-	        		if (!executeDEVICE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWhttp_post:
-	        		if (!executeHTTP_POST()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWsocket:
-	        		if (!executeSOCKET()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWdebug:
-	        		if (!executeDEBUG()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWconsole:
-	        		if (!executeCONSOLE()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWtts:
-	        		if (!executeTTS()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWftp:
-	        		if (!executeFTP()){SyntaxError(); return false;}
-	        		break;
-	        	case BKWbt:
-	        		if (!executeBT()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWf_n_continue:
-	        		if (!executeF_N_CONTINUE()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWw_r_continue:
-	        		if (!executeW_R_CONTINUE()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWd_u_continue:
-	        		if (!executeD_U_CONTINUE()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWcall:
-	        		if (!executeCALL()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWsu:
-	        		if (!executeSU(true)) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWsystem:
-	        		if (!executeSU(false)) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWtget:
-	        		if (!executeTGET()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWf_n_break:
-        			if (!executeF_N_BREAK()) {SyntaxError(); return false;}
-        			break;
-	        	case BKWw_r_break:
-        			if (!executeW_R_BREAK()) {SyntaxError(); return false;}
-        			break;
-	        	case BKWd_u_break:
-        			if (!executeD_U_BREAK()) {SyntaxError(); return false;}
-        			break;
-	        	case BKWsound_pool:
-	        		if (!executeSP()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWmy_phone_number:
-	        		if (!execute_my_phone_number()) {SyntaxError(); return false;}
-	        		break;
-	        	case BKWheadset:
-	        		if (!executeHEADSET())  {SyntaxError(); return false;}
-	        		break;
-	        	case BKWsms:
-	        		if (!executeSMS())  {SyntaxError(); return false;}
-	        		break;
-	        	case BKWphone:
-	        		if (!executePHONE())  {SyntaxError(); return false;}
-	        		break;
-	        	case BKWemail_send:
-	        		if (!executeEMAIL_SEND())  {SyntaxError(); return false;}
-	        		break;
-	        	case BKWhtml:
-	        		if (!executehtml())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWrun:
-	        		if (!executeRUN())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWempty_program:
-	        		if (!executeEMPTY_PROGRAM())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWback_resume:
-	        		if (!executeBACK_RESUME())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWnotify:
-	        		if (!executeNOTIFY())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWswap:
-	        		if (!executeSWAP())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWstt_listen:
-	        		if (!executeSTT_LISTEN())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWstt_results:
-	        		if (!executeSTT_RESULTS())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWtimer:
-	        		if (!executeTIMER())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWtimezone:
-	        		if (!executeTIMEZONE())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWonkey_resume:
-	        		if (!executeONKEY_RESUME())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWmenukey_resume:
-	        		if (!executeONMENUKEY_RESUME())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWhome:
-	        		if (!executeHOME())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWbackground_resume:
-	        		if (!executeBACKGROUND_RESUME())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWread:
-	        		if (!executeREAD())   {SyntaxError(); return false;}
-	        		break;
-	        	case BKWconsole_resume:
-	        		if (!executeCONSOLE_RESUME())   {SyntaxError(); return false;}
-	        		break;
-	        	default:
-	        		break;
-	        } // end switch on KeyWordValue
+		if (Echo) {
+			PrintShow(ExecutingLineBuffer.substring(0, ExecutingLineBuffer.length() - 1));
+		}
 
-		return true;     // Statement executed ok. Return to main looper.
+		if (!c.run()) { SyntaxError(); return false; }
+		return true;									// Statement executed ok. Return to main looper.
 	}
 
 	private  void SyntaxError(){						// Called to output Syntax Error Message
@@ -3276,7 +2916,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return;
 		}*/
 		if (!SyntaxError){								// If a previous Syntax error message has
-			RunTimeError("Syntax Error");					// not been displayed them display
+			RunTimeError("Syntax Error");				// not been displayed them display
 			SyntaxError = true;							// Then set the flag so we don't do it again.
 		}
 		
@@ -3355,19 +2995,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			catch (NumberFormatException e) { return false; }
 		}
 		return true;							// return value in EvalNumericExpressionValue
-	}
-
-	private boolean GetKeyWord(){							// Get a Basic keyword if it is there
-															// is the current line index at a keyword?
-		for (int i = 0; i < BasicKeyWords.length; ++i) {	// loop through the keyword list
-			if (ExecutingLineBuffer.startsWith(BasicKeyWords[i], LineIndex)) { // if there is a match
-				KeyWordValue = i;							// set the keyword number
-				LineIndex += BasicKeyWords[i].length();		// move the line index to end of keyword
-				return true;								// and report back
-			}
-		}
-		KeyWordValue = BKWnone;								// no keyword found
-		return false;										// report fail
 	}
 
 	// ************************* start of getVar() and its derivatives ****************************
@@ -5334,6 +4961,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+	private boolean executeRETURN() {
+		if (!checkEOL()) return false;
+		if (GosubStack.empty()){
+			return RunTimeError("RETURN without GOSUB");
+		}
+		ExecutingLineIndex = GosubStack.pop();
+		return true;
+	}
+
 	private  boolean executeIF(){
 		
 		if (!IfElseStack.empty()){			 								// if inside of an IF block		
@@ -5737,7 +5373,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return doResume();
 	}
 	
-	private boolean executeONMENUKEY_RESUME(){
+	private boolean executeMENUKEY_RESUME(){
 		if (interruptResume == -1){
 			RunTimeError("Menu key not hit");
 			return false;
@@ -5745,7 +5381,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return doResume();
 	}
 	
-	private boolean executeCONSOLE_RESUME(){
+	private boolean executeCONSOLETOUCH_RESUME(){
 		if (interruptResume == -1){
 			RunTimeError("Console not touched");
 			return false;
@@ -8155,25 +7791,25 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	  private boolean executeINKEY(){
-		  
-		  if (!getSVar()) return false;						// get the var to put the key value into
-		  if (!checkEOL()) return false;
-		  if (InChar.size() > 0){
-			  StringVarValues.set(theValueIndex, InChar.get(0));
-			  InChar.remove(0);
-		  } else
-			  StringVarValues.set(theValueIndex, "@");
-		  return true;
-	  }
-	  
-	  private boolean executeONKEY_RESUME(){
-		  if (interruptResume == -1 ) {
-			  RunTimeError("No Current Key Interrupt");
-			  return false;
-		  }
-		  return doResume();
-	  }
+	private boolean executeINKEY() {
+
+		if (!getSVar()) return false;						// get the var to put the key value into
+		if (!checkEOL()) return false;
+		if (InChar.size() > 0){
+			StringVarValues.set(theValueIndex, InChar.get(0));
+			InChar.remove(0);
+		} else {
+			StringVarValues.set(theValueIndex, "@");
+		}
+		return true;
+	}
+
+	private boolean executeKEY_RESUME() {
+		if (interruptResume == -1 ) {
+			return RunTimeError("No Current Key Interrupt");
+		}
+		return doResume();
+	}
 
 	private boolean executePOPUP(){
 		if (!getStringArg()) return false;						// get the message
@@ -8332,12 +7968,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return r;
 	}
 
-	  private boolean executeKBSHOW(){
-		  if (!checkEOL()) return false;
-			Log.v(LOGTAG, CLASSTAG + " KBSHOW  " + kbShown );
+	private boolean executeKB_TOGGLE() {
+		if (!checkEOL()) return false;
+		Log.v(LOGTAG, CLASSTAG + " KB_TOGGLE " + kbShown );
 
-		  if (kbShown) return true;
-		  
+		if (kbShown) return true;
+
 		  if (GRFront) {
 //			  GR.GraphicsImm.toggleSoftInputFromWindow(GR.drawView.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
 //			  GR.GraphicsImm.showSoftInput(GR.drawView, InputMethodManager.SHOW_FORCED);
@@ -8352,13 +7988,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  }
 //		  IMM.showSoftInputFromInputMethod(lv.getWindowToken(), InputMethodManager.SHOW_FORCED);
 //		  IMM.showSoftInputFromInputMethod (lv.getWindowToken(), IMM.SHOW_FORCED);
-		  return true;
-	  }
-	  
-	  
-	  private boolean executeKBHIDE(){
-			if (!checkEOL()) return false;
-			Log.v(LOGTAG, CLASSTAG + " KBHIDE " + kbShown);
+		return true;
+	}
+
+	private boolean executeKB_HIDE() {
+		if (!checkEOL()) return false;
+		Log.v(LOGTAG, CLASSTAG + " KBHIDE " + kbShown);
 
 		  if (GRFront) {
 //			  GR.GraphicsImm.toggleSoftInputFromWindow(GR.drawView.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
@@ -8370,8 +8005,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			  IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
 			  kbShown = false;
 		  }
-		  return true;
-	  }
+		return true;
+	}
 
 	private boolean executeWAKELOCK(){
 		if (!evalNumericExpression()) return false;					// Get setting
@@ -8576,38 +8211,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (repeat > 0) myVib.cancel();
 		else myVib.vibrate(Pattern, repeat);						// Do the vibrate
 
-		return true;
-	}
-
-	private boolean executeDEVICE_SCREEN() {
-		if (!getNVar()) return false;						// width variable
-		int widthIndex = theValueIndex;
-
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;						// height Variable
-		int heightIndex = theValueIndex;
-
-		int xDensityIndex = -1;
-		int yDensityIndex = -1;
-		if (isNext(',')) {
-			if (!getNVar()) return false;					// optional x,y density variables
-			xDensityIndex = theValueIndex;
-
-			if (!isNext(',')) return false;
-			if (!getNVar()) return false;
-			yDensityIndex = theValueIndex;
-		}
-		if (!checkEOL()) return false;
-
-		DisplayMetrics dm = new DisplayMetrics();
-		getWindowManager().getDefaultDisplay().getMetrics(dm);
-
-		NumericVarValues.set(widthIndex, (double)dm.widthPixels);
-		NumericVarValues.set(heightIndex, (double)dm.heightPixels);
-		if (xDensityIndex != -1) {
-			NumericVarValues.set(xDensityIndex, (double)dm.xdpi);
-			NumericVarValues.set(yDensityIndex, (double)dm.ydpi);
-		}
 		return true;
 	}
 
@@ -9145,7 +8748,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeGR() {
 		Command c = findCommand(GR_cmd, "GR");
 		if (c != null) {
-			if (!GRopen && !c.name.equals("open")) {
+			if (!GRopen && (c.id != CID_OPEN)) {
 				return RunTimeError("Graphics not opened at:");
 			}
 			return c.run();
@@ -11474,7 +11077,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeGPS() {
 		Command c = findCommand(GPS_cmd, "GPS");
 		if (c != null) {
-			if ((theGPS == null) && !c.name.equals("open")) {
+			if ((theGPS == null) && (c.id != CID_OPEN)) {
 				return RunTimeError("GPS not opened at:");
 			}
 			return c.run();
@@ -13733,7 +13336,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeBT() {
 		Command c = findCommand(bt_cmd, "BT");
 		if (c != null) {
-			if ((mChatService == null) && !c.name.equals("open") && !c.name.equals("status")) {
+			if ((mChatService == null) && (c.id != CID_OPEN) && (c.id != CID_STATUS)) {
 				return RunTimeError("Bluetooth not opened");
 			}
 			return c.run();
@@ -14018,18 +13621,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// *********************************** Superuser and System ***********************************
 
 	private boolean executeSU(boolean isSU) {	// SU command (isSU true) or system comand (isSU false)
-		for (Command c : SU_cmd) {								// loop through the command list
-			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) { // if there is a match
-				LineIndex += c.name.length();					// move the line index to end of keyword
-				if (SUprocess == null) {
-					if (c.name.equals("open")) this.isSU = isSU;
-					else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
-				}
-				return c.run();									// run the function and report back
+		Command c = findCommand(SU_cmd, (isSU ? "SU" : "System"));
+		if (c != null) {
+			if (SUprocess == null) {
+				if (c.id == CID_OPEN) this.isSU = isSU;
+				else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
 			}
+			return c.run();									// run the function and report back
 		}
-		RunTimeError("Unknown " + (isSU ? "SU" : "System") + " command");
-		return false;											// no keyword found
+		return false;
 	}
 
 	private boolean execute_SU_open(){
@@ -14223,10 +13823,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// **************************************** SOUND POOL ****************************************
 
-	private boolean executeSP() {
+	private boolean executeSOUNDPOOL() {
 		Command c = findCommand(sp_cmd, "Soundpool");
 		if (c != null) {
-			if ((theSoundPool == null) && !c.name.equals("open")) {
+			if ((theSoundPool == null) && (c.id != CID_OPEN)) {
 				return RunTimeError("SoundPool not opened");
 			}
 			return c.run();
@@ -14472,7 +14072,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// *********************************** Get my phone number ************************************
 
-	private boolean execute_my_phone_number() {
+	private boolean executeMYPHONENUMBER() {
 
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
@@ -14683,7 +14283,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// ******************************************* HTML *******************************************
 
-	private boolean executehtml() {
+	private boolean executeHTML() {
 
 		if (htmlOpening) {
 			while (Web.aWebView == null) Thread.yield();
@@ -14693,11 +14293,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Command c = findCommand(html_cmd, "HTML");
 		if (c != null) {
 			if ((htmlIntent == null) || (Web.aWebView == null)) {
-				if (c.name.equals("close")) {				// Allow close if already closed
+				if (c.id == CID_CLOSE) {					// Allow close if already closed
 					return true;
 				}
-				if (!c.name.equals("open") &&				// Allow open and get.datalink if not opened
-					!c.name.equals("get.datalink")) {
+				if ((c.id != CID_OPEN) &&					// Allow open and get.datalink if not opened
+					(c.id != CID_DATALINK)) {
 					return RunTimeError("html not opened");
 				}
 			}
