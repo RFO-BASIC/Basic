@@ -246,6 +246,14 @@ public class Run extends ListActivity {
 	}
 
 	// If the current line starts with a keyword in a command list return the Command object.
+	// If not found return null and set an error. The "type" is used only for the error message.
+	private Command findCommand(Command[] commands, String type) {
+		Command c = findCommand(commands);
+		if (c == null) { RunTimeError("Unknown " + type + " command"); }	// no keyword found
+		return c;
+	}
+
+	// If the current line starts with a keyword in a command list return the Command object.
 	// If not found return null.
 	private Command findCommand(Command[] commands) {
 		for (Command c : commands) {								// loop through the command list
@@ -254,14 +262,6 @@ public class Run extends ListActivity {
 				return c;											// return the Command object
 			}
 		}
-		return null;												// no keyword found
-	}
-
-	// If the current line starts with a keyword in a command list return the Command object.
-	// If not found return null. The "type" is used only to report errors.
-	private Command findCommand(Command[] commands, String type) {
-		Command c = findCommand(commands, type);
-		RunTimeError("Unknown " + type + " command");
 		return null;												// no keyword found
 	}
 
