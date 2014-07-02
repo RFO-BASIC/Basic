@@ -972,6 +972,7 @@ public class Run extends ListActivity {
 		new Command("query.length")     { public boolean run() { return execute_sql_query_length(); } },
 		new Command("query.position")   { public boolean run() { return execute_sql_query_position(); } },
 		new Command("query")            { public boolean run() { return execute_sql_query(); } },
+		new Command("nextarray")        { public boolean run() { return execute_sql_nextarray(); } },		
 		new Command("next")             { public boolean run() { return execute_sql_next(); } },
 		new Command("delete")           { public boolean run() { return execute_sql_delete(); } },
 		new Command("update")           { public boolean run() { return execute_sql_update(); } },
@@ -8539,7 +8540,50 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 			   return true;
 		   }
-       }
+		}
+
+        private boolean execute_sql_nextarray(){
+	    int[] args = new int[2];							// Get the first two args:
+	    if (!getVarAndCursorPtrArgs(args)) return false;
+	    int SaveDoneIndex = args[0];						// Done Flag variable
+	    int SaveCursorIndex = args[1];						// DB Cursor pointer
+
+	    if (!isNext(',')) { return false; }
+
+	    String var = getArrayVarForWrite(TYPE_STRING);		// get the result array variable
+	    if (var == null) { return false; }
+
+	    NumericVarValues.set(SaveDoneIndex, 0.00);			// set Not Done
+	    int i = NumericVarValues.get(SaveCursorIndex).intValue();
+
+	    Cursor cursor = Cursors.get(i-1);					// get the cursor
+
+
+	    int length = cursor.getColumnCount();
+	    String result[] = new String[length]; //make string array for results
+
+	    String valString;
+
+	    if (cursor.moveToNext()) {							// if there is another row, go there
+		for (int index = 0; index < length; ++index) {
+		    try {
+			valString = cursor.getString(index); 		// add the result to the array
+		    } catch (Exception e) {
+			return RunTimeError(e);
+		    }
+		    if (valString == null) { valString = ""; }
+		    result[index] = valString;
+		}
+		return ListToBasicStringArray(var, Arrays.asList(result), length);
+
+	    } else {												// no next row, cursor is used up
+		cursor.close();
+		NumericVarValues.set(SaveDoneIndex, 1.00);
+		NumericVarValues.set(SaveCursorIndex, 0.0);
+		return true;
+	    }
+	}
+    
 
 	private boolean execute_sql_query_length(){					// Report the number of rows in a query result
 		int[] args = new int[2];								// Get the first two args:
