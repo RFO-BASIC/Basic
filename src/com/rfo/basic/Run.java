@@ -267,46 +267,164 @@ public class Run extends ListActivity {
 
 	// **********  The variables for the Basic Keywords ****************************
 
+	// First, an alphabetical list of all of the top-level keywords.
+	// Every constant in this list must appear in both BasicKeyWords[] and BASIC_cmd[].
+	private static final String BKW_ARRAY_GROUP = "array.";
+	private static final String BKW_AUDIO_GROUP = "audio.";
+	private static final String BKW_BACK_RESUME = "back.resume";
+	private static final String BKW_BACKGROUND_RESUME = "background.resume";
+	private static final String BKW_BROWSE = "browse";
+	private static final String BKW_BT_GROUP = "bt.";
+	private static final String BKW_BUNDLE_GROUP = "bundle.";
+	private static final String BKW_BYTE_GROUP = "byte.";
+	private static final String BKW_CALL = "call";
+	private static final String BKW_CLIPBOARD_GET = "clipboard.get";
+	private static final String BKW_CLIPBOARD_PUT = "clipboard.put";
+	private static final String BKW_CLS = "cls";
+	private static final String BKW_CONSOLE_GROUP = "console.";
+	private static final String BKW_CONSOLETOUCH_RESUME = "consoletouch.resume";
+	private static final String BKW_D_U_BREAK = "d_u.break";
+	private static final String BKW_D_U_CONTINUE = "d_u.continue";
+	private static final String BKW_DEBUG_GROUP = "debug.";
+	private static final String BKW_DECRYPT = "decrypt";
+	private static final String BKW_DEVICE = "device";
+	private static final String BKW_DIM = "dim";
+	private static final String BKW_DIR = "dir";				// same as "file.dir"
+	private static final String BKW_DO = "do";
+	private static final String BKW_ECHO_OFF = "echo.off";
+	private static final String BKW_ECHO_ON = "echo.on";
+	private static final String BKW_ELSE = "else";
+	private static final String BKW_ELSEIF = "elseif";
+	private static final String BKW_EMAIL_SEND = "email.send";
+	private static final String BKW_EMPTY_PROGRAM = "@@@";
+	private static final String BKW_ENCRYPT = "encrypt";
+	private static final String BKW_END = "end";
+	private static final String BKW_ENDIF = "endif";
+	private static final String BKW_EXIT = "exit";
+	private static final String BKW_F_N_BREAK = "f_n.break";
+	private static final String BKW_F_N_CONTINUE = "f_n.continue";
+	private static final String BKW_FILE_GROUP = "file.";
+	private static final String BKW_FN_GROUP = "fn.";
+	private static final String BKW_FOR = "for";
+	private static final String BKW_FTP_GROUP = "ftp.";
+	private static final String BKW_GOSUB = "gosub";
+	private static final String BKW_GOTO = "goto";
+	private static final String BKW_GPS_GROUP = "gps.";
+	private static final String BKW_GR_GROUP = "gr.";
+	private static final String BKW_GRABFILE = "grabfile";
+	private static final String BKW_GRABURL = "graburl";
+	private static final String BKW_HEADSET = "headset";
+	private static final String BKW_HOME = "home";
+	private static final String BKW_HTML_GROUP = "html.";
+	private static final String BKW_HTTP_POST = "http.post";
+	private static final String BKW_IF = "if";
+	private static final String BKW_INCLUDE = "include";
+	private static final String BKW_INKEY = "inkey$";
+	private static final String BKW_INPUT = "input";
+	private static final String BKW_KB_HIDE = "kb.hide";
+	private static final String BKW_KB_TOGGLE = "kb.toggle";
+	private static final String BKW_KEY_RESUME = "key.resume";
+	private static final String BKW_LET = "let";
+	private static final String BKW_LIST_GROUP = "list.";
+	private static final String BKW_MENUKEY_RESUME = "menukey.resume";
+	private static final String BKW_MKDIR = "mkdir";			// same as "file.mkdir"
+	private static final String BKW_MYPHONENUMBER = "myphonenumber";
+	private static final String BKW_NEXT = "next";
+	private static final String BKW_NOTIFY = "notify";
+	private static final String BKW_ONBACKGROUND = "onbackground";
+	private static final String BKW_ONBACKKEY = "onbackkey";
+	private static final String BKW_ONBTREADREADY = "onbtreadready";
+	private static final String BKW_ONCONSOLETOUCH = "onconsoletouch";
+	private static final String BKW_ONERROR = "onerror";
+	private static final String BKW_ONGRTOUCH = "ongrtouch";
+	private static final String BKW_ONKEYPRESS = "onkeypress";
+	private static final String BKW_ONMENUKEY = "onmenukey";
+	private static final String BKW_ONTIMER = "ontimer";
+	private static final String BKW_PAUSE = "pause";
+	private static final String BKW_PHONE_GROUP = "phone.";
+	private static final String BKW_POPUP = "popup";
+	private static final String BKW_PRINT = "print";
+	private static final String BKW_READ_GROUP = "read.";
+	private static final String BKW_REM = "rem";
+	private static final String BKW_RENAME = "rename";			// same as "file.rename"
+	private static final String BKW_REPEAT = "repeat";
+	private static final String BKW_RETURN = "return";
+	private static final String BKW_RUN = "run";
+	private static final String BKW_SELECT = "select";
+	private static final String BKW_SENSORS_GROUP = "sensors.";
+	private static final String BKW_SMS_GROUP = "sms.";
+	private static final String BKW_SOCKET_GROUP = "socket.";
+	private static final String BKW_SOUNDPOOL_GROUP = "soundpool.";
+	private static final String BKW_SPLIT = "split";
+	private static final String BKW_SPLIT_ALL = "split.all";	// split.all new/2013-07-25 gt
+	private static final String BKW_SQL_GROUP = "sql.";
+	private static final String BKW_STACK_GROUP = "stack.";
+	private static final String BKW_STT_LISTEN = "stt.listen";
+	private static final String BKW_STT_RESULTS = "stt.results";
+	private static final String BKW_SU_GROUP = "su.";
+	private static final String BKW_SW_GROUP = "sw.";
+	private static final String BKW_SWAP = "swap";
+	private static final String BKW_SYSTEM_GROUP = "system.";
+	private static final String BKW_TEXT_GROUP = "text.";
+	private static final String BKW_TGET = "tget";
+	private static final String BKW_TIME = "time";
+	private static final String BKW_TIMER_GROUP = "timer.";
+	private static final String BKW_TIMEZONE_GROUP = "timezone.";
+	private static final String BKW_TONE = "tone";
+	private static final String BKW_TTS_GROUP = "tts.";
+	private static final String BKW_UNDIM = "undim";
+	private static final String BKW_UNTIL = "until";
+	private static final String BKW_VIBRATE = "vibrate";
+	private static final String BKW_W_R_BREAK = "w_r.break";
+	private static final String BKW_W_R_CONTINUE = "w_r.continue";
+	private static final String BKW_WAKELOCK = "wakelock";
+	private static final String BKW_WHILE = "while";
+	private static final String BKW_WIFILOCK = "wifilock";
+
+	// This array lists all of the top-level keywords so Format can find them.
+	// The order of this list determines the order Format uses for its linear search.
 	public static final String BasicKeyWords[] = {
-		"let", "print",
-		"if", "elseif", "else", "endif",
-		"for", "next",
-		"while", "repeat", "do", "until",
-		"f_n.break", "w_r.break", "d_u.break",
-		"f_n.continue", "w_r.continue", "d_u.continue",
-		"sw.", "fn.", "call",
-		"goto", "gosub", "return",
-		"gr.", "dim", "undim",
-		"array.", "bundle.", "list.", "stack.",
-		"inkey$", "input", "select", "tget",
-		"file.", "text.", "byte.", "read.",
-		"dir", "mkdir", "rename",						// same as file.dir, file.mkdir, file.rename
-		"grabfile", "graburl",
-		"browse", "bt.", "ftp.",
-		"html.", "http.post", "socket.", "sql.",
-		"gps.", "popup", "sensors.",
-		"audio.", "soundpool.", "tone",
-		"clipboard.get", "clipboard.put",
-		"encrypt", "decrypt", "swap",
-		"split.all", "split",							// split.all new/2013-07-25 gt
-		"cls", "console.", "debug.",
-		"device", "echo.on", "echo.off",
-		"kb.toggle", "kb.hide",
-		"notify", "run", "@@@",
-		"su.", "system.",
-		"stt.listen", "stt.results", "tts.",
-		"timer.", "timezone.", "time",
-		"vibrate", "wakelock", "wifilock",
-		"end", "exit", "home", "include", "pause", "rem",
-		"headset", "myphonenumber",
-		"email.send", "phone.", "sms.",
-		"back.resume", "background.resume",
-		"consoletouch.resume",
-		"key.resume", "menukey.resume",
-		"onerror",
-		"onbackkey", "onbackground", "onbtreadready",
-		"onconsoletouch", "ongrtouch",
-		"onkeypress", "onmenukey", "ontimer",
+		BKW_LET, BKW_PRINT,
+		BKW_IF, BKW_ELSEIF, BKW_ELSE, BKW_ENDIF,
+		BKW_FOR, BKW_NEXT,
+		BKW_WHILE, BKW_REPEAT, BKW_DO, BKW_UNTIL,
+		BKW_F_N_BREAK, BKW_W_R_BREAK, BKW_D_U_BREAK,
+		BKW_F_N_CONTINUE, BKW_W_R_CONTINUE, BKW_D_U_CONTINUE,
+		BKW_SW_GROUP, BKW_FN_GROUP, BKW_CALL,
+		BKW_GOTO, BKW_GOSUB, BKW_RETURN,
+		BKW_GR_GROUP, BKW_DIM, BKW_UNDIM,
+		BKW_ARRAY_GROUP, BKW_BUNDLE_GROUP,
+		BKW_LIST_GROUP, BKW_STACK_GROUP,
+		BKW_INKEY, BKW_INPUT, BKW_SELECT, BKW_TGET,
+		BKW_FILE_GROUP, BKW_TEXT_GROUP, BKW_BYTE_GROUP, BKW_READ_GROUP,
+		BKW_DIR, BKW_MKDIR, BKW_RENAME,
+		BKW_GRABFILE, BKW_GRABURL,
+		BKW_BROWSE, BKW_BT_GROUP, BKW_FTP_GROUP,
+		BKW_HTML_GROUP, BKW_HTTP_POST, BKW_SOCKET_GROUP, BKW_SQL_GROUP,
+		BKW_GPS_GROUP, BKW_POPUP, BKW_SENSORS_GROUP,
+		BKW_AUDIO_GROUP, BKW_SOUNDPOOL_GROUP, BKW_TONE,
+		BKW_CLIPBOARD_GET, BKW_CLIPBOARD_PUT,
+		BKW_ENCRYPT, BKW_DECRYPT, BKW_SWAP,
+		BKW_SPLIT_ALL, BKW_SPLIT,
+		BKW_CLS, BKW_CONSOLE_GROUP, BKW_DEBUG_GROUP,
+		BKW_DEVICE, BKW_ECHO_ON, BKW_ECHO_OFF,
+		BKW_KB_TOGGLE, BKW_KB_HIDE,
+		BKW_NOTIFY, BKW_RUN, // BKW_EMPTY_PROGRAM,		// Format does not need EMPTY_PROGRAM
+		BKW_SU_GROUP, BKW_SYSTEM_GROUP,
+		BKW_STT_LISTEN, BKW_STT_RESULTS, BKW_TTS_GROUP,
+		BKW_TIMER_GROUP, BKW_TIMEZONE_GROUP, BKW_TIME,
+		BKW_VIBRATE, BKW_WAKELOCK, BKW_WIFILOCK,
+		BKW_END, BKW_EXIT, BKW_HOME,
+		BKW_INCLUDE, BKW_PAUSE, BKW_REM,
+		BKW_HEADSET, BKW_MYPHONENUMBER,
+		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
+		BKW_BACK_RESUME, BKW_BACKGROUND_RESUME,
+		BKW_CONSOLETOUCH_RESUME,
+		BKW_KEY_RESUME, BKW_MENUKEY_RESUME,
+		BKW_ONERROR,
+		BKW_ONBACKKEY, BKW_ONBACKGROUND, BKW_ONBTREADREADY,
+		BKW_ONCONSOLETOUCH, BKW_ONGRTOUCH,
+		BKW_ONKEYPRESS, BKW_ONMENUKEY, BKW_ONTIMER,
 	};
 
 	/* Markers for IF, etc., to facilitate skipping them in StatementExecuter() */
@@ -319,122 +437,124 @@ public class Run extends ListActivity {
 	private final int CID_DATALINK = 6;
 
 	/* Special case: need a reference to LET */
-	private final Command CMD_LET = new Command("let") { public boolean run() { return executeLET(); } };
+	private final Command CMD_LET = new Command(BKW_LET) { public boolean run() { return executeLET(); } };
 
-	private final Command[] BASIC_cmd = new Command[] {	// Map BASIC! command keywords to their execution functions
+	// Map BASIC! command keywords to their execution functions.
+	// The order of this list determines the order of the linear keyword search, which affects performance.
+	private final Command[] BASIC_cmd = new Command[] {
 		CMD_LET,
-		new Command("if",     CID_SKIP_TO_ENDIF) { public boolean run() { return executeIF(); } },
-		new Command("endif",  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
-		new Command("elseif", CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
-		new Command("else",   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
-		new Command("print")            { public boolean run() { return executePRINT(); } },
-		new Command("for")              { public boolean run() { return executeFOR(); } },
-		new Command("next")             { public boolean run() { return executeNEXT(); } },
-		new Command("while")            { public boolean run() { return executeWHILE(); } },
-		new Command("repeat")           { public boolean run() { return executeREPEAT(); } },
-		new Command("do")               { public boolean run() { return executeDO(); } },
-		new Command("until")            { public boolean run() { return executeUNTIL(); } },
-		new Command("f_n.break")        { public boolean run() { return executeF_N_BREAK(); } },
-		new Command("w_r.break")        { public boolean run() { return executeW_R_BREAK(); } },
-		new Command("d_u.break")        { public boolean run() { return executeD_U_BREAK(); } },
-		new Command("f_n.continue")     { public boolean run() { return executeF_N_CONTINUE(); } },
-		new Command("w_r.continue")     { public boolean run() { return executeW_R_CONTINUE(); } },
-		new Command("d_u.continue")     { public boolean run() { return executeD_U_CONTINUE(); } },
-		new Command("sw.")              { public boolean run() { return executeSW(); } },
-		new Command("fn.")              { public boolean run() { return executeFN(); } },
-		new Command("call")             { public boolean run() { return executeCALL(); } },
-		new Command("goto")             { public boolean run() { return executeGOTO(); } },
-		new Command("gosub")            { public boolean run() { return executeGOSUB(); } },
-		new Command("return")           { public boolean run() { return executeRETURN(); } },
-		new Command("gr.")              { public boolean run() { return executeGR(); } },
-		new Command("dim")              { public boolean run() { return executeDIM(); } },
-		new Command("undim")            { public boolean run() { return executeUNDIM(); } },
-		new Command("array.")           { public boolean run() { return executeARRAY(); } },
-		new Command("bundle.")          { public boolean run() { return executeBUNDLE(); } },
-		new Command("list.")            { public boolean run() { return executeLIST(); } },
-		new Command("stack.")           { public boolean run() { return executeSTACK(); } },
-		new Command("inkey$")           { public boolean run() { return executeINKEY(); } },
-		new Command("input")            { public boolean run() { return executeINPUT(); } },
-		new Command("select")           { public boolean run() { return executeSELECT(); } },
-		new Command("tget")             { public boolean run() { return executeTGET(); } },
-		new Command("file.")            { public boolean run() { return executeFILE(); } },
-		new Command("text.")            { public boolean run() { return executeTEXT(); } },
-		new Command("byte.")            { public boolean run() { return executeBYTE(); } },
-		new Command("read.")            { public boolean run() { return executeREAD(); } },
-		new Command("dir")              { public boolean run() { return executeDIR(); } },
-		new Command("mkdir")            { public boolean run() { return executeMKDIR(); } },
-		new Command("rename")           { public boolean run() { return executeRENAME(); } },
-		new Command("grabfile")         { public boolean run() { return executeGRABFILE(); } },
-		new Command("graburl")          { public boolean run() { return executeGRABURL(); } },
-		new Command("browse")           { public boolean run() { return executeBROWSE(); } },
-		new Command("bt.")              { public boolean run() { return executeBT(); } },
-		new Command("ftp.")             { public boolean run() { return executeFTP(); } },
-		new Command("html.")            { public boolean run() { return executeHTML(); } },
-		new Command("http.post")        { public boolean run() { return executeHTTP_POST(); } },
-		new Command("socket.")          { public boolean run() { return executeSOCKET(); } },
-		new Command("sql.")             { public boolean run() { return executeSQL(); } },
-		new Command("gps.")             { public boolean run() { return executeGPS(); } },
-		new Command("popup")            { public boolean run() { return executePOPUP(); } },
-		new Command("sensors.")         { public boolean run() { return executeSENSORS(); } },
-		new Command("audio.")           { public boolean run() { return executeAUDIO(); } },
-		new Command("soundpool.")       { public boolean run() { return executeSOUNDPOOL(); } },
-		new Command("tone")             { public boolean run() { return executeTONE(); } },
-		new Command("clipboard.get")    { public boolean run() { return executeCLIPBOARD_GET(); } },
-		new Command("clipboard.put")    { public boolean run() { return executeCLIPBOARD_PUT(); } },
-		new Command("encrypt")          { public boolean run() { return executeENCRYPT(); } },
-		new Command("decrypt")          { public boolean run() { return executeDECRYPT(); } },
-		new Command("swap")             { public boolean run() { return executeSWAP(); } },
-		new Command("split.all")        { public boolean run() { return executeSPLIT(-1); } },
-		new Command("split")            { public boolean run() { return executeSPLIT(0); } },
-		new Command("cls")              { public boolean run() { return executeCLS(); } },
-		new Command("console.")         { public boolean run() { return executeCONSOLE(); } },
-		new Command("debug.")           { public boolean run() { return executeDEBUG(); } },
-		new Command("device")           { public boolean run() { return executeDEVICE(); } },
-		new Command("echo.on")          { public boolean run() { return executeECHO_ON(); } },
-		new Command("echo.off")         { public boolean run() { return executeECHO_OFF(); } },
-		new Command("kb.toggle")        { public boolean run() { return executeKB_TOGGLE(); } },
-		new Command("kb.hide")          { public boolean run() { return executeKB_HIDE(); } },
-		new Command("notify")           { public boolean run() { return executeNOTIFY(); } },
-		new Command("run")              { public boolean run() { return executeRUN(); } },
-		new Command("@@@")              { public boolean run() { return executeEMPTY_PROGRAM(); } },
-		new Command("su.")              { public boolean run() { return executeSU(true); } },
-		new Command("system.")          { public boolean run() { return executeSU(false); } },
-		new Command("stt.listen")       { public boolean run() { return executeSTT_LISTEN(); } },
-		new Command("stt.results")      { public boolean run() { return executeSTT_RESULTS(); } },
-		new Command("tts.")             { public boolean run() { return executeTTS(); } },
-		new Command("timer.")           { public boolean run() { return executeTIMER(); } },
-		new Command("timezone.")        { public boolean run() { return executeTIMEZONE(); } },
-		new Command("time")             { public boolean run() { return executeTIME(); } },
-		new Command("vibrate")          { public boolean run() { return executeVIBRATE(); } },
-		new Command("wakelock")         { public boolean run() { return executeWAKELOCK(); } },
-		new Command("wifilock")         { public boolean run() { return executeWIFILOCK(); } },
-		new Command("end")              { public boolean run() { return executeEND(); } },
-		new Command("exit")             { public boolean run() { Stop = Exit = true; return true; } },
-		new Command("home")             { public boolean run() { return executeHOME(); } },
-		new Command("include")          { public boolean run() { return true; } },
-		new Command("pause")            { public boolean run() { return executePAUSE(); } },
-		new Command("rem")              { public boolean run() { return true; } },
-		new Command("headset")          { public boolean run() { return executeHEADSET(); } },
-		new Command("myphonenumber")    { public boolean run() { return executeMYPHONENUMBER(); } },
-		new Command("email.send")       { public boolean run() { return executeEMAIL_SEND(); } },
-		new Command("phone.")           { public boolean run() { return executePHONE(); } },
-		new Command("sms.")             { public boolean run() { return executeSMS(); } },
+		new Command(BKW_IF,     CID_SKIP_TO_ENDIF) { public boolean run() { return executeIF(); } },
+		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
+		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
+		new Command(BKW_ELSE,   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
+		new Command(BKW_PRINT)            { public boolean run() { return executePRINT(); } },
+		new Command(BKW_FOR)              { public boolean run() { return executeFOR(); } },
+		new Command(BKW_NEXT)             { public boolean run() { return executeNEXT(); } },
+		new Command(BKW_WHILE)            { public boolean run() { return executeWHILE(); } },
+		new Command(BKW_REPEAT)           { public boolean run() { return executeREPEAT(); } },
+		new Command(BKW_DO)               { public boolean run() { return executeDO(); } },
+		new Command(BKW_UNTIL)            { public boolean run() { return executeUNTIL(); } },
+		new Command(BKW_F_N_BREAK)        { public boolean run() { return executeF_N_BREAK(); } },
+		new Command(BKW_W_R_BREAK)        { public boolean run() { return executeW_R_BREAK(); } },
+		new Command(BKW_D_U_BREAK)        { public boolean run() { return executeD_U_BREAK(); } },
+		new Command(BKW_F_N_CONTINUE)     { public boolean run() { return executeF_N_CONTINUE(); } },
+		new Command(BKW_W_R_CONTINUE)     { public boolean run() { return executeW_R_CONTINUE(); } },
+		new Command(BKW_D_U_CONTINUE)     { public boolean run() { return executeD_U_CONTINUE(); } },
+		new Command(BKW_SW_GROUP)         { public boolean run() { return executeSW(); } },
+		new Command(BKW_FN_GROUP)         { public boolean run() { return executeFN(); } },
+		new Command(BKW_CALL)             { public boolean run() { return executeCALL(); } },
+		new Command(BKW_GOTO)             { public boolean run() { return executeGOTO(); } },
+		new Command(BKW_GOSUB)            { public boolean run() { return executeGOSUB(); } },
+		new Command(BKW_RETURN)           { public boolean run() { return executeRETURN(); } },
+		new Command(BKW_GR_GROUP)         { public boolean run() { return executeGR(); } },
+		new Command(BKW_DIM)              { public boolean run() { return executeDIM(); } },
+		new Command(BKW_UNDIM)            { public boolean run() { return executeUNDIM(); } },
+		new Command(BKW_ARRAY_GROUP)      { public boolean run() { return executeARRAY(); } },
+		new Command(BKW_BUNDLE_GROUP)     { public boolean run() { return executeBUNDLE(); } },
+		new Command(BKW_LIST_GROUP)       { public boolean run() { return executeLIST(); } },
+		new Command(BKW_STACK_GROUP)      { public boolean run() { return executeSTACK(); } },
+		new Command(BKW_INKEY)            { public boolean run() { return executeINKEY(); } },
+		new Command(BKW_INPUT)            { public boolean run() { return executeINPUT(); } },
+		new Command(BKW_SELECT)           { public boolean run() { return executeSELECT(); } },
+		new Command(BKW_TGET)             { public boolean run() { return executeTGET(); } },
+		new Command(BKW_FILE_GROUP)       { public boolean run() { return executeFILE(); } },
+		new Command(BKW_TEXT_GROUP)       { public boolean run() { return executeTEXT(); } },
+		new Command(BKW_BYTE_GROUP)       { public boolean run() { return executeBYTE(); } },
+		new Command(BKW_READ_GROUP)       { public boolean run() { return executeREAD(); } },
+		new Command(BKW_DIR)              { public boolean run() { return executeDIR(); } },
+		new Command(BKW_MKDIR)            { public boolean run() { return executeMKDIR(); } },
+		new Command(BKW_RENAME)           { public boolean run() { return executeRENAME(); } },
+		new Command(BKW_GRABFILE)         { public boolean run() { return executeGRABFILE(); } },
+		new Command(BKW_GRABURL)          { public boolean run() { return executeGRABURL(); } },
+		new Command(BKW_BROWSE)           { public boolean run() { return executeBROWSE(); } },
+		new Command(BKW_BT_GROUP)         { public boolean run() { return executeBT(); } },
+		new Command(BKW_FTP_GROUP)        { public boolean run() { return executeFTP(); } },
+		new Command(BKW_HTML_GROUP)       { public boolean run() { return executeHTML(); } },
+		new Command(BKW_HTTP_POST)        { public boolean run() { return executeHTTP_POST(); } },
+		new Command(BKW_SOCKET_GROUP)     { public boolean run() { return executeSOCKET(); } },
+		new Command(BKW_SQL_GROUP)        { public boolean run() { return executeSQL(); } },
+		new Command(BKW_GPS_GROUP)        { public boolean run() { return executeGPS(); } },
+		new Command(BKW_POPUP)            { public boolean run() { return executePOPUP(); } },
+		new Command(BKW_SENSORS_GROUP)    { public boolean run() { return executeSENSORS(); } },
+		new Command(BKW_AUDIO_GROUP)      { public boolean run() { return executeAUDIO(); } },
+		new Command(BKW_SOUNDPOOL_GROUP)  { public boolean run() { return executeSOUNDPOOL(); } },
+		new Command(BKW_TONE)             { public boolean run() { return executeTONE(); } },
+		new Command(BKW_CLIPBOARD_GET)    { public boolean run() { return executeCLIPBOARD_GET(); } },
+		new Command(BKW_CLIPBOARD_PUT)    { public boolean run() { return executeCLIPBOARD_PUT(); } },
+		new Command(BKW_ENCRYPT)          { public boolean run() { return executeENCRYPT(); } },
+		new Command(BKW_DECRYPT)          { public boolean run() { return executeDECRYPT(); } },
+		new Command(BKW_SWAP)             { public boolean run() { return executeSWAP(); } },
+		new Command(BKW_SPLIT_ALL)        { public boolean run() { return executeSPLIT(-1); } },
+		new Command(BKW_SPLIT)            { public boolean run() { return executeSPLIT(0); } },
+		new Command(BKW_CLS)              { public boolean run() { return executeCLS(); } },
+		new Command(BKW_CONSOLE_GROUP)    { public boolean run() { return executeCONSOLE(); } },
+		new Command(BKW_DEBUG_GROUP)      { public boolean run() { return executeDEBUG(); } },
+		new Command(BKW_DEVICE)           { public boolean run() { return executeDEVICE(); } },
+		new Command(BKW_ECHO_ON)          { public boolean run() { return executeECHO_ON(); } },
+		new Command(BKW_ECHO_OFF)         { public boolean run() { return executeECHO_OFF(); } },
+		new Command(BKW_KB_TOGGLE)        { public boolean run() { return executeKB_TOGGLE(); } },
+		new Command(BKW_KB_HIDE)          { public boolean run() { return executeKB_HIDE(); } },
+		new Command(BKW_NOTIFY)           { public boolean run() { return executeNOTIFY(); } },
+		new Command(BKW_RUN)              { public boolean run() { return executeRUN(); } },
+		new Command(BKW_EMPTY_PROGRAM)    { public boolean run() { return executeEMPTY_PROGRAM(); } },
+		new Command(BKW_SU_GROUP)         { public boolean run() { return executeSU(true); } },
+		new Command(BKW_SYSTEM_GROUP)     { public boolean run() { return executeSU(false); } },
+		new Command(BKW_STT_LISTEN)       { public boolean run() { return executeSTT_LISTEN(); } },
+		new Command(BKW_STT_RESULTS)      { public boolean run() { return executeSTT_RESULTS(); } },
+		new Command(BKW_TTS_GROUP)        { public boolean run() { return executeTTS(); } },
+		new Command(BKW_TIMER_GROUP)      { public boolean run() { return executeTIMER(); } },
+		new Command(BKW_TIMEZONE_GROUP)   { public boolean run() { return executeTIMEZONE(); } },
+		new Command(BKW_TIME)             { public boolean run() { return executeTIME(); } },
+		new Command(BKW_VIBRATE)          { public boolean run() { return executeVIBRATE(); } },
+		new Command(BKW_WAKELOCK)         { public boolean run() { return executeWAKELOCK(); } },
+		new Command(BKW_WIFILOCK)         { public boolean run() { return executeWIFILOCK(); } },
+		new Command(BKW_END)              { public boolean run() { return executeEND(); } },
+		new Command(BKW_EXIT)             { public boolean run() { Stop = Exit = true; return true; } },
+		new Command(BKW_HOME)             { public boolean run() { return executeHOME(); } },
+		new Command(BKW_INCLUDE)          { public boolean run() { return true; } },
+		new Command(BKW_PAUSE)            { public boolean run() { return executePAUSE(); } },
+		new Command(BKW_REM)              { public boolean run() { return true; } },
+		new Command(BKW_HEADSET)          { public boolean run() { return executeHEADSET(); } },
+		new Command(BKW_MYPHONENUMBER)    { public boolean run() { return executeMYPHONENUMBER(); } },
+		new Command(BKW_EMAIL_SEND)       { public boolean run() { return executeEMAIL_SEND(); } },
+		new Command(BKW_PHONE_GROUP)      { public boolean run() { return executePHONE(); } },
+		new Command(BKW_SMS_GROUP)        { public boolean run() { return executeSMS(); } },
 
-		new Command("back.resume")      { public boolean run() { return executeBACK_RESUME(); } },
-		new Command("background.resume") { public boolean run() { return executeBACKGROUND_RESUME(); } },
-		new Command("consoletouch.resume") { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
-		new Command("key.resume")       { public boolean run() { return executeKEY_RESUME(); } },
-		new Command("menukey.resume")   { public boolean run() { return executeMENUKEY_RESUME(); } },
+		new Command(BKW_BACK_RESUME)      { public boolean run() { return executeBACK_RESUME(); } },
+		new Command(BKW_BACKGROUND_RESUME) { public boolean run() { return executeBACKGROUND_RESUME(); } },
+		new Command(BKW_CONSOLETOUCH_RESUME) { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
+		new Command(BKW_KEY_RESUME)       { public boolean run() { return executeKEY_RESUME(); } },
+		new Command(BKW_MENUKEY_RESUME)   { public boolean run() { return executeMENUKEY_RESUME(); } },
 
-		new Command("onerror")          { public boolean run() { return true; } },
-		new Command("onbackkey")        { public boolean run() { return true; } },
-		new Command("onbackground")     { public boolean run() { return true; } },
-		new Command("onbtreadready")    { public boolean run() { return true; } },
-		new Command("onconsoletouch")   { public boolean run() { return true; } },
-		new Command("ongrtouch")        { public boolean run() { return true; } },
-		new Command("onkeypress")       { public boolean run() { return true; } },
-		new Command("onmenukey")        { public boolean run() { return true; } },
-		new Command("ontimer")          { public boolean run() { return true; } },
+		new Command(BKW_ONERROR)          { public boolean run() { return true; } },
+		new Command(BKW_ONBACKKEY)        { public boolean run() { return true; } },
+		new Command(BKW_ONBACKGROUND)     { public boolean run() { return true; } },
+		new Command(BKW_ONBTREADREADY)    { public boolean run() { return true; } },
+		new Command(BKW_ONCONSOLETOUCH)   { public boolean run() { return true; } },
+		new Command(BKW_ONGRTOUCH)        { public boolean run() { return true; } },
+		new Command(BKW_ONKEYPRESS)       { public boolean run() { return true; } },
+		new Command(BKW_ONMENUKEY)        { public boolean run() { return true; } },
+		new Command(BKW_ONTIMER)          { public boolean run() { return true; } },
 	};
 
 	private String PossibleKeyWord = "";						// Used when TO, STEP, THEN are expected
@@ -790,28 +910,39 @@ public class Run extends ListActivity {
 
 	// ******************* Variables for User-defined Functions ************************
 
+	private static final String BKW_FN_DEF = "def";
+	private static final String BKW_FN_RTN = "rtn";
+	private static final String BKW_FN_END = "end";
+
 	private static final String fn_KW[] = {				// Command list for Format
-		"def", "rtn", "end"
+		BKW_FN_DEF, BKW_FN_RTN, BKW_FN_END
 	};
 
 	private final Command[] fn_cmd = new Command[] {	// Map user function command keywords to their execution functions
-		new Command("def")              { public boolean run() { return executeFN_DEF(); } },
-		new Command("rtn")              { public boolean run() { return executeFN_RTN(); } },
-		new Command("end")              { public boolean run() { return executeFN_END(); } },
+		new Command(BKW_FN_DEF)         { public boolean run() { return executeFN_DEF(); } },
+		new Command(BKW_FN_RTN)         { public boolean run() { return executeFN_RTN(); } },
+		new Command(BKW_FN_END)         { public boolean run() { return executeFN_END(); } },
 	};
 
 	// ******************************** SWITCH variables ********************************
 
+	private static final String BKW_SW_BEGIN = "begin";
+	private static final String BKW_SW_CASE = "case";
+	private static final String BKW_SW_BREAK = "break";
+	private static final String BKW_SW_DEFAULT = "default";
+	private static final String BKW_SW_END = "end";
+
 	private static final String sw_KW[] = {				// Command list for Format
-		"begin", "case", "break", "default", "end"
+		BKW_SW_BEGIN, BKW_SW_CASE, BKW_SW_BREAK,
+		BKW_SW_DEFAULT, BKW_SW_END
 	};
 
 	private final Command[] sw_cmd = new Command[] {	// Map sw (switch) command keywords to their execution functions
-		new Command("begin")            { public boolean run() { return executeSW_BEGIN(); } },
-		new Command("case")             { public boolean run() { return executeSW_CASE(); } },
-		new Command("break")            { public boolean run() { return executeSW_BREAK(); } },
-		new Command("default")          { public boolean run() { return executeSW_DEFAULT(); } },
-		new Command("end")              { public boolean run() { return executeSW_END(); } },
+		new Command(BKW_SW_BEGIN)       { public boolean run() { return executeSW_BEGIN(); } },
+		new Command(BKW_SW_CASE)        { public boolean run() { return executeSW_CASE(); } },
+		new Command(BKW_SW_BREAK)       { public boolean run() { return executeSW_BREAK(); } },
+		new Command(BKW_SW_DEFAULT)     { public boolean run() { return executeSW_DEFAULT(); } },
+		new Command(BKW_SW_END)         { public boolean run() { return executeSW_END(); } },
 	};
 
 	// ******************************** Wakelock variables *********************************
@@ -833,20 +964,29 @@ public class Run extends ListActivity {
 
 	// ******************************* File I/O operation variables ************************
 
+	private static final String BKW_FILE_DELETE = "delete";
+	private static final String BKW_FILE_SIZE = "size";
+	private static final String BKW_FILE_DIR = "dir";
+	private static final String BKW_FILE_MKDIR = "mkdir";
+	private static final String BKW_FILE_RENAME = "rename";
+	private static final String BKW_FILE_ROOT = "root";
+	private static final String BKW_FILE_EXISTS = "exists";
+	private static final String BKW_FILE_TYPE = "type";
+
 	private static final String file_KW[] = {			// Command list for Format
-		"delete", "size", "dir", "mkdir",
-		"rename", "root", "exists", "type"
+		BKW_FILE_DELETE, BKW_FILE_SIZE, BKW_FILE_DIR, BKW_FILE_MKDIR,
+		BKW_FILE_RENAME, BKW_FILE_ROOT, BKW_FILE_EXISTS, BKW_FILE_TYPE
 	};
 
 	private final Command[] file_cmd = new Command[] {	// Map File command keywords to their execution functions
-		new Command("delete")           { public boolean run() { return executeDELETE(); } },
-		new Command("size")             { public boolean run() { return executeFILE_SIZE(); } },
-		new Command("dir")              { public boolean run() { return executeDIR(); } },
-		new Command("mkdir")            { public boolean run() { return executeMKDIR(); } },
-		new Command("rename")           { public boolean run() { return executeRENAME(); } },
-		new Command("root")             { public boolean run() { return executeFILE_ROOTS(); } },
-		new Command("exists")           { public boolean run() { return executeFILE_EXISTS(); } },
-		new Command("type")             { public boolean run() { return executeFILE_TYPE(); } }
+		new Command(BKW_FILE_DELETE)    { public boolean run() { return executeDELETE(); } },
+		new Command(BKW_FILE_SIZE)      { public boolean run() { return executeFILE_SIZE(); } },
+		new Command(BKW_FILE_DIR)       { public boolean run() { return executeDIR(); } },
+		new Command(BKW_FILE_MKDIR)     { public boolean run() { return executeMKDIR(); } },
+		new Command(BKW_FILE_RENAME)    { public boolean run() { return executeRENAME(); } },
+		new Command(BKW_FILE_ROOT)      { public boolean run() { return executeFILE_ROOTS(); } },
+		new Command(BKW_FILE_EXISTS)    { public boolean run() { return executeFILE_EXISTS(); } },
+		new Command(BKW_FILE_TYPE)      { public boolean run() { return executeFILE_TYPE(); } }
 	};
 
 	private static final int FMR = 0;						// File Mode Read
@@ -861,52 +1001,76 @@ public class Run extends ListActivity {
 
 	// ********************************* TEXT I/O variables *********************************
 
+	private static final String BKW_TEXT_OPEN = "open";
+	private static final String BKW_TEXT_CLOSE = "close";
+	private static final String BKW_TEXT_READLN = "readln";
+	private static final String BKW_TEXT_WRITELN = "writeln";
+	private static final String BKW_TEXT_INPUT = "input";
+	private static final String BKW_TEXT_POSITION_GET = "position.get";
+	private static final String BKW_TEXT_POSITION_SET = "position.set";
+
 	private static final String text_KW[] = {			// Command list for Format
-		"open", "close", "readln", "writeln",
-		"input", "position.get", "position.set"
+		BKW_TEXT_OPEN, BKW_TEXT_CLOSE,
+		BKW_TEXT_READLN, BKW_TEXT_WRITELN,
+		BKW_TEXT_INPUT, BKW_TEXT_POSITION_GET, BKW_TEXT_POSITION_SET
 	};
 
 	private final Command[] text_cmd = new Command[] {	// Map Text I/O command keywords to their execution functions
-		new Command("open")             { public boolean run() { return executeTEXT_OPEN(); } },
-		new Command("close")            { public boolean run() { return executeTEXT_CLOSE(); } },
-		new Command("readln")           { public boolean run() { return executeTEXT_READLN(); } },
-		new Command("writeln")          { public boolean run() { return executeTEXT_WRITELN(); } },
-		new Command("input")            { public boolean run() { return executeTEXT_INPUT(); } },
-		new Command("position.get")     { public boolean run() { return executeTEXT_POSITION_GET(); } },
-		new Command("position.set")     { public boolean run() { return executeTEXT_POSITION_SET(); } },
+		new Command(BKW_TEXT_OPEN)          { public boolean run() { return executeTEXT_OPEN(); } },
+		new Command(BKW_TEXT_CLOSE)         { public boolean run() { return executeTEXT_CLOSE(); } },
+		new Command(BKW_TEXT_READLN)        { public boolean run() { return executeTEXT_READLN(); } },
+		new Command(BKW_TEXT_WRITELN)       { public boolean run() { return executeTEXT_WRITELN(); } },
+		new Command(BKW_TEXT_INPUT)         { public boolean run() { return executeTEXT_INPUT(); } },
+		new Command(BKW_TEXT_POSITION_GET)  { public boolean run() { return executeTEXT_POSITION_GET(); } },
+		new Command(BKW_TEXT_POSITION_SET)  { public boolean run() { return executeTEXT_POSITION_SET(); } },
 	};
 
 	// ******************************* BYTE I/O variables *******************************
 
+	private static final String BKW_BYTE_OPEN = "open";
+	private static final String BKW_BYTE_CLOSE = "close";
+	private static final String BKW_BYTE_READ_BYTE = "read.byte";
+	private static final String BKW_BYTE_WRITE_BYTE = "write.byte";
+	private static final String BKW_BYTE_READ_BUFFER = "read.buffer";
+	private static final String BKW_BYTE_WRITE_BUFFER = "write.buffer";
+	private static final String BKW_BYTE_COPY = "copy";
+	private static final String BKW_BYTE_POSITION_GET = "position.get";
+	private static final String BKW_BYTE_POSITION_SET = "position.set";
+
 	private static final String byte_KW[] = {			// Command list for Format
-		"open", "close", "read.byte", "write.byte",
-		"read.buffer", "write.buffer",
-		"copy", "position.get", "position.set"
+		BKW_BYTE_OPEN, BKW_BYTE_CLOSE,
+		BKW_BYTE_READ_BYTE, BKW_BYTE_WRITE_BYTE,
+		BKW_BYTE_READ_BUFFER, BKW_BYTE_WRITE_BUFFER,
+		BKW_BYTE_COPY, BKW_BYTE_POSITION_GET, BKW_BYTE_POSITION_SET
 	};
 
 	private final Command[] byte_cmd = new Command[] {	// Map Byte I/O command keywords to their execution functions
-		new Command("open")             { public boolean run() { return executeBYTE_OPEN(); } },
-		new Command("close")            { public boolean run() { return executeBYTE_CLOSE(); } },
-		new Command("read.byte")        { public boolean run() { return executeBYTE_READ_BYTE(); } },
-		new Command("write.byte")       { public boolean run() { return executeBYTE_WRITE_BYTE(); } },
-		new Command("read.buffer")      { public boolean run() { return executeBYTE_READ_BUFFER(); } },
-		new Command("write.buffer")     { public boolean run() { return executeBYTE_WRITE_BUFFER(); } },
-		new Command("copy")             { public boolean run() { return executeBYTE_COPY(); } },
-		new Command("position.get")     { public boolean run() { return executeBYTE_POSITION_GET(); } },
-		new Command("position.set")     { public boolean run() { return executeBYTE_POSITION_SET(); } },
+		new Command(BKW_BYTE_OPEN)          { public boolean run() { return executeBYTE_OPEN(); } },
+		new Command(BKW_BYTE_CLOSE)         { public boolean run() { return executeBYTE_CLOSE(); } },
+		new Command(BKW_BYTE_READ_BYTE)     { public boolean run() { return executeBYTE_READ_BYTE(); } },
+		new Command(BKW_BYTE_WRITE_BYTE)    { public boolean run() { return executeBYTE_WRITE_BYTE(); } },
+		new Command(BKW_BYTE_READ_BUFFER)   { public boolean run() { return executeBYTE_READ_BUFFER(); } },
+		new Command(BKW_BYTE_WRITE_BUFFER)  { public boolean run() { return executeBYTE_WRITE_BUFFER(); } },
+		new Command(BKW_BYTE_COPY)          { public boolean run() { return executeBYTE_COPY(); } },
+		new Command(BKW_BYTE_POSITION_GET)  { public boolean run() { return executeBYTE_POSITION_GET(); } },
+		new Command(BKW_BYTE_POSITION_SET)  { public boolean run() { return executeBYTE_POSITION_SET(); } },
 	};
 
 	// ******************** READ variables *******************************************
 
+	private static final String BKW_READ_DATA = "data";
+	private static final String BKW_READ_NEXT = "next";
+	private static final String BKW_READ_FROM = "from";
+
 	private static final String read_KW[] = {			// Command list for Format
-		"data", "next", "read"
+		BKW_READ_DATA, BKW_READ_NEXT, BKW_READ_FROM
 	};
 
 	private final Command[] read_cmd = new Command[] {	// Map Read command keywords to their execution functions
 										// Do NOT call executeREAD_DATA, that was done in PreScan
-		new Command("data")             { public boolean run() { return true; } },
-		new Command("next")             { public boolean run() { return executeREAD_NEXT(); } },
-		new Command("from")             { public boolean run() { return executeREAD_FROM(); } },
+		new Command(BKW_READ_DATA)          { public boolean run() { return true; } },
+		new Command(BKW_READ_NEXT)          { public boolean run() { return executeREAD_NEXT(); } },
+		new Command(BKW_READ_FROM)          { public boolean run() { return executeREAD_FROM(); } },
 	};
 
 	private int readNext = 0;
@@ -914,21 +1078,30 @@ public class Run extends ListActivity {
 
 	// ******************** Console Command variables ********************************
 
+	private static final String BKW_CONSOLE_FRONT = "front";
+	private static final String BKW_CONSOLE_SAVE = "save";
+	private static final String BKW_CONSOLE_TITLE = "title";
+	private static final String BKW_CONSOLE_LINE_COUNT = "line.count";
+	private static final String BKW_CONSOLE_LINE_TEXT = "line.text";
+	private static final String BKW_CONSOLE_LINE_TOUCHED = "line.touched";
+	private static final String BKW_CONSOLE_LINE_NEW = "line.new";
+	private static final String BKW_CONSOLE_LINE_CHAR = "line.char";
+
 	private static final String Console_KW[] = {		// Console command list for Format
-		"front", "save", "title",
-		"line.count", "line.text", "line.touched",
-		"line.new", "line.char"
+		BKW_CONSOLE_FRONT, BKW_CONSOLE_SAVE, BKW_CONSOLE_TITLE,
+		BKW_CONSOLE_LINE_COUNT, BKW_CONSOLE_LINE_TEXT, BKW_CONSOLE_LINE_TOUCHED,
+		BKW_CONSOLE_LINE_NEW, BKW_CONSOLE_LINE_CHAR
 	};
 
 	private final Command[] Console_cmd = new Command[] {	// Map console command keywords to their execution functions
-		new Command("front")            { public boolean run() { return executeCONSOLE_FRONT(); } },
-		new Command("save")             { public boolean run() { return executeCONSOLE_DUMP(); } },
-		new Command("title")            { public boolean run() { return executeCONSOLE_TITLE(); } },
-		new Command("line.count")       { public boolean run() { return executeCONSOLE_LINE_COUNT(); } },
-		new Command("line.text")        { public boolean run() { return executeCONSOLE_LINE_TEXT(); } },
-		new Command("line.touched")     { public boolean run() { return executeCONSOLE_LINE_TOUCHED(); } },
-		new Command("line.new")         { public boolean run() { return executeCONSOLE_LINE_NEW(); } },
-		new Command("line.char")        { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
+		new Command(BKW_CONSOLE_FRONT)          { public boolean run() { return executeCONSOLE_FRONT(); } },
+		new Command(BKW_CONSOLE_SAVE)           { public boolean run() { return executeCONSOLE_DUMP(); } },
+		new Command(BKW_CONSOLE_TITLE)          { public boolean run() { return executeCONSOLE_TITLE(); } },
+		new Command(BKW_CONSOLE_LINE_COUNT)     { public boolean run() { return executeCONSOLE_LINE_COUNT(); } },
+		new Command(BKW_CONSOLE_LINE_TEXT)      { public boolean run() { return executeCONSOLE_LINE_TEXT(); } },
+		new Command(BKW_CONSOLE_LINE_TOUCHED)   { public boolean run() { return executeCONSOLE_LINE_TOUCHED(); } },
+		new Command(BKW_CONSOLE_LINE_NEW)       { public boolean run() { return executeCONSOLE_LINE_NEW(); } },
+		new Command(BKW_CONSOLE_LINE_CHAR)      { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
 	};
 
 	// ******************** Input Command variables ********************************
@@ -958,27 +1131,42 @@ public class Run extends ListActivity {
 
 	// ******************** SQL Variables ******************************************
 
+	private static final String BKW_SQL_OPEN = "open";
+	private static final String BKW_SQL_CLOSE = "close";
+	private static final String BKW_SQL_INSERT = "insert";
+	private static final String BKW_SQL_QUERY_LENGTH = "query.length";
+	private static final String BKW_SQL_QUERY_POSITION = "query.position";
+	private static final String BKW_SQL_QUERY = "query";
+	private static final String BKW_SQL_NEXT = "next";
+	private static final String BKW_SQL_DELETE = "delete";
+	private static final String BKW_SQL_UPDATE = "update";
+	private static final String BKW_SQL_EXEC = "exec";
+	private static final String BKW_SQL_RAW_QUERY = "raw_query";
+	private static final String BKW_SQL_DROP_TABLE = "drop_table";
+	private static final String BKW_SQL_NEW_TABLE = "new_table";
+
 	private static final String SQL_KW[] = {			// SQL command list for Format
-		"open", "close", "insert",
-		"query.length", "query.position", "query",
-		"next", "delete", "update", "exec",
-		"raw_query", "drop_table", "new_table"
+		BKW_SQL_OPEN, BKW_SQL_CLOSE, BKW_SQL_INSERT,
+		BKW_SQL_QUERY_LENGTH, BKW_SQL_QUERY_POSITION, BKW_SQL_QUERY,
+		BKW_SQL_NEXT, BKW_SQL_DELETE,
+		BKW_SQL_UPDATE, BKW_SQL_EXEC,
+		BKW_SQL_RAW_QUERY, BKW_SQL_DROP_TABLE, BKW_SQL_NEW_TABLE
 	};
 
 	private final Command[] SQL_cmd = new Command[] {	// Map SQL command keywords to their execution functions
-		new Command("open")             { public boolean run() { return execute_sql_open(); } },
-		new Command("close")            { public boolean run() { return execute_sql_close(); } },
-		new Command("insert")           { public boolean run() { return execute_sql_insert(); } },
-		new Command("query.length")     { public boolean run() { return execute_sql_query_length(); } },
-		new Command("query.position")   { public boolean run() { return execute_sql_query_position(); } },
-		new Command("query")            { public boolean run() { return execute_sql_query(); } },
-		new Command("next")             { public boolean run() { return execute_sql_next(); } },
-		new Command("delete")           { public boolean run() { return execute_sql_delete(); } },
-		new Command("update")           { public boolean run() { return execute_sql_update(); } },
-		new Command("exec")             { public boolean run() { return execute_sql_exec(); } },
-		new Command("raw_query")        { public boolean run() { return execute_sql_raw_query(); } },
-		new Command("drop_table")       { public boolean run() { return execute_sql_drop_table(); } },
-		new Command("new_table")        { public boolean run() { return execute_sql_new_table(); } }
+		new Command(BKW_SQL_OPEN)           { public boolean run() { return execute_sql_open(); } },
+		new Command(BKW_SQL_CLOSE)          { public boolean run() { return execute_sql_close(); } },
+		new Command(BKW_SQL_INSERT)         { public boolean run() { return execute_sql_insert(); } },
+		new Command(BKW_SQL_QUERY_LENGTH)   { public boolean run() { return execute_sql_query_length(); } },
+		new Command(BKW_SQL_QUERY_POSITION) { public boolean run() { return execute_sql_query_position(); } },
+		new Command(BKW_SQL_QUERY)          { public boolean run() { return execute_sql_query(); } },
+		new Command(BKW_SQL_NEXT)           { public boolean run() { return execute_sql_next(); } },
+		new Command(BKW_SQL_DELETE)         { public boolean run() { return execute_sql_delete(); } },
+		new Command(BKW_SQL_UPDATE)         { public boolean run() { return execute_sql_update(); } },
+		new Command(BKW_SQL_EXEC)           { public boolean run() { return execute_sql_exec(); } },
+		new Command(BKW_SQL_RAW_QUERY)      { public boolean run() { return execute_sql_raw_query(); } },
+		new Command(BKW_SQL_DROP_TABLE)     { public boolean run() { return execute_sql_drop_table(); } },
+		new Command(BKW_SQL_NEW_TABLE)      { public boolean run() { return execute_sql_new_table(); } }
 	};
 
 	public static ArrayList<SQLiteDatabase> DataBases; 	 // List of created data bases
@@ -1018,143 +1206,263 @@ public class Run extends ListActivity {
 	public static int OnTouchLine;
 	public static Canvas drawintoCanvas = null;
 
+	// Graphics command keywords
+	private static final String BKW_GR_ARC = "arc";
+	private static final String BKW_GR_BOUNDED_TOUCH = "bounded.touch";
+	private static final String BKW_GR_BOUNDED_TOUCH2 = "bounded.touch2";
+	private static final String BKW_GR_BRIGHTNESS = "brightness";
+	private static final String BKW_GR_CIRCLE = "circle";
+	private static final String BKW_GR_CLIP = "clip";
+	private static final String BKW_GR_CLOSE = "close";
+	private static final String BKW_GR_CLS = "cls";
+	private static final String BKW_GR_COLOR = "color";
+	private static final String BKW_GR_FRONT = "front";
+	private static final String BKW_GR_GETDL = "getdl";
+	private static final String BKW_GR_HIDE = "hide";
+	private static final String BKW_GR_LINE = "line";
+	private static final String BKW_GR_MODIFY = "modify";
+	private static final String BKW_GR_NEWDL = "newdl";
+	private static final String BKW_GR_ONGRTOUCH_RESUME = "ongrtouch.resume";
+	private static final String BKW_GR_OPEN = "open";
+	private static final String BKW_GR_ORIENTATION = "orientation";
+	private static final String BKW_GR_OVAL = "oval";
+	private static final String BKW_GR_PAINT_GET = "paint.get";
+	private static final String BKW_GR_POINT = "point";
+	private static final String BKW_GR_POLY = "poly";
+	private static final String BKW_GR_RECT = "rect";
+	private static final String BKW_GR_RENDER = "render";
+	private static final String BKW_GR_ROTATE_END = "rotate.end";
+	private static final String BKW_GR_ROTATE_START = "rotate.start";
+	private static final String BKW_GR_SAVE = "save";
+	private static final String BKW_GR_SCALE = "scale";
+	private static final String BKW_GR_SCREEN = "screen";
+	private static final String BKW_GR_SCREEN_TO_BITMAP = "screen.to_bitmap";
+	private static final String BKW_GR_SET_ANTIALIAS = "set.antialias";
+	private static final String BKW_GR_SET_PIXELS = "set.pixels";
+	private static final String BKW_GR_SET_STROKE = "set.stroke";
+	private static final String BKW_GR_SHOW = "show";
+	private static final String BKW_GR_STATUSBAR_SHOW = "statusbar.show";
+	private static final String BKW_GR_TOUCH = "touch";
+	private static final String BKW_GR_TOUCH2 = "touch2";
+
+	// gr bitmap group
+	private static final String BKW_GR_BITMAP_GROUP = "bitmap.";
+	private static final String BKW_GR_BITMAP_CREATE = "create";
+	private static final String BKW_GR_BITMAP_CROP = "crop";
+	private static final String BKW_GR_BITMAP_DELETE = "delete";
+	private static final String BKW_GR_BITMAP_DRAW = "draw";
+	private static final String BKW_GR_BITMAP_DRAWINTO_END = "drawinto.end";
+	private static final String BKW_GR_BITMAP_DRAWINTO_START = "drawinto.start";
+	private static final String BKW_GR_BITMAP_LOAD = "load";
+	private static final String BKW_GR_BITMAP_SAVE = "save";
+	private static final String BKW_GR_BITMAP_SCALE = "scale";
+	private static final String BKW_GR_BITMAP_SIZE = "size";
+	// gr camera group
+	private static final String BKW_GR_CAMERA_GROUP = "camera.";
+	private static final String BKW_GR_CAMERA_AUTOSHOOT = "autoshoot";
+	private static final String BKW_GR_CAMERA_BLINDSHOOT = "blindshoot";
+	private static final String BKW_GR_CAMERA_MANUALSHOOT = "manualshoot";
+	private static final String BKW_GR_CAMERA_SELECT = "select";
+	private static final String BKW_GR_CAMERA_SHOOT = "shoot";
+	// gr get group
+	private static final String BKW_GR_GET_GROUP = "get.";
+	private static final String BKW_GR_GET_BMPIXEL = "bmpixel";
+	private static final String BKW_GR_GET_PARAMS = "params";
+	private static final String BKW_GR_GET_PIXEL = "pixel";
+	private static final String BKW_GR_GET_POSITION = "position";
+	private static final String BKW_GR_GET_TEXTBOUNDS = "textbounds";
+	private static final String BKW_GR_GET_TYPE = "type";
+	private static final String BKW_GR_GET_VALUE = "value";
+	// gr text group
+	private static final String BKW_GR_TEXT_GROUP = "text.";
+	private static final String BKW_GR_TEXT_ALIGN = "align";
+	private static final String BKW_GR_TEXT_BOLD = "bold";
+	private static final String BKW_GR_TEXT_DRAW = "draw";
+	private static final String BKW_GR_TEXT_SIZE = "size";
+	private static final String BKW_GR_TEXT_SKEW = "skew";
+	private static final String BKW_GR_TEXT_STRIKE = "strike";
+	private static final String BKW_GR_TEXT_TYPEFACE = "typeface";
+	private static final String BKW_GR_TEXT_UNDERLINE = "underline";
+	private static final String BKW_GR_TEXT_WIDTH = "width";
+
 	private static final String GR_KW[] = {				// Command list for Format
-		"open", "render", "color", "line", "rect",
-		"arc", "circle", "oval", "cls", "hide",
-		"show", "touch2", "text.draw", "text.size",
-		"text.align", "text.underline", "text.skew",
-		"text.bold", "text.strike",
-		"bitmap.load", "get.position", "rotate.start",
-		"rotate.end", "modify", "orientation",
-		"screen.to_bitmap", "close", "bitmap.scale",
-		"front", "bounded.touch2", "bitmap.size",
-		"bitmap.delete", "set.pixels", "get.pixel",
-		"save", "text.width", "scale", "newdl",
-		"clip", "bitmap.crop", "set.stroke",
-		"poly", "statusbar.show", "touch",
-		"bounded.touch", "bitmap.save",
-		"camera.shoot", "screen", "camera.autoshoot",
-		"camera.manualshoot", "paint.get", "brightness",
-		"bitmap.create", "bitmap.drawinto.start",
-		"bitmap.drawinto.end", "bitmap.draw",
-		"get.bmpixel", "get.value", "set.antialias",
-		"get.textbounds", "text.typeface", "ongrtouch.resume",
-		"camera.select", " ", "getdl", "point",			// placeholder for "camera.blindshoot"
-		"get.type", "get.params"
+		BKW_GR_RENDER, BKW_GR_MODIFY,
+		BKW_GR_BOUNDED_TOUCH2, BKW_GR_BOUNDED_TOUCH,
+		BKW_GR_TOUCH2, BKW_GR_TOUCH,
+		BKW_GR_ARC, BKW_GR_BRIGHTNESS, BKW_GR_CIRCLE,
+		BKW_GR_CLIP, BKW_GR_CLOSE, BKW_GR_CLS,
+		BKW_GR_COLOR, BKW_GR_FRONT,
+		BKW_GR_GETDL, BKW_GR_NEWDL, BKW_GR_HIDE, BKW_GR_SHOW,
+		BKW_GR_LINE, BKW_GR_ONGRTOUCH_RESUME,
+		BKW_GR_OPEN, BKW_GR_ORIENTATION, BKW_GR_OVAL,
+		BKW_GR_PAINT_GET, BKW_GR_POINT, BKW_GR_POLY,
+		BKW_GR_RECT, BKW_GR_ROTATE_START, BKW_GR_ROTATE_END,
+		BKW_GR_SAVE, BKW_GR_SCALE,
+		BKW_GR_SCREEN, BKW_GR_SCREEN_TO_BITMAP,
+		BKW_GR_SET_ANTIALIAS, BKW_GR_SET_PIXELS,
+		BKW_GR_SET_STROKE, BKW_GR_STATUSBAR_SHOW,
+
+		// GR subgroups - Format can handle only one level of grouping
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_CREATE,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_CROP,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_DELETE,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_DRAWINTO_START,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_DRAWINTO_END,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_DRAW,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_LOAD,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_SAVE,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_SCALE,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_SIZE,
+		BKW_GR_CAMERA_GROUP + BKW_GR_CAMERA_AUTOSHOOT,
+		// BKW_GR_CAMERA_GROUP + BKW_GR_CAMERA_BLINDSHOOT,
+		BKW_GR_CAMERA_GROUP + BKW_GR_CAMERA_MANUALSHOOT,
+		BKW_GR_CAMERA_GROUP + BKW_GR_CAMERA_SELECT,
+		BKW_GR_CAMERA_GROUP + BKW_GR_CAMERA_SHOOT,
+		BKW_GR_GET_GROUP + BKW_GR_GET_BMPIXEL,
+		BKW_GR_GET_GROUP + BKW_GR_GET_PARAMS,
+		BKW_GR_GET_GROUP + BKW_GR_GET_PIXEL,
+		BKW_GR_GET_GROUP + BKW_GR_GET_POSITION,
+		BKW_GR_GET_GROUP + BKW_GR_GET_TEXTBOUNDS,
+		BKW_GR_GET_GROUP + BKW_GR_GET_TYPE,
+		BKW_GR_GET_GROUP + BKW_GR_GET_VALUE,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_BOLD,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_DRAW,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_SIZE,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_SKEW,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_STRIKE,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_TYPEFACE,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_UNDERLINE,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_WIDTH,
 	};
 
 	private final Command[] GR_cmd = new Command[] {	// Map GR command keywords to their execution functions
-		new Command("render")               { public boolean run() { return execute_gr_render(); } },
-		new Command("modify")               { public boolean run() { return execute_gr_modify(); } },
-		new Command("bounded.touch2")       { public boolean run() { return execute_gr_bound_touch(1); } },
-		new Command("bounded.touch")        { public boolean run() { return execute_gr_bound_touch(0); } },
-		new Command("touch2")               { public boolean run() { return execute_gr_touch(1); } },
-		new Command("touch")                { public boolean run() { return execute_gr_touch(0); } },
+		new Command(BKW_GR_RENDER)              { public boolean run() { return execute_gr_render(); } },
+		new Command(BKW_GR_MODIFY)              { public boolean run() { return execute_gr_modify(); } },
+		new Command(BKW_GR_BOUNDED_TOUCH2)      { public boolean run() { return execute_gr_bound_touch(1); } },
+		new Command(BKW_GR_BOUNDED_TOUCH)       { public boolean run() { return execute_gr_bound_touch(0); } },
+		new Command(BKW_GR_TOUCH2)              { public boolean run() { return execute_gr_touch(1); } },
+		new Command(BKW_GR_TOUCH)               { public boolean run() { return execute_gr_touch(0); } },
 
-		new Command("bitmap.")              { public boolean run() { return executeGR_BITMAP(); } },
-		new Command("camera.")              { public boolean run() { return executeGR_CAMERA(); } },
-		new Command("get.")                 { public boolean run() { return executeGR_GET(); } },
-		new Command("text.")                { public boolean run() { return executeGR_TEXT(); } },
+		new Command(BKW_GR_BITMAP_GROUP)        { public boolean run() { return executeGR_BITMAP(); } },
+		new Command(BKW_GR_CAMERA_GROUP)        { public boolean run() { return executeGR_CAMERA(); } },
+		new Command(BKW_GR_GET_GROUP)           { public boolean run() { return executeGR_GET(); } },
+		new Command(BKW_GR_TEXT_GROUP)          { public boolean run() { return executeGR_TEXT(); } },
 
-		new Command("arc")                  { public boolean run() { return execute_gr_arc(); } },
-		new Command("brightness")           { public boolean run() { return execute_brightness(); } },
-		new Command("circle")               { public boolean run() { return execute_gr_circle(); } },
-		new Command("clip")                 { public boolean run() { return execute_gr_clip(); } },
-		new Command("close")                { public boolean run() { return execute_gr_close(); } },
-		new Command("cls")                  { public boolean run() { return execute_gr_cls(); } },
-		new Command("color")                { public boolean run() { return execute_gr_color(); } },
-		new Command("front")                { public boolean run() { return execute_gr_front(); } },
-		new Command("getdl")                { public boolean run() { return execute_gr_getdl(); } },
-		new Command("hide")                 { public boolean run() { return execute_gr_hide(); } },
-		new Command("line")                 { public boolean run() { return execute_gr_line(); } },
-		new Command("newdl")                { public boolean run() { return execute_gr_newdl(); } },
-		new Command("ongrtouch.resume")     { public boolean run() { return execute_gr_touch_resume(); } },
-		new Command("open", CID_OPEN)       { public boolean run() { return execute_gr_open(); } },
-		new Command("orientation")          { public boolean run() { return execute_gr_orientation(); } },
-		new Command("oval")                 { public boolean run() { return execute_gr_oval(); } },
-		new Command("paint.get")            { public boolean run() { return execute_paint_get(); } },
-		new Command("point")                { public boolean run() { return execute_gr_point(); } },
-		new Command("poly")                 { public boolean run() { return execute_gr_poly(); } },
-		new Command("rect")                 { public boolean run() { return execute_gr_rect(); } },
-		new Command("rotate.end")           { public boolean run() { return execute_gr_rotate_end(); } },
-		new Command("rotate.start")         { public boolean run() { return execute_gr_rotate_start(); } },
-		new Command("save")                 { public boolean run() { return execute_gr_save(); } },
-		new Command("scale")                { public boolean run() { return execute_gr_scale(); } },
-		new Command("screen.to_bitmap")     { public boolean run() { return execute_screen_to_bitmap(); } },
-		new Command("screen")               { public boolean run() { return execute_gr_screen(); } },
-		new Command("set.antialias")        { public boolean run() { return execute_gr_antialias(); } },
-		new Command("set.pixels")           { public boolean run() { return execute_gr_set_pixels(); } },
-		new Command("set.stroke")           { public boolean run() { return execute_gr_stroke_width(); } },
-		new Command("show")                 { public boolean run() { return execute_gr_show(); } },
-		new Command("statusbar.show")       { public boolean run() { return execute_statusbar_show(); } },
+		new Command(BKW_GR_ARC)                 { public boolean run() { return execute_gr_arc(); } },
+		new Command(BKW_GR_BRIGHTNESS)          { public boolean run() { return execute_brightness(); } },
+		new Command(BKW_GR_CIRCLE)              { public boolean run() { return execute_gr_circle(); } },
+		new Command(BKW_GR_CLIP)                { public boolean run() { return execute_gr_clip(); } },
+		new Command(BKW_GR_CLOSE)               { public boolean run() { return execute_gr_close(); } },
+		new Command(BKW_GR_CLS)                 { public boolean run() { return execute_gr_cls(); } },
+		new Command(BKW_GR_COLOR)               { public boolean run() { return execute_gr_color(); } },
+		new Command(BKW_GR_FRONT)               { public boolean run() { return execute_gr_front(); } },
+		new Command(BKW_GR_GETDL)               { public boolean run() { return execute_gr_getdl(); } },
+		new Command(BKW_GR_NEWDL)               { public boolean run() { return execute_gr_newdl(); } },
+		new Command(BKW_GR_HIDE)                { public boolean run() { return execute_gr_hide(); } },
+		new Command(BKW_GR_LINE)                { public boolean run() { return execute_gr_line(); } },
+		new Command(BKW_GR_ONGRTOUCH_RESUME)    { public boolean run() { return execute_gr_touch_resume(); } },
+		new Command(BKW_GR_OPEN, CID_OPEN)      { public boolean run() { return execute_gr_open(); } },
+		new Command(BKW_GR_ORIENTATION)         { public boolean run() { return execute_gr_orientation(); } },
+		new Command(BKW_GR_OVAL)                { public boolean run() { return execute_gr_oval(); } },
+		new Command(BKW_GR_PAINT_GET)           { public boolean run() { return execute_paint_get(); } },
+		new Command(BKW_GR_POINT)               { public boolean run() { return execute_gr_point(); } },
+		new Command(BKW_GR_POLY)                { public boolean run() { return execute_gr_poly(); } },
+		new Command(BKW_GR_RECT)                { public boolean run() { return execute_gr_rect(); } },
+		new Command(BKW_GR_ROTATE_END)          { public boolean run() { return execute_gr_rotate_end(); } },
+		new Command(BKW_GR_ROTATE_START)        { public boolean run() { return execute_gr_rotate_start(); } },
+		new Command(BKW_GR_SAVE)                { public boolean run() { return execute_gr_save(); } },
+		new Command(BKW_GR_SCALE)               { public boolean run() { return execute_gr_scale(); } },
+		new Command(BKW_GR_SCREEN_TO_BITMAP)    { public boolean run() { return execute_screen_to_bitmap(); } },
+		new Command(BKW_GR_SCREEN)              { public boolean run() { return execute_gr_screen(); } },
+		new Command(BKW_GR_SET_ANTIALIAS)       { public boolean run() { return execute_gr_antialias(); } },
+		new Command(BKW_GR_SET_PIXELS)          { public boolean run() { return execute_gr_set_pixels(); } },
+		new Command(BKW_GR_SET_STROKE)          { public boolean run() { return execute_gr_stroke_width(); } },
+		new Command(BKW_GR_SHOW)                { public boolean run() { return execute_gr_show(); } },
+		new Command(BKW_GR_STATUSBAR_SHOW)      { public boolean run() { return execute_statusbar_show(); } },
 	};
 
 	private final Command[] GrBitmap_cmd = new Command[] {	// Map GR.bitmap command keywords to their execution functions
-		new Command("create")               { public boolean run() { return execute_gr_bitmap_create(); } },
-		new Command("crop")                 { public boolean run() { return execute_gr_bitmap_crop(); } },
-		new Command("delete")               { public boolean run() { return execute_gr_bitmap_delete(); } },
-		new Command("drawinto.end")         { public boolean run() { return execute_gr_bitmap_drawinto_end(); } },
-		new Command("drawinto.start")       { public boolean run() { return execute_gr_bitmap_drawinto_start(); } },
-		new Command("draw")                 { public boolean run() { return execute_gr_bitmap_draw(); } },
-		new Command("load")                 { public boolean run() { return execute_gr_bitmap_load(); } },
-		new Command("save")                 { public boolean run() { return execute_bitmap_save(); } },
-		new Command("scale")                { public boolean run() { return execute_gr_bitmap_scale(); } },
-		new Command("size")                 { public boolean run() { return execute_gr_bitmap_size(); } },
+		new Command(BKW_GR_BITMAP_CREATE)           { public boolean run() { return execute_gr_bitmap_create(); } },
+		new Command(BKW_GR_BITMAP_CROP)             { public boolean run() { return execute_gr_bitmap_crop(); } },
+		new Command(BKW_GR_BITMAP_DELETE)           { public boolean run() { return execute_gr_bitmap_delete(); } },
+		new Command(BKW_GR_BITMAP_DRAWINTO_START)   { public boolean run() { return execute_gr_bitmap_drawinto_start(); } },
+		new Command(BKW_GR_BITMAP_DRAWINTO_END)     { public boolean run() { return execute_gr_bitmap_drawinto_end(); } },
+		new Command(BKW_GR_BITMAP_DRAW)             { public boolean run() { return execute_gr_bitmap_draw(); } },
+		new Command(BKW_GR_BITMAP_LOAD)             { public boolean run() { return execute_gr_bitmap_load(); } },
+		new Command(BKW_GR_BITMAP_SAVE)             { public boolean run() { return execute_bitmap_save(); } },
+		new Command(BKW_GR_BITMAP_SCALE)            { public boolean run() { return execute_gr_bitmap_scale(); } },
+		new Command(BKW_GR_BITMAP_SIZE)             { public boolean run() { return execute_gr_bitmap_size(); } },
 	};
 
 	private final Command[] GrCamera_cmd = new Command[] {	// Map GR.camera command keywords to their execution functions
-		new Command("autoshoot")            { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_AUTO); } },
-		// new Command("blindshoot")           { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_BLIND); } },
-		new Command("manualshoot")          { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_MANUAL); } },
-		new Command("select")               { public boolean run() { return execute_gr_camera_select(); } },
-		new Command("shoot")                { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_USE_UI); } },
+		new Command(BKW_GR_CAMERA_AUTOSHOOT)        { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_AUTO); } },
+		// new Command(BKW_GR_CAMERA_BLINDSHOOT)       { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_BLIND); } },
+		new Command(BKW_GR_CAMERA_MANUALSHOOT)      { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_MANUAL); } },
+		new Command(BKW_GR_CAMERA_SELECT)           { public boolean run() { return execute_gr_camera_select(); } },
+		new Command(BKW_GR_CAMERA_SHOOT)            { public boolean run() { return execute_camera_shoot(CameraView.PICTURE_MODE_USE_UI); } },
 	};
 
 	private final Command[] GrGet_cmd = new Command[] {		// Map GR.get command keywords to their execution functions
-		new Command("bmpixel")              { public boolean run() { return execute_gr_get_bmpixel(); } },
-		new Command("params")               { public boolean run() { return execute_gr_get_params(); } },
-		new Command("pixel")                { public boolean run() { return execute_gr_get_pixel(); } },
-		new Command("position")             { public boolean run() { return execute_gr_get_position(); } },
-		new Command("textbounds")           { public boolean run() { return execute_gr_get_texbounds(); } },
-		new Command("type")                 { public boolean run() { return execute_gr_get_type(); } },
-		new Command("value")                { public boolean run() { return execute_gr_get_value(); } },
+		new Command(BKW_GR_GET_BMPIXEL)              { public boolean run() { return execute_gr_get_bmpixel(); } },
+		new Command(BKW_GR_GET_PARAMS)               { public boolean run() { return execute_gr_get_params(); } },
+		new Command(BKW_GR_GET_PIXEL)                { public boolean run() { return execute_gr_get_pixel(); } },
+		new Command(BKW_GR_GET_POSITION)             { public boolean run() { return execute_gr_get_position(); } },
+		new Command(BKW_GR_GET_TEXTBOUNDS)           { public boolean run() { return execute_gr_get_texbounds(); } },
+		new Command(BKW_GR_GET_TYPE)                 { public boolean run() { return execute_gr_get_type(); } },
+		new Command(BKW_GR_GET_VALUE)                { public boolean run() { return execute_gr_get_value(); } },
 	};
 
 	private final Command[] GrText_cmd = new Command[] {	// Map GR.text command keywords to their execution functions
-		new Command("align")                { public boolean run() { return execute_gr_text_align(); } },
-		new Command("bold")                 { public boolean run() { return execute_gr_text_bold(); } },
-		new Command("draw")                 { public boolean run() { return execute_gr_text_draw(); } },
-		new Command("size")                 { public boolean run() { return execute_gr_text_size(); } },
-		new Command("skew")                 { public boolean run() { return execute_gr_text_skew(); } },
-		new Command("strike")               { public boolean run() { return execute_gr_text_strike(); } },
-		new Command("typeface")             { public boolean run() { return execute_gr_text_typeface(); } },
-		new Command("underline")            { public boolean run() { return execute_gr_text_underline(); } },
-		new Command("width")                { public boolean run() { return execute_gr_text_width(); } },
+		new Command(BKW_GR_TEXT_ALIGN)                { public boolean run() { return execute_gr_text_align(); } },
+		new Command(BKW_GR_TEXT_BOLD)                 { public boolean run() { return execute_gr_text_bold(); } },
+		new Command(BKW_GR_TEXT_DRAW)                 { public boolean run() { return execute_gr_text_draw(); } },
+		new Command(BKW_GR_TEXT_SIZE)                 { public boolean run() { return execute_gr_text_size(); } },
+		new Command(BKW_GR_TEXT_SKEW)                 { public boolean run() { return execute_gr_text_skew(); } },
+		new Command(BKW_GR_TEXT_STRIKE)               { public boolean run() { return execute_gr_text_strike(); } },
+		new Command(BKW_GR_TEXT_TYPEFACE)             { public boolean run() { return execute_gr_text_typeface(); } },
+		new Command(BKW_GR_TEXT_UNDERLINE)            { public boolean run() { return execute_gr_text_underline(); } },
+		new Command(BKW_GR_TEXT_WIDTH)                { public boolean run() { return execute_gr_text_width(); } },
 	};
 
 	// ******************************** Variables for Audio commands ****************************
 
+	private static final String BKW_AUDIO_LOAD = "load";
+	private static final String BKW_AUDIO_PLAY = "play";
+	private static final String BKW_AUDIO_LOOP = "loop";
+	private static final String BKW_AUDIO_STOP = "stop";
+	private static final String BKW_AUDIO_VOLUME = "volume";
+	private static final String BKW_AUDIO_POSITION_CURRENT = "position.current";
+	private static final String BKW_AUDIO_POSITION_SEEK = "position.seek";
+	private static final String BKW_AUDIO_LENGTH = "length";
+	private static final String BKW_AUDIO_RELEASE = "release";
+	private static final String BKW_AUDIO_PAUSE = "pause";
+	private static final String BKW_AUDIO_ISDONE = "isdone";
+	private static final String BKW_AUDIO_RECORD_START = "record.start";
+	private static final String BKW_AUDIO_RECORD_STOP = "record.stop";
+
 	private static final String Audio_KW[] = {			// Command list for Format
-		"load", "play", "loop", "stop",
-		"volume", "position.current", "position.seek",
-		"length", "release", "pause",
-		"isdone", "record.start", "record.stop"
+		BKW_AUDIO_LOAD, BKW_AUDIO_PLAY,
+		BKW_AUDIO_LOOP, BKW_AUDIO_STOP, BKW_AUDIO_VOLUME,
+		BKW_AUDIO_POSITION_CURRENT, BKW_AUDIO_POSITION_SEEK,
+		BKW_AUDIO_LENGTH, BKW_AUDIO_RELEASE, BKW_AUDIO_PAUSE,
+		BKW_AUDIO_ISDONE, BKW_AUDIO_RECORD_START, BKW_AUDIO_RECORD_STOP
 	};
 
 	private final Command[] audio_cmd = new Command[] {	// Map audio command keywords to their execution functions
-		new Command("load")             { public boolean run() { return execute_audio_load(); } },
-		new Command("play")             { public boolean run() { return execute_audio_play(); } },
-		new Command("loop")             { public boolean run() { return execute_audio_loop(); } },
-		new Command("stop")             { public boolean run() { return execute_audio_stop(); } },
-		new Command("volume")           { public boolean run() { return execute_audio_volume(); } },
-		new Command("position.current") { public boolean run() { return execute_audio_pcurrent(); } },
-		new Command("position.seek")    { public boolean run() { return execute_audio_pseek(); } },
-		new Command("length")           { public boolean run() { return execute_audio_length(); } },
-		new Command("release")          { public boolean run() { return execute_audio_release(); } },
-		new Command("pause")            { public boolean run() { return execute_audio_pause(); } },
-		new Command("isdone")           { public boolean run() { return execute_audio_isdone(); } },
-		new Command("record.start")     { public boolean run() { return execute_audio_record_start(); } },
-		new Command("record.stop")      { public boolean run() { return execute_audio_record_stop(); } },
+		new Command(BKW_AUDIO_LOAD)             { public boolean run() { return execute_audio_load(); } },
+		new Command(BKW_AUDIO_PLAY)             { public boolean run() { return execute_audio_play(); } },
+		new Command(BKW_AUDIO_LOOP)             { public boolean run() { return execute_audio_loop(); } },
+		new Command(BKW_AUDIO_STOP)             { public boolean run() { return execute_audio_stop(); } },
+		new Command(BKW_AUDIO_VOLUME)           { public boolean run() { return execute_audio_volume(); } },
+		new Command(BKW_AUDIO_POSITION_CURRENT) { public boolean run() { return execute_audio_pcurrent(); } },
+		new Command(BKW_AUDIO_POSITION_SEEK)    { public boolean run() { return execute_audio_pseek(); } },
+		new Command(BKW_AUDIO_LENGTH)           { public boolean run() { return execute_audio_length(); } },
+		new Command(BKW_AUDIO_RELEASE)          { public boolean run() { return execute_audio_release(); } },
+		new Command(BKW_AUDIO_PAUSE)            { public boolean run() { return execute_audio_pause(); } },
+		new Command(BKW_AUDIO_ISDONE)           { public boolean run() { return execute_audio_isdone(); } },
+		new Command(BKW_AUDIO_RECORD_START)     { public boolean run() { return execute_audio_record_start(); } },
+		new Command(BKW_AUDIO_RECORD_STOP)      { public boolean run() { return execute_audio_record_stop(); } },
 	};
 
 	private static MediaPlayer theMP = null;
@@ -1165,39 +1473,57 @@ public class Run extends ListActivity {
 
 	// ******************************* Variables for Sensor Commands **********************************
 
+	private static final String BKW_SENSORS_LIST = "list";
+	private static final String BKW_SENSORS_OPEN = "open";
+	private static final String BKW_SENSORS_READ = "read";
+	private static final String BKW_SENSORS_CLOSE = "close";
+	private static final String BKW_SENSORS_ROTATE = "rotate";
+
 	private static final String Sensors_KW[] = {		// Command list for Format
-		"list", "open", "read", "close", "rotate"
+		BKW_SENSORS_LIST, BKW_SENSORS_OPEN,
+		BKW_SENSORS_READ, BKW_SENSORS_CLOSE, BKW_SENSORS_ROTATE
 	};
 
 	private final Command[] sensors_cmd = new Command[] {	// Map sensor command keywords to their execution functions
-		new Command("list")             { public boolean run() { return execute_sensors_list(); } },
-		new Command("open")             { public boolean run() { return execute_sensors_open(); } },
-		new Command("read")             { public boolean run() { return execute_sensors_read(); } },
-		new Command("close")            { public boolean run() { return execute_sensors_close(); } },
-		new Command("rotate")           { public boolean run() { return execute_sensors_rotate(); } },
+		new Command(BKW_SENSORS_LIST)           { public boolean run() { return execute_sensors_list(); } },
+		new Command(BKW_SENSORS_OPEN)           { public boolean run() { return execute_sensors_open(); } },
+		new Command(BKW_SENSORS_READ)           { public boolean run() { return execute_sensors_read(); } },
+		new Command(BKW_SENSORS_CLOSE)          { public boolean run() { return execute_sensors_close(); } },
+		new Command(BKW_SENSORS_ROTATE)         { public boolean run() { return execute_sensors_rotate(); } },
 	};
 
 	private SensorActivity theSensors;
 
 	// ***********************  Variables for GPS Commands  ******************************************
 
+	private static final String BKW_GPS_ALTITUDE = "altitude";
+	private static final String BKW_GPS_LATITUDE = "latitude";
+	private static final String BKW_GPS_LONGITUDE = "longitude";
+	private static final String BKW_GPS_BEARING = "bearing";
+	private static final String BKW_GPS_ACCURACY = "accuracy";
+	private static final String BKW_GPS_SPEED = "speed";
+	private static final String BKW_GPS_PROVIDER = "provider";
+	private static final String BKW_GPS_OPEN = "open";
+	private static final String BKW_GPS_CLOSE = "close";
+	private static final String BKW_GPS_TIME = "time";
+
 	private static final String GPS_KW[] = {			// Command list for Format
-		"altitude", "latitude", "longitude",
-		"bearing", "accuracy", "speed",
-		"provider", "open", "close", "time"
+		BKW_GPS_ALTITUDE, BKW_GPS_LATITUDE, BKW_GPS_LONGITUDE,
+		BKW_GPS_BEARING, BKW_GPS_ACCURACY, BKW_GPS_SPEED,
+		BKW_GPS_PROVIDER, BKW_GPS_OPEN, BKW_GPS_CLOSE, BKW_GPS_TIME
 	};
 
 	private final Command[] GPS_cmd = new Command[] {	// Map GPS command keywords to their execution functions
-		new Command("altitude")         { public boolean run() { return execute_gps_altitude(); } },
-		new Command("latitude")         { public boolean run() { return execute_gps_latitude(); } },
-		new Command("longitude")        { public boolean run() { return execute_gps_longitude(); } },
-		new Command("bearing")          { public boolean run() { return execute_gps_bearing(); } },
-		new Command("accuracy")         { public boolean run() { return execute_gps_accuracy(); } },
-		new Command("speed")            { public boolean run() { return execute_gps_speed(); } },
-		new Command("provider")         { public boolean run() { return execute_gps_provider(); } },
-		new Command("time")             { public boolean run() { return execute_gps_time(); } },
-		new Command("open", CID_OPEN)   { public boolean run() { return execute_gps_open(); } },
-		new Command("close")            { public boolean run() { return execute_gps_close(); } },
+		new Command(BKW_GPS_ALTITUDE)            { public boolean run() { return execute_gps_altitude(); } },
+		new Command(BKW_GPS_LATITUDE)            { public boolean run() { return execute_gps_latitude(); } },
+		new Command(BKW_GPS_LONGITUDE)           { public boolean run() { return execute_gps_longitude(); } },
+		new Command(BKW_GPS_BEARING)             { public boolean run() { return execute_gps_bearing(); } },
+		new Command(BKW_GPS_ACCURACY)            { public boolean run() { return execute_gps_accuracy(); } },
+		new Command(BKW_GPS_SPEED)               { public boolean run() { return execute_gps_speed(); } },
+		new Command(BKW_GPS_PROVIDER)            { public boolean run() { return execute_gps_provider(); } },
+		new Command(BKW_GPS_TIME)                { public boolean run() { return execute_gps_time(); } },
+		new Command(BKW_GPS_OPEN, CID_OPEN)      { public boolean run() { return execute_gps_open(); } },
+		new Command(BKW_GPS_CLOSE)               { public boolean run() { return execute_gps_close(); } },
 	};
 
 	private GPS theGPS;
@@ -1207,53 +1533,86 @@ public class Run extends ListActivity {
 	private enum ArrayOrderOps { DoSort, DoShuffle, DoReverse }
 	private enum ArrayMathOps { DoSum, DoAverage, DoMin, DoMax, DoVariance, DoStdDev }
 
+	private static final String BKW_ARRAY_LENGTH = "length";
+	private static final String BKW_ARRAY_LOAD = "load";
+	private static final String BKW_ARRAY_SORT = "sort";
+	private static final String BKW_ARRAY_SUM = "sum";
+	private static final String BKW_ARRAY_AVERAGE = "average";
+	private static final String BKW_ARRAY_REVERSE = "reverse";
+	private static final String BKW_ARRAY_SHUFFLE = "shuffle";
+	private static final String BKW_ARRAY_MIN = "min";
+	private static final String BKW_ARRAY_MAX = "max";
+	private static final String BKW_ARRAY_DELETE = "delete";
+	private static final String BKW_ARRAY_VARIANCE = "variance";
+	private static final String BKW_ARRAY_STD_DEV = "std_dev";
+	private static final String BKW_ARRAY_COPY = "copy";
+	private static final String BKW_ARRAY_SEARCH = "search";
+
 	private static final String Array_KW[] = {			// Command list for Format
-		"length", "load", "sort",
-		"sum", "average", "reverse",
-		"shuffle", "min", "max", "delete",
-		"variance", "std_dev", "copy", "search"
+		BKW_ARRAY_LENGTH, BKW_ARRAY_LOAD, BKW_ARRAY_SORT,
+		BKW_ARRAY_SUM, BKW_ARRAY_AVERAGE, BKW_ARRAY_REVERSE,
+		BKW_ARRAY_SHUFFLE, BKW_ARRAY_MIN, BKW_ARRAY_MAX,
+		BKW_ARRAY_DELETE, BKW_ARRAY_VARIANCE, BKW_ARRAY_STD_DEV,
+		BKW_ARRAY_COPY, BKW_ARRAY_SEARCH
 	};
 
 	private final Command[] array_cmd = new Command[] {	// Map array command keywords to their execution functions
-		new Command("length")           { public boolean run() { return execute_array_length(); } },
-		new Command("load")             { public boolean run() { return execute_array_load(); } },
-		new Command("delete")           { public boolean run() { return executeUNDIM(); } },
-		new Command("reverse")          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoReverse); } },
-		new Command("shuffle")          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoShuffle); } },
-		new Command("sort")             { public boolean run() { return execute_array_collection(ArrayOrderOps.DoSort); } },
-		new Command("sum")              { public boolean run() { return execute_array_sum(ArrayMathOps.DoSum); } },
-		new Command("average")          { public boolean run() { return execute_array_sum(ArrayMathOps.DoAverage); } },
-		new Command("min")              { public boolean run() { return execute_array_sum(ArrayMathOps.DoMin); } },
-		new Command("max")              { public boolean run() { return execute_array_sum(ArrayMathOps.DoMax); } },
-		new Command("variance")         { public boolean run() { return execute_array_sum(ArrayMathOps.DoVariance); } },
-		new Command("std_dev")          { public boolean run() { return execute_array_sum(ArrayMathOps.DoStdDev); } },
-		new Command("copy")             { public boolean run() { return execute_array_copy(); } },
-		new Command("search")           { public boolean run() { return execute_array_search(); } },
+		new Command(BKW_ARRAY_LENGTH)            { public boolean run() { return execute_array_length(); } },
+		new Command(BKW_ARRAY_LOAD)              { public boolean run() { return execute_array_load(); } },
+		new Command(BKW_ARRAY_DELETE)            { public boolean run() { return executeUNDIM(); } },
+		new Command(BKW_ARRAY_REVERSE)           { public boolean run() { return execute_array_collection(ArrayOrderOps.DoReverse); } },
+		new Command(BKW_ARRAY_SHUFFLE)           { public boolean run() { return execute_array_collection(ArrayOrderOps.DoShuffle); } },
+		new Command(BKW_ARRAY_SORT)              { public boolean run() { return execute_array_collection(ArrayOrderOps.DoSort); } },
+		new Command(BKW_ARRAY_SUM)               { public boolean run() { return execute_array_sum(ArrayMathOps.DoSum); } },
+		new Command(BKW_ARRAY_AVERAGE)           { public boolean run() { return execute_array_sum(ArrayMathOps.DoAverage); } },
+		new Command(BKW_ARRAY_MIN)               { public boolean run() { return execute_array_sum(ArrayMathOps.DoMin); } },
+		new Command(BKW_ARRAY_MAX)               { public boolean run() { return execute_array_sum(ArrayMathOps.DoMax); } },
+		new Command(BKW_ARRAY_VARIANCE)          { public boolean run() { return execute_array_sum(ArrayMathOps.DoVariance); } },
+		new Command(BKW_ARRAY_STD_DEV)           { public boolean run() { return execute_array_sum(ArrayMathOps.DoStdDev); } },
+		new Command(BKW_ARRAY_COPY)              { public boolean run() { return execute_array_copy(); } },
+		new Command(BKW_ARRAY_SEARCH)            { public boolean run() { return execute_array_search(); } },
 	};
 
 	// ************************************ List command variables *********************************
 
+	private static final String BKW_LIST_CREATE = "create";
+	private static final String BKW_LIST_ADD_LIST = "add.list";
+	private static final String BKW_LIST_ADD_ARRAY = "add.array";
+	private static final String BKW_LIST_ADD = "add";
+	private static final String BKW_LIST_REPLACE = "replace";
+	private static final String BKW_LIST_TYPE = "type";
+	private static final String BKW_LIST_GET = "get";
+	private static final String BKW_LIST_CLEAR = "clear";
+	private static final String BKW_LIST_REMOVE = "remove";
+	private static final String BKW_LIST_INSERT = "insert";
+	private static final String BKW_LIST_SIZE = "size";
+	private static final String BKW_LIST_CONTAINS = "contains";
+	private static final String BKW_LIST_TOARRAY = "toarray";
+	private static final String BKW_LIST_SEARCH = "search";
+
 	private static final String List_KW[] = {			// Command list for Format
-		"create", "add.list", "add.array", "add", "replace", 
-		"type", "get", "clear", "remove", "insert", "size",
-		"contains", "toarray", "search"
+		BKW_LIST_CREATE, BKW_LIST_ADD_LIST,
+		BKW_LIST_ADD_ARRAY, BKW_LIST_ADD, BKW_LIST_REPLACE,
+		BKW_LIST_TYPE, BKW_LIST_GET, BKW_LIST_CLEAR,
+		BKW_LIST_REMOVE, BKW_LIST_INSERT, BKW_LIST_SIZE,
+		BKW_LIST_CONTAINS, BKW_LIST_TOARRAY, BKW_LIST_SEARCH
 	};
 
 	private final Command[] list_cmd = new Command[] {	// Map list command keywords to their execution functions
-		new Command("create")           { public boolean run() { return execute_LIST_NEW(); } },
-		new Command("add.list")         { public boolean run() { return execute_LIST_ADDLIST(); } },
-		new Command("add.array")        { public boolean run() { return execute_LIST_ADDARRAY(); } },
-		new Command("add")              { public boolean run() { return execute_LIST_ADD(); } },
-		new Command("replace")          { public boolean run() { return execute_LIST_SET(); } },
-		new Command("type")             { public boolean run() { return execute_LIST_GETTYPE(); } },
-		new Command("get")              { public boolean run() { return execute_LIST_GET(); } },
-		new Command("clear")            { public boolean run() { return execute_LIST_CLEAR(); } },
-		new Command("remove")           { public boolean run() { return execute_LIST_REMOVE(); } },
-		new Command("insert")           { public boolean run() { return execute_LIST_INSERT(); } },
-		new Command("size")             { public boolean run() { return execute_LIST_SIZE(); } },
-		new Command("contains")         { public boolean run() { return execute_LIST_CONTAINS(); } },
-		new Command("toarray")          { public boolean run() { return execute_LIST_TOARRAY(); } },
-		new Command("search")           { public boolean run() { return execute_LIST_SEARCH(); } },
+		new Command(BKW_LIST_CREATE)            { public boolean run() { return execute_LIST_NEW(); } },
+		new Command(BKW_LIST_ADD_LIST)          { public boolean run() { return execute_LIST_ADDLIST(); } },
+		new Command(BKW_LIST_ADD_ARRAY)         { public boolean run() { return execute_LIST_ADDARRAY(); } },
+		new Command(BKW_LIST_ADD)               { public boolean run() { return execute_LIST_ADD(); } },
+		new Command(BKW_LIST_REPLACE)           { public boolean run() { return execute_LIST_SET(); } },
+		new Command(BKW_LIST_TYPE)              { public boolean run() { return execute_LIST_GETTYPE(); } },
+		new Command(BKW_LIST_GET)               { public boolean run() { return execute_LIST_GET(); } },
+		new Command(BKW_LIST_CLEAR)             { public boolean run() { return execute_LIST_CLEAR(); } },
+		new Command(BKW_LIST_REMOVE)            { public boolean run() { return execute_LIST_REMOVE(); } },
+		new Command(BKW_LIST_INSERT)            { public boolean run() { return execute_LIST_INSERT(); } },
+		new Command(BKW_LIST_SIZE)              { public boolean run() { return execute_LIST_SIZE(); } },
+		new Command(BKW_LIST_CONTAINS)          { public boolean run() { return execute_LIST_CONTAINS(); } },
+		new Command(BKW_LIST_TOARRAY)           { public boolean run() { return execute_LIST_TOARRAY(); } },
+		new Command(BKW_LIST_SEARCH)            { public boolean run() { return execute_LIST_SEARCH(); } },
 	};
 
 	private static final int list_is_numeric = 1;
@@ -1264,39 +1623,58 @@ public class Run extends ListActivity {
 
 	// ************************************ Bundle Variables ****************************************
 
+	private static final String BKW_BUNDLE_CREATE = "create";
+	private static final String BKW_BUNDLE_PUT = "put";
+	private static final String BKW_BUNDLE_GET = "get";
+	private static final String BKW_BUNDLE_TYPE = "type";
+	private static final String BKW_BUNDLE_KEYS = "keys";
+	private static final String BKW_BUNDLE_COPY = "copy";
+	private static final String BKW_BUNDLE_CLEAR = "clear";
+	private static final String BKW_BUNDLE_CONTAIN = "contain";
+
 	private static final String Bundle_KW[] = {			// Command list for Format
-		"create", "put", "get", "type",
-		"keys", "copy", "clear", "contain"
+		BKW_BUNDLE_CREATE, BKW_BUNDLE_PUT, BKW_BUNDLE_GET,
+		BKW_BUNDLE_TYPE, BKW_BUNDLE_KEYS,
+		BKW_BUNDLE_COPY, BKW_BUNDLE_CLEAR, BKW_BUNDLE_CONTAIN
 	};
 
 	private final Command[] bundle_cmd = new Command[] {// Map bundle command keywords to their execution functions
-		new Command("create")           { public boolean run() { return execute_BUNDLE_CREATE(); } },
-		new Command("put")              { public boolean run() { return execute_BUNDLE_PUT(); } },
-		new Command("get")              { public boolean run() { return execute_BUNDLE_GET(); } },
-		new Command("type")             { public boolean run() { return execute_BUNDLE_TYPE(); } },
-		new Command("keys")             { public boolean run() { return execute_BUNDLE_KEYSET(); } },
-		new Command("copy")             { public boolean run() { return execute_BUNDLE_COPY(); } },
-		new Command("clear")            { public boolean run() { return execute_BUNDLE_CLEAR(); } },
-		new Command("contain")          { public boolean run() { return execute_BUNDLE_CONTAIN(); } },
+		new Command(BKW_BUNDLE_CREATE)          { public boolean run() { return execute_BUNDLE_CREATE(); } },
+		new Command(BKW_BUNDLE_PUT)             { public boolean run() { return execute_BUNDLE_PUT(); } },
+		new Command(BKW_BUNDLE_GET)             { public boolean run() { return execute_BUNDLE_GET(); } },
+		new Command(BKW_BUNDLE_TYPE)            { public boolean run() { return execute_BUNDLE_TYPE(); } },
+		new Command(BKW_BUNDLE_KEYS)            { public boolean run() { return execute_BUNDLE_KEYSET(); } },
+		new Command(BKW_BUNDLE_COPY)            { public boolean run() { return execute_BUNDLE_COPY(); } },
+		new Command(BKW_BUNDLE_CLEAR)           { public boolean run() { return execute_BUNDLE_CLEAR(); } },
+		new Command(BKW_BUNDLE_CONTAIN)         { public boolean run() { return execute_BUNDLE_CONTAIN(); } },
 	};
 
 	private static ArrayList <Bundle> theBundles;
 
 	// *********************************** Stack Variables **********************************************
 
+	private static final String BKW_STACK_CREATE = "create";
+	private static final String BKW_STACK_PUSH = "push";
+	private static final String BKW_STACK_POP = "pop";
+	private static final String BKW_STACK_PEEK = "peek";
+	private static final String BKW_STACK_TYPE = "type";
+	private static final String BKW_STACK_ISEMPTY = "isempty";
+	private static final String BKW_STACK_CLEAR = "clear";
+
 	private static final String Stack_KW[] = {			// Command list for Format
-		"create", "push", "pop", "peek",
-		"type", "isempty", "clear"
+		BKW_STACK_CREATE, BKW_STACK_PUSH, BKW_STACK_POP,
+		BKW_STACK_PEEK, BKW_STACK_TYPE,
+		BKW_STACK_ISEMPTY, BKW_STACK_CLEAR
 	};
 
 	private final Command[] stack_cmd = new Command[] {	// Map stack command keywords to their execution functions
-		new Command("create")           { public boolean run() { return execute_STACK_CREATE(); } },
-		new Command("push")             { public boolean run() { return execute_STACK_PUSH(); } },
-		new Command("pop")              { public boolean run() { return execute_STACK_POP(); } },
-		new Command("peek")             { public boolean run() { return execute_STACK_PEEK(); } },
-		new Command("type")             { public boolean run() { return execute_STACK_TYPE(); } },
-		new Command("isempty")          { public boolean run() { return execute_STACK_ISEMPTY(); } },
-		new Command("clear")            { public boolean run() { return execute_STACK_CLEAR(); } },
+		new Command(BKW_STACK_CREATE)           { public boolean run() { return execute_STACK_CREATE(); } },
+		new Command(BKW_STACK_PUSH)             { public boolean run() { return execute_STACK_PUSH(); } },
+		new Command(BKW_STACK_POP)              { public boolean run() { return execute_STACK_POP(); } },
+		new Command(BKW_STACK_PEEK)             { public boolean run() { return execute_STACK_PEEK(); } },
+		new Command(BKW_STACK_TYPE)             { public boolean run() { return execute_STACK_TYPE(); } },
+		new Command(BKW_STACK_ISEMPTY)          { public boolean run() { return execute_STACK_ISEMPTY(); } },
+		new Command(BKW_STACK_CLEAR)            { public boolean run() { return execute_STACK_CLEAR(); } },
 	};
 
 	private static ArrayList<Stack> theStacks;
@@ -1307,51 +1685,88 @@ public class Run extends ListActivity {
 
 //  ******************************* Socket Variables **************************************************
 
+	// socket commands
+	private static final String BKW_SOCKET_MYIP = "myip";
+	private static final String BKW_SOCKET_CLIENT_GROUP = "client.";
+	private static final String BKW_SOCKET_SERVER_GROUP = "server.";
+
+	// socket subgroup commands
+	private static final String BKW_SOCKET_CLIENT_IP = "client.ip";
+	private static final String BKW_SOCKET_CLOSE = "close";
+	private static final String BKW_SOCKET_CONNECT = "connect";
+	private static final String BKW_SOCKET_CREATE = "create";
+	private static final String BKW_SOCKET_DISCONNECT = "disconnect";
+	private static final String BKW_SOCKET_READ_FILE = "read.file";
+	private static final String BKW_SOCKET_READ_LINE = "read.line";
+	private static final String BKW_SOCKET_READ_READY = "read.ready";
+	private static final String BKW_SOCKET_SERVER_IP = "server.ip";
+	private static final String BKW_SOCKET_STATUS = "status";
+	private static final String BKW_SOCKET_WRITE_BYTES = "write.bytes";
+	private static final String BKW_SOCKET_WRITE_FILE = "write.file";
+	private static final String BKW_SOCKET_WRITE_LINE = "write.line";
+
 	private static final String Socket_KW[] = {			// Command list for Format
-		"myip", "client.connect", "client.status",
-		"client.read.ready", "client.read.line",
-		"client.write.line", "client.write.bytes",
-		"client.close", "client.server.ip",
-		"client.read.file", "client.write.file",
-		"server.create", "server.connect", "server.status",
-		"server.read.ready", "server.read.line",
-		"server.write.line", "server.write.bytes",
-		"server.disconnect", "server.close", "server.client.ip",
-		"server.read.file", "server.write.file"
+		BKW_SOCKET_MYIP,
+
+		// SOCKET subgroups - Format can handle only one level of grouping
+		// SOCKET.CLIENT. subgroup
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_CONNECT,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_STATUS,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_READY,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_LINE,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_LINE,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_BYTES,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_CLOSE,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_SERVER_IP,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_FILE,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_FILE,
+		// SOCKET.SERVER. subgroup
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CREATE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CONNECT,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_STATUS,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_READY,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_LINE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_LINE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_BYTES,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_DISCONNECT,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CLOSE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CLIENT_IP,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_FILE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_FILE,
 	};
 
 	private final Command[] Socket_cmd = new Command[] {		// Map Socket command keywords to their execution functions
-		new Command("client.")          { public boolean run() { return executeSocketClient(); } },
-		new Command("server.")          { public boolean run() { return executeSocketServer(); } },
-		new Command("myip")             { public boolean run() { return executeMYIP(); } }
+		new Command(BKW_SOCKET_CLIENT_GROUP)    { public boolean run() { return executeSocketClient(); } },
+		new Command(BKW_SOCKET_SERVER_GROUP)    { public boolean run() { return executeSocketServer(); } },
+		new Command(BKW_SOCKET_MYIP)            { public boolean run() { return executeMYIP(); } }
 	};
 
 	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket.client command keywords to their execution functions
-		new Command("connect")          { public boolean run() { return executeCLIENT_CONNECT(); } },
-		new Command("status")           { public boolean run() { return executeCLIENT_STATUS(); } },
-		new Command("read.ready")       { public boolean run() { return executeCLIENT_READ_READY(); } },
-		new Command("read.line")        { public boolean run() { return executeCLIENT_READ_LINE(); } },
-		new Command("write.line")       { public boolean run() { return executeCLIENT_WRITE_LINE(); } },
-		new Command("write.bytes")      { public boolean run() { return executeCLIENT_WRITE_BYTES(); } },
-		new Command("close")            { public boolean run() { return executeCLIENT_CLOSE(); } },
-		new Command("server.ip")        { public boolean run() { return executeCLIENT_SERVER_IP(); } },
-		new Command("read.file")        { public boolean run() { return executeCLIENT_GETFILE(); } },
-		new Command("write.file")       { public boolean run() { return executeCLIENT_PUTFILE(); } }
+		new Command(BKW_SOCKET_CONNECT)         { public boolean run() { return executeCLIENT_CONNECT(); } },
+		new Command(BKW_SOCKET_STATUS)          { public boolean run() { return executeCLIENT_STATUS(); } },
+		new Command(BKW_SOCKET_READ_READY)      { public boolean run() { return executeCLIENT_READ_READY(); } },
+		new Command(BKW_SOCKET_READ_LINE)       { public boolean run() { return executeCLIENT_READ_LINE(); } },
+		new Command(BKW_SOCKET_WRITE_LINE)      { public boolean run() { return executeCLIENT_WRITE_LINE(); } },
+		new Command(BKW_SOCKET_WRITE_BYTES)     { public boolean run() { return executeCLIENT_WRITE_BYTES(); } },
+		new Command(BKW_SOCKET_CLOSE)           { public boolean run() { return executeCLIENT_CLOSE(); } },
+		new Command(BKW_SOCKET_SERVER_IP)       { public boolean run() { return executeCLIENT_SERVER_IP(); } },
+		new Command(BKW_SOCKET_READ_FILE)       { public boolean run() { return executeCLIENT_GETFILE(); } },
+		new Command(BKW_SOCKET_WRITE_FILE)      { public boolean run() { return executeCLIENT_PUTFILE(); } }
 	};
 
 	private final Command[] SocketServer_cmd = new Command[] {	// Map Socket.server command keywords to their execution functions
-		new Command("create")           { public boolean run() { return executeSERVER_CREATE(); } },
-		new Command("connect")          { public boolean run() { return executeSERVER_ACCEPT(); } },
-		new Command("status")           { public boolean run() { return executeSERVER_STATUS(); } },
-		new Command("read.ready")       { public boolean run() { return executeSERVER_READ_READY(); } },
-		new Command("read.line")        { public boolean run() { return executeSERVER_READ_LINE(); } },
-		new Command("write.line")       { public boolean run() { return executeSERVER_WRITE_LINE(); } },
-		new Command("write.bytes")      { public boolean run() { return executeSERVER_WRITE_BYTES(); } },
-		new Command("disconnect")       { public boolean run() { return executeSERVER_DISCONNECT(); } },
-		new Command("close")            { public boolean run() { return executeSERVER_CLOSE(); } },
-		new Command("client.ip")        { public boolean run() { return executeSERVER_CLIENT_IP(); } },
-		new Command("read.file")        { public boolean run() { return executeSERVER_GETFILE(); } },
-		new Command("write.file")       { public boolean run() { return executeSERVER_PUTFILE(); } }
+		new Command(BKW_SOCKET_CREATE)          { public boolean run() { return executeSERVER_CREATE(); } },
+		new Command(BKW_SOCKET_CONNECT)         { public boolean run() { return executeSERVER_ACCEPT(); } },
+		new Command(BKW_SOCKET_STATUS)          { public boolean run() { return executeSERVER_STATUS(); } },
+		new Command(BKW_SOCKET_READ_READY)      { public boolean run() { return executeSERVER_READ_READY(); } },
+		new Command(BKW_SOCKET_READ_LINE)       { public boolean run() { return executeSERVER_READ_LINE(); } },
+		new Command(BKW_SOCKET_WRITE_LINE)      { public boolean run() { return executeSERVER_WRITE_LINE(); } },
+		new Command(BKW_SOCKET_WRITE_BYTES)     { public boolean run() { return executeSERVER_WRITE_BYTES(); } },
+		new Command(BKW_SOCKET_DISCONNECT)      { public boolean run() { return executeSERVER_DISCONNECT(); } },
+		new Command(BKW_SOCKET_CLOSE)           { public boolean run() { return executeSERVER_CLOSE(); } },
+		new Command(BKW_SOCKET_CLIENT_IP)       { public boolean run() { return executeSERVER_CLIENT_IP(); } },
+		new Command(BKW_SOCKET_READ_FILE)       { public boolean run() { return executeSERVER_GETFILE(); } },
+		new Command(BKW_SOCKET_WRITE_FILE)      { public boolean run() { return executeSERVER_PUTFILE(); } }
 	};
 
     // Constants that indicate the current connection state
@@ -1378,39 +1793,61 @@ public class Run extends ListActivity {
 
 	// *************************************************** Debug Commands ****************************
 
+	private static final String BKW_DEBUG_ON = "on";
+	private static final String BKW_DEBUG_OFF = "off";
+	private static final String BKW_DEBUG_PRINT = "print";
+	private static final String BKW_DEBUG_ECHO_ON = "echo.on";
+	private static final String BKW_DEBUG_ECHO_OFF = "echo.off";
+	private static final String BKW_DEBUG_DUMP_SCALARS = "dump.scalars";
+	private static final String BKW_DEBUG_DUMP_ARRAY = "dump.array";
+	private static final String BKW_DEBUG_DUMP_LIST = "dump.list";
+	private static final String BKW_DEBUG_DUMP_STACK = "dump.stack";
+	private static final String BKW_DEBUG_DUMP_BUNDLE = "dump.bundle";
+	private static final String BKW_DEBUG_WATCH_CLEAR = "watch.clear";
+	private static final String BKW_DEBUG_WATCH = "watch";
+	private static final String BKW_DEBUG_SHOW_SCALARS = "show.scalars";
+	private static final String BKW_DEBUG_SHOW_ARRAY = "show.array";
+	private static final String BKW_DEBUG_SHOW_LIST = "show.list";
+	private static final String BKW_DEBUG_SHOW_STACK = "show.stack";
+	private static final String BKW_DEBUG_SHOW_BUNDLE = "show.bundle";
+	private static final String BKW_DEBUG_SHOW_WATCH = "show.watch";
+	private static final String BKW_DEBUG_SHOW_PROGRAM = "show.program";
+	private static final String BKW_DEBUG_SHOW = "show";
+	private static final String BKW_DEBUG_CONSOLE = "console";
+
 	private static final String Debug_KW[] = {			// Command list for Format
-		"on", "off", "print", "echo.on",
-		"echo.off", "dump.scalars",
-		"dump.array", "dump.list",
-		"dump.stack", "dump.bundle",
-		"watch.clear", "watch", "show.scalars",
-		"show.array", "show.list", "show.stack",
-		"show.bundle", "show.watch", "show.program",
-		"show", "console"
+		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_DEBUG_PRINT, BKW_DEBUG_ECHO_ON,
+		BKW_DEBUG_ECHO_OFF, BKW_DEBUG_DUMP_SCALARS,
+		BKW_DEBUG_DUMP_ARRAY, BKW_DEBUG_DUMP_LIST,
+		BKW_DEBUG_DUMP_STACK, BKW_DEBUG_DUMP_BUNDLE,
+		BKW_DEBUG_WATCH_CLEAR, BKW_DEBUG_WATCH, BKW_DEBUG_SHOW_SCALARS,
+		BKW_DEBUG_SHOW_ARRAY, BKW_DEBUG_SHOW_LIST, BKW_DEBUG_SHOW_STACK,
+		BKW_DEBUG_SHOW_BUNDLE, BKW_DEBUG_SHOW_WATCH, BKW_DEBUG_SHOW_PROGRAM,
+		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE
 	};
 
 	private final Command[] debug_cmd = new Command[] {	// Map debug command keywords to their execution functions
-		new Command("on")               { public boolean run() { return executeDEBUG_ON(); } },
-		new Command("off")              { public boolean run() { return executeDEBUG_OFF(); } },
-		new Command("print")            { public boolean run() { return executeDEBUG_PRINT(); } },
-		new Command("echo.on")          { public boolean run() { return executeECHO_ON(); } },
-		new Command("echo.off")         { public boolean run() { return executeECHO_OFF(); } },
-		new Command("dump.scalars")     { public boolean run() { return executeDUMP_SCALARS(); } },
-		new Command("dump.array")       { public boolean run() { return executeDUMP_ARRAY(); } },
-		new Command("dump.list")        { public boolean run() { return executeDUMP_LIST(); } },
-		new Command("dump.stack")       { public boolean run() { return executeDUMP_STACK(); } },
-		new Command("dump.bundle")      { public boolean run() { return executeDUMP_BUNDLE(); } },
-		new Command("watch.clear")      { public boolean run() { return executeDEBUG_WATCH_CLEAR(); } },
-		new Command("watch")            { public boolean run() { return executeDEBUG_WATCH(); } },
-		new Command("show.scalars")     { public boolean run() { return executeDEBUG_SHOW_SCALARS(); } },
-		new Command("show.array")       { public boolean run() { return executeDEBUG_SHOW_ARRAY(); } },
-		new Command("show.list")        { public boolean run() { return executeDEBUG_SHOW_LIST(); } },
-		new Command("show.stack")       { public boolean run() { return executeDEBUG_SHOW_STACK(); } },
-		new Command("show.bundle")      { public boolean run() { return executeDEBUG_SHOW_BUNDLE(); } },
-		new Command("show.watch")       { public boolean run() { return executeDEBUG_SHOW_WATCH(); } },
-		new Command("show.program")     { public boolean run() { return executeDEBUG_SHOW_PROGRAM(); } },
-		new Command("show")             { public boolean run() { return executeDEBUG_SHOW(); } },
-		new Command("console")          { public boolean run() { return executeDEBUG_CONSOLE(); } },
+		new Command(BKW_DEBUG_ON)               { public boolean run() { return executeDEBUG_ON(); } },
+		new Command(BKW_DEBUG_OFF)              { public boolean run() { return executeDEBUG_OFF(); } },
+		new Command(BKW_DEBUG_PRINT)            { public boolean run() { return executeDEBUG_PRINT(); } },
+		new Command(BKW_DEBUG_ECHO_ON)          { public boolean run() { return executeECHO_ON(); } },
+		new Command(BKW_DEBUG_ECHO_OFF)         { public boolean run() { return executeECHO_OFF(); } },
+		new Command(BKW_DEBUG_DUMP_SCALARS)     { public boolean run() { return executeDUMP_SCALARS(); } },
+		new Command(BKW_DEBUG_DUMP_ARRAY)       { public boolean run() { return executeDUMP_ARRAY(); } },
+		new Command(BKW_DEBUG_DUMP_LIST)        { public boolean run() { return executeDUMP_LIST(); } },
+		new Command(BKW_DEBUG_DUMP_STACK)       { public boolean run() { return executeDUMP_STACK(); } },
+		new Command(BKW_DEBUG_DUMP_BUNDLE)      { public boolean run() { return executeDUMP_BUNDLE(); } },
+		new Command(BKW_DEBUG_WATCH_CLEAR)      { public boolean run() { return executeDEBUG_WATCH_CLEAR(); } },
+		new Command(BKW_DEBUG_WATCH)            { public boolean run() { return executeDEBUG_WATCH(); } },
+		new Command(BKW_DEBUG_SHOW_SCALARS)     { public boolean run() { return executeDEBUG_SHOW_SCALARS(); } },
+		new Command(BKW_DEBUG_SHOW_ARRAY)       { public boolean run() { return executeDEBUG_SHOW_ARRAY(); } },
+		new Command(BKW_DEBUG_SHOW_LIST)        { public boolean run() { return executeDEBUG_SHOW_LIST(); } },
+		new Command(BKW_DEBUG_SHOW_STACK)       { public boolean run() { return executeDEBUG_SHOW_STACK(); } },
+		new Command(BKW_DEBUG_SHOW_BUNDLE)      { public boolean run() { return executeDEBUG_SHOW_BUNDLE(); } },
+		new Command(BKW_DEBUG_SHOW_WATCH)       { public boolean run() { return executeDEBUG_SHOW_WATCH(); } },
+		new Command(BKW_DEBUG_SHOW_PROGRAM)     { public boolean run() { return executeDEBUG_SHOW_PROGRAM(); } },
+		new Command(BKW_DEBUG_SHOW)             { public boolean run() { return executeDEBUG_SHOW(); } },
+		new Command(BKW_DEBUG_CONSOLE)          { public boolean run() { return executeDEBUG_CONSOLE(); } },
 	};
 
 	public static boolean Debug = false;
@@ -1418,15 +1855,21 @@ public class Run extends ListActivity {
 
 	// *********************************************** Text to Speech *******************************
 
+	private static final String BKW_TTS_INIT = "init";
+	private static final String BKW_TTS_SPEAK_TOFILE = "speak.tofile";
+	private static final String BKW_TTS_SPEAK = "speak";
+	private static final String BKW_TTS_STOP = "stop";
+
 	private static final String tts_KW[] = {			// TTS command list for Format
-		"init", "speak.tofile", "speak", "stop"
+		BKW_TTS_INIT, BKW_TTS_SPEAK_TOFILE,
+		BKW_TTS_SPEAK, BKW_TTS_STOP
 	};
 
 	private final Command[] tts_cmd = new Command[] {	// Map TTS command keywords to their execution functions
-		new Command("init")             { public boolean run() { return executeTTS_INIT(); } },
-		new Command("speak.tofile")     { public boolean run() { return executeTTS_SPEAK_TOFILE(); } },
-		new Command("speak")            { public boolean run() { return executeTTS_SPEAK(); } },
-		new Command("stop")             { public boolean run() { return executeTTS_STOP(); } }
+		new Command(BKW_TTS_INIT)               { public boolean run() { return executeTTS_INIT(); } },
+		new Command(BKW_TTS_SPEAK_TOFILE)       { public boolean run() { return executeTTS_SPEAK_TOFILE(); } },
+		new Command(BKW_TTS_SPEAK)              { public boolean run() { return executeTTS_SPEAK(); } },
+		new Command(BKW_TTS_STOP)               { public boolean run() { return executeTTS_STOP(); } }
 	};
 
 	public static TextToSpeechActivity theTTS;
@@ -1434,23 +1877,34 @@ public class Run extends ListActivity {
 
 	// *********************************************** FTP Client *************************************
 
+	private static final String BKW_FTP_OPEN = "open";
+	private static final String BKW_FTP_CLOSE = "close";
+	private static final String BKW_FTP_DIR = "dir";
+	private static final String BKW_FTP_CD = "cd";
+	private static final String BKW_FTP_GET = "get";
+	private static final String BKW_FTP_PUT = "put";
+	private static final String BKW_FTP_DELETE = "delete";
+	private static final String BKW_FTP_RMDIR = "rmdir";
+	private static final String BKW_FTP_MKDIR = "mkdir";
+	private static final String BKW_FTP_RENAME = "rename";
+
 	private static final String ftp_KW[] = {			// FTP command list for Format
-		"open", "close", "dir", "cd",
-		"get", "put", "delete", "rmdir",
-		"mkdir", "rename"
+		BKW_FTP_OPEN, BKW_FTP_CLOSE, BKW_FTP_DIR, BKW_FTP_CD,
+		BKW_FTP_GET, BKW_FTP_PUT, BKW_FTP_DELETE, BKW_FTP_RMDIR,
+		BKW_FTP_MKDIR, BKW_FTP_RENAME
 	};
 
 	private final Command[] ftp_cmd = new Command[] {	// Map FTP command keywords to their execution functions
-		new Command("open")             { public boolean run() { return executeFTP_OPEN(); } },
-		new Command("close")            { public boolean run() { return executeFTP_CLOSE(); } },
-		new Command("dir")              { public boolean run() { return executeFTP_DIR(); } },
-		new Command("cd")               { public boolean run() { return executeFTP_CD(); } },
-		new Command("get")              { public boolean run() { return executeFTP_GET(); } },
-		new Command("put")              { public boolean run() { return executeFTP_PUT(); } },
-		new Command("delete")           { public boolean run() { return executeFTP_DELETE(); } },
-		new Command("rmdir")            { public boolean run() { return executeFTP_RMDIR(); } },
-		new Command("mkdir")            { public boolean run() { return executeFTP_MKDIR(); } },
-		new Command("rename")           { public boolean run() { return executeFTP_RENAME(); } },
+		new Command(BKW_FTP_OPEN)               { public boolean run() { return executeFTP_OPEN(); } },
+		new Command(BKW_FTP_CLOSE)              { public boolean run() { return executeFTP_CLOSE(); } },
+		new Command(BKW_FTP_DIR)                { public boolean run() { return executeFTP_DIR(); } },
+		new Command(BKW_FTP_CD)                 { public boolean run() { return executeFTP_CD(); } },
+		new Command(BKW_FTP_GET)                { public boolean run() { return executeFTP_GET(); } },
+		new Command(BKW_FTP_PUT)                { public boolean run() { return executeFTP_PUT(); } },
+		new Command(BKW_FTP_DELETE)             { public boolean run() { return executeFTP_DELETE(); } },
+		new Command(BKW_FTP_RMDIR)              { public boolean run() { return executeFTP_RMDIR(); } },
+		new Command(BKW_FTP_MKDIR)              { public boolean run() { return executeFTP_MKDIR(); } },
+		new Command(BKW_FTP_RENAME)             { public boolean run() { return executeFTP_RENAME(); } },
 	};
 
 	public FTPClient mFTPClient = null;
@@ -1504,44 +1958,64 @@ public class Run extends ListActivity {
     public static boolean btReadReady = false;
     public static int OnBTReadLine = 0;
 
+	private static final String BKW_BT_OPEN = "open";
+	private static final String BKW_BT_CLOSE = "close";
+	private static final String BKW_BT_STATUS = "status";
+	private static final String BKW_BT_CONNECT = "connect";
+	private static final String BKW_BT_DEVICE_NAME = "device.name";
+	private static final String BKW_BT_WRITE = "write";
+	private static final String BKW_BT_READ_READY = "read.ready";
+	private static final String BKW_BT_READ_BYTES = "read.bytes";
+	private static final String BKW_BT_SET_UUID = "set.uuid";
+	private static final String BKW_BT_LISTEN = "listen";
+	private static final String BKW_BT_RECONNECT = "reconnect";
+	private static final String BKW_BT_ONREADREADY_RESUME = "onreadready.resume";
+	private static final String BKW_BT_DISCONNECT = "disconnect";
+
 	private static final String bt_KW[] = {				// Bluetooth command list for Format
-		"open", "close", "status", 
-		"connect", "device.name",
-		"write", "read.ready", "read.bytes",
-		"set.uuid", "listen", "reconnect",
-		"onreadready.resume", "disconnect"
+		BKW_BT_OPEN, BKW_BT_CLOSE, BKW_BT_STATUS,
+		BKW_BT_CONNECT, BKW_BT_DEVICE_NAME,
+		BKW_BT_WRITE, BKW_BT_READ_READY, BKW_BT_READ_BYTES,
+		BKW_BT_SET_UUID, BKW_BT_LISTEN, BKW_BT_RECONNECT,
+		BKW_BT_ONREADREADY_RESUME, BKW_BT_DISCONNECT
 	};
 
 	private final Command[] bt_cmd = new Command[] {	// Map Bluetooth command keywords to their execution functions
-		new Command("open",   CID_OPEN)     { public boolean run() { return execute_BT_open(); } },
-		new Command("close")                { public boolean run() { return execute_BT_close(); } },
-		new Command("status", CID_STATUS)   { public boolean run() { return execute_BT_status(); } },
-		new Command("connect")              { public boolean run() { return execute_BT_connect(); } },
-		new Command("device.name")          { public boolean run() { return execute_BT_device_name(); } },
-		new Command("write")                { public boolean run() { return execute_BT_write(); } },
-		new Command("read.ready")           { public boolean run() { return execute_BT_read_ready(); } },
-		new Command("read.bytes")           { public boolean run() { return execute_BT_read_bytes(); } },
-		new Command("set.uuid")             { public boolean run() { return execute_BT_set_uuid(); } },
-		new Command("listen")               { public boolean run() { return execute_BT_listen(); } },
-		new Command("reconnect")            { public boolean run() { return execute_BT_reconnect(); } },
-		new Command("onreadready.resume")   { public boolean run() { return execute_BT_readReady_Resume(); } },
-		new Command("disconnect")           { public boolean run() { return execute_BT_disconnect(); } },
+		new Command(BKW_BT_OPEN,   CID_OPEN)    { public boolean run() { return execute_BT_open(); } },
+		new Command(BKW_BT_CLOSE)               { public boolean run() { return execute_BT_close(); } },
+		new Command(BKW_BT_STATUS, CID_STATUS)  { public boolean run() { return execute_BT_status(); } },
+		new Command(BKW_BT_CONNECT)             { public boolean run() { return execute_BT_connect(); } },
+		new Command(BKW_BT_DEVICE_NAME)         { public boolean run() { return execute_BT_device_name(); } },
+		new Command(BKW_BT_WRITE)               { public boolean run() { return execute_BT_write(); } },
+		new Command(BKW_BT_READ_READY)          { public boolean run() { return execute_BT_read_ready(); } },
+		new Command(BKW_BT_READ_BYTES)          { public boolean run() { return execute_BT_read_bytes(); } },
+		new Command(BKW_BT_SET_UUID)            { public boolean run() { return execute_BT_set_uuid(); } },
+		new Command(BKW_BT_LISTEN)              { public boolean run() { return execute_BT_listen(); } },
+		new Command(BKW_BT_RECONNECT)           { public boolean run() { return execute_BT_reconnect(); } },
+		new Command(BKW_BT_ONREADREADY_RESUME)  { public boolean run() { return execute_BT_readReady_Resume(); } },
+		new Command(BKW_BT_DISCONNECT)          { public boolean run() { return execute_BT_disconnect(); } },
 	};
 
 	/**************************************  Superuser and System  ***************************/
 
+	private static final String BKW_SU_OPEN = "open";
+	private static final String BKW_SU_WRITE = "write";
+	private static final String BKW_SU_READ_READY = "read.ready";
+	private static final String BKW_SU_READ_LINE = "read.line";
+	private static final String BKW_SU_CLOSE = "close";
+
 	private static final String su_KW[] = {				// Command list for Format
-		"open", "write", "read.ready",
-		"read.line", "close"
+		BKW_SU_OPEN, BKW_SU_WRITE, BKW_SU_READ_READY,
+		BKW_SU_READ_LINE, BKW_SU_CLOSE
 	};
 	private static final String[] System_KW = su_KW;	// Command list for Format
 
 	private final Command[] SU_cmd = new Command[] {	// Map SU/System command keywords to their execution functions
-		new Command("open", CID_OPEN)   { public boolean run() { return execute_SU_open(); } },
-		new Command("write")            { public boolean run() { return execute_SU_write(); } },
-		new Command("read.ready")       { public boolean run() { return execute_SU_read_ready(); } },
-		new Command("read.line")        { public boolean run() { return execute_SU_read_line(); } },
-		new Command("close")            { public boolean run() { return execute_SU_close(); } }
+		new Command(BKW_SU_OPEN, CID_OPEN)      { public boolean run() { return execute_SU_open(); } },
+		new Command(BKW_SU_WRITE)               { public boolean run() { return execute_SU_write(); } },
+		new Command(BKW_SU_READ_READY)          { public boolean run() { return execute_SU_read_ready(); } },
+		new Command(BKW_SU_READ_LINE)           { public boolean run() { return execute_SU_read_line(); } },
+		new Command(BKW_SU_CLOSE)               { public boolean run() { return execute_SU_close(); } }
 	};
 
     private boolean isSU = true;						// set true for SU commands, false for System commands
@@ -1553,26 +2027,41 @@ public class Run extends ListActivity {
 
 	/***************************************  SOUND POOL  ************************************/
 
+	private static final String BKW_SOUNDPOOL_OPEN = "open";
+	private static final String BKW_SOUNDPOOL_LOAD = "load";
+	private static final String BKW_SOUNDPOOL_PLAY = "play";
+	private static final String BKW_SOUNDPOOL_STOP = "stop";
+	private static final String BKW_SOUNDPOOL_UNLOAD = "unload";
+	private static final String BKW_SOUNDPOOL_PAUSE = "pause";
+	private static final String BKW_SOUNDPOOL_RESUME = "resume";
+	private static final String BKW_SOUNDPOOL_RELEASE = "release";
+	private static final String BKW_SOUNDPOOL_SETVOLUME = "setvolume";
+	private static final String BKW_SOUNDPOOL_SETPRIORITY = "setpriority";
+	private static final String BKW_SOUNDPOOL_SETLOOP = "setloop";
+	private static final String BKW_SOUNDPOOL_SETRATE = "setrate";
+
 	private static final String sp_KW[] = {				// Command list for Format
-		"open", "load", "play", "stop",
-		"unload", "pause", "resume", 
-		"release", "setvolume", "setpriority",
-		"setloop", "setrate"
+		BKW_SOUNDPOOL_OPEN, BKW_SOUNDPOOL_LOAD,
+		BKW_SOUNDPOOL_PLAY, BKW_SOUNDPOOL_STOP,
+		BKW_SOUNDPOOL_UNLOAD, BKW_SOUNDPOOL_PAUSE,
+		BKW_SOUNDPOOL_RESUME, BKW_SOUNDPOOL_RELEASE,
+		BKW_SOUNDPOOL_SETVOLUME, BKW_SOUNDPOOL_SETPRIORITY,
+		BKW_SOUNDPOOL_SETLOOP, BKW_SOUNDPOOL_SETRATE
 	};
 
 	private final Command[] sp_cmd = new Command[] {	// Map soundpool command keywords to their execution functions
-		new Command("open", CID_OPEN)   { public boolean run() { return execute_SP_open(); } },
-		new Command("load")             { public boolean run() { return execute_SP_load(); } },
-		new Command("play")             { public boolean run() { return execute_SP_play(); } },
-		new Command("stop")             { public boolean run() { return execute_SP_stop(); } },
-		new Command("unload")           { public boolean run() { return execute_SP_unload(); } },
-		new Command("pause")            { public boolean run() { return execute_SP_pause(); } },
-		new Command("resume")           { public boolean run() { return execute_SP_resume(); } },
-		new Command("release")          { public boolean run() { return execute_SP_release(); } },
-		new Command("setvolume")        { public boolean run() { return execute_SP_setvolume(); } },
-		new Command("setpriority")      { public boolean run() { return execute_SP_setpriority(); } },
-		new Command("setloop")          { public boolean run() { return execute_SP_setloop(); } },
-		new Command("setrate")          { public boolean run() { return execute_SP_setrate(); } },
+		new Command(BKW_SOUNDPOOL_OPEN, CID_OPEN)   { public boolean run() { return execute_SP_open(); } },
+		new Command(BKW_SOUNDPOOL_LOAD)             { public boolean run() { return execute_SP_load(); } },
+		new Command(BKW_SOUNDPOOL_PLAY)             { public boolean run() { return execute_SP_play(); } },
+		new Command(BKW_SOUNDPOOL_STOP)             { public boolean run() { return execute_SP_stop(); } },
+		new Command(BKW_SOUNDPOOL_UNLOAD)           { public boolean run() { return execute_SP_unload(); } },
+		new Command(BKW_SOUNDPOOL_PAUSE)            { public boolean run() { return execute_SP_pause(); } },
+		new Command(BKW_SOUNDPOOL_RESUME)           { public boolean run() { return execute_SP_resume(); } },
+		new Command(BKW_SOUNDPOOL_RELEASE)          { public boolean run() { return execute_SP_release(); } },
+		new Command(BKW_SOUNDPOOL_SETVOLUME)        { public boolean run() { return execute_SP_setvolume(); } },
+		new Command(BKW_SOUNDPOOL_SETPRIORITY)      { public boolean run() { return execute_SP_setpriority(); } },
+		new Command(BKW_SOUNDPOOL_SETLOOP)          { public boolean run() { return execute_SP_setloop(); } },
+		new Command(BKW_SOUNDPOOL_SETRATE)          { public boolean run() { return execute_SP_setrate(); } },
 	};
 
 	public static SoundPool theSoundPool ;
@@ -1585,27 +2074,39 @@ public class Run extends ListActivity {
 
 	//******************* html Vars ******************************************
 
+	private static final String BKW_HTML_OPEN = "open";
+	private static final String BKW_HTML_ORIENTATION = "orientation";
+	private static final String BKW_HTML_LOAD_URL = "load.url";
+	private static final String BKW_HTML_LOAD_STRING = "load.string";
+	private static final String BKW_HTML_GET_DATALINK = "get.datalink";
+	private static final String BKW_HTML_CLOSE = "close";
+	private static final String BKW_HTML_GO_BACK = "go.back";
+	private static final String BKW_HTML_GO_FORWARD = "go.forward";
+	private static final String BKW_HTML_CLEAR_CACHE = "clear.cache";
+	private static final String BKW_HTML_CLEAR_HISTORY = "clear.history";
+	private static final String BKW_HTML_POST = "post";
+
 	private static final String html_KW[] = {			// Command list for Format
-		"open", "orientation",
-		"load.url", "load.string",
-		"get.datalink", "close" , "go.back",
-		"go.forward", "clear.cache", 
-		"clear.history", "post"
+		BKW_HTML_OPEN, BKW_HTML_ORIENTATION,
+		BKW_HTML_LOAD_URL, BKW_HTML_LOAD_STRING,
+		BKW_HTML_GET_DATALINK, BKW_HTML_CLOSE, BKW_HTML_GO_BACK,
+		BKW_HTML_GO_FORWARD, BKW_HTML_CLEAR_CACHE,
+		BKW_HTML_CLEAR_HISTORY, BKW_HTML_POST
 	};
 
 	private final Command[] html_cmd = new Command[] {	// Map HTML command keywords to their execution functions
-		new Command("open", CID_OPEN)   { public boolean run() { return execute_html_open(); } },
-		new Command("orientation")      { public boolean run() { return execute_html_orientation(); } },
-		new Command("load.url")         { public boolean run() { return execute_html_load_url(); } },
-		new Command("load.string")      { public boolean run() { return execute_html_load_string(); } },
-		new Command("get.datalink",
-						CID_DATALINK)   { public boolean run() { return execute_html_get_datalink(); } },
-		new Command("close", CID_CLOSE) { public boolean run() { return execute_html_close(); } },
-		new Command("go.back")          { public boolean run() { return execute_html_go_back(); } },
-		new Command("go.forward")       { public boolean run() { return execute_html_go_forward(); } },
-		new Command("clear.cache")      { public boolean run() { return execute_html_clear_cache(); } },
-		new Command("clear.history")    { public boolean run() { return execute_html_clear_history(); } },
-		new Command("post")             { public boolean run() { return execute_html_post(); } },
+		new Command(BKW_HTML_OPEN, CID_OPEN)    { public boolean run() { return execute_html_open(); } },
+		new Command(BKW_HTML_ORIENTATION)       { public boolean run() { return execute_html_orientation(); } },
+		new Command(BKW_HTML_LOAD_URL)          { public boolean run() { return execute_html_load_url(); } },
+		new Command(BKW_HTML_LOAD_STRING)       { public boolean run() { return execute_html_load_string(); } },
+		new Command(BKW_HTML_GET_DATALINK,
+						CID_DATALINK)           { public boolean run() { return execute_html_get_datalink(); } },
+		new Command(BKW_HTML_CLOSE, CID_CLOSE)  { public boolean run() { return execute_html_close(); } },
+		new Command(BKW_HTML_GO_BACK)           { public boolean run() { return execute_html_go_back(); } },
+		new Command(BKW_HTML_GO_FORWARD)        { public boolean run() { return execute_html_go_forward(); } },
+		new Command(BKW_HTML_CLEAR_CACHE)       { public boolean run() { return execute_html_clear_cache(); } },
+		new Command(BKW_HTML_CLEAR_HISTORY)     { public boolean run() { return execute_html_clear_history(); } },
+		new Command(BKW_HTML_POST)              { public boolean run() { return execute_html_post(); } },
 	};
 
 	// Message types for the HTML commands
@@ -1626,14 +2127,18 @@ public class Run extends ListActivity {
 
 	//********************* SMS Vars ***********************************
 
+	private static final String BKW_SMS_RCV_INIT = "rcv.init";
+	private static final String BKW_SMS_RCV_NEXT = "rcv.next";
+	private static final String BKW_SMS_SEND = "send";
+
 	private static final String SMS_KW[] = {			// Command list for Format
-		"rcv.init", "rcv.next", "send"
+		BKW_SMS_RCV_INIT, BKW_SMS_RCV_NEXT, BKW_SMS_SEND
 	};
 
 	private final Command[] sms_cmd = new Command[] {	// Map SMS command keywords to their execution functions
-		new Command("rcv.init")         { public boolean run() { return executeSMS_RCV_INIT(); } },
-		new Command("rcv.next")         { public boolean run() { return executeSMS_RCV_NEXT(); } },
-		new Command("send")             { public boolean run() { return executeSMS_SEND(); } }
+		new Command(BKW_SMS_RCV_INIT)           { public boolean run() { return executeSMS_RCV_INIT(); } },
+		new Command(BKW_SMS_RCV_NEXT)           { public boolean run() { return executeSMS_RCV_NEXT(); } },
+		new Command(BKW_SMS_SEND)               { public boolean run() { return executeSMS_SEND(); } }
 	};
 
 	public static ArrayList <String> smsRcvBuffer;
@@ -1647,14 +2152,18 @@ public class Run extends ListActivity {
 
 	// ******************** Timer Variables *******************************
 
+	private static final String BKW_TIMER_SET = "set";
+	private static final String BKW_TIMER_CLEAR = "clear";
+	private static final String BKW_TIMER_RESUME = "resume";
+
 	private static final String Timer_KW[] = {			// Command list for Format
-		"set", "clear", "resume"
+		BKW_TIMER_SET, BKW_TIMER_CLEAR, BKW_TIMER_RESUME
 	};
 
 	private final Command[] Timer_cmd = new Command[] {	// Map Timer command keywords to their execution functions
-		new Command("set")              { public boolean run() { return executeTIMER_SET(); } },
-		new Command("clear")            { public boolean run() { return executeTIMER_CLEAR(); } },
-		new Command("resume")           { public boolean run() { return executeTIMER_RESUME(); } }
+		new Command(BKW_TIMER_SET)              { public boolean run() { return executeTIMER_SET(); } },
+		new Command(BKW_TIMER_CLEAR)            { public boolean run() { return executeTIMER_CLEAR(); } },
+		new Command(BKW_TIMER_RESUME)           { public boolean run() { return executeTIMER_RESUME(); } }
 	};
 
 	public static int OnTimerLine;
@@ -1664,28 +2173,36 @@ public class Run extends ListActivity {
 
 	// ******************** TimeZone Variables *******************************
 
+	private static final String BKW_TIMEZONE_SET = "set";
+	private static final String BKW_TIMEZONE_GET = "get";
+	private static final String BKW_TIMEZONE_LIST = "list";
+
 	private static final String TimeZone_KW[] = {		// Command list for Format
-		"set", "get", "list"
+		BKW_TIMEZONE_SET, BKW_TIMEZONE_GET, BKW_TIMEZONE_LIST
 	};
 
 	private final Command[] TimeZone_cmd = new Command[] {	// Map TimeZone command keywords to their execution functions
-		new Command("set")              { public boolean run() { return executeTIMEZONE_SET(); } },
-		new Command("get")              { public boolean run() { return executeTIMEZONE_GET(); } },
-		new Command("list")             { public boolean run() { return executeTIMEZONE_LIST(); } }
+		new Command(BKW_TIMEZONE_SET)           { public boolean run() { return executeTIMEZONE_SET(); } },
+		new Command(BKW_TIMEZONE_GET)           { public boolean run() { return executeTIMEZONE_GET(); } },
+		new Command(BKW_TIMEZONE_LIST)          { public boolean run() { return executeTIMEZONE_LIST(); } }
 	};
 
 	public String theTimeZone = "";
 
 	//************************ Phone variables ***************************
 
+	private static final String BKW_PHONE_CALL = "call";
+	private static final String BKW_PHONE_RCV_INIT = "rcv.init";
+	private static final String BKW_PHONE_RCV_NEXT = "rcv.next";
+
 	private static final String phone_KW[] = {			// Command list for Format
-		"call", "rcv.init", "rcv.next"
+		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT
 	};
 
 	private final Command[] phone_cmd = new Command[] {	// Map phone command keywords to their execution functions
-		new Command("call")             { public boolean run() { return executePHONE_CALL(); } },
-		new Command("rcv.init")         { public boolean run() { return executePHONE_RCV_INIT(); } },
-		new Command("rcv.next")         { public boolean run() { return executePHONE_RCV_NEXT(); } }
+		new Command(BKW_PHONE_CALL)             { public boolean run() { return executePHONE_CALL(); } },
+		new Command(BKW_PHONE_RCV_INIT)         { public boolean run() { return executePHONE_RCV_INIT(); } },
+		new Command(BKW_PHONE_RCV_NEXT)         { public boolean run() { return executePHONE_RCV_NEXT(); } }
 	};
 
 	public static int phoneState = 0;
@@ -4602,7 +5119,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
         	default:														 			// format character not # or %
         		if (blanks){												 			// if doing blanks
         		if (VWI>=0){Temp = Temp + c;}								 			// if more digits, output char
-        		else if (VWI == -1) {Temp = Temp + Header + " "; --VWI;}	 			// if just now ran out, 
+        		else if (VWI == -1) {Temp = Temp + Header + " "; --VWI;}	 			// if just now ran out,
         																	 			// output header and blank
         		else { Temp = Temp + " ";}									 			// else just a blank
         		} else{ Temp = Temp + c;									 			// not blanks, output the char
