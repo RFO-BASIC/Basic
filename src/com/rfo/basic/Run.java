@@ -64,6 +64,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.Stack;
@@ -431,10 +432,11 @@ public class Run extends ListActivity {
 	private final int CID_SKIP_TO_ELSE  = 1;	// Ok to execute when skipping to ELSE or ENDIF
 	private final int CID_SKIP_TO_ENDIF = 2;	// Ok to execute when skipping to ENDIF
 	/* Other markers to make special-case handling faster */
-	private final int CID_OPEN = 3;
-	private final int CID_CLOSE = 4;
-	private final int CID_STATUS = 5;
-	private final int CID_DATALINK = 6;
+	private final int CID_GROUP = 3;
+	private final int CID_OPEN = 4;
+	private final int CID_CLOSE = 5;
+	private final int CID_STATUS = 6;
+	private final int CID_DATALINK = 7;
 
 	/* Special case: need a reference to LET */
 	private final Command CMD_LET = new Command(BKW_LET) { public boolean run() { return executeLET(); } };
@@ -447,114 +449,114 @@ public class Run extends ListActivity {
 		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
 		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
 		new Command(BKW_ELSE,   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
-		new Command(BKW_PRINT)            { public boolean run() { return executePRINT(); } },
-		new Command(BKW_FOR)              { public boolean run() { return executeFOR(); } },
-		new Command(BKW_NEXT)             { public boolean run() { return executeNEXT(); } },
-		new Command(BKW_WHILE)            { public boolean run() { return executeWHILE(); } },
-		new Command(BKW_REPEAT)           { public boolean run() { return executeREPEAT(); } },
-		new Command(BKW_DO)               { public boolean run() { return executeDO(); } },
-		new Command(BKW_UNTIL)            { public boolean run() { return executeUNTIL(); } },
-		new Command(BKW_F_N_BREAK)        { public boolean run() { return executeF_N_BREAK(); } },
-		new Command(BKW_W_R_BREAK)        { public boolean run() { return executeW_R_BREAK(); } },
-		new Command(BKW_D_U_BREAK)        { public boolean run() { return executeD_U_BREAK(); } },
-		new Command(BKW_F_N_CONTINUE)     { public boolean run() { return executeF_N_CONTINUE(); } },
-		new Command(BKW_W_R_CONTINUE)     { public boolean run() { return executeW_R_CONTINUE(); } },
-		new Command(BKW_D_U_CONTINUE)     { public boolean run() { return executeD_U_CONTINUE(); } },
-		new Command(BKW_SW_GROUP)         { public boolean run() { return executeSW(); } },
-		new Command(BKW_FN_GROUP)         { public boolean run() { return executeFN(); } },
-		new Command(BKW_CALL)             { public boolean run() { return executeCALL(); } },
-		new Command(BKW_GOTO)             { public boolean run() { return executeGOTO(); } },
-		new Command(BKW_GOSUB)            { public boolean run() { return executeGOSUB(); } },
-		new Command(BKW_RETURN)           { public boolean run() { return executeRETURN(); } },
-		new Command(BKW_GR_GROUP)         { public boolean run() { return executeGR(); } },
-		new Command(BKW_DIM)              { public boolean run() { return executeDIM(); } },
-		new Command(BKW_UNDIM)            { public boolean run() { return executeUNDIM(); } },
-		new Command(BKW_ARRAY_GROUP)      { public boolean run() { return executeARRAY(); } },
-		new Command(BKW_BUNDLE_GROUP)     { public boolean run() { return executeBUNDLE(); } },
-		new Command(BKW_LIST_GROUP)       { public boolean run() { return executeLIST(); } },
-		new Command(BKW_STACK_GROUP)      { public boolean run() { return executeSTACK(); } },
-		new Command(BKW_INKEY)            { public boolean run() { return executeINKEY(); } },
-		new Command(BKW_INPUT)            { public boolean run() { return executeINPUT(); } },
-		new Command(BKW_SELECT)           { public boolean run() { return executeSELECT(); } },
-		new Command(BKW_TGET)             { public boolean run() { return executeTGET(); } },
-		new Command(BKW_FILE_GROUP)       { public boolean run() { return executeFILE(); } },
-		new Command(BKW_TEXT_GROUP)       { public boolean run() { return executeTEXT(); } },
-		new Command(BKW_BYTE_GROUP)       { public boolean run() { return executeBYTE(); } },
-		new Command(BKW_READ_GROUP)       { public boolean run() { return executeREAD(); } },
-		new Command(BKW_DIR)              { public boolean run() { return executeDIR(); } },
-		new Command(BKW_MKDIR)            { public boolean run() { return executeMKDIR(); } },
-		new Command(BKW_RENAME)           { public boolean run() { return executeRENAME(); } },
-		new Command(BKW_GRABFILE)         { public boolean run() { return executeGRABFILE(); } },
-		new Command(BKW_GRABURL)          { public boolean run() { return executeGRABURL(); } },
-		new Command(BKW_BROWSE)           { public boolean run() { return executeBROWSE(); } },
-		new Command(BKW_BT_GROUP)         { public boolean run() { return executeBT(); } },
-		new Command(BKW_FTP_GROUP)        { public boolean run() { return executeFTP(); } },
-		new Command(BKW_HTML_GROUP)       { public boolean run() { return executeHTML(); } },
-		new Command(BKW_HTTP_POST)        { public boolean run() { return executeHTTP_POST(); } },
-		new Command(BKW_SOCKET_GROUP)     { public boolean run() { return executeSOCKET(); } },
-		new Command(BKW_SQL_GROUP)        { public boolean run() { return executeSQL(); } },
-		new Command(BKW_GPS_GROUP)        { public boolean run() { return executeGPS(); } },
-		new Command(BKW_POPUP)            { public boolean run() { return executePOPUP(); } },
-		new Command(BKW_SENSORS_GROUP)    { public boolean run() { return executeSENSORS(); } },
-		new Command(BKW_AUDIO_GROUP)      { public boolean run() { return executeAUDIO(); } },
-		new Command(BKW_SOUNDPOOL_GROUP)  { public boolean run() { return executeSOUNDPOOL(); } },
-		new Command(BKW_TONE)             { public boolean run() { return executeTONE(); } },
-		new Command(BKW_CLIPBOARD_GET)    { public boolean run() { return executeCLIPBOARD_GET(); } },
-		new Command(BKW_CLIPBOARD_PUT)    { public boolean run() { return executeCLIPBOARD_PUT(); } },
-		new Command(BKW_ENCRYPT)          { public boolean run() { return executeENCRYPT(); } },
-		new Command(BKW_DECRYPT)          { public boolean run() { return executeDECRYPT(); } },
-		new Command(BKW_SWAP)             { public boolean run() { return executeSWAP(); } },
-		new Command(BKW_SPLIT_ALL)        { public boolean run() { return executeSPLIT(-1); } },
-		new Command(BKW_SPLIT)            { public boolean run() { return executeSPLIT(0); } },
-		new Command(BKW_CLS)              { public boolean run() { return executeCLS(); } },
-		new Command(BKW_CONSOLE_GROUP)    { public boolean run() { return executeCONSOLE(); } },
-		new Command(BKW_DEBUG_GROUP)      { public boolean run() { return executeDEBUG(); } },
-		new Command(BKW_DEVICE)           { public boolean run() { return executeDEVICE(); } },
-		new Command(BKW_ECHO_ON)          { public boolean run() { return executeECHO_ON(); } },
-		new Command(BKW_ECHO_OFF)         { public boolean run() { return executeECHO_OFF(); } },
-		new Command(BKW_KB_TOGGLE)        { public boolean run() { return executeKB_TOGGLE(); } },
-		new Command(BKW_KB_HIDE)          { public boolean run() { return executeKB_HIDE(); } },
-		new Command(BKW_NOTIFY)           { public boolean run() { return executeNOTIFY(); } },
-		new Command(BKW_RUN)              { public boolean run() { return executeRUN(); } },
-		new Command(BKW_EMPTY_PROGRAM)    { public boolean run() { return executeEMPTY_PROGRAM(); } },
-		new Command(BKW_SU_GROUP)         { public boolean run() { return executeSU(true); } },
-		new Command(BKW_SYSTEM_GROUP)     { public boolean run() { return executeSU(false); } },
-		new Command(BKW_STT_LISTEN)       { public boolean run() { return executeSTT_LISTEN(); } },
-		new Command(BKW_STT_RESULTS)      { public boolean run() { return executeSTT_RESULTS(); } },
-		new Command(BKW_TTS_GROUP)        { public boolean run() { return executeTTS(); } },
-		new Command(BKW_TIMER_GROUP)      { public boolean run() { return executeTIMER(); } },
-		new Command(BKW_TIMEZONE_GROUP)   { public boolean run() { return executeTIMEZONE(); } },
-		new Command(BKW_TIME)             { public boolean run() { return executeTIME(); } },
-		new Command(BKW_VIBRATE)          { public boolean run() { return executeVIBRATE(); } },
-		new Command(BKW_WAKELOCK)         { public boolean run() { return executeWAKELOCK(); } },
-		new Command(BKW_WIFILOCK)         { public boolean run() { return executeWIFILOCK(); } },
-		new Command(BKW_END)              { public boolean run() { return executeEND(); } },
-		new Command(BKW_EXIT)             { public boolean run() { Stop = Exit = true; return true; } },
-		new Command(BKW_HOME)             { public boolean run() { return executeHOME(); } },
-		new Command(BKW_INCLUDE)          { public boolean run() { return true; } },
-		new Command(BKW_PAUSE)            { public boolean run() { return executePAUSE(); } },
-		new Command(BKW_REM)              { public boolean run() { return true; } },
-		new Command(BKW_HEADSET)          { public boolean run() { return executeHEADSET(); } },
-		new Command(BKW_MYPHONENUMBER)    { public boolean run() { return executeMYPHONENUMBER(); } },
-		new Command(BKW_EMAIL_SEND)       { public boolean run() { return executeEMAIL_SEND(); } },
-		new Command(BKW_PHONE_GROUP)      { public boolean run() { return executePHONE(); } },
-		new Command(BKW_SMS_GROUP)        { public boolean run() { return executeSMS(); } },
+		new Command(BKW_PRINT)                  { public boolean run() { return executePRINT(); } },
+		new Command(BKW_FOR)                    { public boolean run() { return executeFOR(); } },
+		new Command(BKW_NEXT)                   { public boolean run() { return executeNEXT(); } },
+		new Command(BKW_WHILE)                  { public boolean run() { return executeWHILE(); } },
+		new Command(BKW_REPEAT)                 { public boolean run() { return executeREPEAT(); } },
+		new Command(BKW_DO)                     { public boolean run() { return executeDO(); } },
+		new Command(BKW_UNTIL)                  { public boolean run() { return executeUNTIL(); } },
+		new Command(BKW_F_N_BREAK)              { public boolean run() { return executeF_N_BREAK(); } },
+		new Command(BKW_W_R_BREAK)              { public boolean run() { return executeW_R_BREAK(); } },
+		new Command(BKW_D_U_BREAK)              { public boolean run() { return executeD_U_BREAK(); } },
+		new Command(BKW_F_N_CONTINUE)           { public boolean run() { return executeF_N_CONTINUE(); } },
+		new Command(BKW_W_R_CONTINUE)           { public boolean run() { return executeW_R_CONTINUE(); } },
+		new Command(BKW_D_U_CONTINUE)           { public boolean run() { return executeD_U_CONTINUE(); } },
+		new Command(BKW_SW_GROUP, CID_GROUP)    { public boolean run() { return executeSW(); } },
+		new Command(BKW_FN_GROUP, CID_GROUP)    { public boolean run() { return executeFN(); } },
+		new Command(BKW_CALL)                   { public boolean run() { return executeCALL(); } },
+		new Command(BKW_GOTO)                   { public boolean run() { return executeGOTO(); } },
+		new Command(BKW_GOSUB)                  { public boolean run() { return executeGOSUB(); } },
+		new Command(BKW_RETURN)                 { public boolean run() { return executeRETURN(); } },
+		new Command(BKW_GR_GROUP, CID_GROUP)    { public boolean run() { return executeGR(); } },
+		new Command(BKW_DIM)                    { public boolean run() { return executeDIM(); } },
+		new Command(BKW_UNDIM)                  { public boolean run() { return executeUNDIM(); } },
+		new Command(BKW_ARRAY_GROUP, CID_GROUP) { public boolean run() { return executeARRAY(); } },
+		new Command(BKW_BUNDLE_GROUP,CID_GROUP) { public boolean run() { return executeBUNDLE(); } },
+		new Command(BKW_LIST_GROUP,  CID_GROUP) { public boolean run() { return executeLIST(); } },
+		new Command(BKW_STACK_GROUP, CID_GROUP) { public boolean run() { return executeSTACK(); } },
+		new Command(BKW_INKEY)                  { public boolean run() { return executeINKEY(); } },
+		new Command(BKW_INPUT)                  { public boolean run() { return executeINPUT(); } },
+		new Command(BKW_SELECT)                 { public boolean run() { return executeSELECT(); } },
+		new Command(BKW_TGET)                   { public boolean run() { return executeTGET(); } },
+		new Command(BKW_FILE_GROUP, CID_GROUP)  { public boolean run() { return executeFILE(); } },
+		new Command(BKW_TEXT_GROUP, CID_GROUP)  { public boolean run() { return executeTEXT(); } },
+		new Command(BKW_BYTE_GROUP, CID_GROUP)  { public boolean run() { return executeBYTE(); } },
+		new Command(BKW_READ_GROUP, CID_GROUP)  { public boolean run() { return executeREAD(); } },
+		new Command(BKW_DIR)                    { public boolean run() { return executeDIR(); } },
+		new Command(BKW_MKDIR)                  { public boolean run() { return executeMKDIR(); } },
+		new Command(BKW_RENAME)                 { public boolean run() { return executeRENAME(); } },
+		new Command(BKW_GRABFILE)               { public boolean run() { return executeGRABFILE(); } },
+		new Command(BKW_GRABURL)                { public boolean run() { return executeGRABURL(); } },
+		new Command(BKW_BROWSE)                 { public boolean run() { return executeBROWSE(); } },
+		new Command(BKW_BT_GROUP, CID_GROUP)    { public boolean run() { return executeBT(); } },
+		new Command(BKW_FTP_GROUP, CID_GROUP)   { public boolean run() { return executeFTP(); } },
+		new Command(BKW_HTML_GROUP, CID_GROUP)  { public boolean run() { return executeHTML(); } },
+		new Command(BKW_HTTP_POST)              { public boolean run() { return executeHTTP_POST(); } },
+		new Command(BKW_SOCKET_GROUP,CID_GROUP) { public boolean run() { return executeSOCKET(); } },
+		new Command(BKW_SQL_GROUP, CID_GROUP)   { public boolean run() { return executeSQL(); } },
+		new Command(BKW_GPS_GROUP, CID_GROUP)   { public boolean run() { return executeGPS(); } },
+		new Command(BKW_POPUP)                  { public boolean run() { return executePOPUP(); } },
+		new Command(BKW_SENSORS_GROUP,CID_GROUP){ public boolean run() { return executeSENSORS(); } },
+		new Command(BKW_AUDIO_GROUP, CID_GROUP) { public boolean run() { return executeAUDIO(); } },
+		new Command(BKW_SOUNDPOOL_GROUP,CID_GROUP){ public boolean run() { return executeSOUNDPOOL(); } },
+		new Command(BKW_TONE)                   { public boolean run() { return executeTONE(); } },
+		new Command(BKW_CLIPBOARD_GET)          { public boolean run() { return executeCLIPBOARD_GET(); } },
+		new Command(BKW_CLIPBOARD_PUT)          { public boolean run() { return executeCLIPBOARD_PUT(); } },
+		new Command(BKW_ENCRYPT)                { public boolean run() { return executeENCRYPT(); } },
+		new Command(BKW_DECRYPT)                { public boolean run() { return executeDECRYPT(); } },
+		new Command(BKW_SWAP)                   { public boolean run() { return executeSWAP(); } },
+		new Command(BKW_SPLIT_ALL)              { public boolean run() { return executeSPLIT(-1); } },
+		new Command(BKW_SPLIT)                  { public boolean run() { return executeSPLIT(0); } },
+		new Command(BKW_CLS)                    { public boolean run() { return executeCLS(); } },
+		new Command(BKW_CONSOLE_GROUP,CID_GROUP){ public boolean run() { return executeCONSOLE(); } },
+		new Command(BKW_DEBUG_GROUP, CID_GROUP) { public boolean run() { return executeDEBUG(); } },
+		new Command(BKW_DEVICE)                 { public boolean run() { return executeDEVICE(); } },
+		new Command(BKW_ECHO_ON)                { public boolean run() { return executeECHO_ON(); } },
+		new Command(BKW_ECHO_OFF)               { public boolean run() { return executeECHO_OFF(); } },
+		new Command(BKW_KB_TOGGLE)              { public boolean run() { return executeKB_TOGGLE(); } },
+		new Command(BKW_KB_HIDE)                { public boolean run() { return executeKB_HIDE(); } },
+		new Command(BKW_NOTIFY)                 { public boolean run() { return executeNOTIFY(); } },
+		new Command(BKW_RUN)                    { public boolean run() { return executeRUN(); } },
+		new Command(BKW_EMPTY_PROGRAM)          { public boolean run() { return executeEMPTY_PROGRAM(); } },
+		new Command(BKW_SU_GROUP, CID_GROUP)    { public boolean run() { return executeSU(true); } },
+		new Command(BKW_SYSTEM_GROUP,CID_GROUP) { public boolean run() { return executeSU(false); } },
+		new Command(BKW_STT_LISTEN)             { public boolean run() { return executeSTT_LISTEN(); } },
+		new Command(BKW_STT_RESULTS)            { public boolean run() { return executeSTT_RESULTS(); } },
+		new Command(BKW_TTS_GROUP, CID_GROUP)   { public boolean run() { return executeTTS(); } },
+		new Command(BKW_TIMER_GROUP, CID_GROUP) { public boolean run() { return executeTIMER(); } },
+		new Command(BKW_TIMEZONE_GROUP,CID_GROUP){ public boolean run() { return executeTIMEZONE(); } },
+		new Command(BKW_TIME)                   { public boolean run() { return executeTIME(); } },
+		new Command(BKW_VIBRATE)                { public boolean run() { return executeVIBRATE(); } },
+		new Command(BKW_WAKELOCK)               { public boolean run() { return executeWAKELOCK(); } },
+		new Command(BKW_WIFILOCK)               { public boolean run() { return executeWIFILOCK(); } },
+		new Command(BKW_END)                    { public boolean run() { return executeEND(); } },
+		new Command(BKW_EXIT)                   { public boolean run() { Stop = Exit = true; return true; } },
+		new Command(BKW_HOME)                   { public boolean run() { return executeHOME(); } },
+		new Command(BKW_INCLUDE)                { public boolean run() { return true; } },
+		new Command(BKW_PAUSE)                  { public boolean run() { return executePAUSE(); } },
+		new Command(BKW_REM)                    { public boolean run() { return true; } },
+		new Command(BKW_HEADSET)                { public boolean run() { return executeHEADSET(); } },
+		new Command(BKW_MYPHONENUMBER)          { public boolean run() { return executeMYPHONENUMBER(); } },
+		new Command(BKW_EMAIL_SEND)             { public boolean run() { return executeEMAIL_SEND(); } },
+		new Command(BKW_PHONE_GROUP, CID_GROUP) { public boolean run() { return executePHONE(); } },
+		new Command(BKW_SMS_GROUP, CID_GROUP)   { public boolean run() { return executeSMS(); } },
 
-		new Command(BKW_BACK_RESUME)      { public boolean run() { return executeBACK_RESUME(); } },
-		new Command(BKW_BACKGROUND_RESUME) { public boolean run() { return executeBACKGROUND_RESUME(); } },
-		new Command(BKW_CONSOLETOUCH_RESUME) { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
-		new Command(BKW_KEY_RESUME)       { public boolean run() { return executeKEY_RESUME(); } },
-		new Command(BKW_MENUKEY_RESUME)   { public boolean run() { return executeMENUKEY_RESUME(); } },
+		new Command(BKW_BACK_RESUME)            { public boolean run() { return executeBACK_RESUME(); } },
+		new Command(BKW_BACKGROUND_RESUME)      { public boolean run() { return executeBACKGROUND_RESUME(); } },
+		new Command(BKW_CONSOLETOUCH_RESUME)    { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
+		new Command(BKW_KEY_RESUME)             { public boolean run() { return executeKEY_RESUME(); } },
+		new Command(BKW_MENUKEY_RESUME)         { public boolean run() { return executeMENUKEY_RESUME(); } },
 
-		new Command(BKW_ONERROR)          { public boolean run() { return true; } },
-		new Command(BKW_ONBACKKEY)        { public boolean run() { return true; } },
-		new Command(BKW_ONBACKGROUND)     { public boolean run() { return true; } },
-		new Command(BKW_ONBTREADREADY)    { public boolean run() { return true; } },
-		new Command(BKW_ONCONSOLETOUCH)   { public boolean run() { return true; } },
-		new Command(BKW_ONGRTOUCH)        { public boolean run() { return true; } },
-		new Command(BKW_ONKEYPRESS)       { public boolean run() { return true; } },
-		new Command(BKW_ONMENUKEY)        { public boolean run() { return true; } },
-		new Command(BKW_ONTIMER)          { public boolean run() { return true; } },
+		new Command(BKW_ONERROR)                { public boolean run() { return true; } },
+		new Command(BKW_ONBACKKEY)              { public boolean run() { return true; } },
+		new Command(BKW_ONBACKGROUND)           { public boolean run() { return true; } },
+		new Command(BKW_ONBTREADREADY)          { public boolean run() { return true; } },
+		new Command(BKW_ONCONSOLETOUCH)         { public boolean run() { return true; } },
+		new Command(BKW_ONGRTOUCH)              { public boolean run() { return true; } },
+		new Command(BKW_ONKEYPRESS)             { public boolean run() { return true; } },
+		new Command(BKW_ONMENUKEY)              { public boolean run() { return true; } },
+		new Command(BKW_ONTIMER)                { public boolean run() { return true; } },
 	};
 
 	private String PossibleKeyWord = "";						// Used when TO, STEP, THEN are expected
@@ -598,79 +600,133 @@ public class Run extends ListActivity {
 		return keywordLists;
 	}
 
-    // **************** The variables for the math function names ************************
+	// **************** The variables for the math function names ************************
 
-    public static final String MathFunctions[] = {
-    	"sin(", "cos(", "tan(",
-    	"sqr(", "abs(", "rnd(",
-    	"val(", "len(", "acos(",
-    	"asin(", "atan2(", "ceil(",
-    	"floor(", "mod(", "log(",
-    	"round(", "toradians(", "todegrees(",
-    	"time(", "exp(",
-    	"is_in(", "clock(",
-    	"bor(", "band(", "bxor(",
-    	"gr_collision(",
-    	"ascii(", "starts_with(", "ends_with(",
-    	"hex(", "oct(", "bin(", "shift(",
-    	"randomize(", "background(",
-    	"atan(", "cbrt(", "cosh(", "hypot(",
-    	"sinh(", "pow(", "log10(",
-    	"ucode(", "pi(", "min(", "max(",		// pi, min, max: new/2013-07-29 gt
-    	"int(", "frac(", "sgn(",				// int, frac, sgn: new/2014-03-16 gt
-    };
+	private static final String MF_ABS = "abs(";
+	private static final String MF_ACOS = "acos(";
+	private static final String MF_ASCII = "ascii(";
+	private static final String MF_ASIN = "asin(";
+	private static final String MF_ATAN = "atan(";
+	private static final String MF_ATAN2 = "atan2(";
+	private static final String MF_BACKGROUND = "background(";
+	private static final String MF_BAND = "band(";
+	private static final String MF_BIN = "bin(";
+	private static final String MF_BOR = "bor(";
+	private static final String MF_BXOR = "bxor(";
+	private static final String MF_CBRT = "cbrt(";
+	private static final String MF_CEIL = "ceil(";
+	private static final String MF_CLOCK = "clock(";
+	private static final String MF_COS = "cos(";
+	private static final String MF_COSH = "cosh(";
+	private static final String MF_ENDS_WITH = "ends_with(";
+	private static final String MF_EXP = "exp(";
+	private static final String MF_FLOOR = "floor(";
+	private static final String MF_FRAC = "frac(";		// new/2014-03-16 gt
+	private static final String MF_GR_COLLISION = "gr_collision(";
+	private static final String MF_HEX = "hex(";
+	private static final String MF_HYPOT = "hypot(";
+	private static final String MF_INT = "int(";		// new/2014-03-16 gt
+	private static final String MF_IS_IN = "is_in(";
+	private static final String MF_LEN = "len(";
+	private static final String MF_LOG = "log(";
+	private static final String MF_LOG10 = "log10(";
+	private static final String MF_MAX = "max(";		// new/2013-07-29 gt
+	private static final String MF_MIN = "min(";		// new/2013-07-29 gt
+	private static final String MF_MOD = "mod(";
+	private static final String MF_OCT = "oct(";
+	private static final String MF_PI = "pi(";			// new/2013-07-29 gt
+	private static final String MF_POW = "pow(";
+	private static final String MF_RANDOMIZE = "randomize(";
+	private static final String MF_RND = "rnd(";
+	private static final String MF_ROUND = "round(";
+	private static final String MF_SGN = "sgn(";		// new/2014-03-16 gt
+	private static final String MF_SHIFT = "shift(";
+	private static final String MF_SIN = "sin(";
+	private static final String MF_SINH = "sinh(";
+	private static final String MF_SQR = "sqr(";
+	private static final String MF_STARTS_WITH = "starts_with(";
+	private static final String MF_TAN = "tan(";
+	private static final String MF_TIME = "time(";
+	private static final String MF_TODEGREES = "todegrees(";
+	private static final String MF_TORADIANS = "toradians(";
+	private static final String MF_UCODE = "ucode(";
+	private static final String MF_VAL = "val(";
 
-    private static final int MFsin = 0;			// Enumerated name for the Match Functions
-    private static final int MFcos = 1;
-    private static final int MFtan = 2;
-    private static final int MFsqr = 3;
-    private static final int MFabs = 4;
-    private static final int MFrnd = 5;
-    private static final int MFval = 6;
-    private static final int MFlen = 7;
-    private static final int MFacos = 8;
-    private static final int MFasin = 9;
-    private static final int MFatan2 = 10;
-    private static final int MFceil = 11;
-    private static final int MFfloor = 12;
-    private static final int MFmod = 13;
-    private static final int MFlog = 14;
-    private static final int MFround = 15;
-    private static final int MFtoradians = 16;
-    private static final int MFtodegrees = 17;
-    private static final int MFtime = 18;
-    private static final int MFexp = 19;
-    private static final int MFis_in = 20;
-    private static final int MFclock = 21;
-    private static final int MFbor = 22;
-    private static final int MFband = 23;
-    private static final int MFbxor = 24;
-    private static final int MFcollision = 25;
-    private static final int MFascii = 26;
-    private static final int MFstarts_with = 27;
-    private static final int MFends_with = 28;
-    private static final int MFhex = 29;
-    private static final int MFoct = 30;
-    private static final int MFbin = 31;
-    private static final int MFshift = 32;
-    private static final int MFrandomize = 33;
-    private static final int MFbackground = 34;
-    private static final int MFatan = 35;
-    private static final int MFcbrt = 36;
-    private static final int MFcosh = 37;
-    private static final int MFhypot = 38;
-    private static final int MFsinh = 39;
-    private static final int MFpow = 40;
-    private static final int MFlog10 = 41;
-    private static final int MFucode = 42;
-    private static final int MFpi = 43;				// 2013-07-29 gt
-    private static final int MFmin = 44;			// 2013-07-29 gt
-    private static final int MFmax = 45;			// 2013-07-29 gt
-    private static final int MFint = 46;			// 2014-03-16 gt
-    private static final int MFfrac = 47;			// 2014-03-16 gt
-    private static final int MFsgn = 48;			// 2014-03-16 gt
+	public static final String MathFunctions[] = {
+		MF_SIN, MF_COS, MF_TAN,
+		MF_SQR, MF_ABS, MF_RND,
+		MF_VAL, MF_LEN, MF_ACOS,
+		MF_ASIN, MF_ATAN2, MF_CEIL,
+		MF_FLOOR, MF_MOD, MF_LOG,
+		MF_ROUND, MF_TORADIANS, MF_TODEGREES,
+		MF_TIME, MF_EXP,
+		MF_IS_IN, MF_CLOCK,
+		MF_BOR, MF_BAND, MF_BXOR,
+		MF_GR_COLLISION,
+		MF_ASCII, MF_STARTS_WITH, MF_ENDS_WITH,
+		MF_HEX, MF_OCT, MF_BIN, MF_SHIFT,
+		MF_RANDOMIZE, MF_BACKGROUND,
+		MF_ATAN, MF_CBRT, MF_COSH, MF_HYPOT,
+		MF_SINH, MF_POW, MF_LOG10,
+		MF_UCODE, MF_PI, MF_MIN, MF_MAX,
+		MF_INT, MF_FRAC, MF_SGN,
+	};
 
-    private int MFNumber = 0;						// Will contain a math function's enumerated name value
+	private final Command[] MF_cmd = new Command[] {	// Map math function names to their functions
+		new Command(MF_SIN)                     { public boolean run() { return executeMF_SIN(); } },
+		new Command(MF_COS)                     { public boolean run() { return executeMF_COS(); } },
+		new Command(MF_TAN)                     { public boolean run() { return executeMF_TAN(); } },
+		new Command(MF_SQR)                     { public boolean run() { return executeMF_SQR(); } },
+		new Command(MF_ABS)                     { public boolean run() { return executeMF_ABS(); } },
+		new Command(MF_RND)                     { public boolean run() { return executeMF_RND(); } },
+		new Command(MF_VAL)                     { public boolean run() { return executeMF_VAL(); } },
+		new Command(MF_LEN)                     { public boolean run() { return executeMF_LEN(); } },
+		new Command(MF_ACOS)                    { public boolean run() { return executeMF_ACOS(); } },
+		new Command(MF_ASIN)                    { public boolean run() { return executeMF_ASIN(); } },
+		new Command(MF_ATAN2)                   { public boolean run() { return executeMF_ATAN2(); } },
+		new Command(MF_CEIL)                    { public boolean run() { return executeMF_CEIL(); } },
+		new Command(MF_FLOOR)                   { public boolean run() { return executeMF_FLOOR(); } },
+		new Command(MF_MOD)                     { public boolean run() { return executeMF_MOD(); } },
+		new Command(MF_LOG)                     { public boolean run() { return executeMF_LOG(); } },
+		new Command(MF_ROUND)                   { public boolean run() { return executeMF_ROUND(); } },
+		new Command(MF_TORADIANS)               { public boolean run() { return executeMF_TORADIANS(); } },
+		new Command(MF_TODEGREES)               { public boolean run() { return executeMF_TODEGREES(); } },
+		new Command(MF_TIME)                    { public boolean run() { return executeMF_TIME(); } },
+		new Command(MF_EXP)                     { public boolean run() { return executeMF_EXP(); } },
+		new Command(MF_IS_IN)                   { public boolean run() { return executeMF_IS_IN(); } },
+		new Command(MF_CLOCK)                   { public boolean run() { return executeMF_CLOCK(); } },
+		new Command(MF_BOR)                     { public boolean run() { return executeMF_BOR(); } },
+		new Command(MF_BAND)                    { public boolean run() { return executeMF_BAND(); } },
+		new Command(MF_BXOR)                    { public boolean run() { return executeMF_BXOR(); } },
+		new Command(MF_GR_COLLISION)            { public boolean run() { return executeMF_GR_COLLISION(); } },
+		new Command(MF_ASCII)                   { public boolean run() { return executeMF_ASCII(); } },
+		new Command(MF_STARTS_WITH)             { public boolean run() { return executeMF_STARTS_WITH(); } },
+		new Command(MF_ENDS_WITH)               { public boolean run() { return executeMF_ENDS_WITH(); } },
+		new Command(MF_HEX)                     { public boolean run() { return executeMF_base(16); } },
+		new Command(MF_OCT)                     { public boolean run() { return executeMF_base(8); } },
+		new Command(MF_BIN)                     { public boolean run() { return executeMF_base(2); } },
+		new Command(MF_SHIFT)                   { public boolean run() { return executeMF_SHIFT(); } },
+		new Command(MF_RANDOMIZE)               { public boolean run() { return executeMF_RANDOMIZE(); } },
+		new Command(MF_BACKGROUND)              { public boolean run() { return executeMF_BACKGROUND(); } },
+		new Command(MF_ATAN)                    { public boolean run() { return executeMF_ATAN(); } },
+		new Command(MF_CBRT)                    { public boolean run() { return executeMF_CBRT(); } },
+		new Command(MF_COSH)                    { public boolean run() { return executeMF_COSH(); } },
+		new Command(MF_HYPOT)                   { public boolean run() { return executeMF_HYPOT(); } },
+		new Command(MF_SINH)                    { public boolean run() { return executeMF_SINH(); } },
+		new Command(MF_POW)                     { public boolean run() { return executeMF_POW(); } },
+		new Command(MF_LOG10)                   { public boolean run() { return executeMF_LOG10(); } },
+		new Command(MF_UCODE)                   { public boolean run() { return executeMF_UCODE(); } },
+		new Command(MF_PI)                      { public boolean run() { return executeMF_PI(); } },
+		new Command(MF_MIN)                     { public boolean run() { return executeMF_MIN(); } },
+		new Command(MF_MAX)                     { public boolean run() { return executeMF_MAX(); } },
+		new Command(MF_INT)                     { public boolean run() { return executeMF_INT(); } },
+		new Command(MF_FRAC)                    { public boolean run() { return executeMF_FRAC(); } },
+		new Command(MF_SGN)                     { public boolean run() { return executeMF_SGN(); } },
+	};
+
+	private final HashMap<String, Command> MF_map = new HashMap<String, Command>(64) {{
+		for (Command c : MF_cmd) { put(c.name, c); }
+	}};
 
 	private static final HashMap<String, Integer> mRoundingModeTable = new HashMap<String, Integer>(7) {{
 		put("hd", BigDecimal.ROUND_HALF_DOWN);
@@ -747,32 +803,53 @@ public class Run extends ListActivity {
 
     private int OperatorValue = 0;						// Will hold enumerated operator name value
 
-    //**********************  The variables for the string functions  *******************
+	//**********************  The variables for the string functions  *******************
 
-    public static final String StringFunctions[] = {
-    	"left$(", "mid$(", "right$(",
-    	"str$(", "upper$(", "lower$(",
-    	"format$(", "chr$(", "version$(",
-    	"replace$(", "hex$(", "oct$(",
-    	"bin$(", "geterror$(", "word$("
-    };
-    private int SFNumber = 0;							// Will hold enumerated string function name value
+	private static final String SF_BIN = "bin$(";
+	private static final String SF_CHR = "chr$(";
+	private static final String SF_FORMAT = "format$(";
+	private static final String SF_GETERROR = "geterror$(";
+	private static final String SF_HEX = "hex$(";
+	private static final String SF_LEFT = "left$(";
+	private static final String SF_LOWER = "lower$(";
+	private static final String SF_MID = "mid$(";
+	private static final String SF_OCT = "oct$(";
+	private static final String SF_REPLACE = "replace$(";
+	private static final String SF_RIGHT = "right$(";
+	private static final String SF_STR = "str$(";
+	private static final String SF_UPPER = "upper$(";
+	private static final String SF_VERSION = "version$(";
+	private static final String SF_WORD = "word$(";
 
-    private static final int SFleft = 0;				// Enumerated string function name values
-    private static final int SFmid = 1;
-    private static final int SFright = 2;
-    private static final int SFstr = 3;
-    private static final int SFupper = 4;
-    private static final int SFlower = 5;
-    private static final int SFformat = 6;
-    private static final int SFchr = 7;
-    private static final int SFversion = 8;
-    private static final int SFreplace = 9;
-    private static final int SFhex = 10;
-    private static final int SFoct= 11;
-    private static final int SFbin =12;
-    private static final int SFgeterror =13;
-    private static final int SFword =14;
+	public static final String StringFunctions[] = {
+		SF_LEFT, SF_MID, SF_RIGHT,
+		SF_STR, SF_UPPER, SF_LOWER, SF_FORMAT,
+		SF_CHR, SF_REPLACE, SF_WORD,
+		SF_HEX, SF_OCT, SF_BIN,
+		SF_GETERROR, SF_VERSION,
+	};
+
+	private final Command[] SF_cmd = new Command[] {	// Map string function names to their functions
+		new Command(SF_LEFT)                    { public boolean run() { return executeSF_LEFT(); } },
+		new Command(SF_MID)                     { public boolean run() { return executeSF_MID(); } },
+		new Command(SF_RIGHT)                   { public boolean run() { return executeSF_RIGHT(); } },
+		new Command(SF_STR)                     { public boolean run() { return executeSF_STR(); } },
+		new Command(SF_UPPER)                   { public boolean run() { return executeSF_UPPER(); } },
+		new Command(SF_LOWER)                   { public boolean run() { return executeSF_LOWER(); } },
+		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
+		new Command(SF_CHR)                     { public boolean run() { return executeSF_CHR(); } },
+		new Command(SF_REPLACE)                 { public boolean run() { return executeSF_REPLACE(); } },
+		new Command(SF_WORD)                    { public boolean run() { return executeSF_WORD(); } },
+		new Command(SF_HEX)                     { public boolean run() { return executeSF_HEX(); } },
+		new Command(SF_OCT)                     { public boolean run() { return executeSF_OCT(); } },
+		new Command(SF_BIN)                     { public boolean run() { return executeSF_BIN(); } },
+		new Command(SF_GETERROR)                { public boolean run() { return executeSF_GETERROR(); } },
+		new Command(SF_VERSION)                 { public boolean run() { return executeSF_VERSION(); } },
+	};
+
+	private final HashMap<String, Command> SF_map = new HashMap<String, Command>(64) {{
+		for (Command c : SF_cmd) { put(c.name, c); }
+	}};
 
     // *****************************   Various execution control variables *********************
 
@@ -1337,49 +1414,49 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] GR_cmd = new Command[] {	// Map GR command keywords to their execution functions
-		new Command(BKW_GR_RENDER)              { public boolean run() { return execute_gr_render(); } },
-		new Command(BKW_GR_MODIFY)              { public boolean run() { return execute_gr_modify(); } },
-		new Command(BKW_GR_BOUNDED_TOUCH2)      { public boolean run() { return execute_gr_bound_touch(1); } },
-		new Command(BKW_GR_BOUNDED_TOUCH)       { public boolean run() { return execute_gr_bound_touch(0); } },
-		new Command(BKW_GR_TOUCH2)              { public boolean run() { return execute_gr_touch(1); } },
-		new Command(BKW_GR_TOUCH)               { public boolean run() { return execute_gr_touch(0); } },
+		new Command(BKW_GR_RENDER)                  { public boolean run() { return execute_gr_render(); } },
+		new Command(BKW_GR_MODIFY)                  { public boolean run() { return execute_gr_modify(); } },
+		new Command(BKW_GR_BOUNDED_TOUCH2)          { public boolean run() { return execute_gr_bound_touch(1); } },
+		new Command(BKW_GR_BOUNDED_TOUCH)           { public boolean run() { return execute_gr_bound_touch(0); } },
+		new Command(BKW_GR_TOUCH2)                  { public boolean run() { return execute_gr_touch(1); } },
+		new Command(BKW_GR_TOUCH)                   { public boolean run() { return execute_gr_touch(0); } },
 
-		new Command(BKW_GR_BITMAP_GROUP)        { public boolean run() { return executeGR_BITMAP(); } },
-		new Command(BKW_GR_CAMERA_GROUP)        { public boolean run() { return executeGR_CAMERA(); } },
-		new Command(BKW_GR_GET_GROUP)           { public boolean run() { return executeGR_GET(); } },
-		new Command(BKW_GR_TEXT_GROUP)          { public boolean run() { return executeGR_TEXT(); } },
+		new Command(BKW_GR_BITMAP_GROUP, CID_GROUP) { public boolean run() { return executeGR_BITMAP(); } },
+		new Command(BKW_GR_CAMERA_GROUP, CID_GROUP) { public boolean run() { return executeGR_CAMERA(); } },
+		new Command(BKW_GR_GET_GROUP, CID_GROUP)    { public boolean run() { return executeGR_GET(); } },
+		new Command(BKW_GR_TEXT_GROUP, CID_GROUP)   { public boolean run() { return executeGR_TEXT(); } },
 
-		new Command(BKW_GR_ARC)                 { public boolean run() { return execute_gr_arc(); } },
-		new Command(BKW_GR_BRIGHTNESS)          { public boolean run() { return execute_brightness(); } },
-		new Command(BKW_GR_CIRCLE)              { public boolean run() { return execute_gr_circle(); } },
-		new Command(BKW_GR_CLIP)                { public boolean run() { return execute_gr_clip(); } },
-		new Command(BKW_GR_CLOSE)               { public boolean run() { return execute_gr_close(); } },
-		new Command(BKW_GR_CLS)                 { public boolean run() { return execute_gr_cls(); } },
-		new Command(BKW_GR_COLOR)               { public boolean run() { return execute_gr_color(); } },
-		new Command(BKW_GR_FRONT)               { public boolean run() { return execute_gr_front(); } },
-		new Command(BKW_GR_GETDL)               { public boolean run() { return execute_gr_getdl(); } },
-		new Command(BKW_GR_NEWDL)               { public boolean run() { return execute_gr_newdl(); } },
-		new Command(BKW_GR_HIDE)                { public boolean run() { return execute_gr_hide(); } },
-		new Command(BKW_GR_LINE)                { public boolean run() { return execute_gr_line(); } },
-		new Command(BKW_GR_ONGRTOUCH_RESUME)    { public boolean run() { return execute_gr_touch_resume(); } },
-		new Command(BKW_GR_OPEN, CID_OPEN)      { public boolean run() { return execute_gr_open(); } },
-		new Command(BKW_GR_ORIENTATION)         { public boolean run() { return execute_gr_orientation(); } },
-		new Command(BKW_GR_OVAL)                { public boolean run() { return execute_gr_oval(); } },
-		new Command(BKW_GR_PAINT_GET)           { public boolean run() { return execute_paint_get(); } },
-		new Command(BKW_GR_POINT)               { public boolean run() { return execute_gr_point(); } },
-		new Command(BKW_GR_POLY)                { public boolean run() { return execute_gr_poly(); } },
-		new Command(BKW_GR_RECT)                { public boolean run() { return execute_gr_rect(); } },
-		new Command(BKW_GR_ROTATE_END)          { public boolean run() { return execute_gr_rotate_end(); } },
-		new Command(BKW_GR_ROTATE_START)        { public boolean run() { return execute_gr_rotate_start(); } },
-		new Command(BKW_GR_SAVE)                { public boolean run() { return execute_gr_save(); } },
-		new Command(BKW_GR_SCALE)               { public boolean run() { return execute_gr_scale(); } },
-		new Command(BKW_GR_SCREEN_TO_BITMAP)    { public boolean run() { return execute_screen_to_bitmap(); } },
-		new Command(BKW_GR_SCREEN)              { public boolean run() { return execute_gr_screen(); } },
-		new Command(BKW_GR_SET_ANTIALIAS)       { public boolean run() { return execute_gr_antialias(); } },
-		new Command(BKW_GR_SET_PIXELS)          { public boolean run() { return execute_gr_set_pixels(); } },
-		new Command(BKW_GR_SET_STROKE)          { public boolean run() { return execute_gr_stroke_width(); } },
-		new Command(BKW_GR_SHOW)                { public boolean run() { return execute_gr_show(); } },
-		new Command(BKW_GR_STATUSBAR_SHOW)      { public boolean run() { return execute_statusbar_show(); } },
+		new Command(BKW_GR_ARC)                     { public boolean run() { return execute_gr_arc(); } },
+		new Command(BKW_GR_BRIGHTNESS)              { public boolean run() { return execute_brightness(); } },
+		new Command(BKW_GR_CIRCLE)                  { public boolean run() { return execute_gr_circle(); } },
+		new Command(BKW_GR_CLIP)                    { public boolean run() { return execute_gr_clip(); } },
+		new Command(BKW_GR_CLOSE)                   { public boolean run() { return execute_gr_close(); } },
+		new Command(BKW_GR_CLS)                     { public boolean run() { return execute_gr_cls(); } },
+		new Command(BKW_GR_COLOR)                   { public boolean run() { return execute_gr_color(); } },
+		new Command(BKW_GR_FRONT)                   { public boolean run() { return execute_gr_front(); } },
+		new Command(BKW_GR_GETDL)                   { public boolean run() { return execute_gr_getdl(); } },
+		new Command(BKW_GR_NEWDL)                   { public boolean run() { return execute_gr_newdl(); } },
+		new Command(BKW_GR_HIDE)                    { public boolean run() { return execute_gr_hide(); } },
+		new Command(BKW_GR_LINE)                    { public boolean run() { return execute_gr_line(); } },
+		new Command(BKW_GR_ONGRTOUCH_RESUME)        { public boolean run() { return execute_gr_touch_resume(); } },
+		new Command(BKW_GR_OPEN, CID_OPEN)          { public boolean run() { return execute_gr_open(); } },
+		new Command(BKW_GR_ORIENTATION)             { public boolean run() { return execute_gr_orientation(); } },
+		new Command(BKW_GR_OVAL)                    { public boolean run() { return execute_gr_oval(); } },
+		new Command(BKW_GR_PAINT_GET)               { public boolean run() { return execute_paint_get(); } },
+		new Command(BKW_GR_POINT)                   { public boolean run() { return execute_gr_point(); } },
+		new Command(BKW_GR_POLY)                    { public boolean run() { return execute_gr_poly(); } },
+		new Command(BKW_GR_RECT)                    { public boolean run() { return execute_gr_rect(); } },
+		new Command(BKW_GR_ROTATE_END)              { public boolean run() { return execute_gr_rotate_end(); } },
+		new Command(BKW_GR_ROTATE_START)            { public boolean run() { return execute_gr_rotate_start(); } },
+		new Command(BKW_GR_SAVE)                    { public boolean run() { return execute_gr_save(); } },
+		new Command(BKW_GR_SCALE)                   { public boolean run() { return execute_gr_scale(); } },
+		new Command(BKW_GR_SCREEN_TO_BITMAP)        { public boolean run() { return execute_screen_to_bitmap(); } },
+		new Command(BKW_GR_SCREEN)                  { public boolean run() { return execute_gr_screen(); } },
+		new Command(BKW_GR_SET_ANTIALIAS)           { public boolean run() { return execute_gr_antialias(); } },
+		new Command(BKW_GR_SET_PIXELS)              { public boolean run() { return execute_gr_set_pixels(); } },
+		new Command(BKW_GR_SET_STROKE)              { public boolean run() { return execute_gr_stroke_width(); } },
+		new Command(BKW_GR_SHOW)                    { public boolean run() { return execute_gr_show(); } },
+		new Command(BKW_GR_STATUSBAR_SHOW)          { public boolean run() { return execute_statusbar_show(); } },
 	};
 
 	private final Command[] GrBitmap_cmd = new Command[] {	// Map GR.bitmap command keywords to their execution functions
@@ -1404,25 +1481,25 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] GrGet_cmd = new Command[] {		// Map GR.get command keywords to their execution functions
-		new Command(BKW_GR_GET_BMPIXEL)              { public boolean run() { return execute_gr_get_bmpixel(); } },
-		new Command(BKW_GR_GET_PARAMS)               { public boolean run() { return execute_gr_get_params(); } },
-		new Command(BKW_GR_GET_PIXEL)                { public boolean run() { return execute_gr_get_pixel(); } },
-		new Command(BKW_GR_GET_POSITION)             { public boolean run() { return execute_gr_get_position(); } },
-		new Command(BKW_GR_GET_TEXTBOUNDS)           { public boolean run() { return execute_gr_get_texbounds(); } },
-		new Command(BKW_GR_GET_TYPE)                 { public boolean run() { return execute_gr_get_type(); } },
-		new Command(BKW_GR_GET_VALUE)                { public boolean run() { return execute_gr_get_value(); } },
+		new Command(BKW_GR_GET_BMPIXEL)             { public boolean run() { return execute_gr_get_bmpixel(); } },
+		new Command(BKW_GR_GET_PARAMS)              { public boolean run() { return execute_gr_get_params(); } },
+		new Command(BKW_GR_GET_PIXEL)               { public boolean run() { return execute_gr_get_pixel(); } },
+		new Command(BKW_GR_GET_POSITION)            { public boolean run() { return execute_gr_get_position(); } },
+		new Command(BKW_GR_GET_TEXTBOUNDS)          { public boolean run() { return execute_gr_get_texbounds(); } },
+		new Command(BKW_GR_GET_TYPE)                { public boolean run() { return execute_gr_get_type(); } },
+		new Command(BKW_GR_GET_VALUE)               { public boolean run() { return execute_gr_get_value(); } },
 	};
 
 	private final Command[] GrText_cmd = new Command[] {	// Map GR.text command keywords to their execution functions
-		new Command(BKW_GR_TEXT_ALIGN)                { public boolean run() { return execute_gr_text_align(); } },
-		new Command(BKW_GR_TEXT_BOLD)                 { public boolean run() { return execute_gr_text_bold(); } },
-		new Command(BKW_GR_TEXT_DRAW)                 { public boolean run() { return execute_gr_text_draw(); } },
-		new Command(BKW_GR_TEXT_SIZE)                 { public boolean run() { return execute_gr_text_size(); } },
-		new Command(BKW_GR_TEXT_SKEW)                 { public boolean run() { return execute_gr_text_skew(); } },
-		new Command(BKW_GR_TEXT_STRIKE)               { public boolean run() { return execute_gr_text_strike(); } },
-		new Command(BKW_GR_TEXT_TYPEFACE)             { public boolean run() { return execute_gr_text_typeface(); } },
-		new Command(BKW_GR_TEXT_UNDERLINE)            { public boolean run() { return execute_gr_text_underline(); } },
-		new Command(BKW_GR_TEXT_WIDTH)                { public boolean run() { return execute_gr_text_width(); } },
+		new Command(BKW_GR_TEXT_ALIGN)              { public boolean run() { return execute_gr_text_align(); } },
+		new Command(BKW_GR_TEXT_BOLD)               { public boolean run() { return execute_gr_text_bold(); } },
+		new Command(BKW_GR_TEXT_DRAW)               { public boolean run() { return execute_gr_text_draw(); } },
+		new Command(BKW_GR_TEXT_SIZE)               { public boolean run() { return execute_gr_text_size(); } },
+		new Command(BKW_GR_TEXT_SKEW)               { public boolean run() { return execute_gr_text_skew(); } },
+		new Command(BKW_GR_TEXT_STRIKE)             { public boolean run() { return execute_gr_text_strike(); } },
+		new Command(BKW_GR_TEXT_TYPEFACE)           { public boolean run() { return execute_gr_text_typeface(); } },
+		new Command(BKW_GR_TEXT_UNDERLINE)          { public boolean run() { return execute_gr_text_underline(); } },
+		new Command(BKW_GR_TEXT_WIDTH)              { public boolean run() { return execute_gr_text_width(); } },
 	};
 
 	// ******************************** Variables for Audio commands ****************************
@@ -1514,16 +1591,16 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] GPS_cmd = new Command[] {	// Map GPS command keywords to their execution functions
-		new Command(BKW_GPS_ALTITUDE)            { public boolean run() { return execute_gps_altitude(); } },
-		new Command(BKW_GPS_LATITUDE)            { public boolean run() { return execute_gps_latitude(); } },
-		new Command(BKW_GPS_LONGITUDE)           { public boolean run() { return execute_gps_longitude(); } },
-		new Command(BKW_GPS_BEARING)             { public boolean run() { return execute_gps_bearing(); } },
-		new Command(BKW_GPS_ACCURACY)            { public boolean run() { return execute_gps_accuracy(); } },
-		new Command(BKW_GPS_SPEED)               { public boolean run() { return execute_gps_speed(); } },
-		new Command(BKW_GPS_PROVIDER)            { public boolean run() { return execute_gps_provider(); } },
-		new Command(BKW_GPS_TIME)                { public boolean run() { return execute_gps_time(); } },
-		new Command(BKW_GPS_OPEN, CID_OPEN)      { public boolean run() { return execute_gps_open(); } },
-		new Command(BKW_GPS_CLOSE)               { public boolean run() { return execute_gps_close(); } },
+		new Command(BKW_GPS_ALTITUDE)           { public boolean run() { return execute_gps_altitude(); } },
+		new Command(BKW_GPS_LATITUDE)           { public boolean run() { return execute_gps_latitude(); } },
+		new Command(BKW_GPS_LONGITUDE)          { public boolean run() { return execute_gps_longitude(); } },
+		new Command(BKW_GPS_BEARING)            { public boolean run() { return execute_gps_bearing(); } },
+		new Command(BKW_GPS_ACCURACY)           { public boolean run() { return execute_gps_accuracy(); } },
+		new Command(BKW_GPS_SPEED)              { public boolean run() { return execute_gps_speed(); } },
+		new Command(BKW_GPS_PROVIDER)           { public boolean run() { return execute_gps_provider(); } },
+		new Command(BKW_GPS_TIME)               { public boolean run() { return execute_gps_time(); } },
+		new Command(BKW_GPS_OPEN, CID_OPEN)     { public boolean run() { return execute_gps_open(); } },
+		new Command(BKW_GPS_CLOSE)              { public boolean run() { return execute_gps_close(); } },
 	};
 
 	private GPS theGPS;
@@ -1557,20 +1634,20 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] array_cmd = new Command[] {	// Map array command keywords to their execution functions
-		new Command(BKW_ARRAY_LENGTH)            { public boolean run() { return execute_array_length(); } },
-		new Command(BKW_ARRAY_LOAD)              { public boolean run() { return execute_array_load(); } },
-		new Command(BKW_ARRAY_DELETE)            { public boolean run() { return executeUNDIM(); } },
-		new Command(BKW_ARRAY_REVERSE)           { public boolean run() { return execute_array_collection(ArrayOrderOps.DoReverse); } },
-		new Command(BKW_ARRAY_SHUFFLE)           { public boolean run() { return execute_array_collection(ArrayOrderOps.DoShuffle); } },
-		new Command(BKW_ARRAY_SORT)              { public boolean run() { return execute_array_collection(ArrayOrderOps.DoSort); } },
-		new Command(BKW_ARRAY_SUM)               { public boolean run() { return execute_array_sum(ArrayMathOps.DoSum); } },
-		new Command(BKW_ARRAY_AVERAGE)           { public boolean run() { return execute_array_sum(ArrayMathOps.DoAverage); } },
-		new Command(BKW_ARRAY_MIN)               { public boolean run() { return execute_array_sum(ArrayMathOps.DoMin); } },
-		new Command(BKW_ARRAY_MAX)               { public boolean run() { return execute_array_sum(ArrayMathOps.DoMax); } },
-		new Command(BKW_ARRAY_VARIANCE)          { public boolean run() { return execute_array_sum(ArrayMathOps.DoVariance); } },
-		new Command(BKW_ARRAY_STD_DEV)           { public boolean run() { return execute_array_sum(ArrayMathOps.DoStdDev); } },
-		new Command(BKW_ARRAY_COPY)              { public boolean run() { return execute_array_copy(); } },
-		new Command(BKW_ARRAY_SEARCH)            { public boolean run() { return execute_array_search(); } },
+		new Command(BKW_ARRAY_LENGTH)           { public boolean run() { return execute_array_length(); } },
+		new Command(BKW_ARRAY_LOAD)             { public boolean run() { return execute_array_load(); } },
+		new Command(BKW_ARRAY_DELETE)           { public boolean run() { return executeUNDIM(); } },
+		new Command(BKW_ARRAY_REVERSE)          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoReverse); } },
+		new Command(BKW_ARRAY_SHUFFLE)          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoShuffle); } },
+		new Command(BKW_ARRAY_SORT)             { public boolean run() { return execute_array_collection(ArrayOrderOps.DoSort); } },
+		new Command(BKW_ARRAY_SUM)              { public boolean run() { return execute_array_sum(ArrayMathOps.DoSum); } },
+		new Command(BKW_ARRAY_AVERAGE)          { public boolean run() { return execute_array_sum(ArrayMathOps.DoAverage); } },
+		new Command(BKW_ARRAY_MIN)              { public boolean run() { return execute_array_sum(ArrayMathOps.DoMin); } },
+		new Command(BKW_ARRAY_MAX)              { public boolean run() { return execute_array_sum(ArrayMathOps.DoMax); } },
+		new Command(BKW_ARRAY_VARIANCE)         { public boolean run() { return execute_array_sum(ArrayMathOps.DoVariance); } },
+		new Command(BKW_ARRAY_STD_DEV)          { public boolean run() { return execute_array_sum(ArrayMathOps.DoStdDev); } },
+		new Command(BKW_ARRAY_COPY)             { public boolean run() { return execute_array_copy(); } },
+		new Command(BKW_ARRAY_SEARCH)           { public boolean run() { return execute_array_search(); } },
 	};
 
 	// ************************************ List command variables *********************************
@@ -1736,9 +1813,9 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] Socket_cmd = new Command[] {		// Map Socket command keywords to their execution functions
-		new Command(BKW_SOCKET_CLIENT_GROUP)    { public boolean run() { return executeSocketClient(); } },
-		new Command(BKW_SOCKET_SERVER_GROUP)    { public boolean run() { return executeSocketServer(); } },
-		new Command(BKW_SOCKET_MYIP)            { public boolean run() { return executeMYIP(); } }
+		new Command(BKW_SOCKET_CLIENT_GROUP, CID_GROUP) { public boolean run() { return executeSocketClient(); } },
+		new Command(BKW_SOCKET_SERVER_GROUP, CID_GROUP) { public boolean run() { return executeSocketServer(); } },
+		new Command(BKW_SOCKET_MYIP)                    { public boolean run() { return executeMYIP(); } }
 	};
 
 	private final Command[] SocketClient_cmd = new Command[] {	// Map Socket.client command keywords to their execution functions
@@ -3772,7 +3849,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		catch (Exception e) {
 			return RunTimeError(e);
 		}
-        GetNumberValue = d;													// Report the value 
+		GetNumberValue = d;													// Report the value 
 		return true;														// Say we found a number
 	}
 	
@@ -3799,25 +3876,25 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			StringConstant += c;										// add to String Constant
 		}
 		
-        if (i< max-1){ ++i;}							// do not let index be >= line length
-        LineIndex = i;
+		if (i< max-1){ ++i;}							// do not let index be >= line length
+		LineIndex = i;
 		return true;															// Say we have a string constant
 	}
-		
-	private  boolean MathFunction(){					// get a Math Function if there is one
+
+	private Command getFunction(Map<String, Command> map) {			// get a Math or String Function if there is one
+		Command fn = null;
 		int i = ExecutingLineBuffer.indexOf('(', LineIndex);
-		if (i < 0) { return false; }								// no '(', so no function
-		String token = ExecutingLineBuffer.substring(LineIndex, i + 1);	// tokoen could be a function name
-		for (i = 0; i < MathFunctions.length; ++i) {
-			if (token.equals(MathFunctions[i])) {					// Is the token a math function name?
-				MFNumber = i;										// If it is, set the Enumerated name
-				LineIndex += token.length();						// set line index to end of MF
-				return (LineIndex < ExecutingLineBuffer.length());	// If no error, we have a math function
+		if (i >= 0) {
+			String token = ExecutingLineBuffer.substring(LineIndex, ++i);	// token could be a function name
+			fn = map.get(token);
+			if (fn != null) {												// null if not a function
+				if (i >= ExecutingLineBuffer.length()) { fn = null; }		// nothing after the '('
+				else { LineIndex = i; }										// set line index past end of function name
 			}
 		}
-		return false;												// Not a math function
+		return fn;
 	}
-	
+
 	private  boolean executeLET(){						// Execute a real or pseudo LET
 															// Execute LET (an assignment statement)
 		if (!getVar()){										// Must start with a variable
@@ -3872,6 +3949,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 																// The recursive part of Eval Expression
 		Bundle ufb = ufBundle;
+		Command cmd;
 			
 		char c = ExecutingLineBuffer.charAt(LineIndex);         // First character
  
@@ -3890,19 +3968,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		
 		if (getNumber()){								// Not a var, must be a number
 			theValueStack.push(GetNumberValue);			// if it is, push the number
-			}
+		}
 		
 		else if (getNVar()){							// Try numeric variable									
 			theValueStack.push(NumericVarValues.get(theValueIndex));	// Push value of Var
 		}
 
-		else if (MathFunction()){						// Try Match Function
-			if (!doMathFunction(theOpStack, theValueStack )) return false;
+		else if ((cmd = getFunction(MF_map)) != null) {		// Try Math Function
+			if (!doMathFunction(cmd)) return false;			// Math Function failed
+			theValueStack.push(EvalNumericExpressionValue);
 		}
-		
-		else if (evalStringExpression()){		           // Try String Logical Expression
-			if (!SEisLE) return false;                     // If was not a logical string expression, fail
-			theValueStack.push(EvalNumericExpressionValue);			
+
+		else if (evalStringExpression()){					// Try String Logical Expression
+			if (!SEisLE) return false;						// If was not a logical string expression, fail
+			theValueStack.push(EvalNumericExpressionValue);
 		}
 
 		else if (isUserFunction(TYPE_NUMERIC)) {			// Try User Function
@@ -3940,7 +4019,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		k = LineIndex;
 		if (!getOp()){return false;}						// If operator does not follow, then fail
 		
-		switch  (OperatorValue){							// Handle special case operators
+		switch (OperatorValue) {							// Handle special case operators
 															// (This is probably reduntant given the above)
 		case EOL:
 			if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
@@ -4145,518 +4224,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean doMathFunction(Stack<Integer> theOpStack, Stack<Double> theValueStack){
-		double d1 = 0.0;
-		double d2 = 0.0;
-
-		switch (MFNumber) {
-
-			case MFsin:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.sin(d1));
-				break;
-
-			case MFcos:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.cos(d1));
-				break;
-
-			case MFtan:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.tan(d1));
-				break;
-
-			case MFsqr:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.sqrt(d1));
-				break;
-
-			case MFabs:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.abs(d1));
-				break;
-
-			case MFsgn:											// 2014-03-16 gt
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.signum(d1));
-				break;
-
-			case MFceil:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.ceil(d1));
-				break;
-
-			case MFfloor:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.floor(d1));
-				break;
-
-			case MFint:											// 2014-03-16 gt
-				if (!evalNumericExpression()) return false;
-				d1 = (double)(EvalNumericExpressionValue.intValue());
-				theValueStack.push(Double.valueOf(d1));
-				break;
-
-			case MFfrac:										// 2014-03-16 gt
-				if (!evalNumericExpression()) return false;
-				String s1 = EvalNumericExpressionValue.toString();
-				String s2 = (EvalNumericExpressionValue < 0) ? "-" : "";
-				int i1 = s1.indexOf('.');
-				d1 = (i1 < 0) ? 0 : Double.parseDouble(s2 + s1.substring(i1));
-				theValueStack.push(d1);
-				break;
-
-			case MFmin:											// 2013-07-29 gt
-				if (!evalNumericExpression()){return false;}
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}
-				d2 = EvalNumericExpressionValue;
-				theValueStack.push(Math.min(d1, d2));
-				break;
-
-			case MFmax:											// 2013-07-29 gt
-				if (!evalNumericExpression()){return false;}
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}
-				d2 = EvalNumericExpressionValue;
-				theValueStack.push(Math.max(d1, d2));
-				break;
-
-			case MFlog:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.log(d1));
-				break;
-
-			case MFexp:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.exp(d1));
-				break;
-			
-			case MFtodegrees:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.toDegrees(d1));
-				break;
-
-			case MFtoradians:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.toRadians(d1));
-				break;
-
-			case MFpi:											// 2013-07-29 gt
-				theValueStack.push(Math.PI);
-				break;
-
-			case MFatan:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.atan(d1));
-				break;
-
-			case MFacos:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				if (d1<-1 || d1> 1){
-					RunTimeError("ACOS parameter out of range");
-					return false;
-				}
-				theValueStack.push(Math.acos(d1));
-				break;
-
-			case MFasin:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				if (d1<-1 || d1> 1){
-					RunTimeError("ASIN parameter out of range");
-					return false;
-				}
-				theValueStack.push(Math.asin(d1));
-				break;
-
-			case MFround:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;					// look for optional place count arg
-				if (!isNext(',')) {									// no optional parameters, legacy behavior
-					d1 = (double)Math.round(d1);
-				} else {
-					int places = 0;									// default decimal place count
-					int roundingMode = BigDecimal.ROUND_HALF_DOWN;	// default rounding mode
-					boolean isComma = isNext(',');
-					if (!isComma) {
-						if (!evalNumericExpression()) return false;	// get decimal place count
-						places = EvalNumericExpressionValue.intValue();
-						if (places < 0) { return RunTimeError("Decimal place count (" + places + ") must be >= 0"); }
-						isComma = isNext(',');
-					}
-					if (isComma) {									// look for optional rounding mode
-						if (!getStringArg()) return false;
-						String roundingArg = StringConstant.toLowerCase(Locale.US);
-						Integer mode = mRoundingModeTable.get(roundingArg);
-						if (mode == null) { return RunTimeError("Invalid rounding mode: " + roundingArg); }
-						roundingMode = mode.intValue();
-					}
-					d1 = new BigDecimal(d1).setScale(places, roundingMode).doubleValue();
-				}
-				theValueStack.push(d1);
-				break;
-
-			case MFlen:								// LEN(s$
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-				 d1= (double) StringConstant.length();			// then get it's length
-				 theValueStack.push(d1);						// and push onto value stack
-				 break;
-			
-			case MFrandomize:
-				if (!evalNumericExpression()) return false;
-			    d1 = EvalNumericExpressionValue;
-				if ( d1 == 0 )randomizer = new Random();
-				else randomizer = new Random((long) d1);
-				theValueStack.push(0.0);
-				break;
-			
-			
-			case MFrnd:
-				if (randomizer == null) randomizer = new Random();
-				theValueStack.push( randomizer.nextDouble());
-				break;
-			
-			case MFbackground:
-				if (background) theValueStack.push( 1.0);
-				else theValueStack.push( 0.0 );
-				break;
-
-
-			case MFval:								// VAL(s$
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-				StringConstant = StringConstant.trim();
-				if (StringConstant.length()== 0 ) {
-					RunTimeError("VAL of empty string is not valid");
-					return false;
-				}
-			
-				try { d1 = Double.parseDouble(StringConstant);}			// have java parse it into a double
-				catch (Exception e) {
-					return RunTimeError(e);
-				}
-				theValueStack.push(d1);							// Push number onto value stack
-				break;
-			
-			case MFascii:
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-				if (StringConstant.equals("")) d1 =256;
-				else d1 = (double)(StringConstant.charAt(0) & 0x00FF);
-				theValueStack.push(d1);							// Push number onto value stack
-				break;
-
-			case MFucode:
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-				if (StringConstant.equals("")) d1 = 0x10000;
-				else d1 = (double)(StringConstant.charAt(0));
-				theValueStack.push(d1);							// Push number onto value stack
-				break;
-			
-			case MFmod:									// MOD( d1,d2
-				if (!evalNumericExpression()){return false;}				// Get d1
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}				// Get d2
-				d2 = EvalNumericExpressionValue;
-				
-				if (d2==0){
-					RunTimeError("DIVIDE BY ZERO AT:");
-					return false;
-				}
-				theValueStack.push(d1 % d2);
-				break;
-			
-			case MFbor:
-				if (!evalNumericExpression()){return false;}				// Get d1
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}				// Get d2
-				d2 = EvalNumericExpressionValue;
-				theValueStack.push((double)((long)d1 | (long)d2));
-				break;
-			
-			
-			case MFband:
-				if (!evalNumericExpression()){return false;}				// Get d1
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}				// Get d2
-				d2 = EvalNumericExpressionValue;
-				theValueStack.push((double)((long)d1 & (long)d2));
-				break;
-			
-			
-			case MFbxor:
-				if (!evalNumericExpression()){return false;}				// Get d1
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}				// Get d2
-				d2 = EvalNumericExpressionValue;
-				theValueStack.push((double)((long)d1 ^ (long)d2));
-				break;
-			
-
-				
-			case MFis_in:
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	String Search_for = StringConstant;               
-				if (!isNext(',')) { return false; }
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	String Search_in = StringConstant;
-	        	
-	        	int start = 1;
-				if (isNext(',')) {
-					if (!evalNumericExpression()) return false;
-					start = EvalNumericExpressionValue.intValue();
-					if (start < 1 ){
-						RunTimeError("Start value must be >= 1");
-						return false;
-					}
-	        	}
-	        	start = start - 1;									// Make start index zero-based
-
-	        	if (start < Search_in.length()) {					// If starting inside the string
-					int k = Search_in.indexOf(Search_for, start);	// Do the search
-					d1 = (double) k+1 ;								// Make results one based
-				} else {
-					d1 = 0.0;										// else "not found"
-				}
-	        	theValueStack.push(d1);                     		// Push result onto stack
-				break;
-			
-			case MFstarts_with:
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	Search_for = StringConstant;               
-				if (!isNext(',')) { return false; }
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	Search_in = StringConstant;
-	        	
-	        	start = 1;
-				if (isNext(',')) {
-					if (!evalNumericExpression()) return false;
-					d1 = EvalNumericExpressionValue;
-					start = (int) d1;
-					if (start < 1 ){
-						RunTimeError("Start value must be >= 1");
-						return false;
-					}
-	        	}
-	        	if (start > Search_in.length()) start = Search_in.length();
-	        	start = start - 1;
-
-	        	d1 = 0;
-	        	if (Search_in.startsWith(Search_for, start)){
-	        		d1 = Search_for.length();
-	        	}
-
-	        	theValueStack.push(d1);                     		// Push result onto stack
-				break;
-
-			case MFends_with:
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	Search_for = StringConstant;               
-				if (!isNext(',')) { return false; }
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	Search_in = StringConstant;
-	        	
-	        	start = 1;
-				if (isNext(',')) {
-					if (!evalNumericExpression()) return false;
-					d1 = EvalNumericExpressionValue;
-					start = (int) d1;
-					if (start < 1 ){
-						RunTimeError("Start value must be >= 1");
-						return false;
-					}
-	        	}
-	        	if (start > Search_in.length()) start = Search_in.length();
-	        	start = start - 1;
-
-	        	d1 = 0;
-	        	if (Search_in.endsWith(Search_for)){
-	        		d1 = Search_in.length()-Search_for.length()+1;
-	        	}
-
-	        	theValueStack.push(d1);                     		// Push result onto stack
-				break;
-			
-			case MFclock:
-				theValueStack.push((double) SystemClock.elapsedRealtime());
-				break;
-			
-			case MFtime:
-				if (ExecutingLineBuffer.charAt(LineIndex)== ')') {	// If no args, use current time
-					theValueStack.push((double) System.currentTimeMillis());
-				} else {											// Otherwise, get user-supplied time
-					Time time = theTimeZone.equals("") ? new Time() : new Time(theTimeZone);
-					if (!parseTimeArgs(time)) { return false; }
-					theValueStack.push((double) time.toMillis(true));
-				}
-				break;
-			
-			case MFcollision:
-				if (!evalNumericExpression()){return false;}	// Get the first object number
-	        	int Object1 = EvalNumericExpressionValue.intValue();
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}	// Get the second object number
-	        	int Object2 = EvalNumericExpressionValue.intValue();
-
-				double ff = gr_collide(Object1, Object2);
-				if (ff == -1) return false;							// -1 is run time error
-				theValueStack.push(ff);								// else f = 0 (false) or 1 (true)
-				break;
-			
-			
-			case MFhex:
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	long  value = 0;
-	        	try {
-	        		value = Integer.parseInt(StringConstant, 16);
-	        	} catch (Exception e) {
-	        		RunTimeError("Error" + e);
-	        		return false;
-	        	}
-				value = value & 0xffffffff; 
-
-	        	theValueStack.push((double) value);
-				break;
-			
-			
-			case MFoct:
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	value = 0;
-	        	try {
-	        		value = Integer.parseInt(StringConstant, 8);
-	        	} catch (Exception e) {
-	        		RunTimeError("Error" + e);
-	        		return false;
-	        	}
-				value = value & 0xffffffff; 
-
-	        	theValueStack.push((double) value);
-				break;
-			
-			case MFbin:
-				if (!getStringArg()) { return false; }			// Get and check the string expression
-	        	value = 0;
-	        	try {
-	        		value = Integer.parseInt(StringConstant, 2);
-	        	} catch (Exception e) {
-	        		RunTimeError("Error" + e);
-	        		return false;
-	        	}
-				value = value & 0xffffffff; 
-	        	theValueStack.push((double) value);
-				break;
-			
-			
-			case MFshift:
-				if (!evalNumericExpression()){return false;}	// Get the value to shift
-	        	int xvalue = EvalNumericExpressionValue.intValue();
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}	// Get the shift amount and direction
-	        	int bits = EvalNumericExpressionValue.intValue();
-
-				int result = 0;
-				if (bits < 0){
-					result = xvalue << -1*bits;
-				}else{
-					result = xvalue >> bits;
-				}
-				
-				theValueStack.push((double) result);
-				break;
-				
-			case MFatan2:
-				if (!evalNumericExpression()) return false;		// Get the x-coordinate
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}	// Get the y-coordinate
-	        	d2 = EvalNumericExpressionValue;
-				theValueStack.push(Math.atan2(d1, d2));
-				break;
-
-			case MFcbrt:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.cbrt(d1));
-				break;
-
-			case MFcosh:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.cosh(d1));
-				break;
-
-			case MFhypot:
-				if (!evalNumericExpression()) return false;		// Get x
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}	// Get y
-	        	d2 = EvalNumericExpressionValue;
-				theValueStack.push(Math.hypot(d1, d2));
-				break;
-
-			case MFsinh:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.sinh(d1));
-				break;
-
-			case MFpow:
-				if (!evalNumericExpression()) return false;		// Get the base
-				d1 = EvalNumericExpressionValue;
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()){return false;}	// Get the exponent
-	        	d2 = EvalNumericExpressionValue;
-				theValueStack.push(Math.pow(d1, d2));
-				break;
-
-			case MFlog10:
-				if (!evalNumericExpression()) return false;
-				d1 = EvalNumericExpressionValue;
-				theValueStack.push(Math.log10(d1));
-				break;
-
-			default:
-				break;
-		}
-		// Every function must have a closing right parenthesis.
-		return (isNext(')'));
-	}
-
-	private  boolean getStringFunction(){				// Get a string function if there is one
-													// are the next characters a String Function?
-													// start by chopping off the part of the line
-													// that we are done with
-		
-		int i = 0;
-		for (i = 0; i<StringFunctions.length; ++i){				// scan the String Function List
-			 if (ExecutingLineBuffer.startsWith(StringFunctions[i],LineIndex)){					// if in list
-				 SFNumber = i;											// the function number is the table index
-				 LineIndex = LineIndex + StringFunctions[i].length();	// move the line index over the function
-				 return true;											// report found
-			 	}
-			}
-		return false;													// report fail
-	}
-
 	private boolean evalStringExpression(){						// Evaluate a string expression
 
 		int max = ExecutingLineBuffer.length();
@@ -4749,7 +4316,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean ESE(){										// Get a String expression element
- 
+
 		if (GetStringConstant()) { return true; }				// Try String Constant
 
 		int LI = LineIndex;
@@ -4781,181 +4348,648 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			ufBundle = ufb;
 		} else {
 			LineIndex = LI;										// Try String Functions
-			flag = (getStringFunction() && doStringFunction());
+			Command cmd = getFunction(SF_map);
+			flag = (cmd != null) && cmd.run();					// value returned in StringConstant
 		}
 		if (!flag) { LineIndex = LI; }
 		return flag;
 	}
 
-	private boolean doStringFunction() {
-		double d = 0;
-		int e = 0;
-		int e1 = 0;
-		int length;
-		
-		String SSC;
-																// Have a string function, do it
-		switch (SFNumber){
-			case  SFleft:																		// LEFT$
-				if (!getStringArg()) { return false; }
-				if (!isNext(',')) { return false; }
-				SSC = StringConstant;
-				if (!evalNumericExpression()) { return false; }
-				if (!isNext(')')) { return false; }				// Function must end with ')'
+	// ************************************** Math Functions **************************************
 
-				if (SSC.length() > 0) {
-					e = EvalNumericExpressionValue.intValue();
-					if (e <= 0) { SSC = ""; }
-					else if (e < SSC.length()) { SSC = SSC.substring(0, e); }
-				}
-				StringConstant = SSC;
-				return true;
+	private boolean doMathFunction(Command cmd) {
+		// If the function exists, run it, and make verify that the closing ')' is present.
+		// Function value is returned in EvalNumericExpressionValue.
+		return (cmd != null) && cmd.run() && isNext(')');
+	}
 
-			case SFmid:																			// MID$
-				if (!getStringArg()) { return false; }			// Get the string
-				SSC = StringConstant;
-				length = SSC.length();
+	private double[] getArgsDD() {								// get two numeric arguments (doubles)
+		if (!evalNumericExpression())	{ return null; }
+		double d1 = EvalNumericExpressionValue;
+		if (!isNext(','))				{ return null; }
+		if (!evalNumericExpression())	{ return null; }
+		double d2 = EvalNumericExpressionValue;
+		double[] args = {d1, d2};
+		return args;
+	}
 
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()) { return false; }	// Get the start index
-				e = EvalNumericExpressionValue.intValue();
+	private long[] getArgsLL() {								// get two numeric arguments (longs)
+		if (!evalNumericExpression())	{ return null; }
+		long l1 = EvalNumericExpressionValue.longValue();
+		if (!isNext(','))				{ return null; }
+		if (!evalNumericExpression())	{ return null; }
+		long l2 = EvalNumericExpressionValue.longValue();
+		long[] args = {l1, l2};
+		return args;
+	}
 
-				if (isNext(',')) {								// If there is a count, get it
-					if (!evalNumericExpression()) { return false; }
-					e1 = EvalNumericExpressionValue.intValue();
-					if (e1 < 0) { return RunTimeError("Count < 0"); }
-				} else {
-					e1 = length;								// Default count is whole string
-				}
-				if (!isNext(')')) { return false; }				// Function must end with ')'
+	private int[] getArgsII() {									// get two numeric arguments (ints)
+		if (!evalNumericExpression())	{ return null; }
+		int i1 = EvalNumericExpressionValue.intValue();
+		if (!isNext(','))				{ return null; }
+		if (!evalNumericExpression())	{ return null; }
+		int i2 = EvalNumericExpressionValue.intValue();
+		int[] args = {i1, i2};
+		return args;
+	}
 
-				if (length > 0) {
-					if (e > length) { SSC = ""; }
-					else {
-						if (--e < 0) { e = 0; }					// Change 1-based index to 0-based
-						e1 += e;								// Change count to end index
-						if (e1 > length) { e1 = length; }
-						SSC = SSC.substring(e, e1);
-					}
-				}
-				StringConstant = SSC;
-				return true;
+	private String[] getArgsSS() {								// get two string arguments
+		if (!getStringArg())			{ return null; }
+		String s1 = StringConstant;
+		if (!isNext(','))				{ return null; }
+		if (!getStringArg())	{ return null; }
+		String s2 = StringConstant;
+		String[] args = {s1, s2};
+		return args;
+	}
 
-			case SFright:																		// RIGHT$
-				if (!getStringArg()) { return false; }
-				if (!isNext(',')) { return false; }
-				SSC = StringConstant;
-				if (!evalNumericExpression()) { return false; }
-				if (!isNext(')')) { return false; }				// Function must end with ')'
+	private boolean executeMF_SIN() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.sin(EvalNumericExpressionValue);
+		return true;
+	}
 
-				length = SSC.length();
-				if (length > 0) {
-					e = EvalNumericExpressionValue.intValue();
-					if (e <= 0) { SSC = ""; }
-					else if (e < length) { SSC = SSC.substring(length - e); }
-				}
-				StringConstant = SSC;
-				return true;
+	private boolean executeMF_COS() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.cos(EvalNumericExpressionValue);
+		return true;
+	}
+	
+	private boolean executeMF_TAN() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.tan(EvalNumericExpressionValue);
+		return true;
+	}
 
-			case SFword:																		// WORD$
-				if (!getStringArg()) { return false; }			// String to split
-				String SearchString = StringConstant;
+	private boolean executeMF_SQR() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.sqrt(EvalNumericExpressionValue);
+		return true;
+	}
 
-				if (!isNext(',')) { return false; }
-				if (!evalNumericExpression()) { return false; }	// Which word to return
-				int wordIndex = EvalNumericExpressionValue.intValue();
+	private boolean executeMF_ABS() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.abs(EvalNumericExpressionValue);
+		return true;
+	}
 
-				String r[] = doSplit(SearchString, 0);			// Get regex arg, if any, and split the string.
-				if (!isNext(')')) { return false; }				// Function must end with ')'
+	private boolean executeMF_SGN() {					// 2014-03-16 gt
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.signum(EvalNumericExpressionValue);
+		return true;
+	}
 
-				length = r.length;								// Get the number of strings generated
-				if (length == 0) { return false; }				// error in doSplit()
+	private boolean executeMF_CEIL() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.ceil(EvalNumericExpressionValue);
+		return true;
+	}
 
-				wordIndex--;									// Convert to 0-based index
-				if (r[0].length() == 0) { wordIndex++; }		// Special case: first character was a delimiter
-				StringConstant = ((wordIndex < 0) || (wordIndex >= length)) ? "" : r[wordIndex];
-				return true;
+	private boolean executeMF_FLOOR() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.floor(EvalNumericExpressionValue);
+		return true;
+	}
 
-			case SFstr:																			// STR$
-				if (!evalNumericExpression()) { return false; }
-				StringConstant = String.valueOf(EvalNumericExpressionValue);
-				break;
+	private boolean executeMF_INT() {					// 2014-03-16 gt
+		if (!evalNumericExpression()) return false;
+		int i1 = EvalNumericExpressionValue.intValue();
+		EvalNumericExpressionValue = Double.valueOf(i1);
+		return true;
+	}
 
-			case SFupper:																		// UPPER$
-				if (!getStringArg()) { return false; }
-				StringConstant = StringConstant.toUpperCase(Locale.getDefault());
-				break;
+	private boolean executeMF_FRAC() {					// 2014-03-16 gt
+		if (!evalNumericExpression()) return false;
+		String str = EvalNumericExpressionValue.toString();
+		String sgn = (EvalNumericExpressionValue < 0) ? "-" : "";
+		int point = str.indexOf('.');
+		EvalNumericExpressionValue = (point < 0) ? 0.0 : Double.parseDouble(sgn + str.substring(point));
+		return true;
+	}
 
-			case SFlower:																		// LOWER $
-				if (!getStringArg()) { return false; }
-				StringConstant = StringConstant.toLowerCase(Locale.getDefault());
-				break;
+	private boolean executeMF_MIN() {					// 2013-07-29 gt
+		double[] args = getArgsDD();
+		if (args == null) return false;
+		EvalNumericExpressionValue = Math.min(args[0], args[1]);
+		return true;
+	}
 
-			case SFformat:																		// FORMAT $
-				if (!getStringArg()) { return false; }			// get the pattern string
-				if (!isNext(',')) { return false; }
-				SSC = StringConstant;
+	private boolean executeMF_MAX() {					// 2013-07-29 gt
+		double[] args = getArgsDD();
+		if (args == null) return false;
+		EvalNumericExpressionValue = Math.max(args[0], args[1]);
+		return true;
+	}
 
-				if (!evalNumericExpression()) { return false; }	// Get the number to format
-				if (!isNext(')')) { return false; }				// Function must end with ')'
+	private boolean executeMF_LOG() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.log(EvalNumericExpressionValue);
+		return true;
+	}
 
-				return Format(SSC, EvalNumericExpressionValue);	// and then do the format
+	private boolean executeMF_EXP() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.exp(EvalNumericExpressionValue);
+		return true;
+	}
+	
+	private boolean executeMF_TODEGREES() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.toDegrees(EvalNumericExpressionValue);
+		return true;
+	}
 
-			case SFchr:																			// CHR$
-				if (!evalNumericExpression()) { return false; }
-				d = EvalNumericExpressionValue;
-				StringConstant = "" + (char) d;
-				break;
-			
-			case SFversion:
-				StringConstant = getString(R.string.version);
-				break;
+	private boolean executeMF_TORADIANS() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.toRadians(EvalNumericExpressionValue);
+		return true;
+	}
 
-			case SFgeterror:
-				StringConstant = errorMsg;
-				break;
-				
-			case SFreplace:
-				if (!getStringArg()) { return false; }
-				String target = StringConstant;
+	private boolean executeMF_PI() {					// 2013-07-29 gt
+		EvalNumericExpressionValue = Math.PI;
+		return true;
+	}
 
-				if (!isNext(',')) { return false; }
-				if (!getStringArg()) { return false; }
-				String argument = StringConstant;
+	private boolean executeMF_ATAN() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.atan(EvalNumericExpressionValue);
+		return true;
+	}
 
-				if (!isNext(',')) { return false; }
-				if (!getStringArg()) { return false; }
-				String replacment = StringConstant;
-
-				if (argument == null || replacment == null) {
-					return RunTimeError("Invalid string");
-				}
-				
-				StringConstant = target.replace(argument, replacment);
-				break;
-
-			case SFhex:
-				if (!evalNumericExpression()) { return false; }
-				e = EvalNumericExpressionValue.intValue();
-				StringConstant = Integer.toHexString(e);
-				break;
-
-			case SFoct:
-				if (!evalNumericExpression()) { return false; }
-				e = EvalNumericExpressionValue.intValue();
-				StringConstant = Integer.toOctalString(e);
-				break;
-
-			case SFbin:
-				if (!evalNumericExpression()) { return false; }
-				e = EvalNumericExpressionValue.intValue();
-				StringConstant = Integer.toBinaryString(e);
-				break;
-
-			default:
+	private boolean executeMF_ACOS() {
+		if (!evalNumericExpression()) return false;
+		double d1 = EvalNumericExpressionValue;
+		if (d1 < -1 || d1 > 1){
+			return RunTimeError("ACOS parameter out of range");
 		}
-		return isNext(')');										// Function must end with ')'
+		EvalNumericExpressionValue = Math.acos(d1);
+		return true;
+	}
 
+	private boolean executeMF_ASIN() {
+		if (!evalNumericExpression()) return false;
+		double d1 = EvalNumericExpressionValue;
+		if (d1 < -1 || d1 > 1) {
+			return RunTimeError("ASIN parameter out of range");
+		}
+		EvalNumericExpressionValue = Math.asin(d1);
+		return true;
+	}
+
+	private boolean executeMF_ROUND() {
+		if (!evalNumericExpression()) return false;
+		double d1 = EvalNumericExpressionValue;				// look for optional place count arg
+		if (!isNext(',')) {									// no optional parameters, legacy behavior
+			d1 = (double)Math.round(d1);
+		} else {
+			int places = 0;									// default decimal place count
+			int roundingMode = BigDecimal.ROUND_HALF_DOWN;	// default rounding mode
+			boolean isComma = isNext(',');
+			if (!isComma) {
+				if (!evalNumericExpression()) return false;	// get decimal place count
+				places = EvalNumericExpressionValue.intValue();
+				if (places < 0) { return RunTimeError("Decimal place count (" + places + ") must be >= 0"); }
+				isComma = isNext(',');
+			}
+			if (isComma) {									// look for optional rounding mode
+				if (!getStringArg()) return false;
+				String roundingArg = StringConstant.toLowerCase(Locale.US);
+				Integer mode = mRoundingModeTable.get(roundingArg);
+				if (mode == null) { return RunTimeError("Invalid rounding mode: " + roundingArg); }
+				roundingMode = mode.intValue();
+			}
+			d1 = new BigDecimal(d1).setScale(places, roundingMode).doubleValue();
+		}
+		EvalNumericExpressionValue = d1;
+		return true;
+	}
+
+	private boolean executeMF_LEN() {					// LEN(s$
+		if (!getStringArg()) { return false; }			// Get and check the string expression
+		double d1 = StringConstant.length();			// then get its length
+		EvalNumericExpressionValue = d1;
+		return true;
+	}
+
+	private boolean executeMF_RANDOMIZE() {
+		if (!evalNumericExpression()) return false;
+		long seed = EvalNumericExpressionValue.longValue();
+		randomizer = (seed == 0L) ? new Random() : new Random(seed);
+		EvalNumericExpressionValue = 0.0;
+		return true;
+	}
+
+	private boolean executeMF_RND() {
+		if (randomizer == null) { randomizer = new Random(); }
+		EvalNumericExpressionValue = randomizer.nextDouble();
+		return true;
+	}
+
+	private boolean executeMF_BACKGROUND() {
+		EvalNumericExpressionValue = background ? 1.0 : 0.0;
+		return true;
+	}
+
+	private boolean executeMF_VAL() {					// VAL(s$
+		if (!getStringArg()) { return false; }			// Get and check the string expression
+		StringConstant = StringConstant.trim();
+		if (StringConstant.length() == 0) {
+			return RunTimeError("VAL of empty string is not valid");
+		}
+		try {
+			double d1 = Double.parseDouble(StringConstant);	// have java parse it into a double
+			EvalNumericExpressionValue = d1;
+		}
+		catch (Exception e) {
+			return RunTimeError(e);
+		}
+		return true;
+	}
+
+	private boolean executeMF_ASCII() {
+		if (!getStringArg()) { return false; }			// Get and check the string expression
+		double d1 = StringConstant.equals("") ? 256 : (StringConstant.charAt(0) & 0x00FF);
+		EvalNumericExpressionValue = d1;
+		return true;
+	}
+
+	private boolean executeMF_UCODE() {
+		if (!getStringArg()) { return false; }			// Get and check the string expression
+		double d1 = StringConstant.equals("") ? 0x10000 : StringConstant.charAt(0);
+		EvalNumericExpressionValue = d1;
+		return true;
+	}
+
+	private boolean executeMF_MOD() {					// MOD( d1,d2
+		double[] args = getArgsDD();
+		if (args == null) return false;
+		if (args[1] == 0.0) {
+			return RunTimeError("DIVIDE BY ZERO AT:");
+		}
+		EvalNumericExpressionValue = (args[0] % args[1]);
+		return true;
+	}
+
+	private boolean executeMF_BOR() {
+		long[] args = getArgsLL();
+		if (args == null) return false;
+		EvalNumericExpressionValue = (double)(args[0] | args[1]);
+		return true;
+	}
+
+	private boolean executeMF_BAND() {
+		long[] args = getArgsLL();
+		if (args == null) return false;
+		EvalNumericExpressionValue = (double)(args[0] & args[1]);
+		return true;
+	}
+
+	private boolean executeMF_BXOR() {
+		long[] args = getArgsLL();
+		if (args == null) return false;
+		EvalNumericExpressionValue = (double)(args[0] ^ args[1]);
+		return true;
+	}
+
+	private boolean MF_startArg() {
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			if (EvalNumericExpressionValue < 1) {
+				return RunTimeError("Start value must be >= 1");
+			}
+		}
+		return true;
+	}
+
+	private boolean executeMF_IS_IN() {
+		String[] args = getArgsSS();
+		if (args == null) return false;
+		String searchFor = args[0];
+		String searchIn = args[1];
+
+		if (!MF_startArg()) return false;
+		int start = EvalNumericExpressionValue.intValue();
+		--start;											// make start index zero-based
+
+		int i1;
+		if (start < searchIn.length()) {					// if starting inside the string
+			int k = searchIn.indexOf(searchFor, start);		// do the search
+			i1 = k + 1;										// make results one-based
+		} else {
+			i1 = 0;											// else "not found"
+		}
+		EvalNumericExpressionValue = (double)i1;
+		return true;
+	}
+
+	private boolean executeMF_STARTS_WITH() {
+		String[] args = getArgsSS();
+		if (args == null) return false;
+		String searchFor = args[0];
+		String searchIn = args[1];
+
+		if (!MF_startArg()) return false;
+		int start = EvalNumericExpressionValue.intValue();
+
+		if (start > searchIn.length()) { start = searchIn.length(); }
+		if (--start < 0) { start = 0; }					// make one-based start index zero-based
+
+		int i1 = searchIn.startsWith(searchFor, start)
+				? searchFor.length() : 0;
+		EvalNumericExpressionValue = (double)i1;
+		return true;
+	}
+
+	private boolean executeMF_ENDS_WITH() {
+		String[] args = getArgsSS();
+		if (args == null) return false;
+		String searchFor = args[0];
+		String searchIn = args[1];
+
+		int i1 = searchIn.endsWith(searchFor)
+				? (searchIn.length() - searchFor.length() + 1) : 0;
+		EvalNumericExpressionValue = (double)i1;
+		return true;
+	}
+
+	private boolean executeMF_CLOCK() {
+		EvalNumericExpressionValue = (double)SystemClock.elapsedRealtime();
+		return true;
+	}
+
+	private boolean executeMF_TIME() {
+		if (ExecutingLineBuffer.charAt(LineIndex)== ')') {	// If no args, use current time
+			EvalNumericExpressionValue = (double)System.currentTimeMillis();
+		} else {											// Otherwise, get user-supplied time
+			Time time = theTimeZone.equals("") ? new Time() : new Time(theTimeZone);
+			if (!parseTimeArgs(time)) { return false; }
+			EvalNumericExpressionValue = (double)time.toMillis(true);
+		}
+		return true;
+	}
+
+	private boolean executeMF_GR_COLLISION() {
+		int[] args = getArgsII();
+		if (args == null) return false;
+
+		EvalNumericExpressionValue = gr_collide(args[0], args[1]);
+		return (EvalNumericExpressionValue != -1);		// -1 is run time error
+	}
+
+	private boolean executeMF_base(int base) {			// BIN, OCT, or HEX, depending on the base parameter
+		if (!getStringArg()) { return false; }			// Get and check the string expression
+		int value = 0;
+		try { value = Integer.parseInt(StringConstant, base); }
+		catch (Exception e) { return RunTimeError(e); }
+
+		EvalNumericExpressionValue = (double)(value &= 0xffffffff);
+		return true;
+	}
+
+	private boolean executeMF_SHIFT() {
+		int[] args = getArgsII();
+		if (args == null) return false;
+		int value = args[0];
+		int bits = args[1];
+
+		int result = (bits < 0) ? (value << -bits) : (value >> bits);
+		EvalNumericExpressionValue = (double)result;
+		return true;
+	}
+		
+	private boolean executeMF_ATAN2() {
+		double[] args = getArgsDD();
+		if (args == null) return false;
+		EvalNumericExpressionValue = Math.atan2(args[0], args[1]);
+		return true;
+	}
+
+	private boolean executeMF_CBRT() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.cbrt(EvalNumericExpressionValue);
+		return true;
+	}
+
+	private boolean executeMF_COSH() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.cosh(EvalNumericExpressionValue);
+		return true;
+	}
+
+	private boolean executeMF_HYPOT() {
+		double[] args = getArgsDD();
+		if (args == null) return false;
+		EvalNumericExpressionValue = Math.hypot(args[0], args[1]);
+		return true;
+	}
+
+	private boolean executeMF_SINH() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.sinh(EvalNumericExpressionValue);
+		return true;
+	}
+
+	private boolean executeMF_POW() {
+		double[] args = getArgsDD();
+		if (args == null) return false;
+		EvalNumericExpressionValue = Math.pow(args[0], args[1]);
+		return true;
+	}
+
+	private boolean executeMF_LOG10() {
+		if (!evalNumericExpression()) return false;
+		EvalNumericExpressionValue = Math.log10(EvalNumericExpressionValue);
+		return true;
+	}
+
+	// ************************************ end Math Functions ************************************
+
+	// ************************************* String Functions *************************************
+
+	// Each string function must check for the closing parenthesis (')').
+
+	private boolean executeSF_LEFT() {													// LEFT$
+		if (!getStringArg()) { return false; }
+		String str = StringConstant;
+		if (!isNext(',')) { return false; }
+		if (!evalNumericExpression()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+
+		int length = str.length();
+		if (length > 0) {
+			int count = EvalNumericExpressionValue.intValue();
+			if (count <= 0) { str = ""; }
+			else if (count < length) { str = str.substring(0, count); }
+		}
+		StringConstant = str;
+		return true;
+	}
+
+	private boolean executeSF_RIGHT() {													// RIGHT$
+		if (!getStringArg()) { return false; }
+		if (!isNext(',')) { return false; }
+		String str = StringConstant;
+		if (!evalNumericExpression()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+
+		int length = str.length();
+		if (length > 0) {
+			int count = EvalNumericExpressionValue.intValue();
+			if (count <= 0) { str = ""; }
+			else if (count < length) { str = str.substring(length - count); }
+		}
+		StringConstant = str;
+		return true;
+	}
+
+	private boolean executeSF_MID() {													// MID$
+		if (!getStringArg()) { return false; }			// Get the string
+		String str = StringConstant;
+		int length = str.length();
+
+		if (!isNext(',')) { return false; }
+		if (!evalNumericExpression()) { return false; }	// Get the start index
+		int start = EvalNumericExpressionValue.intValue();
+		int count;
+
+		if (isNext(',')) {								// If there is a count, get it
+			if (!evalNumericExpression()) { return false; }
+			count = EvalNumericExpressionValue.intValue();
+			if (count < 0) { return RunTimeError("Count < 0"); }
+		} else {
+			count = length;								// Default count is whole string
+		}
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+
+		if (length > 0) {
+			if (start > length) { str = ""; }
+			else {
+				if (--start < 0) { start = 0; }			// Change 1-based index to 0-based
+				count += start;							// Change count to end index
+				if (count > length) { count = length; }
+				str = str.substring(start, count);
+			}
+		}
+		StringConstant = str;
+		return true;
+	}
+
+	private boolean executeSF_WORD() {													// WORD$
+		if (!getStringArg()) { return false; }			// string to split
+		String SearchString = StringConstant;
+
+		if (!isNext(',')) { return false; }
+		if (!evalNumericExpression()) { return false; }	// which word to return
+		int wordIndex = EvalNumericExpressionValue.intValue();
+
+		String r[] = doSplit(SearchString, 0);			// get regex arg, if any, and split the string.
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+
+		int length = r.length;							// get the number of strings generated
+		if (length == 0) { return false; }				// error in doSplit()
+
+		wordIndex--;									// convert to 0-based index
+		for (int i = 0; (i < length) && (r[i].length() == 0); ++i) {
+			wordIndex++;								// special case: string started with delimiter(s)
+		}
+		StringConstant = ((wordIndex < 0) || (wordIndex >= length)) ? "" : r[wordIndex];
+		return true;
+	}
+
+	private boolean executeSF_STR() {													// STR$
+		if (!evalNumericExpression()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		StringConstant = String.valueOf(EvalNumericExpressionValue);
+		return true;
+	}
+
+	private boolean executeSF_UPPER() {													// UPPER$
+		if (!getStringArg()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		StringConstant = StringConstant.toUpperCase(Locale.getDefault());
+		return true;
+	}
+
+	private boolean executeSF_LOWER() {													// LOWER$
+		if (!getStringArg()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		StringConstant = StringConstant.toLowerCase(Locale.getDefault());
+		return true;
+	}
+
+	private boolean executeSF_FORMAT() {												// FORMAT$
+		if (!getStringArg()) { return false; }			// get the pattern string
+		String str = StringConstant;
+
+		if (!isNext(',')) { return false; }
+		if (!evalNumericExpression()) { return false; }	// Get the number to format
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+
+		return Format(str, EvalNumericExpressionValue);	// and then do the format
+	}
+
+	private boolean executeSF_CHR() {													// CHR$
+		if (!evalNumericExpression()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		StringConstant = "" + (char)EvalNumericExpressionValue.intValue();
+		return true;
+	}
+
+	private boolean executeSF_VERSION() {												// VERSION$
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		StringConstant = getString(R.string.version);
+		return true;
+	}
+
+	private boolean executeSF_GETERROR() {												// GETERROR$
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		StringConstant = errorMsg;
+		return true;
+	}
+
+	private boolean executeSF_REPLACE() {												// REPLACE$
+		if (!getStringArg()) { return false; }
+		String target = StringConstant;
+
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }
+		String argument = StringConstant;
+
+		if (!isNext(',')) { return false; }
+		if (!getStringArg()) { return false; }
+		String replacment = StringConstant;
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+
+		if (argument == null || replacment == null) {
+			return RunTimeError("Invalid string");
+		}
+		
+		StringConstant = target.replace(argument, replacment);
+		return true;
+	}
+
+	private boolean executeSF_HEX() {													// HEX$
+		if (!evalNumericExpression()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		int e = EvalNumericExpressionValue.intValue();
+		StringConstant = Integer.toHexString(e);
+		return true;
+	}
+
+	private boolean executeSF_OCT() {													// OCT$
+		if (!evalNumericExpression()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		int e = EvalNumericExpressionValue.intValue();
+		StringConstant = Integer.toOctalString(e);
+		return true;
+	}
+
+	private boolean executeSF_BIN() {													// BIN$
+		if (!evalNumericExpression()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		int e = EvalNumericExpressionValue.intValue();
+		StringConstant = Integer.toBinaryString(e);
+		return true;
 	}
 
 	private boolean parseTimeArgs(Time time) {						// Convert time parameters to Time object fields
@@ -5019,7 +5053,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
         	if (FDstring.charAt(i) != '#'){SyntaxError(); return false;}
         }
 		
-		for (i=0; i< Vstring.length(); ++i){								// Scan the number string for it's decimal index
+		for (i=0; i< Vstring.length(); ++i){								// Scan the number string for its decimal index
 			if (Vstring.charAt(i)== '.'){
 				if (VhasDecimal){SyntaxError(); return false;}				// more than one decimal should never happen
 				VhasDecimal = true;
@@ -5149,7 +5183,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	}
 
-	private  boolean executeDIM(){									// DIM
+	// *********************************** end String Functions ***********************************
+
+	private boolean executeDIM() {									// DIM
 																		// Execute a DIM Comman
 		do {									// Multiple Arrays can be DIMed in one DIM statement separated by commas
 			String var = getVarAndType();								// get the array name var
