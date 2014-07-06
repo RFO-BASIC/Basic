@@ -350,6 +350,7 @@ public class Run extends ListActivity {
 	private static final String BKW_RENAME = "rename";			// same as "file.rename"
 	private static final String BKW_REPEAT = "repeat";
 	private static final String BKW_RETURN = "return";
+	private static final String BKW_RINGER_GROUP = "ringer.";
 	private static final String BKW_RUN = "run";
 	private static final String BKW_SELECT = "select";
 	private static final String BKW_SENSORS_GROUP = "sensors.";
@@ -403,7 +404,8 @@ public class Run extends ListActivity {
 		BKW_BROWSE, BKW_BT_GROUP, BKW_FTP_GROUP,
 		BKW_HTML_GROUP, BKW_HTTP_POST, BKW_SOCKET_GROUP, BKW_SQL_GROUP,
 		BKW_GPS_GROUP, BKW_POPUP, BKW_SENSORS_GROUP,
-		BKW_AUDIO_GROUP, BKW_SOUNDPOOL_GROUP, BKW_TONE,
+		BKW_AUDIO_GROUP, BKW_SOUNDPOOL_GROUP,
+		BKW_RINGER_GROUP, BKW_TONE,
 		BKW_CLIPBOARD_GET, BKW_CLIPBOARD_PUT,
 		BKW_ENCRYPT, BKW_DECRYPT, BKW_SWAP,
 		BKW_SPLIT_ALL, BKW_SPLIT,
@@ -500,6 +502,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SENSORS_GROUP,CID_GROUP){ public boolean run() { return executeSENSORS(); } },
 		new Command(BKW_AUDIO_GROUP, CID_GROUP) { public boolean run() { return executeAUDIO(); } },
 		new Command(BKW_SOUNDPOOL_GROUP,CID_GROUP){ public boolean run() { return executeSOUNDPOOL(); } },
+		new Command(BKW_RINGER_GROUP,CID_GROUP) { public boolean run() { return executeRINGER(); } },
 		new Command(BKW_TONE)                   { public boolean run() { return executeTONE(); } },
 		new Command(BKW_CLIPBOARD_GET)          { public boolean run() { return executeCLIPBOARD_GET(); } },
 		new Command(BKW_CLIPBOARD_PUT)          { public boolean run() { return executeCLIPBOARD_PUT(); } },
@@ -567,35 +570,36 @@ public class Run extends ListActivity {
 		if (keywordLists == null) {
 			keywordLists = new HashMap<String, String[]>();		// If you add a new keyword group, add it to this list!
 
-			keywordLists.put("array.",     Array_KW);
-			keywordLists.put("audio.",     Audio_KW);
-			keywordLists.put("bt.",        bt_KW);
-			keywordLists.put("bundle.",    Bundle_KW);
-			keywordLists.put("byte.",      byte_KW);
-			keywordLists.put("console.",   Console_KW);
-			keywordLists.put("debug.",     Debug_KW);
-			keywordLists.put("file.",      file_KW);
-			keywordLists.put("fn.",        fn_KW);
-			keywordLists.put("ftp.",       ftp_KW);
-			keywordLists.put("gps.",       GPS_KW);
-			keywordLists.put("gr.",        GR_KW);
-			keywordLists.put("html.",      html_KW);
-			keywordLists.put("list.",      List_KW);
-			keywordLists.put("phone.",     phone_KW);
-			keywordLists.put("read.",      read_KW);
-			keywordLists.put("sensors.",   Sensors_KW);
-			keywordLists.put("sms.",       SMS_KW);
-			keywordLists.put("socket.",    Socket_KW);
-			keywordLists.put("soundpool.", sp_KW);
-			keywordLists.put("sql.",       SQL_KW);
-			keywordLists.put("stack.",     Stack_KW);
-			keywordLists.put("su.",        su_KW);
-			keywordLists.put("sw.",        sw_KW);
-			keywordLists.put("system.",    System_KW);
-			keywordLists.put("text.",      text_KW);
-			keywordLists.put("timer.",     Timer_KW);
-			keywordLists.put("timezone.",  TimeZone_KW);
-			keywordLists.put("tts.",       tts_KW);
+			keywordLists.put(BKW_ARRAY_GROUP,     Array_KW);
+			keywordLists.put(BKW_AUDIO_GROUP,     Audio_KW);
+			keywordLists.put(BKW_BT_GROUP,        bt_KW);
+			keywordLists.put(BKW_BUNDLE_GROUP,    Bundle_KW);
+			keywordLists.put(BKW_BYTE_GROUP,      byte_KW);
+			keywordLists.put(BKW_CONSOLE_GROUP,   Console_KW);
+			keywordLists.put(BKW_DEBUG_GROUP,     Debug_KW);
+			keywordLists.put(BKW_FILE_GROUP,      file_KW);
+			keywordLists.put(BKW_FN_GROUP,        fn_KW);
+			keywordLists.put(BKW_FTP_GROUP,       ftp_KW);
+			keywordLists.put(BKW_GPS_GROUP,       GPS_KW);
+			keywordLists.put(BKW_GR_GROUP,        GR_KW);
+			keywordLists.put(BKW_HTML_GROUP,      html_KW);
+			keywordLists.put(BKW_LIST_GROUP,      List_KW);
+			keywordLists.put(BKW_PHONE_GROUP,     phone_KW);
+			keywordLists.put(BKW_READ_GROUP,      read_KW);
+			keywordLists.put(BKW_RINGER_GROUP,    ringer_KW);
+			keywordLists.put(BKW_SENSORS_GROUP,   Sensors_KW);
+			keywordLists.put(BKW_SMS_GROUP,       SMS_KW);
+			keywordLists.put(BKW_SOCKET_GROUP,    Socket_KW);
+			keywordLists.put(BKW_SOUNDPOOL_GROUP, sp_KW);
+			keywordLists.put(BKW_SQL_GROUP,       SQL_KW);
+			keywordLists.put(BKW_STACK_GROUP,     Stack_KW);
+			keywordLists.put(BKW_SU_GROUP,        su_KW);
+			keywordLists.put(BKW_SW_GROUP,        sw_KW);
+			keywordLists.put(BKW_SYSTEM_GROUP,    System_KW);
+			keywordLists.put(BKW_TEXT_GROUP,      text_KW);
+			keywordLists.put(BKW_TIMER_GROUP,     Timer_KW);
+			keywordLists.put(BKW_TIMEZONE_GROUP,  TimeZone_KW);
+			keywordLists.put(BKW_TTS_GROUP,       tts_KW);
 		}
 		return keywordLists;
 	}
@@ -2142,6 +2146,30 @@ public class Run extends ListActivity {
 	};
 
 	public static SoundPool theSoundPool ;
+
+	// *************************************** Ringer Vars ****************************************
+
+	private static final String BKW_RINGER_GET_MODE = "get.mode";
+	private static final String BKW_RINGER_SET_MODE = "set.mode";
+	private static final String BKW_RINGER_GET_VOLUME = "get.volume";
+	private static final String BKW_RINGER_SET_VOLUME = "set.volume";
+
+	private static final String ringer_KW[] = {			// Command list for Format
+		BKW_RINGER_GET_MODE, BKW_RINGER_SET_MODE,
+		BKW_RINGER_GET_VOLUME, BKW_RINGER_SET_VOLUME
+	};
+
+	private final Command[] ringer_cmd = new Command[] {	// Map ringer command keywords to their execution functions
+			new Command(BKW_RINGER_GET_MODE)    { public boolean run() { return executeRINGER_GET_MODE(); } },
+			new Command(BKW_RINGER_SET_MODE)    { public boolean run() { return executeRINGER_SET_MODE(); } },
+			new Command(BKW_RINGER_GET_VOLUME)  { public boolean run() { return executeRINGER_GET_VOLUME(); } },
+			new Command(BKW_RINGER_SET_VOLUME)  { public boolean run() { return executeRINGER_SET_VOLUME(); } },
+	};
+
+	private static final int RINGER_UNKNOWN = -1;
+	private static final int RINGER_SILENT = 0;
+	private static final int RINGER_VIBRATE = 1;
+	private static final int RINGER_NORMAL = 2;
 
 	// **************** Headset Vars **************************************
 
@@ -14373,6 +14401,84 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  Show("@@B" + c);
 		  return true;
 	  }
+
+	// *************************************** Ringer Vars ****************************************
+
+	private boolean executeRINGER() {							// Get RINGER command keyword if it is there
+		return executeCommand(ringer_cmd, "Ringer");			// and execute the command
+	}
+
+	private boolean executeRINGER_GET_MODE() {
+
+		if (!getNVar()) return false;							// Mode return variable
+		if (!checkEOL()) return false;
+
+		AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+		int mode = am.getRingerMode();
+		switch (mode) {											// convert from Android to internal values
+			case AudioManager.RINGER_MODE_SILENT:  mode = RINGER_SILENT;  break;
+			case AudioManager.RINGER_MODE_VIBRATE: mode = RINGER_VIBRATE; break;
+			case AudioManager.RINGER_MODE_NORMAL:  mode = RINGER_NORMAL;  break;
+			default:                               mode = RINGER_UNKNOWN; break;
+		}
+
+		NumericVarValues.set(theValueIndex, (double)mode );
+		return true;
+	}
+
+	private boolean executeRINGER_SET_MODE() {
+
+		if (!evalNumericExpression()) return false;				// Mode value
+		int mode = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+
+		switch (mode) {											// convert from internal to Android values
+			case RINGER_SILENT:  mode = AudioManager.RINGER_MODE_SILENT;  break;
+			case RINGER_VIBRATE: mode = AudioManager.RINGER_MODE_VIBRATE; break;
+			case RINGER_NORMAL:  mode = AudioManager.RINGER_MODE_NORMAL;  break;
+			default: return true;								// bad value: don't change anything
+		}
+		AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+		am.setRingerMode(mode);
+		return true;
+	}
+
+	private boolean executeRINGER_GET_VOLUME() {
+
+		if (!getNVar()) return false;							// Volume return variable
+		int volIndex = theValueIndex;
+		int maxIndex = -1;
+		if (isNext(',')) {
+			if (!getNVar()) return false;
+			maxIndex = theValueIndex;
+		}
+		if (!checkEOL()) return false;
+
+		AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+		int max = am.getStreamMaxVolume(AudioManager.STREAM_RING);
+		int vol = am.getStreamVolume(AudioManager.STREAM_RING);
+
+		NumericVarValues.set(volIndex, (double)vol);
+		if (maxIndex != -1) {
+			NumericVarValues.set(maxIndex, (double)max);
+		}
+		return true;
+	}
+
+	private boolean executeRINGER_SET_VOLUME() {
+
+		if (!evalNumericExpression()) return false;				// Volume value
+		int vol = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+
+		AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+		int max = am.getStreamMaxVolume(AudioManager.STREAM_RING);
+		if (vol < 0) vol = 0;
+		else if (vol > max) vol = max;
+		am.setStreamVolume(AudioManager.STREAM_RING, vol, 0);
+
+		return true;
+	}
 
 	// **************************************** SOUND POOL ****************************************
 
