@@ -345,6 +345,7 @@ public class Run extends ListActivity {
 	private static final String BKW_PHONE_GROUP = "phone.";
 	private static final String BKW_POPUP = "popup";
 	private static final String BKW_PRINT = "print";
+	private static final String BKW_PRINTF = "printf";
 	private static final String BKW_READ_GROUP = "read.";
 	private static final String BKW_REM = "rem";
 	private static final String BKW_RENAME = "rename";			// same as "file.rename"
@@ -386,7 +387,7 @@ public class Run extends ListActivity {
 	// This array lists all of the top-level keywords so Format can find them.
 	// The order of this list determines the order Format uses for its linear search.
 	public static final String BasicKeyWords[] = {
-		BKW_LET, BKW_PRINT,
+		BKW_LET, BKW_PRINTF, BKW_PRINT,
 		BKW_IF, BKW_ELSEIF, BKW_ELSE, BKW_ENDIF,
 		BKW_FOR, BKW_NEXT,
 		BKW_WHILE, BKW_REPEAT, BKW_DO, BKW_UNTIL,
@@ -451,6 +452,7 @@ public class Run extends ListActivity {
 		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
 		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
 		new Command(BKW_ELSE,   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
+		new Command(BKW_PRINTF)                 { public boolean run() { return executePRINTF(); } },
 		new Command(BKW_PRINT)                  { public boolean run() { return executePRINT(); } },
 		new Command(BKW_FOR)                    { public boolean run() { return executeFOR(); } },
 		new Command(BKW_NEXT)                   { public boolean run() { return executeNEXT(); } },
@@ -814,10 +816,12 @@ public class Run extends ListActivity {
 	private static final String SF_FORMAT = "format$(";
 	private static final String SF_GETERROR = "geterror$(";
 	private static final String SF_HEX = "hex$(";
+	private static final String SF_INT = "int$(";
 	private static final String SF_LEFT = "left$(";
 	private static final String SF_LOWER = "lower$(";
 	private static final String SF_MID = "mid$(";
 	private static final String SF_OCT = "oct$(";
+	private static final String SF_PRINTF = "printf$(";
 	private static final String SF_REPLACE = "replace$(";
 	private static final String SF_RIGHT = "right$(";
 	private static final String SF_STR = "str$(";
@@ -827,9 +831,10 @@ public class Run extends ListActivity {
 
 	public static final String StringFunctions[] = {
 		SF_LEFT, SF_MID, SF_RIGHT,
-		SF_STR, SF_UPPER, SF_LOWER, SF_FORMAT,
+		SF_STR, SF_UPPER, SF_LOWER,
+		SF_FORMAT, SF_PRINTF,
 		SF_CHR, SF_REPLACE, SF_WORD,
-		SF_HEX, SF_OCT, SF_BIN,
+		SF_INT, SF_HEX, SF_OCT, SF_BIN,
 		SF_GETERROR, SF_VERSION,
 	};
 
@@ -841,9 +846,11 @@ public class Run extends ListActivity {
 		new Command(SF_UPPER)                   { public boolean run() { return executeSF_UPPER(); } },
 		new Command(SF_LOWER)                   { public boolean run() { return executeSF_LOWER(); } },
 		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
+		new Command(SF_PRINTF)                  { public boolean run() { return executeSF_PRINTF(); } },
 		new Command(SF_CHR)                     { public boolean run() { return executeSF_CHR(); } },
 		new Command(SF_REPLACE)                 { public boolean run() { return executeSF_REPLACE(); } },
 		new Command(SF_WORD)                    { public boolean run() { return executeSF_WORD(); } },
+		new Command(SF_INT)                     { public boolean run() { return executeSF_INT(); } },
 		new Command(SF_HEX)                     { public boolean run() { return executeSF_HEX(); } },
 		new Command(SF_OCT)                     { public boolean run() { return executeSF_OCT(); } },
 		new Command(SF_BIN)                     { public boolean run() { return executeSF_BIN(); } },
@@ -894,6 +901,7 @@ public class Run extends ListActivity {
 
     private Double GetNumberValue = (double)0;				// Return value from GetNumber()
     private Double EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
+    private Long EvalNumericExpressionIntValue = 0L;		// Integer copy of EvalNumericExpressionValue when VarIsInt is true
     private Vibrator myVib;
 
     public static ArrayList<String> output;					// The output screen text lines
@@ -979,6 +987,7 @@ public class Run extends ListActivity {
 
 	private boolean VarIsNew = true;					// Signal from getVar() that this var is new
 	private boolean VarIsNumeric = true;				// if false, var is a string
+	private boolean VarIsInt = false;					// temporary integer status used only by printf
 	private boolean VarIsArray = false;					// if true, var is an array
 														// if the var is an array, the VarIndex is
 														// an index into ArrayTable
@@ -2869,6 +2878,7 @@ private void InitVars(){
 
 	VarIsNew = true;									// Signal from getVar() that this var is new
 	VarIsNumeric = true;								// if false, var is a string
+	VarIsInt = false;									// temporary integer status used only by printf
 	VarIsArray = false;									// if true, var is an array
 	VarIsFunction = false;								// Flag set by parseVar() when var is a user function
 	VarSearchStart = 0;									// Used to limit search for var names to executing function vars
@@ -3766,6 +3776,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		LI += var.length();
 		if (LI < max) {
 			char c = ExecutingLineBuffer.charAt(LI);
+			VarIsInt = false;									// Never an integer
 			VarIsNumeric = (c != '$');							// Is this a string var?
 			if (!VarIsNumeric && (++LI < max)) {
 				var += c;
@@ -4470,19 +4481,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeMF_CEIL() {
 		if (!evalNumericExpression()) return false;
 		EvalNumericExpressionValue = Math.ceil(EvalNumericExpressionValue);
+		EvalNumericExpressionIntValue = EvalNumericExpressionValue.longValue();
+		VarIsInt = true;
 		return true;
 	}
 
 	private boolean executeMF_FLOOR() {
 		if (!evalNumericExpression()) return false;
 		EvalNumericExpressionValue = Math.floor(EvalNumericExpressionValue);
+		EvalNumericExpressionIntValue = EvalNumericExpressionValue.longValue();
+		VarIsInt = true;
 		return true;
 	}
 
 	private boolean executeMF_INT() {					// 2014-03-16 gt
 		if (!evalNumericExpression()) return false;
-		int i1 = EvalNumericExpressionValue.intValue();
-		EvalNumericExpressionValue = Double.valueOf(i1);
+		EvalNumericExpressionIntValue = EvalNumericExpressionValue.longValue();
+		EvalNumericExpressionValue = Double.valueOf(EvalNumericExpressionIntValue);
+		VarIsInt = true;
 		return true;
 	}
 
@@ -4636,15 +4652,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeMF_ASCII() {
 		if (!getStringArg()) { return false; }			// Get and check the string expression
-		double d1 = StringConstant.equals("") ? 256 : (StringConstant.charAt(0) & 0x00FF);
-		EvalNumericExpressionValue = d1;
+		EvalNumericExpressionIntValue = StringConstant.equals("") ? 256L : (StringConstant.charAt(0) & 0x00FF);
+		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+		VarIsInt = true;
 		return true;
 	}
 
 	private boolean executeMF_UCODE() {
 		if (!getStringArg()) { return false; }			// Get and check the string expression
-		double d1 = StringConstant.equals("") ? 0x10000 : StringConstant.charAt(0);
-		EvalNumericExpressionValue = d1;
+		EvalNumericExpressionIntValue = StringConstant.equals("") ? 0x10000L : StringConstant.charAt(0);
+		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+		VarIsInt = true;
 		return true;
 	}
 
@@ -4661,21 +4679,27 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeMF_BOR() {
 		long[] args = getArgsLL();
 		if (args == null) return false;
-		EvalNumericExpressionValue = (double)(args[0] | args[1]);
+		EvalNumericExpressionIntValue = (args[0] | args[1]);
+		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+		VarIsInt = true;
 		return true;
 	}
 
 	private boolean executeMF_BAND() {
 		long[] args = getArgsLL();
 		if (args == null) return false;
-		EvalNumericExpressionValue = (double)(args[0] & args[1]);
+		EvalNumericExpressionIntValue = (args[0] & args[1]);
+		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+		VarIsInt = true;
 		return true;
 	}
 
 	private boolean executeMF_BXOR() {
 		long[] args = getArgsLL();
 		if (args == null) return false;
-		EvalNumericExpressionValue = (double)(args[0] ^ args[1]);
+		EvalNumericExpressionIntValue = (args[0] ^ args[1]);
+		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+		VarIsInt = true;
 		return true;
 	}
 
@@ -4775,16 +4799,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeMF_SHIFT() {
-		int[] args = getArgsII();
+		long[] args = getArgsLL();
 		if (args == null) return false;
-		int value = args[0];
-		int bits = args[1];
+		long value = args[0];
+		long bits = args[1];
 
-		int result = (bits < 0) ? (value << -bits) : (value >> bits);
-		EvalNumericExpressionValue = (double)result;
+		EvalNumericExpressionIntValue = (bits < 0) ? (value << -bits) : (value >> bits);;
+		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+		VarIsInt = true;
 		return true;
 	}
-		
+
 	private boolean executeMF_ATAN2() {
 		double[] args = getArgsDD();
 		if (args == null) return false;
@@ -4993,6 +5018,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		
 		StringConstant = target.replace(argument, replacment);
+		return true;
+	}
+
+	private boolean executeSF_INT() {													// INT$
+		if (!evalNumericExpression()) { return false; }
+		if (!isNext(')')) { return false; }				// Function must end with ')'
+		int val = EvalNumericExpressionValue.intValue();
+		StringConstant = Integer.toString(val);
 		return true;
 	}
 
@@ -5425,7 +5458,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// ************************************* end array utilities **************************************
 
-	private boolean executePRINT(){
+	private boolean executePRINT() {
 		if (!buildPrintLine(PrintLine, "")) return false;	// build up the print line in StringConstant
 		if (!PrintLineReady) {							// flag set by buildPrintLine
 			PrintLine = StringConstant;					// not ready to print; hold line
@@ -5442,7 +5475,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// else add the newline param to the String and set PrintLineReady true.
 	// If the String is valid, put it in StringConstant and return true,
 	// else return false to signal a syntax error.
-	private boolean buildPrintLine(String line, String newline){
+	private boolean buildPrintLine(String line, String newline) {
 		StringBuilder printLine = new StringBuilder((line == null) ? "" : line);
 		boolean WasSemicolon = false;
 		do {										// do each field in the print statement
@@ -5484,6 +5517,86 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		PrintLineReady = !WasSemicolon;
 		StringConstant = printLine.toString();
 		return true;
+	}
+
+	private boolean executeSF_PRINTF() {
+		if (!doPrintf()) return false;
+		if (!isNext(')')) return false;				// Function must end with ')'
+
+		StringConstant = PrintLine + StringConstant;// ignore PrintLineReady
+		return true;
+	}
+
+	private boolean executePRINTF() {
+		if (!doPrintf()) return false;
+		if (!checkEOL()) return false;
+
+		PrintLine += StringConstant;
+		if (PrintLineReady) {						// flag set by getPrintfData
+			PrintShow(PrintLine);					// then output the accumulated print line
+			PrintLine = "";							// and clear the line
+		}											// else not ready to print; hold line
+													// and wait for next print/printf
+		return true;
+	}
+
+	private boolean doPrintf() {					// result in StringConstant
+		Locale locale;
+		if (isNext(',')) { StringConstant = ""; }	// force default Locale
+		else { if (!getStringArg()) return false; } // get user-specified Locale
+		locale = parseLocale(StringConstant);
+		if (locale == null) { return RunTimeError("Unknown locale " + StringConstant); }
+
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;			// get format string
+		String fmt = StringConstant;
+
+		Object[] args = getPrintfData();			// get data to format
+		if (args == null) return false;				// error getting args
+
+		try {
+			StringConstant = String.format(locale, fmt, args);
+		} catch (Exception e) {
+			return RunTimeError("Cannot complete PRINTF\n" + e);
+		}
+
+		return true;
+	}
+
+	private Locale parseLocale(String localeStr) {
+		Locale locale;
+		String[] f = localeStr.split("_");
+		switch (f.length) {
+			default:								// ignore excess fields
+			case 3: locale = new Locale(f[0], f[1], f[2]); break;
+			case 2: locale = new Locale(f[0], f[1]); break;
+			case 1: locale = new Locale(f[0]); break;
+			case 0: locale = Locale.getDefault(); break;
+		}
+		return locale;
+	}
+
+	private Object[] getPrintfData() {
+		ArrayList<Object> args = new ArrayList<Object>();
+		boolean WasSemicolon = false;
+		while (true) {
+			if (isNext(';'))      { WasSemicolon = true; }
+			else if (isNext(',')) { WasSemicolon = false; }
+			else break;								// no more args
+			if (isEOL()) break;						// no more args
+
+			if (evalNumericExpression()) {			// field is numeric
+				if (VarIsInt) { args.add(EvalNumericExpressionIntValue); }
+				else		  { args.add(EvalNumericExpressionValue); }
+			} else {
+				if (getStringArg()) {
+					args.add(StringConstant);			// field is string
+				} else if (VarIsFunction) { return null; }
+			}
+			if (SyntaxError) { return null; }
+		}
+		PrintLineReady = !WasSemicolon;
+		return args.toArray();
 	}
 
 	private boolean executeEND() {
