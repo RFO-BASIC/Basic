@@ -812,7 +812,7 @@ public class Run extends ListActivity {
 	private static final String SF_BIN = "bin$(";
 	private static final String SF_CHR = "chr$(";
 	private static final String SF_FORMAT = "format$(";
-	private static final String SF_FORMAT_USING = "format.using$(";
+	private static final String SF_FORMAT_USING = "format_using$(";
 	private static final String SF_GETERROR = "geterror$(";
 	private static final String SF_HEX = "hex$(";
 	private static final String SF_INT = "int$(";
@@ -831,7 +831,7 @@ public class Run extends ListActivity {
 	public static final String StringFunctions[] = {
 		SF_LEFT, SF_MID, SF_RIGHT,
 		SF_STR, SF_UPPER, SF_LOWER,
-		SF_USING, SF_FORMAT_USING, SF_FORMAT,
+		SF_USING, SF_FORMAT, SF_FORMAT_USING,
 		SF_CHR, SF_REPLACE, SF_WORD,
 		SF_INT, SF_HEX, SF_OCT, SF_BIN,
 		SF_GETERROR, SF_VERSION,
@@ -5026,6 +5026,32 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return Format(str, EvalNumericExpressionValue);	// and then do the format
 	}
 
+	private boolean executeSF_USING() {
+		Locale locale;
+		if (isNext(',')) { StringConstant = ""; }	// force default Locale
+		else {
+			if (!getStringArg()) return false;		// get user-specified Locale
+			if (!isNext(',')) return false;
+		}
+		locale = parseLocale(StringConstant);
+		if (locale == null) { return RunTimeError("Unknown locale " + StringConstant); }
+
+		if (!getStringArg()) return false;			// get format string
+		String fmt = StringConstant;
+
+		Object[] args = getUsingArgs();				// get data to format
+		if (args == null) return false;				// error getting args
+		if (!isNext(')')) return false;				// Function must end with ')'
+
+		try {
+			StringConstant = String.format(locale, fmt, args);
+		} catch (Exception e) {
+			return RunTimeError("Cannot complete FPRINT\n" + e);
+		}
+
+		return true;
+	}
+
 	private boolean executeSF_CHR() {													// CHR$
 		if (!evalNumericExpression()) { return false; }
 		if (!isNext(')')) { return false; }				// Function must end with ')'
@@ -5114,6 +5140,35 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		second = EvalNumericExpressionValue.intValue();				// Second$
 		time.set(second, minute, hour, day, month, year);
 		return true;
+	}
+
+	private Locale parseLocale(String localeStr) {
+		if ((localeStr == null) || (localeStr.length() == 0)) return Locale.getDefault();
+		Locale locale;
+		String[] f = localeStr.split("_");
+		switch (f.length) {
+			default:								// ignore excess fields
+			case 3: locale = new Locale(f[0], f[1], f[2]); break;
+			case 2: locale = new Locale(f[0], f[1]); break;
+			case 1: locale = new Locale(f[0]); break;
+		}
+		return locale;
+	}
+
+	private Object[] getUsingArgs() {
+		ArrayList<Object> args = new ArrayList<Object>();
+		while (isNext(',')) {
+			if (evalNumericExpression()) {			// field is numeric
+				if (VarIsInt) { args.add(EvalNumericExpressionIntValue); }
+				else		  { args.add(EvalNumericExpressionValue); }
+			} else {
+				if (getStringArg()) {
+					args.add(StringConstant);			// field is string
+				} else if (VarIsFunction) { return null; }
+			}
+			if (SyntaxError) { return null; }
+		}
+		return args.toArray();
 	}
 
 	private  boolean Format(String Fstring, double Fvalue){			// Format a number for output
@@ -5562,59 +5617,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		PrintLineReady = !WasSemicolon;
 		StringConstant = printLine.toString();
 		return true;
-	}
-
-	private boolean executeSF_USING() {
-		Locale locale;
-		if (isNext(',')) { StringConstant = ""; }	// force default Locale
-		else { if (!getStringArg()) return false; } // get user-specified Locale
-		locale = parseLocale(StringConstant);
-		if (locale == null) { return RunTimeError("Unknown locale " + StringConstant); }
-
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;			// get format string
-		String fmt = StringConstant;
-
-		Object[] args = getUsingArgs();				// get data to format
-		if (args == null) return false;				// error getting args
-		if (!isNext(')')) return false;				// Function must end with ')'
-
-		try {
-			StringConstant = String.format(locale, fmt, args);
-		} catch (Exception e) {
-			return RunTimeError("Cannot complete FPRINT\n" + e);
-		}
-
-		return true;
-	}
-
-	private Locale parseLocale(String localeStr) {
-		Locale locale;
-		String[] f = localeStr.split("_");
-		switch (f.length) {
-			default:								// ignore excess fields
-			case 3: locale = new Locale(f[0], f[1], f[2]); break;
-			case 2: locale = new Locale(f[0], f[1]); break;
-			case 1: locale = new Locale(f[0]); break;
-			case 0: locale = Locale.getDefault(); break;
-		}
-		return locale;
-	}
-
-	private Object[] getUsingArgs() {
-		ArrayList<Object> args = new ArrayList<Object>();
-		while (isNext(',')) {
-			if (evalNumericExpression()) {			// field is numeric
-				if (VarIsInt) { args.add(EvalNumericExpressionIntValue); }
-				else		  { args.add(EvalNumericExpressionValue); }
-			} else {
-				if (getStringArg()) {
-					args.add(StringConstant);			// field is string
-				} else if (VarIsFunction) { return null; }
-			}
-			if (SyntaxError) { return null; }
-		}
-		return args.toArray();
 	}
 
 	private boolean executeEND() {
