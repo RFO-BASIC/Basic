@@ -345,7 +345,6 @@ public class Run extends ListActivity {
 	private static final String BKW_PHONE_GROUP = "phone.";
 	private static final String BKW_POPUP = "popup";
 	private static final String BKW_PRINT = "print";
-	private static final String BKW_PRINTF = "printf";
 	private static final String BKW_READ_GROUP = "read.";
 	private static final String BKW_REM = "rem";
 	private static final String BKW_RENAME = "rename";			// same as "file.rename"
@@ -387,7 +386,7 @@ public class Run extends ListActivity {
 	// This array lists all of the top-level keywords so Format can find them.
 	// The order of this list determines the order Format uses for its linear search.
 	public static final String BasicKeyWords[] = {
-		BKW_LET, BKW_PRINTF, BKW_PRINT,
+		BKW_LET, BKW_PRINT,
 		BKW_IF, BKW_ELSEIF, BKW_ELSE, BKW_ENDIF,
 		BKW_FOR, BKW_NEXT,
 		BKW_WHILE, BKW_REPEAT, BKW_DO, BKW_UNTIL,
@@ -452,7 +451,6 @@ public class Run extends ListActivity {
 		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
 		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
 		new Command(BKW_ELSE,   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
-		new Command(BKW_PRINTF)                 { public boolean run() { return executePRINTF(); } },
 		new Command(BKW_PRINT)                  { public boolean run() { return executePRINT(); } },
 		new Command(BKW_FOR)                    { public boolean run() { return executeFOR(); } },
 		new Command(BKW_NEXT)                   { public boolean run() { return executeNEXT(); } },
@@ -814,6 +812,7 @@ public class Run extends ListActivity {
 	private static final String SF_BIN = "bin$(";
 	private static final String SF_CHR = "chr$(";
 	private static final String SF_FORMAT = "format$(";
+	private static final String SF_FORMAT_USING = "format.using$(";
 	private static final String SF_GETERROR = "geterror$(";
 	private static final String SF_HEX = "hex$(";
 	private static final String SF_INT = "int$(";
@@ -821,18 +820,18 @@ public class Run extends ListActivity {
 	private static final String SF_LOWER = "lower$(";
 	private static final String SF_MID = "mid$(";
 	private static final String SF_OCT = "oct$(";
-	private static final String SF_PRINTF = "printf$(";
 	private static final String SF_REPLACE = "replace$(";
 	private static final String SF_RIGHT = "right$(";
 	private static final String SF_STR = "str$(";
 	private static final String SF_UPPER = "upper$(";
+	private static final String SF_USING = "using$(";
 	private static final String SF_VERSION = "version$(";
 	private static final String SF_WORD = "word$(";
 
 	public static final String StringFunctions[] = {
 		SF_LEFT, SF_MID, SF_RIGHT,
 		SF_STR, SF_UPPER, SF_LOWER,
-		SF_FORMAT, SF_PRINTF,
+		SF_USING, SF_FORMAT_USING, SF_FORMAT,
 		SF_CHR, SF_REPLACE, SF_WORD,
 		SF_INT, SF_HEX, SF_OCT, SF_BIN,
 		SF_GETERROR, SF_VERSION,
@@ -845,8 +844,9 @@ public class Run extends ListActivity {
 		new Command(SF_STR)                     { public boolean run() { return executeSF_STR(); } },
 		new Command(SF_UPPER)                   { public boolean run() { return executeSF_UPPER(); } },
 		new Command(SF_LOWER)                   { public boolean run() { return executeSF_LOWER(); } },
+		new Command(SF_FORMAT_USING)            { public boolean run() { return executeSF_USING(); } },
 		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
-		new Command(SF_PRINTF)                  { public boolean run() { return executeSF_PRINTF(); } },
+		new Command(SF_USING)                   { public boolean run() { return executeSF_USING(); } },
 		new Command(SF_CHR)                     { public boolean run() { return executeSF_CHR(); } },
 		new Command(SF_REPLACE)                 { public boolean run() { return executeSF_REPLACE(); } },
 		new Command(SF_WORD)                    { public boolean run() { return executeSF_WORD(); } },
@@ -987,7 +987,7 @@ public class Run extends ListActivity {
 
 	private boolean VarIsNew = true;					// Signal from getVar() that this var is new
 	private boolean VarIsNumeric = true;				// if false, var is a string
-	private boolean VarIsInt = false;					// temporary integer status used only by printf
+	private boolean VarIsInt = false;					// temporary integer status used only by fprint
 	private boolean VarIsArray = false;					// if true, var is an array
 														// if the var is an array, the VarIndex is
 														// an index into ArrayTable
@@ -1361,6 +1361,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_GET_PIXEL = "pixel";
 	private static final String BKW_GR_GET_POSITION = "position";
 	private static final String BKW_GR_GET_TEXTBOUNDS = "textbounds";
+	private static final String BKW_GR_GET_TEXTWIDTH = "textwidth";
 	private static final String BKW_GR_GET_TYPE = "type";
 	private static final String BKW_GR_GET_VALUE = "value";
 	// gr text group
@@ -1413,6 +1414,7 @@ public class Run extends ListActivity {
 		BKW_GR_GET_GROUP + BKW_GR_GET_PIXEL,
 		BKW_GR_GET_GROUP + BKW_GR_GET_POSITION,
 		BKW_GR_GET_GROUP + BKW_GR_GET_TEXTBOUNDS,
+		BKW_GR_GET_GROUP + BKW_GR_GET_TEXTWIDTH,
 		BKW_GR_GET_GROUP + BKW_GR_GET_TYPE,
 		BKW_GR_GET_GROUP + BKW_GR_GET_VALUE,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
@@ -1498,7 +1500,8 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_GET_PARAMS)              { public boolean run() { return execute_gr_get_params(); } },
 		new Command(BKW_GR_GET_PIXEL)               { public boolean run() { return execute_gr_get_pixel(); } },
 		new Command(BKW_GR_GET_POSITION)            { public boolean run() { return execute_gr_get_position(); } },
-		new Command(BKW_GR_GET_TEXTBOUNDS)          { public boolean run() { return execute_gr_get_texbounds(); } },
+		new Command(BKW_GR_GET_TEXTBOUNDS)          { public boolean run() { return execute_gr_get_textbounds(); } },
+		new Command(BKW_GR_GET_TEXTWIDTH)           { public boolean run() { return execute_gr_get_textwidth(); } },
 		new Command(BKW_GR_GET_TYPE)                { public boolean run() { return execute_gr_get_type(); } },
 		new Command(BKW_GR_GET_VALUE)               { public boolean run() { return execute_gr_get_value(); } },
 	};
@@ -2878,7 +2881,7 @@ private void InitVars(){
 
 	VarIsNew = true;									// Signal from getVar() that this var is new
 	VarIsNumeric = true;								// if false, var is a string
-	VarIsInt = false;									// temporary integer status used only by printf
+	VarIsInt = false;									// temporary integer status used only by fprint
 	VarIsArray = false;									// if true, var is an array
 	VarIsFunction = false;								// Flag set by parseVar() when var is a user function
 	VarSearchStart = 0;									// Used to limit search for var names to executing function vars
@@ -3687,40 +3690,48 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 														// returns the name, does NOT create a variable
 		int LI = LineIndex;
 		String var = getVarAndType();					// either string or numeric type is ok
-		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
-		else if (!VarIsNew)					{ RunTimeError(EXPECT_NEW_ARRAY); }
-		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
-		else return var;								// no error, return name, caller must create variable
-
+		if (validArrayVarForWrite(var)) { return var; }	// no error, return name, caller must create variable
 		LineIndex = LI;									// error, return null
 		return null;
+	}
+
+	private boolean validArrayVarForWrite(String var) {
+		if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+		if (!VarIsNew)						{ return RunTimeError(EXPECT_NEW_ARRAY); }
+		if (!isNext(']'))					{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+		return true;									// no error
 	}
 
 	private String getArrayVarForWrite(boolean type) {	// get the array var name as a new, undimensioned array
 														// returns the name, does NOT create a variable
 		int LI = LineIndex;
 		String var = parseVar(!USER_FN_OK);
-		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
-		else if (type != VarIsNumeric)		{ RunTimeError(type ? EXPECT_NUM_ARRAY : EXPECT_STRING_ARRAY); }
-		else if (searchVar(var))			{ RunTimeError(EXPECT_NEW_ARRAY); }
-		else if (!isNext(']'))				{ RunTimeError(EXPECT_ARRAY_NO_INDEX); }
-		else return var;								// no error, return name, caller must create variable
-
+		if (validArrayVarForWrite(var, type)) { return var; } // no error, return name, caller must create variable
 		LineIndex = LI;									// error, return null
 		return null;
+	}
+
+	private boolean validArrayVarForWrite(String var, boolean type) {
+		if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+		if (type != VarIsNumeric)			{ return RunTimeError(type ? EXPECT_NUM_ARRAY : EXPECT_STRING_ARRAY); }
+		if (searchVar(var))					{ return RunTimeError(EXPECT_NEW_ARRAY); }
+		if (!isNext(']'))					{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+		return true;									// no error
 	}
 
 	private String getArrayVarForRead() {				// get the array var as a previously-dimensioned array
 														// returns the var name, null if error or no var
 		int LI = LineIndex;
 		String var = getVarAndType();					// type must match expected type
-		if ((var == null) || !VarIsArray)	{ RunTimeError(EXPECT_ARRAY_VAR); }
-		else if (VarIsNew)					{ RunTimeError(EXPECT_DIM_ARRAY); }
-		else {
-			return var;									// no error, array index is in theValueIndex
-		}
+		if (validArrayVarForRead(var)) { return var; }	// no error, return name, array index is in theValueIndex
 		LineIndex = LI;
 		return null;									// error, theVarIndex is not valid
+	}
+
+	private boolean validArrayVarForRead(String var) {
+		if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+		else if (VarIsNew)					{ return RunTimeError(EXPECT_DIM_ARRAY); }
+		return true;									// no error
 	}
 
 	private String getNewFNVar() {						// get var and assure that it is a new function name
@@ -3828,13 +3839,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private int createNewVar(String var) {			// make a new var table entry
-		VarNumber = VarNames.size();
-		VarNames.add(var);
-		VarIndex.add(0);							// keep VarIndex in sync
-		return VarNumber;
-	}
-
 	private void createNewScalar(String var) {		// make a new var table entry and put a scalar in it
 		int kk = 0;
 		if (!VarIsNumeric) {						// if var is string
@@ -3844,10 +3848,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			kk = NumericVarValues.size();			// then the value index is the index
 			NumericVarValues.add(0.0);				// to the next unused entry in numeric values list
 		}
-		VarNumber = VarNames.size();				// make a new var table entry
-		VarNames.add(var);
-		VarIndex.add(kk);							// The var index is the next avail Numeric Value
+		createNewVar(var, kk);						// make a new var table entry
 		theValueIndex = kk;
+	}
+
+	private int createNewVar(String var) {			// make a new var table entry with default value
+		return createNewVar(var, 0);
+	}
+
+	private int createNewVar(String var, int val) {	// make a new var table entry
+		VarNumber = VarNames.size();
+		VarNames.add(var);
+		VarIndex.add(val);							// keep VarIndex in sync
+		return VarNumber;
 	}
 
 	// ************************************* end of getVar() **************************************
@@ -4429,6 +4442,38 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!evalNumericExpression())	{ return null; }
 		int i2 = EvalNumericExpressionValue.intValue();
 		int[] args = {i1, i2};
+		return args;
+	}
+
+	private int[] getArgs4I() {									// get four numeric int arguments
+		if (!evalNumericExpression())	{ return null; }
+		int i1 = EvalNumericExpressionValue.intValue();
+		if (!isNext(','))				{ return null; }
+		if (!evalNumericExpression())	{ return null; }
+		int i2 = EvalNumericExpressionValue.intValue();
+		if (!isNext(','))				{ return null; }
+		if (!evalNumericExpression())	{ return null; }
+		int i3 = EvalNumericExpressionValue.intValue();
+		if (!isNext(','))				{ return null; }
+		if (!evalNumericExpression())	{ return null; }
+		int i4 = EvalNumericExpressionValue.intValue();
+		int[] args = {i1, i2, i3, i4};
+		return args;
+	}
+
+	private int[] getArgs4NVar() {								// get four numeric var arguments
+		if (!getNVar())		{ return null; }
+		int i1 = theValueIndex;
+		if (!isNext(','))	{ return null; }
+		if (!getNVar())		{ return null; }
+		int i2 = theValueIndex;
+		if (!isNext(','))	{ return null; }
+		if (!getNVar())		{ return null; }
+		int i3 = theValueIndex;
+		if (!isNext(','))	{ return null; }
+		if (!getNVar())		{ return null; }
+		int i4 = theValueIndex;
+		int[] args = {i1, i2, i3, i4};
 		return args;
 	}
 
@@ -5519,28 +5564,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeSF_PRINTF() {
-		if (!doPrintf()) return false;
-		if (!isNext(')')) return false;				// Function must end with ')'
-
-		StringConstant = PrintLine + StringConstant;// ignore PrintLineReady
-		return true;
-	}
-
-	private boolean executePRINTF() {
-		if (!doPrintf()) return false;
-		if (!checkEOL()) return false;
-
-		PrintLine += StringConstant;
-		if (PrintLineReady) {						// flag set by getPrintfData
-			PrintShow(PrintLine);					// then output the accumulated print line
-			PrintLine = "";							// and clear the line
-		}											// else not ready to print; hold line
-													// and wait for next print/printf
-		return true;
-	}
-
-	private boolean doPrintf() {					// result in StringConstant
+	private boolean executeSF_USING() {
 		Locale locale;
 		if (isNext(',')) { StringConstant = ""; }	// force default Locale
 		else { if (!getStringArg()) return false; } // get user-specified Locale
@@ -5551,13 +5575,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getStringArg()) return false;			// get format string
 		String fmt = StringConstant;
 
-		Object[] args = getPrintfData();			// get data to format
+		Object[] args = getUsingArgs();				// get data to format
 		if (args == null) return false;				// error getting args
+		if (!isNext(')')) return false;				// Function must end with ')'
 
 		try {
 			StringConstant = String.format(locale, fmt, args);
 		} catch (Exception e) {
-			return RunTimeError("Cannot complete PRINTF\n" + e);
+			return RunTimeError("Cannot complete FPRINT\n" + e);
 		}
 
 		return true;
@@ -5576,15 +5601,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return locale;
 	}
 
-	private Object[] getPrintfData() {
+	private Object[] getUsingArgs() {
 		ArrayList<Object> args = new ArrayList<Object>();
-		boolean WasSemicolon = false;
-		while (true) {
-			if (isNext(';'))      { WasSemicolon = true; }
-			else if (isNext(',')) { WasSemicolon = false; }
-			else break;								// no more args
-			if (isEOL()) break;						// no more args
-
+		while (isNext(',')) {
 			if (evalNumericExpression()) {			// field is numeric
 				if (VarIsInt) { args.add(EvalNumericExpressionIntValue); }
 				else		  { args.add(EvalNumericExpressionValue); }
@@ -5595,7 +5614,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			if (SyntaxError) { return null; }
 		}
-		PrintLineReady = !WasSemicolon;
 		return args.toArray();
 	}
 
@@ -10031,45 +10049,62 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  return xtrue;
 	  }
 
-	  private Rect gr_getRect(Bundle b){
-		  Rect theRect = null;
-		  
-		  int type = b.getInt("type");
-     		switch (type) {
-    		case GR.dCircle:
-                theRect = new Rect();
-    			int cx= b.getInt("x");
-    			int cy =b.getInt("y");
-    			int cr = b.getInt("radius");
-    			theRect.top = cy - cr;
-    			theRect.left = cx - cr;
-    			theRect.bottom = cy + cr;
-    			theRect.right = cx + cr;
-    			break;
+	private Rect gr_getRect(Bundle b) {
+		Rect theRect = null;
 
-    		case GR.dRect:
-    		case GR.dOval:
-    		case GR.dArc:
-                theRect = new Rect();
-                theRect.left= b.getInt("left");
-                theRect.top =b.getInt("top");
-                theRect.bottom = b.getInt("bottom");
-    			theRect.right =b.getInt("right");
-    			break;
+		int type = b.getInt("type");
+		switch (type) {
+			case GR.dCircle:
+				theRect = new Rect();
+				int cx = b.getInt("x");
+				int cy = b.getInt("y");
+				int cr = b.getInt("radius");
+				theRect.top = cy - cr;
+				theRect.left = cx - cr;
+				theRect.bottom = cy + cr;
+				theRect.right = cx + cr;
+				break;
 
-    		case GR.dBitmap:
-                theRect = new Rect();
-    			theRect.top = b.getInt("y");
-    			theRect.left = b.getInt("x");
-    			Bitmap theBitmap = BitmapList.get(b.getInt("bitmap"));
-    			theRect.bottom = theRect.top + theBitmap.getHeight();
-    			theRect.right = theRect.left + theBitmap.getWidth();
-                break;
-     		}
+			case GR.dRect:
+			case GR.dOval:
+			case GR.dArc:
+				theRect = new Rect();
+				theRect.left= b.getInt("left");
+				theRect.top =b.getInt("top");
+				theRect.bottom = b.getInt("bottom");
+				theRect.right =b.getInt("right");
+				break;
 
+			case GR.dBitmap:
+				theRect = new Rect();
+				theRect.top = b.getInt("y");
+				theRect.left = b.getInt("x");
+				Bitmap theBitmap = BitmapList.get(b.getInt("bitmap"));
+				theRect.bottom = theRect.top + theBitmap.getHeight();
+				theRect.right = theRect.left + theBitmap.getWidth();
+				break;
 
-		  return theRect;
-	  }
+			case GR.dText:
+				theRect = new Rect();
+				Paint paint = PaintList.get(b.getInt("paint"));
+				String text = b.getString("text");
+				paint.getTextBounds(text, 0, text.length(), theRect);	// returns the minimum bounding box
+																		// from implied origin (0,0)
+				int tx = b.getInt("x");
+				int ty = b.getInt("y");
+				float tw = paint.measureText(text);						// width used for alignment
+																		// generally more than theRect.width()
+				Paint.Align align = paint.getTextAlign();
+				switch (align) {										// adjust origin for alignment
+					case LEFT:   theRect.offset(tx,               ty); break;
+					case CENTER: theRect.offset((int)(tx - tw/2), ty); break;
+					case RIGHT:  theRect.offset((int)(tx - tw),   ty); break;
+				}
+				break;
+		}
+
+		return theRect;
+	}
 
 	  private boolean execute_gr_cls(){
 			if (!checkEOL()) return false;
@@ -10975,42 +11010,75 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  return retval;
 	}
 
-	private boolean execute_gr_get_texbounds(){
-		if (!getStringArg()) return false;
-		String text = StringConstant;
+	private Bundle getTextBundle(int dlIndex) {
+		if (dlIndex < 0 || dlIndex >= DisplayList.size()) {
+			RunTimeError("Object Number out of range");
+			return null;
+		}
+		Bundle b = DisplayList.get(dlIndex);
+		if (b.getInt("type") != GR.dText) {
+			RunTimeError("Not a text object");
+			return null;
+		}
+		return b;
+	}
+
+	private boolean execute_gr_get_textbounds() {
+		Paint paint;
+		String text;
+		if (evalNumericExpression()) {						// if argument is an object number
+			int index = EvalNumericExpressionValue.intValue();
+			Bundle b = getTextBundle(index);
+			if (b == null) return false;
+			paint = PaintList.get(b.getInt("paint"));		// use the text object's paint
+			text = b.getString("text");						// get text from the text object
+		} else {
+			if (SyntaxError) return false;
+			if (!getStringArg()) return false;
+			text = StringConstant;							// argument is the text to measure
+			paint = aPaint;									// use current Paint
+		}
 
 		if (!isNext(',')) return false;
-		if (!getNVar()) return false;
-		int leftIndex = theValueIndex;
-
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;
-		int topIndex = theValueIndex;
-
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;
-		int rightIndex = theValueIndex;
-
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;
-		int bottomIndex = theValueIndex;
+		int[] ind = getArgs4NVar();							// [left, top, right, bottom]
+		if (ind == null) return false;						// error getting variables
 		if (!checkEOL()) return false;
 
-		  Rect bounds = new Rect();
-		  
-		  aPaint.getTextBounds(text, 0, text.length(), bounds);
-		  
-		  int left = bounds.left;
-		  int top = bounds.top;
-		  int right = bounds.right;
-		  int bottom = bounds.bottom;
-		  
-		  NumericVarValues.set(topIndex, (double) top);
-		  NumericVarValues.set(leftIndex, (double) left);
-		  NumericVarValues.set(bottomIndex, (double) bottom);
-		  NumericVarValues.set(rightIndex, (double) right);
-		  
-		  return true;
+		Rect bounds = new Rect();
+		paint.getTextBounds(text, 0, text.length(), bounds);
+
+		NumericVarValues.set(ind[0], (double)bounds.left);
+		NumericVarValues.set(ind[1], (double)bounds.top);
+		NumericVarValues.set(ind[2], (double)bounds.right);
+		NumericVarValues.set(ind[3], (double)bounds.bottom);
+
+		return true;
+	}
+
+	private boolean execute_gr_get_textwidth() {
+		Paint paint;
+		String text;
+		if (evalNumericExpression()) {						// if argument is an object number
+			int index = EvalNumericExpressionValue.intValue();
+			Bundle b = getTextBundle(index);
+			if (b == null) return false;
+			paint = PaintList.get(b.getInt("paint"));		// use the text object's paint
+			text = b.getString("text");						// get text from the text object
+		} else {
+			if (SyntaxError) return false;
+			if (!getStringArg()) return false;
+			text = StringConstant;							// argument is the text to measure
+			paint = aPaint;									// use current Paint
+		}
+
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;						// variable to hold returned width
+		if (!checkEOL()) return false;
+
+		double width = paint.measureText(text);				// measure text using current Paint
+		NumericVarValues.set(theValueIndex, width);
+
+		return true;
 	}
 
 	private boolean execute_bitmap_save(){
