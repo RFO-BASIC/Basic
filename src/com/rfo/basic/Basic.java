@@ -325,16 +325,17 @@ public class Basic extends Activity  {
 
 		if ((FL != null) && (FL.length != 0)) {		// if the help directory is not empty
 													// then sort the files
-
 			ArrayList<String> FL1 = new ArrayList<String>(Arrays.asList(FL));
 			Collections.sort(FL1);					// Convert to array list to easily sort
-			String f1 = FL1.get(0);					// The top of the list should be the
-			if (f1.length() > 11) {					// f00_vnn.nn_xxx file
-				String f2 = f1.substring(5, 7);
-				String f3 = f1.substring(8,10);
-				f1 = f2 + "." + f3;
-				f2 = BasicContext.getString(R.string.version);         // Get the version string
-				if (f1.equals(f2)) { return true; }		               // Compare version numbers
+			String f0 = FL1.get(0);					// The top of the list should be the
+			if (f0.length() > 11) {					// f00_vnn_nn_xxx file
+				String[] f = f0.substring(5).split("_");
+				if (f.length > 1) {
+					if (BasicContext.getString(R.string.version)	// Get the version string
+							.equals(f[0] + "." + f[1])) {			// Compare version numbers
+						return true;				// Versions match, correct files are loaded
+					}
+				}
 			}
 			for (String fileName : FL) {			// If different, empty the directory
 				File file = new File(samplesPath + File.separatorChar + fileName);
