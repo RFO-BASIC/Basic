@@ -1361,7 +1361,6 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_GET_PIXEL = "pixel";
 	private static final String BKW_GR_GET_POSITION = "position";
 	private static final String BKW_GR_GET_TEXTBOUNDS = "textbounds";
-	private static final String BKW_GR_GET_TEXTWIDTH = "textwidth";
 	private static final String BKW_GR_GET_TYPE = "type";
 	private static final String BKW_GR_GET_VALUE = "value";
 	// gr text group
@@ -1414,7 +1413,6 @@ public class Run extends ListActivity {
 		BKW_GR_GET_GROUP + BKW_GR_GET_PIXEL,
 		BKW_GR_GET_GROUP + BKW_GR_GET_POSITION,
 		BKW_GR_GET_GROUP + BKW_GR_GET_TEXTBOUNDS,
-		BKW_GR_GET_GROUP + BKW_GR_GET_TEXTWIDTH,
 		BKW_GR_GET_GROUP + BKW_GR_GET_TYPE,
 		BKW_GR_GET_GROUP + BKW_GR_GET_VALUE,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
@@ -1501,7 +1499,6 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_GET_PIXEL)               { public boolean run() { return execute_gr_get_pixel(); } },
 		new Command(BKW_GR_GET_POSITION)            { public boolean run() { return execute_gr_get_position(); } },
 		new Command(BKW_GR_GET_TEXTBOUNDS)          { public boolean run() { return execute_gr_get_textbounds(); } },
-		new Command(BKW_GR_GET_TEXTWIDTH)           { public boolean run() { return execute_gr_get_textwidth(); } },
 		new Command(BKW_GR_GET_TYPE)                { public boolean run() { return execute_gr_get_type(); } },
 		new Command(BKW_GR_GET_VALUE)               { public boolean run() { return execute_gr_get_value(); } },
 	};
@@ -10412,16 +10409,74 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			 return true;
 	}
 
-	private boolean execute_gr_text_width(){
-		if (!getNVar()) return false;							// Width return  Variable
+	private Bundle getTextBundle(int dlIndex) {
+		if (dlIndex < 0 || dlIndex >= DisplayList.size()) {
+			RunTimeError("Object Number out of range");
+			return null;
+		}
+		Bundle b = DisplayList.get(dlIndex);
+		if (b.getInt("type") != GR.dText) {
+			RunTimeError("Not a text object");
+			return null;
+		}
+		return b;
+	}
+
+	private boolean execute_gr_get_textbounds() {
+		Paint paint;
+		String text;
+		if (evalNumericExpression()) {						// if argument is an object number
+			int index = EvalNumericExpressionValue.intValue();
+			Bundle b = getTextBundle(index);
+			if (b == null) return false;
+			paint = PaintList.get(b.getInt("paint"));		// use the text object's paint
+			text = b.getString("text");						// get text from the text object
+		} else {
+			if (SyntaxError) return false;
+			if (!getStringArg()) return false;
+			text = StringConstant;							// argument is the text to measure
+			paint = aPaint;									// use current Paint
+		}
+
+		if (!isNext(',')) return false;
+		int[] ind = getArgs4NVar();							// [left, top, right, bottom]
+		if (ind == null) return false;						// error getting variables
+		if (!checkEOL()) return false;
+
+		Rect bounds = new Rect();
+		paint.getTextBounds(text, 0, text.length(), bounds);
+
+		NumericVarValues.set(ind[0], (double)bounds.left);
+		NumericVarValues.set(ind[1], (double)bounds.top);
+		NumericVarValues.set(ind[2], (double)bounds.right);
+		NumericVarValues.set(ind[3], (double)bounds.bottom);
+
+		return true;
+	}
+
+	private boolean execute_gr_text_width() {
+		if (!getNVar()) return false;						// Width return  Variable
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!getStringArg()) return false;						// Get the string
+		Paint paint;
+		String text;
+		if (evalNumericExpression()) {						// if argument is an object number
+			int index = EvalNumericExpressionValue.intValue();
+			Bundle b = getTextBundle(index);
+			if (b == null) return false;
+			paint = PaintList.get(b.getInt("paint"));		// use the text object's paint
+			text = b.getString("text");						// get text from the text object
+		} else {
+			if (SyntaxError) return false;
+			if (!getStringArg()) return false;
+			text = StringConstant;							// argument is the text to measure
+			paint = aPaint;									// use current Paint
+		}
 		if (!checkEOL()) return false;
 
-		   float w = aPaint.measureText(StringConstant);        // Get the strings width
-		   NumericVarValues.set(SaveValueIndex, (double) w);    // Save the width into the var
+		double w = paint.measureText(text);					// Get the string's width
+		NumericVarValues.set(SaveValueIndex, w);			// Save the width into the var
 
 		return true;
 	}
@@ -11010,77 +11065,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  GR.drawView.destroyDrawingCache();							// clean up DrawingCache
 		  System.gc();
 		  return retval;
-	}
-
-	private Bundle getTextBundle(int dlIndex) {
-		if (dlIndex < 0 || dlIndex >= DisplayList.size()) {
-			RunTimeError("Object Number out of range");
-			return null;
-		}
-		Bundle b = DisplayList.get(dlIndex);
-		if (b.getInt("type") != GR.dText) {
-			RunTimeError("Not a text object");
-			return null;
-		}
-		return b;
-	}
-
-	private boolean execute_gr_get_textbounds() {
-		Paint paint;
-		String text;
-		if (evalNumericExpression()) {						// if argument is an object number
-			int index = EvalNumericExpressionValue.intValue();
-			Bundle b = getTextBundle(index);
-			if (b == null) return false;
-			paint = PaintList.get(b.getInt("paint"));		// use the text object's paint
-			text = b.getString("text");						// get text from the text object
-		} else {
-			if (SyntaxError) return false;
-			if (!getStringArg()) return false;
-			text = StringConstant;							// argument is the text to measure
-			paint = aPaint;									// use current Paint
-		}
-
-		if (!isNext(',')) return false;
-		int[] ind = getArgs4NVar();							// [left, top, right, bottom]
-		if (ind == null) return false;						// error getting variables
-		if (!checkEOL()) return false;
-
-		Rect bounds = new Rect();
-		paint.getTextBounds(text, 0, text.length(), bounds);
-
-		NumericVarValues.set(ind[0], (double)bounds.left);
-		NumericVarValues.set(ind[1], (double)bounds.top);
-		NumericVarValues.set(ind[2], (double)bounds.right);
-		NumericVarValues.set(ind[3], (double)bounds.bottom);
-
-		return true;
-	}
-
-	private boolean execute_gr_get_textwidth() {
-		Paint paint;
-		String text;
-		if (evalNumericExpression()) {						// if argument is an object number
-			int index = EvalNumericExpressionValue.intValue();
-			Bundle b = getTextBundle(index);
-			if (b == null) return false;
-			paint = PaintList.get(b.getInt("paint"));		// use the text object's paint
-			text = b.getString("text");						// get text from the text object
-		} else {
-			if (SyntaxError) return false;
-			if (!getStringArg()) return false;
-			text = StringConstant;							// argument is the text to measure
-			paint = aPaint;									// use current Paint
-		}
-
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;						// variable to hold returned width
-		if (!checkEOL()) return false;
-
-		double width = paint.measureText(text);				// measure text using current Paint
-		NumericVarValues.set(theValueIndex, width);
-
-		return true;
 	}
 
 	private boolean execute_bitmap_save(){
