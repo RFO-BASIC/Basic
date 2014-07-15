@@ -8927,19 +8927,34 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeDEVICE() {
 
-		if (!getSVar()) return false;
+		if (!getVar() || !checkEOL()) return false;
+		if (VarIsNumeric) {											// bundle format
+			Bundle b = new Bundle();
+			int bundleIndex = theBundles.size();
+			theBundles.add(b);
+			NumericVarValues.set(theValueIndex, (double)bundleIndex);
 
-		String info =
+			bundlePut(b, "Brand", Build.BRAND);						// same info as executeDEVICE()
+			bundlePut(b, "Model", Build.MODEL);
+			bundlePut(b, "Device", Build.DEVICE);
+			bundlePut(b, "Product", Build.PRODUCT);
+			bundlePut(b, "OS", Build.VERSION.RELEASE);
+																	// new stuff for Bundle format
+			bundlePut(b, "Language", Locale.getDefault().getDisplayLanguage());
+			bundlePut(b, "Locale", Locale.getDefault().toString());
+			bundlePut(b, "PhoneNumber", getMyPhoneNumber());
+		} else {
+			String info =											// legacy string format
 				"Brand = " + Build.BRAND + "\n" +
 				"Model = " + Build.MODEL + "\n" +
 				"Device = " + Build.DEVICE + "\n" +
 				"Product = " + Build.PRODUCT + "\n" +
 				"OS = " + Build.VERSION.RELEASE;
-		StringVarValues.set(theValueIndex, info);
-
+			StringVarValues.set(theValueIndex, info);
+		}
 		return true;
 	}
-
+											
 	private boolean executeHTTP_POST() {
 		if (!getStringArg()) return false;
 		String url = StringConstant;
@@ -12698,16 +12713,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int LI = LineIndex;
 		if (evalNumericExpression()) {
 			if (!checkEOL()) return false;
-			b.putDouble(tag, EvalNumericExpressionValue);
-			b.putBoolean("@@@N." + tag, true);
+			bundlePut(b, tag, EvalNumericExpressionValue);
 		} else {
 			LineIndex = LI;
 			if (!getStringArg()) return false;
 			if (!checkEOL()) return false;
-			b.putString(tag, StringConstant);
-			b.putBoolean("@@@N." + tag, false);
+			bundlePut(b, tag, StringConstant);
 		}
 		return true;
+	}
+
+	private void bundlePut(Bundle b, String key, Double value) {
+		b.putDouble(key, value);
+		b.putBoolean("@@@N." + key, true);
+	}
+
+	private void bundlePut(Bundle b, String key, String value) {
+		b.putString(key, value);
+		b.putBoolean("@@@N." + key, false);
 	}
 
 	private boolean execute_BUNDLE_GET(){
@@ -14903,14 +14926,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
 
-		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
-		String pn = tm.getLine1Number();
-
-		if (pn == null) pn = "Get phone number failed.";
-
+		String pn = getMyPhoneNumber();
 		StringVarValues.set(theValueIndex, pn);
 
-		return true;
+		return true;		// Leave theValueIndex intact for executeDEVICE
+	}
+
+	private String getMyPhoneNumber() {
+		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+		String pn = (tm != null) ? tm.getLine1Number() : null;
+		return (pn != null) ? pn : "Get phone number failed.";
 	}
 
 	// ***************************************** Headset ******************************************
