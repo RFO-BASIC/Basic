@@ -1859,27 +1859,28 @@ public class Run extends ListActivity {
 		new Command(BKW_SOCKET_WRITE_FILE)      { public boolean run() { return executeSERVER_PUTFILE(); } }
 	};
 
-    // Constants that indicate the current connection state
-    public static final int STATE_NOT_ENABLED = -1;	// channel is not enabled, or server socket not created
-    public static final int STATE_NONE = 0;			// channel is doing nothing (initial state)
-    public static final int STATE_LISTENING = 1;	// now listening for incoming connections
-    public static final int STATE_CONNECTING = 2;	// now initiating an outgoing connection
-    public static final int STATE_CONNECTED = 3;	// now connected to a remote device
-    public static final int STATE_READING = 4;		// now reading from a remote device
-    public static final int STATE_WRITING = 5;		// now writing to a remote device
+	// Constants that indicate the current connection state
+	public static final int STATE_NOT_ENABLED = -1;	// channel is not enabled, or server socket not created
+	public static final int STATE_NONE = 0;			// channel is doing nothing (initial state)
+	public static final int STATE_LISTENING = 1;	// now listening for incoming connections
+	public static final int STATE_CONNECTING = 2;	// now initiating an outgoing connection
+	public static final int STATE_CONNECTED = 3;	// now connected to a remote device
+	public static final int STATE_READING = 4;		// now reading from a remote device
+	public static final int STATE_WRITING = 5;		// now writing to a remote device
 
-    private int clientSocketState;
-    private int serverSocketState;
+	private int clientSocketState;
+	private int serverSocketState;
 
-    private Socket theClientSocket ;
-    private BufferedReader ClientBufferedReader ;
-    private PrintWriter ClientPrintWriter ;
-	
-    private ServerSocket newSS;
-    private SocketConnectThread serverSocketConnectThread; 
-    private Socket theServerSocket ;
-    private BufferedReader ServerBufferedReader ;
-    private PrintWriter ServerPrintWriter ;
+	private Socket theClientSocket;
+	private ClientSocketConnectThread clientSocketConnectThread;
+	private BufferedReader ClientBufferedReader;
+	private PrintWriter ClientPrintWriter;
+
+	private ServerSocket newSS;
+	private ServerSocketConnectThread serverSocketConnectThread;
+	private Socket theServerSocket;
+	private BufferedReader ServerBufferedReader;
+	private PrintWriter ServerPrintWriter;
 
 	// *************************************************** Debug Commands ****************************
 
@@ -2976,6 +2977,7 @@ private void InitVars(){
 	theStacksType.add(0);
 	
 	theClientSocket = null ;
+	clientSocketConnectThread = null;
 	ClientBufferedReader = null;
 	ClientPrintWriter = null;
 	
@@ -3082,6 +3084,11 @@ public void cleanUp(){
 		}catch (Exception e) {
 		}
 	theServerSocket = null;
+	}
+
+	if (clientSocketConnectThread != null) {
+		clientSocketConnectThread.interrupt();
+		clientSocketConnectThread = null;
 	}
 
 	if (serverSocketConnectThread != null) {
@@ -13273,7 +13280,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeSERVER_ACCEPT(){
+	private boolean executeSERVER_ACCEPT() {
 		
 		if (newSS == null) {
 			RunTimeError("Server not created");
@@ -13288,16 +13295,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if ((theServerSocket != null) && theServerSocket.isConnected()) return true;
 
 		serverSocketState = STATE_LISTENING;
-		serverSocketConnectThread = new SocketConnectThread();
+		serverSocketConnectThread = new ServerSocketConnectThread();
 		serverSocketConnectThread.start();
 		if (block) {
 			while (serverSocketState == STATE_LISTENING) { Thread.yield(); }
-			if (serverSocketState != STATE_CONNECTED) { return false; }
+			if (serverSocketState != STATE_CONNECTED) {
+				return RunTimeError("Server socket connection error: state " + serverSocketState);
+			}
 		}
 		return true;
 	}
 
-	private class SocketConnectThread extends Thread {
+	private class ServerSocketConnectThread extends Thread {
 		public void run() {
 			try {
 				theServerSocket = newSS.accept();
@@ -13309,6 +13318,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			} finally {
 				serverSocketConnectThread = null;							// null global reference to itself
 			}
+			Log.d(LOGTAG, "serverSocketConnectThread exit, state " + serverSocketState);
 		}
 
 		@Override
@@ -13320,27 +13330,66 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 	}
 
-	private boolean executeCLIENT_CONNECT(){
+	private boolean executeCLIENT_CONNECT() {
 
 		if (!getStringArg()) return false;									// get the server address
 		String SocketClientsServerAdr = StringConstant;
-		
+
 		if (!isNext(',')) return false;										// move to the port number
 		if (!evalNumericExpression()) return false;							// get the port number
 		int SocketClientsServerPort = EvalNumericExpressionValue.intValue();
+
+		boolean block = true;												// Default if no "wait" parameter is to block.
+		if (isNext(',')) {
+			if (evalNumericExpression()) {									// Optional "wait" parameter
+				block = (EvalNumericExpressionValue != 0.0);
+			}
+		}
 		if (!checkEOL()) return false;
-		
-		try {
-			theClientSocket = new Socket(SocketClientsServerAdr, SocketClientsServerPort);
-			ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
-			ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
-			clientSocketState = STATE_CONNECTED;
-		} catch (Exception e) {
-			clientSocketState = STATE_NONE;
-			return RunTimeError(e);
+
+		clientSocketState = STATE_CONNECTING;
+		clientSocketConnectThread = new ClientSocketConnectThread(SocketClientsServerAdr, SocketClientsServerPort);
+		clientSocketConnectThread.start();
+		if (block) {
+			while (clientSocketState == STATE_CONNECTING) { Thread.yield(); }
+			if (clientSocketState != STATE_CONNECTED) {
+				return RunTimeError("Client socket connection error: state " + clientSocketState);
+			}
+		}
+		return true;
+	}
+
+	private class ClientSocketConnectThread extends Thread {
+		private final String mAddress;
+		private final int mPort;
+
+		public ClientSocketConnectThread(String address, int port) {
+			super();
+			mAddress = address;
+			mPort = port;
 		}
 
-		return true;
+		public void run() {
+			try {
+				theClientSocket = new Socket(mAddress, mPort);
+				ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
+				ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
+				clientSocketState = STATE_CONNECTED;
+			} catch (Exception e) {
+				clientSocketState = STATE_NONE;
+			} finally {
+				clientSocketConnectThread = null;							// null global reference to itself
+			}
+			Log.d(LOGTAG, "clientSocketConnectThread exit, state " + clientSocketState);
+		}
+
+		@Override
+		public void interrupt() {
+			if (clientSocketState == STATE_CONNECTING) {					// in case CLIENT_CLOSE interrupts thread
+				clientSocketState = STATE_NONE;								// change state or CLIENT_STATUS will report CONNECTING
+			}
+			super.interrupt();
+		}
 	}
 
 	private boolean executeSERVER_STATUS() {
@@ -13362,7 +13411,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getNVar()) return false;
 		if (!checkEOL()) return false;
 
-		double status = (theClientSocket == null)               ? STATE_NONE
+		double status = (clientSocketState == STATE_CONNECTING) ? STATE_CONNECTING
+					  : (theClientSocket == null)               ? STATE_NONE
 					  : theClientSocket.isConnected()           ? STATE_CONNECTED
 					  :                                           STATE_NONE;
 		NumericVarValues.set(theValueIndex, status);
@@ -13549,7 +13599,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			// Set buffer size to 16K bytes, timeout to 16 sec, time out if rate is slower than 1kb/sec
 			if (!streamCopy(bis, dos, bufferSize, (long)bufferSize)) {		// Copy from file to socket
 				RunTimeError("Data transmission time out.");				// Timeout
-				executeSERVER_DISCONNECT();
+				doServerDisconnect();
 				return false;
 			}
 		} catch (Exception e) {
@@ -13625,9 +13675,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 	}
 
-	private boolean executeSERVER_DISCONNECT(){
-		if (!checkEOL()) return false;
+	private boolean executeSERVER_DISCONNECT() {
+		return checkEOL() && doServerDisconnect();
+	}
 
+	private boolean doServerDisconnect() {
 		if (serverSocketConnectThread != null) {
 			serverSocketConnectThread.interrupt();
 			serverSocketConnectThread = null;
@@ -13636,7 +13688,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (theServerSocket == null) return true;
 		try {
 			theServerSocket.close();
-			
 		} catch (Exception e) {
 			return RunTimeError(e);
 		} finally {
@@ -13649,10 +13700,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeSERVER_CLOSE(){
+	private boolean executeSERVER_CLOSE() {
 		if (!checkEOL()) return false;
-		if (theServerSocket != null) executeSERVER_DISCONNECT();
-
+		boolean disconnect = true;
+		if (theServerSocket != null) {
+			disconnect = doServerDisconnect();
+		}
 		try {
 			if (newSS != null) newSS.close();
 		} catch (Exception e) {
@@ -13660,12 +13713,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} finally {
 			newSS = null;
 		}
-		return true;
+		return disconnect;
 	}
 
-	private boolean executeCLIENT_CLOSE(){
+	private boolean executeCLIENT_CLOSE() {
 		if (!checkEOL()) return false;
 		if (theClientSocket == null) return true;
+
+		if ((clientSocketState == STATE_CONNECTING) && (clientSocketConnectThread != null)) {
+			clientSocketConnectThread.interrupt();
+			clientSocketConnectThread = null;
+		}
 
 		try {
 			theClientSocket.close();

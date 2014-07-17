@@ -575,7 +575,7 @@ public class Basic extends Activity  {
 			mProgressDialog.setTitle(title);
 			mProgressDialog.show();
 			// mProgressText.setGravity(Gravity.CENTER_HORIZONTAL);
-			mProgressText.setText(mProgressMarker);
+			mProgressText.setText("");
 
 			mUpdates = 0;
 		}
