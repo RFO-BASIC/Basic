@@ -61,7 +61,7 @@ INPUT "Enter the port number", port, 1080
 
 SOCKET.MYIP ip$
 PRINT "LAN IP: " + ip$
-GRABURL ip$, "http://automation.whatismyip.com/n09230945.asp"
+GRABURL ip$, "https://www.packetmail.net/myip.php"
 PRINT "WAN IP: " + ip$
 
 ! Create the server on the specified port
