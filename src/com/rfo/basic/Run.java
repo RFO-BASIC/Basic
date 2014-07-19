@@ -3115,7 +3115,7 @@ public void cleanUp(){
 	clientSocketState = STATE_NONE;
 	serverSocketState = STATE_NONE;
 
-	execute_audio_record_stop();
+	audioRecordStop();
 
 	Stop = true;										// make sure the background task stops
 	Basic.theRunContext = null;
@@ -11688,7 +11688,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	  }
 
 	private boolean execute_audio_record_stop() {
-		if (!checkEOL()) return false;
+		return checkEOL() && audioRecordStop();
+	}
+
+	private boolean audioRecordStop() {
 		if (mRecorder == null) return true;
 		try {
 			mRecorder.stop();
