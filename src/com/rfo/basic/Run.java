@@ -4820,12 +4820,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeMF_TIME() {
 		if (ExecutingLineBuffer.charAt(LineIndex)== ')') {	// If no args, use current time
-			EvalNumericExpressionValue = (double)System.currentTimeMillis();
+			EvalNumericExpressionIntValue = System.currentTimeMillis();
 		} else {											// Otherwise, get user-supplied time
 			Time time = theTimeZone.equals("") ? new Time() : new Time(theTimeZone);
 			if (!parseTimeArgs(time)) { return false; }
-			EvalNumericExpressionValue = (double)time.toMillis(true);
+			EvalNumericExpressionIntValue = time.toMillis(true);
 		}
+		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+		VarIsInt = true;
 		return true;
 	}
 
