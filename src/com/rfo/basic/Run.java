@@ -3267,7 +3267,7 @@ public boolean onTouchEvent(MotionEvent event){
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.run, menu);
 		MenuItem item = menu.getItem(1);
-		if (Basic.isAPK) {								// If APK, menu action is "Exit", not "Editor"
+		if (Basic.DoAutoRun) {							// If APK or shortcut, menu action is "Exit", not "Editor"
 			item.setTitle(getString(R.string.exit));
 		}
 		item.setEnabled(false);
@@ -15059,13 +15059,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeSMS_RCV_NEXT() {
-		if (!checkEOL()) return false;
-
 		if (smsRcvBuffer == null) {
 			return RunTimeError("SMS.RCV.INIT not executed)");
 		}
 
 		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
 
 		if (smsRcvBuffer.size() == 0) {
 			StringVarValues.set(theValueIndex, "@");
