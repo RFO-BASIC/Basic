@@ -169,8 +169,6 @@ import android.text.format.Time;
 import android.text.ClipboardManager;
 
 import android.util.Base64;
-import android.util.DisplayMetrics;
-import android.view.Display;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -265,6 +263,7 @@ public class Run extends ListActivity {
 		}
 		return null;												// no keyword found
 	}
+
 
 	// **********  The variables for the Basic Keywords ****************************
 
@@ -2688,15 +2687,15 @@ public class Run extends ListActivity {
 		} // for each string
 	} // onProgressUpdate()
 
-	
-// ********************* Run Entry Point. Called from Editor or AutoRun *******************
+
+	// ********************* Run Entry Point. Called from Editor or AutoRun *******************
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 
 		super.onCreate(savedInstanceState);
 		Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex );
-		
+
 		if (Basic.lines == null){
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
 			Intent intent = new Intent(getApplicationContext(), Basic.class);
@@ -2720,7 +2719,7 @@ public class Run extends ListActivity {
 		theWifiLock = null;
 		isOld = true;
 
-		InitVars();	
+		InitVars();
 //		Log.v(LOGTAG, CLASSTAG + " On Create 2 " + ExecutingLineIndex );
 
 		myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
@@ -2732,24 +2731,25 @@ public class Run extends ListActivity {
 		lv.setSelection(0);
 		lv.setBackgroundColor(AA.backgroundColor);
 		if (Settings.getLinedConsole(this)) {
-			lv.setDivider(new ColorDrawable(AA.lineColor));	// override default from theme, sometimes it's invisible
+			lv.setDivider(new ColorDrawable(AA.lineColor));				// override default from theme, sometimes it's invisible
+			if (lv.getDividerHeight() < 1) { lv.setDividerHeight(1); }	// make sure the divider shows
 		} else {
 			lv.setDividerHeight(0);							// don't show the divider
 		}
-	
+
 //		IMM.restartInput(lv);
 		executeKB_HIDE();
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		setRequestedOrientation(Settings.getSreenOrientation(this));
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-	
+
 		headsetBroadcastReceiver = new BroadcastsHandler();
 		this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
-	
+
 		Basic.theRunContext = this;
 
 		// Listeners for Console Touch
-	
+
 		lv.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 				if (onCTLine != 0) {
@@ -2759,7 +2759,7 @@ public class Run extends ListActivity {
 				}
 			}
 		});
-	
+
 		lv.setOnItemLongClickListener(new OnItemLongClickListener() {
 			public boolean  onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
 				if (onCTLine != 0) {
@@ -5212,14 +5212,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				++FdecimalIndex;
 				}
 																			// Split the pattern string
-		FWstring = Fstring.substring(0, FdecimalIndex-1);									// FW is whole number part (includes decimaal)
+		FWstring = Fstring.substring(0, FdecimalIndex-1);									// FW is whole number part (includes decimal)
 		if (FhasDecimal) {FDstring = Fstring.substring(FdecimalIndex, Fstring.length());}	// FD is decimal string
 
-      
-        for (i=0; i<FDstring.length(); ++i){								// insure FD only has # chars
-        	if (FDstring.charAt(i) != '#'){SyntaxError(); return false;}
-        }
-		
+		for (i=0; i<FDstring.length(); ++i){								// insure FD only has # chars
+			if (FDstring.charAt(i) != '#'){SyntaxError(); return false;}
+		}
+
 		for (i=0; i< Vstring.length(); ++i){								// Scan the number string for its decimal index
 			if (Vstring.charAt(i)== '.'){
 				if (VhasDecimal){SyntaxError(); return false;}				// more than one decimal should never happen
@@ -5644,19 +5643,30 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	}
 
-	private int getLabelLineNum() {
+	private boolean getLabelLineNum() {
+		int li = LineIndex;
 		String label = getWord(ExecutingLineBuffer, LineIndex, false);	// get label name
-		int len = label.length();
-		LineIndex += len;
-		if (len != 0) {
-			Integer lineNum = Labels.get(label);
-			if (lineNum == null) {
-				RunTimeError("Undefined Label at:");
-			} else {
-				return lineNum.intValue();
+		Integer lineRef = Labels.get(label);
+		LineIndex += label.length();									// move LineIndex for isEOL()
+		// If EOL, this is a simple "GOTO/GOSUB label" statement.
+		// Otherwise it is a "GOTO/GOSUB index, label_list..." statement.
+		if (!isEOL()) {
+			LineIndex = li;
+			if (!evalNumericExpression()) return false;
+			int index = (int)(EvalNumericExpressionValue + 0.5);		// round index
+			for (int i = 0; i < index; ++i) {							// skip to indexed label
+				if (isEOL()) return true;								// no target, fall through
+				if (!isNext(',') || isEOL()) return false;				// no comma, or no label after it
+				label = getWord(ExecutingLineBuffer, LineIndex, false);	// get label name
+				LineIndex += label.length();
 			}
+			if (!isNext(',') && !isEOL()) return false;					// does line end with a word?
+			if (index < 1) return true;									// no target, fall through
+			lineRef = Labels.get(label);								// is it a valid label?
 		}
-		return -1;
+		if (lineRef == null) return RunTimeError("Undefined Label \"" + label + "\" at:");
+		ExecutingLineIndex = lineRef.intValue();
+		return true;
 	}
 
 	private boolean executeGOTO() {
@@ -5667,17 +5677,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Stack overflow. See manual about use of GOTO.");
 		}
 
-		int gln = getLabelLineNum();
-		if ((gln < 0) || !checkEOL()) return false;
-		ExecutingLineIndex = gln;
-		return true;
+		return getLabelLineNum();
 	}
 
 	private boolean executeGOSUB() {
-		int gln = getLabelLineNum();
-		if ((gln < 0) || !checkEOL()) return false;
-		GosubStack.push(ExecutingLineIndex);
-		ExecutingLineIndex = gln;
+		int returnAddress = ExecutingLineIndex;
+		if (!getLabelLineNum()) return false;
+		if (ExecutingLineIndex != returnAddress) {
+			GosubStack.push(returnAddress);			// Found a valid gosub address, expect a return
+		}
 		return true;
 	}
 
