@@ -30,6 +30,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import com.rfo.basic.Basic.ColoredTextAdapter;
+
 import android.app.ListActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -46,48 +48,48 @@ import android.widget.ListView;
 // Loads a file. Called from the Editor when user selects Menu->Load
 
 public class LoadFile extends ListActivity {
-  private static final String LOGTAG = "Load File";
-  private static final String CLASSTAG = LoadFile.class.getSimpleName();
-  private Basic.ColoredTextAdapter mAdapter;
-  private String ProgramPath = "";								// Load file directory path
-  private ArrayList<String> FL1 = new ArrayList<String>();
+	private static final String LOGTAG = "Load File";
+	private static final String CLASSTAG = LoadFile.class.getSimpleName();
+	private Basic.ColoredTextAdapter mAdapter;
+	private String ProgramPath = "";								// Load file directory path
+	private ArrayList<String> FL1 = new ArrayList<String>();
 
-  @Override
-  public void onCreate(Bundle savedInstanceState) {
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
 
-    super.onCreate(savedInstanceState);
-    setRequestedOrientation(Settings.getSreenOrientation(this));
+		super.onCreate(savedInstanceState);
+		setRequestedOrientation(Settings.getSreenOrientation(this));
 
-	updateList();												// put file list in FL1
+		updateList();												// put file list in FL1
 
-	mAdapter = new Basic.ColoredTextAdapter(this, FL1);			// Display the list
-	setListAdapter(mAdapter);
-	ListView lv = getListView();
-	lv.setTextFilterEnabled(false);
-	lv.setBackgroundColor(mAdapter.backgroundColor);
+		mAdapter = new ColoredTextAdapter(this, FL1, Basic.defaultTextStyle);	// Display the list
+		setListAdapter(mAdapter);
+		ListView lv = getListView();
+		lv.setTextFilterEnabled(false);
+		lv.setBackgroundColor(mAdapter.getBackgroundColor());
 
-	// The click listener for the user selection *******************
+		// The click listener for the user selection *******************
 
-	lv.setOnItemClickListener(new OnItemClickListener() {
-		public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+		lv.setOnItemClickListener(new OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
-			// User has selected a file.
-			// If the selection is a directory, change the program path
-			// and then display the list of files in that directory
-			// otherwise load the selected file
+				// User has selected a file.
+				// If the selection is a directory, change the program path
+				// and then display the list of files in that directory
+				// otherwise load the selected file
 
-			if (!SelectionIsFile(position)){
-				Basic.SD_ProgramPath = ProgramPath;
-				updateList();
-			} else {
-				FileLoader(FL1.get(position));
-				return;
+				if (!SelectionIsFile(position)){
+					Basic.SD_ProgramPath = ProgramPath;
+					updateList();
+				} else {
+					FileLoader(FL1.get(position));
+					return;
+				}
 			}
-		}
-	});
+		});
 
-	// End of Click Listener **********************************************
-}
+		// End of Click Listener **********************************************
+	}
 
 private void updateList(){
 

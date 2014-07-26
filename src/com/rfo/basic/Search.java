@@ -67,51 +67,50 @@ public class Search extends Activity {
         return super.onKeyUp(keyCode, event);
     }
 
-    
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-       super.onCreate(savedInstanceState);
-       setRequestedOrientation(Settings.getSreenOrientation(this));       
-       originalText = Editor.DisplayText;		// Save in case of BACK Key
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setRequestedOrientation(Settings.getSreenOrientation(this));
+		originalText = Editor.DisplayText;		// Save in case of BACK Key
 
-       setContentView(R.layout.search);			// Layouts xmls exist for both landscape or portrait modes
-       
-       rText = (EditText) findViewById(R.id.replace_text);				// The replace text
-       sText = (EditText) findViewById(R.id.search_text);				// The search for text
+		setContentView(R.layout.search);			// Layouts xmls exist for both landscape or portrait modes
 
-       nextButton = (Button) findViewById(R.id.next_button);			// The buttons
-       replaceButton = (Button) findViewById(R.id.replace_button);
-       replaceAllButton = (Button) findViewById(R.id.replace_all_button);
-       doneButton = (Button) findViewById(R.id.done_button);
-       
-       theTextView = (EditText) findViewById(R.id.the_text);			// The text display area
-       theTextView.setText(Editor.DisplayText);							// The Editor's display text
+		rText = (EditText) findViewById(R.id.replace_text);				// The replace text
+		sText = (EditText) findViewById(R.id.search_text);				// The search for text
 
-       Basic.ScreenColors colors = new Basic.ScreenColors();			// Get text color from Settings
-       theTextView.setTextColor(colors.textColor);
-       theTextView.setBackgroundColor(colors.backgroundColor);
-       rText.setTextColor(colors.textColor);
-       rText.setBackgroundColor(colors.backgroundColor);
-       sText.setTextColor(colors.textColor);
-       sText.setBackgroundColor(colors.backgroundColor);
+		nextButton = (Button) findViewById(R.id.next_button);			// The buttons
+		replaceButton = (Button) findViewById(R.id.replace_button);
+		replaceAllButton = (Button) findViewById(R.id.replace_all_button);
+		doneButton = (Button) findViewById(R.id.done_button);
 
-       theTextView.setTextSize(1, Settings.getFont(this));
+		theTextView = (EditText) findViewById(R.id.the_text);			// The text display area
+		theTextView.setText(Editor.DisplayText);						// The Editor's display text
 
-       // If there is a block of text selected in the Editor then make that
-       // block of text the search for text
-       
-       if (Editor.selectionStart != Editor.selectionEnd){	
-    	   int s = Editor.selectionStart;
-    	   int e = Editor.selectionEnd;
-    	   if (e < s) {
-    		   s = e;
-    		   e = Editor.selectionStart;
-    	   }
-    	   sText.setText(Editor.DisplayText.substring(s, e));
-       }
-       
-       Index = -1;			// Current Index into text, set for nothing found
-       nextIndex = 0;		// next Index
+		Basic.TextStyle style = Basic.defaultTextStyle;					// Get text color from Settings
+		theTextView.setTextColor(style.mTextColor);
+		theTextView.setBackgroundColor(style.mBackgroundColor);
+		rText.setTextColor(style.mTextColor);
+		rText.setBackgroundColor(style.mBackgroundColor);
+		sText.setTextColor(style.mTextColor);
+		sText.setBackgroundColor(style.mBackgroundColor);
+
+		theTextView.setTextSize(1, Settings.getFont(this));
+
+		// If there is a block of text selected in the Editor then make that
+		// block of text the search for text
+
+		if (Editor.selectionStart != Editor.selectionEnd){
+			int s = Editor.selectionStart;
+			int e = Editor.selectionEnd;
+			if (e < s) {
+				s = e;
+				e = Editor.selectionStart;
+			}
+			sText.setText(Editor.DisplayText.substring(s, e));
+		}
+
+		Index = -1;			// Current Index into text, set for nothing found
+		nextIndex = 0;		// next Index
 
 		nextButton.setOnClickListener(new OnClickListener() {			// ***** Next Button ****
 
@@ -123,7 +122,7 @@ public class Search extends Activity {
 																		// from the start
 				if (doNext()) return;									// If this next found something, return
 				nextIndex = -1;											// Else indicate not found and (Index also -1 now)
-				Basic.toaster(Search.this, searchText + " not found." );		// tell the user not found
+				Basic.toaster(Search.this, searchText + " not found." );// tell the user not found
 				return;
 			}
 		});
@@ -149,29 +148,29 @@ public class Search extends Activity {
 
 		doneButton.setOnClickListener(new OnClickListener() {			// **** Done Button ****
 
-           public void onClick(View v) {
-        	   Editor.DisplayText = theTextView.getText().toString();   // Grab the text that the user is seeing
-        	   Editor.mText.setText(Editor.DisplayText);				// Set the Editor's EditText TextView text
+			public void onClick(View v) {
+				Editor.DisplayText = theTextView.getText().toString();	// Grab the text that the user is seeing
+				Editor.mText.setText(Editor.DisplayText);				// Set the Editor's EditText TextView text
 				if (!mChanged) {
 					mChanged = !originalText.equals(Editor.DisplayText);// She may have edited it
 				}
 				if (mChanged) {
 					Editor.Saved = false;
 				}
-        	   if (nextIndex < 0 ) nextIndex = 0;						// If nextIndex indicates done, then set to start
-        	   if (Index < 0) Index = 0;								// If Index indicates not found, set to start
-        	   if (nextIndex < Index){
-        		   int ni = nextIndex;
-        		   nextIndex = Index;
-        		   Index = ni;
-        	   }
-        	   Editor.mText.setSelection(Index, nextIndex);			    // Set the cursor or selection highlight
-               finish();												// Done with this module
-               return;
-           	}
-       	});
+				if (nextIndex < 0 ) nextIndex = 0;						// If nextIndex indicates done, then set to start
+				if (Index < 0) Index = 0;								// If Index indicates not found, set to start
+				if (nextIndex < Index){
+					int ni = nextIndex;
+					nextIndex = Index;
+					Index = ni;
+				}
+				Editor.mText.setSelection(Index, nextIndex);			// Set the cursor or selection highlight
+				finish();												// Done with this module
+				return;
+			}
+		});
 
-    }
+	}
 
 	@Override
 	protected void onResume() {

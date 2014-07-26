@@ -51,55 +51,55 @@ import android.widget.AdapterView.OnItemClickListener;
  */
 
 public class Delete extends ListActivity {
-    private static final String LOGTAG = "Delete File";
-    private static final String CLASSTAG = Delete.class.getSimpleName();
+	private static final String LOGTAG = "Delete File";
+	private static final String CLASSTAG = Delete.class.getSimpleName();
 
-    private Basic.ColoredTextAdapter mAdapter;
-    private String FilePath = "";
-    private String FL[] = null;
-    private ArrayList<String> FL1 = new ArrayList<String>();
+	private Basic.ColoredTextAdapter mAdapter;
+	private String FilePath = "";
+	private String FL[] = null;
+	private ArrayList<String> FL1 = new ArrayList<String>();
 
-@Override
-public void onCreate(Bundle savedInstanceState) {
-	
-  super.onCreate(savedInstanceState);
-  setRequestedOrientation(Settings.getSreenOrientation(this));
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
 
-  FilePath = Basic.AppPath;
-  updateList();													// put file list in FL1
+		super.onCreate(savedInstanceState);
+		setRequestedOrientation(Settings.getSreenOrientation(this));
 
-  mAdapter = new Basic.ColoredTextAdapter(this, FL1);
-  setListAdapter(mAdapter);
-  ListView lv = getListView();
-  lv.setTextFilterEnabled(false);
-  lv.setBackgroundColor(mAdapter.backgroundColor);
+		FilePath = Basic.AppPath;
+		updateList();											// put file list in FL1
 
-  // Listener waits for the user to select a file or directory. If the entry is a directory,
-  // check to see if that directory is empty. If empty, it can be deleted. If not empty,
-  // then display the list of files in that directory
-  
-  lv.setOnItemClickListener(new OnItemClickListener() {			// when user taps a filename line
-	public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-		if (position == 0) {									// if GoUp is selected
-			FilePath = LoadFile.goUp(FilePath);					// change FilePath to its parent directory
-			updateList();
-		} else {												// up is not selected
-			String path = FilePath + '/' + FL1.get(position);
-			if (path.endsWith("(d)")) {							// if has (d), then is directory
-				int k = path.length() - 3;
-				path = path.substring(0, k);
-				GetFileList(path);								// see if the directory is empty
-				if (FL.length != 0) {							// not empty, don't delete it
-					FilePath = path;							// display the files in it
+		mAdapter = new Basic.ColoredTextAdapter(this, FL1, Basic.defaultTextStyle);
+		setListAdapter(mAdapter);
+		ListView lv = getListView();
+		lv.setTextFilterEnabled(false);
+		lv.setBackgroundColor(mAdapter.getBackgroundColor());
+
+		// Listener waits for the user to select a file or directory. If the entry is a directory,
+		// check to see if that directory is empty. If empty, it can be deleted. If not empty,
+		// then display the list of files in that directory
+
+		lv.setOnItemClickListener(new OnItemClickListener() {	// when user taps a filename line
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				if (position == 0) {							// if GoUp is selected
+					FilePath = LoadFile.goUp(FilePath);			// change FilePath to its parent directory
 					updateList();
-					return;
+				} else {										// up is not selected
+					String path = FilePath + '/' + FL1.get(position);
+					if (path.endsWith("(d)")) {					// if has (d), then is directory
+						int k = path.length() - 3;
+						path = path.substring(0, k);
+						GetFileList(path);						// see if the directory is empty
+						if (FL.length != 0) {					// not empty, don't delete it
+							FilePath = path;					// display the files in it
+							updateList();
+							return;
+						}
+					}
+					OptionalDelete(path);						// file or empty directory: delete it
 				}
 			}
-			OptionalDelete(path);								// file or empty directory: delete it
-		}
+		});
 	}
-  });
-}
 
 private void updateList(){
 

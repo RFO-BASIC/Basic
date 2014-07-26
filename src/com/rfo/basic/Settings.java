@@ -61,12 +61,20 @@ public class Settings extends PreferenceActivity {
 
 //Log.v(Settings.LOGTAG, " " + Settings.CLASSTAG + " context =  " + context);
 
-	   @Override
-	   protected void onCreate(Bundle savedInstanceState) {   // The method sets the initial displayed
-	      super.onCreate(savedInstanceState);				  // checked state from the xml file
-	      addPreferencesFromResource(R.xml.settings);         // it does not affect the above variables
-	      setBaseDriveList();
-	   }
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {	// The method sets the initial displayed
+		super.onCreate(savedInstanceState);					// checked state from the xml file
+		addPreferencesFromResource(R.xml.settings);			// it does not affect the above variables
+		setBaseDriveList();
+	}
+
+	@Override
+	protected void onPause() {
+		// Sledge-hammer approach to updating the defaultTextStyle.
+		// TODO: something a little more graceful, like a change listener.
+		if (Basic.defaultTextStyle != null) { Basic.defaultTextStyle.refresh(); }
+		super.onPause();
+	}
 
 	public void setBaseDriveList() {
 		String defaultPath = Environment.getExternalStorageDirectory().getPath();

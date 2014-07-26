@@ -32,6 +32,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 
+import com.rfo.basic.Basic.ColoredTextAdapter;
+import com.rfo.basic.Basic.TextStyle;
+
 import android.app.ListActivity;
 import android.content.Context;
 import android.graphics.Typeface;
@@ -58,10 +61,11 @@ public class Help extends ListActivity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		Basic.ColoredTextAdapter AA = new Basic.ColoredTextAdapter(this, output, Typeface.MONOSPACE);
+		TextStyle style = new TextStyle(Basic.defaultTextStyle, Typeface.MONOSPACE);
+		ColoredTextAdapter AA = new ColoredTextAdapter(this, output, style);
 		lv = getListView();
 		lv.setTextFilterEnabled(false);
-		lv.setBackgroundColor(AA.backgroundColor);
+		lv.setBackgroundColor(AA.getBackgroundColor());
 
 		setRequestedOrientation(Settings.getSreenOrientation(this));
 

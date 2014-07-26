@@ -222,10 +222,10 @@ public class Editor extends Activity {
 		}
 
 		private void getPreferences(Context context) {
-			Basic.ScreenColors colors = new Basic.ScreenColors();
-			mText.setTextColor(colors.textColor);
-			mText.setBackgroundColor(colors.backgroundColor);
-			mPaint.setColor(colors.lineColor);
+			Basic.TextStyle style = Basic.defaultTextStyle;
+			mText.setTextColor(style.mTextColor);
+			mText.setBackgroundColor(style.mBackgroundColor);
+			mPaint.setColor(style.mLineColor);
 			setTextSize(1, Settings.getFont(context));
 			mLinesSetting = Settings.getLinedEditor(context);
 		}

@@ -102,6 +102,8 @@ public class Basic extends Activity  {
 	private Dialog mProgressDialog;
 	private ImageView mSplash;								// ImageView for splash screen
 
+	public static TextStyle defaultTextStyle;
+
 	public static boolean checkSDCARD(char mount) {			// mount is 'w' for writable,
 															// 'r' for either readable or writable
 		String state = Environment.getExternalStorageState();
@@ -193,6 +195,9 @@ public class Basic extends Activity  {
 
 		initVars();
 		Settings.setDefaultValues(this, isAPK);				// if isAPK, force to default settings
+
+		defaultTextStyle = new TextStyle();
+
 		String base = Settings.getBaseDrive(this);
 		setFilePaths(base);
 
@@ -839,12 +844,39 @@ public class Basic extends Activity  {
 
 	/************************************** utility classes **************************************/
 
-	public static class ScreenColors {
-		public int textColor;
-		public int backgroundColor;
-		public int lineColor;
+	public static class TextStyle {
+		public int mTextColor;
+		public int mBackgroundColor;
+		public int mLineColor;
+		public float mSize;
+		public Typeface mTypeface;
 
-		public ScreenColors() {
+		public TextStyle() {				// default constructor uses setup.xml values and Preferences settings
+			refresh();
+		}
+
+		public TextStyle(TextStyle from, Typeface typeface) {	// clone from, override typeface
+			this(from);
+			mTypeface = typeface;
+		}
+
+		public TextStyle(TextStyle from) {
+			this(from.mTextColor, from.mBackgroundColor, from.mLineColor, from.mSize, from.mTypeface);
+		}
+
+		public TextStyle(int fg, int bg, int lc, float size, Typeface typeface) {
+			mTextColor = fg; mBackgroundColor = bg;
+			mLineColor = lc; mSize = size;
+			mTypeface = typeface;
+		}
+
+		public void refresh() {									// set fields from setup.xml values and Preferences settings
+			getScreenColors();
+			mSize = Settings.getFont(BasicContext);
+			mTypeface = Settings.getConsoleTypeface(BasicContext);
+		}
+
+		public void getScreenColors() {
 			// By default, color1 is solid black, color2 is solid white,
 			// and color3 is a shade of blue that Paul originally chose for "WBL".
 			// The programmer may define the colors any way she likes in res/values/setup.xml.
@@ -854,46 +886,44 @@ public class Basic extends Activity  {
 			int blue  = res.getInteger(R.integer.color3);
 			String colorSetting = Settings.getEditorColor(BasicContext);
 			if (colorSetting.equals("BW")) {
-				textColor = black;
-				backgroundColor = white;
-				lineColor = textColor;
+				mTextColor = black;
+				mBackgroundColor = white;
+				mLineColor = mTextColor;
 			} else
 			if (colorSetting.equals("WB")) {
-				textColor = white;
-				backgroundColor = black;
-				lineColor = textColor;
+				mTextColor = white;
+				mBackgroundColor = black;
+				mLineColor = mTextColor;
 			} else
 			if (colorSetting.equals("WBL")) {
-				textColor = white;
-				backgroundColor = blue;
-				lineColor = black;
+				mTextColor = white;
+				mBackgroundColor = blue;
+				mLineColor = black;
 			}
-			lineColor &= 0x80ffffff;		// half alpha
+			mLineColor &= 0x80ffffff;		// half alpha
 		}
 	} // class ScreenColors
 
 	public static class ColoredTextAdapter extends ArrayAdapter<String> {
 		private final Activity mActivity;
 		private final ArrayList<String> mList;
-		private Typeface mTypeface = null;
-		public int textColor;
-		public int backgroundColor;
-		public int lineColor;
+		private TextStyle mTextStyle;
 
-		public ColoredTextAdapter(Activity activity, ArrayList<String> alist, Typeface typeface) {
-			this(activity, alist);
-			mTypeface = typeface;
+		public ColoredTextAdapter(Activity activity, ArrayList<String> alist, TextStyle style, Typeface typeface) {
+			this(activity, alist, style);
+			mTextStyle.mTypeface = typeface;
 		}
 
-		public ColoredTextAdapter(Activity activity, ArrayList<String> alist) {
+		public ColoredTextAdapter(Activity activity, ArrayList<String> alist, TextStyle style) {
 			super(activity, Settings.getLOadapter(activity), alist);
 			mActivity = activity;
 			mList = alist;
-			ScreenColors colors = new ScreenColors();
-			textColor = colors.textColor;
-			backgroundColor = colors.backgroundColor;
-			lineColor = colors.lineColor;
+			mTextStyle = style;
 		}
+
+		public int getTextColor() { return mTextStyle.mTextColor; }
+		public int getBackgroundColor() { return mTextStyle.mBackgroundColor; }
+		public int getLineColor() { return mTextStyle.mLineColor; }
 
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent) {
@@ -904,10 +934,10 @@ public class Basic extends Activity  {
 				row = inflater.inflate(Settings.getLOadapter(mActivity), null);
 			}
 			TextView text = (TextView) row.findViewById(R.id.the_text);
-			text.setTextColor(textColor);
+			text.setTextColor(mTextStyle.mTextColor);
 			text.setText(mList.get(position));
-			if (mTypeface != null) { text.setTypeface(mTypeface); }
-			text.setBackgroundColor(backgroundColor);
+			if (mTextStyle.mTypeface != null) { text.setTypeface(mTextStyle.mTypeface); }
+			text.setBackgroundColor(mTextStyle.mBackgroundColor);
 
 			return row;
 		}

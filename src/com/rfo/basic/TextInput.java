@@ -74,9 +74,9 @@ public class TextInput extends Activity {
        theTextView.setTypeface(Typeface.MONOSPACE);
        theTextView.setSelection(Run.TextInputString.length());
 
-       Basic.ScreenColors colors = new Basic.ScreenColors();				// Get text color from Settings
-       theTextView.setTextColor(colors.textColor);
-       theTextView.setBackgroundColor(colors.backgroundColor);
+       Basic.TextStyle style = Basic.defaultTextStyle;						// Get text color from Settings
+       theTextView.setTextColor(style.mTextColor);
+       theTextView.setBackgroundColor(style.mBackgroundColor);
 
        theTextView.setTextSize(1, Settings.getFont(this));
 

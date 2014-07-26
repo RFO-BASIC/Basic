@@ -104,6 +104,8 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.ByteArrayBuffer;
 
+import com.rfo.basic.Basic.TextStyle;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -2724,14 +2726,15 @@ public class Run extends ListActivity {
 
 		myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
 															// Establish the output screen
-		AA = new Basic.ColoredTextAdapter(this, output, Settings.getConsoleTypeface(this));
+		TextStyle style = new TextStyle(Basic.defaultTextStyle, Settings.getConsoleTypeface(this));
+		AA = new Basic.ColoredTextAdapter(this, output, style);
 		setListAdapter(AA);
 		lv = getListView();
 		lv.setTextFilterEnabled(false);
 		lv.setSelection(0);
-		lv.setBackgroundColor(AA.backgroundColor);
+		lv.setBackgroundColor(AA.getBackgroundColor());
 		if (Settings.getLinedConsole(this)) {
-			lv.setDivider(new ColorDrawable(AA.lineColor));				// override default from theme, sometimes it's invisible
+			lv.setDivider(new ColorDrawable(AA.getLineColor()));		// override default from theme, sometimes it's invisible
 			if (lv.getDividerHeight() < 1) { lv.setDividerHeight(1); }	// make sure the divider shows
 		} else {
 			lv.setDividerHeight(0);							// don't show the divider

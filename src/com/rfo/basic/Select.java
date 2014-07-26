@@ -28,6 +28,8 @@ package com.rfo.basic;
 
 import java.util.ArrayList;
 
+import com.rfo.basic.Basic.ColoredTextAdapter;
+
 import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -69,12 +71,12 @@ public class Select extends ListActivity {
 
 		lockReleased = false;
 
-		Basic.ColoredTextAdapter adapter = new Basic.ColoredTextAdapter(this, list);
+		ColoredTextAdapter adapter = new ColoredTextAdapter(this, list, Basic.defaultTextStyle);
 		setListAdapter(adapter);
 		ListView lv = getListView();
 		lv.setTextFilterEnabled(false);
 		if (title != null) { setTitle(title); }
-		lv.setBackgroundColor(adapter.backgroundColor);
+		lv.setBackgroundColor(adapter.getBackgroundColor());
 
 		// Wait for user to select something
 
