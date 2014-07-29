@@ -56,6 +56,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.BufferedReader;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -4695,9 +4696,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		try {
 			double d1 = Double.parseDouble(StringConstant);	// have java parse it into a double
 			EvalNumericExpressionValue = d1;
-		}
-		catch (Exception e) {
-			return RunTimeError(e);
+		} catch (NumberFormatException e) {
+			return RunTimeError("Not a valid number: " + StringConstant);
 		}
 		return true;
 	}
@@ -4844,11 +4844,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeMF_base(int base) {			// BIN, OCT, or HEX, depending on the base parameter
 		if (!getStringArg()) { return false; }			// Get and check the string expression
-		int value = 0;
-		try { value = Integer.parseInt(StringConstant, base); }
-		catch (Exception e) { return RunTimeError(e); }
-
-		EvalNumericExpressionValue = (double)(value &= 0xffffffff);
+		try {
+			EvalNumericExpressionIntValue = new BigInteger(StringConstant, base).longValue();
+			EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+			VarIsInt = true;
+		} catch (NumberFormatException e) {
+			return RunTimeError("Not a valid number: " + StringConstant);
+		}
 		return true;
 	}
 
@@ -5104,32 +5106,32 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeSF_INT() {													// INT$
 		if (!evalNumericExpression()) { return false; }
 		if (!isNext(')')) { return false; }				// Function must end with ')'
-		int val = EvalNumericExpressionValue.intValue();
-		StringConstant = Integer.toString(val);
+		long val = EvalNumericExpressionValue.longValue();
+		StringConstant = Long.toString(val);
 		return true;
 	}
 
 	private boolean executeSF_HEX() {													// HEX$
 		if (!evalNumericExpression()) { return false; }
 		if (!isNext(')')) { return false; }				// Function must end with ')'
-		int e = EvalNumericExpressionValue.intValue();
-		StringConstant = Integer.toHexString(e);
+		long val = EvalNumericExpressionValue.longValue();
+		StringConstant = Long.toHexString(val);
 		return true;
 	}
 
 	private boolean executeSF_OCT() {													// OCT$
 		if (!evalNumericExpression()) { return false; }
 		if (!isNext(')')) { return false; }				// Function must end with ')'
-		int e = EvalNumericExpressionValue.intValue();
-		StringConstant = Integer.toOctalString(e);
+		long val = EvalNumericExpressionValue.longValue();
+		StringConstant = Long.toOctalString(val);
 		return true;
 	}
 
 	private boolean executeSF_BIN() {													// BIN$
 		if (!evalNumericExpression()) { return false; }
 		if (!isNext(')')) { return false; }				// Function must end with ')'
-		int e = EvalNumericExpressionValue.intValue();
-		StringConstant = Integer.toBinaryString(e);
+		long val = EvalNumericExpressionValue.longValue();
+		StringConstant = Long.toBinaryString(val);
 		return true;
 	}
 
@@ -5649,24 +5651,33 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean getLabelLineNum() {
 		int li = LineIndex;
 		String label = getWord(ExecutingLineBuffer, LineIndex, false);	// get label name
-		Integer lineRef = Labels.get(label);
-		LineIndex += label.length();									// move LineIndex for isEOL()
-		// If EOL, this is a simple "GOTO/GOSUB label" statement.
-		// Otherwise it is a "GOTO/GOSUB index, label_list..." statement.
-		if (!isEOL()) {
+		int len = label.length();
+		LineIndex += len;												// move LineIndex for isEOL()
+		if (isEOL()) {					// If EOL, this is a simple "GOTO/GOSUB label" statement.
+			if (len == 0) return false;									// no label and no expression: error
+		} else {						// Otherwise it is a "GOTO/GOSUB index, label_list..." statement.
+			int comma = ExecutingLineBuffer.indexOf(',', LineIndex);
+			if (comma < 0) return false;	// if no comma, there is no expression list, so syntax error
+
 			LineIndex = li;
-			if (!evalNumericExpression()) return false;
+			if (!evalNumericExpression() || !isNext(',')) return false;
 			int index = (int)(EvalNumericExpressionValue + 0.5);		// round index
-			for (int i = 0; i < index; ++i) {							// skip to indexed label
-				if (isEOL()) return true;								// no target, fall through
-				if (!isNext(',') || isEOL()) return false;				// no comma, or no label after it
-				label = getWord(ExecutingLineBuffer, LineIndex, false);	// get label name
+
+			ArrayList<String> labels = new ArrayList<String>();			// build label list
+			do {
+				if (isEOL()) return false;								// don't end with comma
+				label = getWord(ExecutingLineBuffer, LineIndex, false);
+				labels.add(label);
 				LineIndex += label.length();
-			}
-			if (!isNext(',') && !isEOL()) return false;					// does line end with a word?
-			if (index < 1) return true;									// no target, fall through
-			lineRef = Labels.get(label);								// is it a valid label?
+			} while(isNext(','));
+			if (!isEOL()) return false;
+
+			if ((index < 1) || (index > labels.size())) return true;	// no target, fall through
+			label = labels.get(index - 1);
+			len = label.length();
+			if (len == 0) return true;									// no target, fall through
 		}
+		Integer lineRef = Labels.get(label);
 		if (lineRef == null) return RunTimeError("Undefined Label \"" + label + "\" at:");
 		ExecutingLineIndex = lineRef.intValue();
 		return true;
@@ -5674,7 +5685,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeGOTO() {
 
-		int maxStack = 50000 ;						// 50,000 should be enough
+		int maxStack = 50000;						// 50,000 should be enough
 
 		if ((IfElseStack.size() > maxStack) || (ForNextStack.size() > maxStack)) {
 			return RunTimeError("Stack overflow. See manual about use of GOTO.");
@@ -5687,14 +5698,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int returnAddress = ExecutingLineIndex;
 		if (!getLabelLineNum()) return false;
 		if (ExecutingLineIndex != returnAddress) {
-			GosubStack.push(returnAddress);			// Found a valid gosub address, expect a return
+			GosubStack.push(returnAddress);			// found a valid gosub address, expect a return
 		}
 		return true;
 	}
 
 	private boolean executeRETURN() {
 		if (!checkEOL()) return false;
-		if (GosubStack.empty()){
+		if (GosubStack.empty()) {
 			return RunTimeError("RETURN without GOSUB");
 		}
 		ExecutingLineIndex = GosubStack.pop();
