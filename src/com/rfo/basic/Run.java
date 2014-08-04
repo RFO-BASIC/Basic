@@ -1198,15 +1198,10 @@ public class Run extends ListActivity {
 
 	// ******************** Input Command variables ********************************
 
-	private boolean WaitForInput ;							// Signals between background task and foreground
-	private boolean BadInput = false;
-	private boolean InputCancelled = false;
-	private boolean InputIsNumeric = true;
-	private int InputVarIndex;								// Index into Numeric or StringVarValues, depending on VarIsNumeric
-	private String UserPrompt = "";
-	private String InputDefault = "";
-	private boolean InputDismissed = false;					// These two will be used only if we dismiss the dialog in onPause
-	private AlertDialog theAlertDialog;
+	private boolean mInputCancelled = false;			// Signal between background task and foreground
+//	private boolean mInputDismissed = false;			// This will be used only if we dismiss the dialog in onPause
+	private AlertDialog mAlertDialog;
+	private EditText mInputText;
 
 	// ******************** Popup Command variables ********************************
 
@@ -2511,7 +2506,7 @@ public class Run extends ListActivity {
         			publishProgress(TempOutput[i]);					// to UI task
         			}
         		TempOutputIndex = 0;
-				
+
 				// Debugger control
 				// Michael/paulon0n also defined a @@J for "Alert dialog var not set called". TODO?
 				while (WaitForResume) {
@@ -2546,22 +2541,7 @@ public class Run extends ListActivity {
 					}
 				}
 
-				while (WaitForInput && !Stop) {						// if waiting for Input
-					try {Thread.sleep(500);}catch(InterruptedException e){}
-					if (BadInput) {									// If user input was bad
-						publishProgress("@@1");						// tell her and try again
-					} else if (InputCancelled) {					// User hit back on Input Dialog
-						WaitForInput = false;
-						if (OnErrorLine != 0) {
-							ExecutingLineIndex = OnErrorLine;
-						} else {									// Tell user we are stopping
-							publishProgress("Input dialog cancelled", "Execution halted");
-							Stop = true;							// and stop executing
-						}
-					}
-				}
-
-        		++ExecutingLineIndex;								// Step to next line
+				++ExecutingLineIndex;								// Step to next line
 
         		if (fnRTN){					// fn_rtn signal. If true make RunLoop() return
         			fnRTN = false;			// to doUserFunction
@@ -2618,11 +2598,9 @@ public class Run extends ListActivity {
 			case MESSAGE_DEFAULT_GROUP:
 				switch (msg.what) {
 				case MESSAGE_INPUT_DIALOG:
-					if (BadInput) {
-						BadInput = false;
-						Toaster("Not a number. Try Again.").show();
-					}
-					theAlertDialog = doInputDialog().show();
+					Bundle args = (Bundle)msg.obj;
+					doInputDialog(args).show();
+					setInputDialogButtonListeners(args);
 					break;
 				case MESSAGE_TOAST:
 					Toast toast = Toaster(ToastMsg, ToastDuration);
@@ -2661,13 +2639,7 @@ public class Run extends ListActivity {
 
 		for (int i=0; i<str.length; ++i) {								// Check for signals
 			if (str[i].startsWith("@")) {								// Fast check for possible signal
-				if (str[i].startsWith("@@1")){      					// Input dialog signal
-					if (BadInput) {
-						BadInput = false;
-						Toaster("Not a number. Try Again.").show();
-					}
-					theAlertDialog = doInputDialog().show();
-				}else if (str[i].startsWith("@@4")){					// Does the toast for popup command
+				if (str[i].startsWith("@@4")){							// Does the toast for popup command
 					Toast toast = Toaster(ToastMsg, ToastDuration);
 					toast.setGravity(Gravity.CENTER, ToastX, ToastY);
 					toast.show();
@@ -2906,15 +2878,10 @@ private void InitVars(){
 
 	// ******************** Input Command variables ********************************
 
-	WaitForInput = false;
-	BadInput = false;
-	InputCancelled = false;
-	InputIsNumeric = true;
-	InputVarIndex = -1;
-	UserPrompt = "";
-	InputDefault = "";
-	InputDismissed = false;
-	theAlertDialog = null;
+	mInputCancelled = false;
+	// mInputDismissed = false;						// This will be used only if we dismiss the dialog in onPause
+	mAlertDialog = null;
+	mInputText = null;
 
 	// ******************** Popup Command variables ********************************
 
@@ -6034,79 +6001,129 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeINPUT(){
+	private boolean executeINPUT() {
 
-		if (!getStringArg()) return false;
-		UserPrompt = StringConstant;
-		if (!isNext(',')) return false;
-		for (int i = UserPrompt.length(); i < 19 ; ++i) {
-			UserPrompt = UserPrompt + (" ");
+		String prompt = "";
+		boolean isComma = isNext(',');						// 1st comma
+		if (!isComma) {
+			if (!getStringArg()) return false;				// get user prompt / Dialog title
+			prompt = StringConstant;
+			isComma = isNext(',');							// 1st comma
 		}
-		if (!getVar()) return false;
-		InputIsNumeric = VarIsNumeric;
-		InputVarIndex = theValueIndex;
+		if (!isComma || !getVar()) return false;			// 1st comma, variable for return value
+		boolean isNumeric = VarIsNumeric;
+		int varIndex = theValueIndex;
 
-		InputDefault = "";
-		if (isNext(',')) {
-			if (InputIsNumeric) {
+		String inputDefault = "";
+		if (isNext(',')) {									// 2nd comma, get input default
+			if (isNumeric) {
 				if (!evalNumericExpression()) return false;
-				StringConstant = String.valueOf(EvalNumericExpressionValue);
+				inputDefault = String.valueOf(EvalNumericExpressionValue);
+				if (inputDefault.endsWith(".0")) {
+					inputDefault = inputDefault.replace(".0", "");
+				}
 			} else {
 				if (!getStringArg()) return false;
+				inputDefault = StringConstant;
 			}
-			InputDefault = StringConstant;
 		}
 		if (!checkEOL()) return false;
 
-		WaitForInput = true;
-		BadInput = false;
-		InputCancelled = false;
-		PrintShow("@@1");
+		Bundle b = new Bundle();
+		b.putString("prompt", prompt);
+		b.putBoolean("isNumeric", isNumeric);
+		b.putString("default", inputDefault);
+		b.putInt("varIndex", varIndex);
+		HaveTextInput = false;
+		mInputCancelled = false;
+		sendMessage(MESSAGE_INPUT_DIALOG, b);				// signal UI to start the dialog
+
+		waitForLOCK();										// wait for the user to exit the Dialog
+
+		if (mInputCancelled) {
+			if (OnErrorLine != 0) {
+				ExecutingLineIndex = OnErrorLine;
+			} else {										// tell user we are stopping
+				PrintShow("Input dialog cancelled");
+				PrintShow("Execution halted");
+				Stop = true;								// and stop executing
+			}
+		}
+
 		return true;
 	}
 
-	private AlertDialog.Builder doInputDialog(){
+	private void waitForLOCK() {
+		synchronized (LOCK) {
+			Log.d(LOGTAG, "set LOCK wait");
+			while (!HaveTextInput) {
+				try { LOCK.wait(); }
+				catch (InterruptedException e) { HaveTextInput = true; }
+			}
+		}
+	}
+
+	private AlertDialog doInputDialog(Bundle args) {
 		Context context = getContext();
 		AlertDialog.Builder dialog = new AlertDialog.Builder(context);
-		final EditText input = new EditText(context);
-		input.setText(InputDefault);
-		if (InputIsNumeric) input.setInputType(0x00003002); // Limits keys to signed decimal numbers
-		dialog.setView(input);
-		dialog.setCancelable(true);
-		dialog.setTitle(UserPrompt);
+		mInputText = new EditText(context);
+		mInputText.setText(args.getString("default"));
+		if (args.getBoolean("isNumeric")) {
+			mInputText.setInputType(0x00003002);			// Limits keys to signed decimal numbers
+		}
+		dialog
+			.setView(mInputText)
+			.setCancelable(true)
+			.setTitle(args.getString("prompt"))
+			.setPositiveButton("Ok", null);					// will replace listener after show()
+
 		dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface arg0) {
-				InputCancelled = true;
+			public void onCancel(DialogInterface dialog) {
+				Log.d(LOGTAG, "AlertDialog onCancel");
+				mInputCancelled = true;
 			}
-	    });
-	    dialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+		});
 
-// ****************************************  start of Dialog Click Listener**************************************
-//
-//  This method is not executed until the user presses OK on the Dialog Box
+		mAlertDialog = dialog.create();
+		mAlertDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+			public void onDismiss( DialogInterface dialog) {
+				Log.d(LOGTAG, "AlertDialog onDismiss");
+				HaveTextInput = true;
+				synchronized (LOCK) {
+					LOCK.notify();							// release the lock that executeINPUT is waiting for
+					mAlertDialog = null;
+				}
+			}
+		});
 
-			public void onClick(DialogInterface dialog, int whichButton) {
-				String theInput = input.getText().toString();
-				if (InputIsNumeric) {							// Numeric Input Handling
+		return mAlertDialog;
+	}
+
+	private void setInputDialogButtonListeners(Bundle b) {
+		final Bundle args = b;
+		mAlertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+			public void onClick(View view) {
+				String theInput = mInputText.getText().toString();
+				int varIndex = args.getInt("varIndex");
+				if (args.getBoolean("isNumeric")) {				// Numeric Input Handling
 					double d = 0;
 					try {
 						d = Double.parseDouble(theInput.trim());// have java parse it into a double
 					} catch (Exception e) {
-						BadInput = true;
+						Log.d(LOGTAG, "AlertDialog bad input");
+						Toaster("Not a number. Try Again.").show();
 						return;
 					}
-					NumericVarValues.set(InputVarIndex, d);
+					NumericVarValues.set(varIndex, d);
 				} else {										// String Input Handling
-					StringVarValues.set(InputVarIndex, theInput);
+					StringVarValues.set(varIndex, theInput);
 				}
-				WaitForInput = false;
-				theAlertDialog = null;
-			}});
-//***************End of Input Click Listener *******************************************
-
-		return dialog;
+				mAlertDialog.dismiss();
+				Log.d(LOGTAG, "AlertDialog done, positive");
+			}
+		});
 	}
-	
+
 	private boolean executeBACK_RESUME(){
 		if (interruptResume == -1){
 			RunTimeError("Back key not hit");
@@ -7496,12 +7513,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		HaveTextInput = false;
 		startActivityForResult(intent, BASIC_GENERAL_INTENT);
 
-		synchronized (LOCK) {
-			while (!HaveTextInput) {
-				try { LOCK.wait(); }										// Wait for signal from TextInput.java thread
-				catch (InterruptedException e) { HaveTextInput = true; }
-			}
-		}
+		waitForLOCK();														// Wait for signal from TextInput.java thread
+
 		StringVarValues.set(saveValueIndex, TextInputString);
 		return true;
 	}
@@ -7597,14 +7610,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		HaveTextInput = false;
 		startActivityForResult(intent, BASIC_GENERAL_INTENT);
 
-		synchronized (LOCK) {
-			while (!HaveTextInput) {
-				try { LOCK.wait(); }										// Wait for signal from TGet.java thread
-				catch (InterruptedException e) { HaveTextInput = true; }
-			}
-		}
-		PrintShow(Prompt + TextInputString);
+		waitForLOCK();														// Wait for signal from TGet.java thread
 
+		PrintShow(Prompt + TextInputString);
 		StringVarValues.set(saveValueIndex, TextInputString);
 		return true;
 	}
