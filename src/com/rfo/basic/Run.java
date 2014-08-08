@@ -8965,31 +8965,36 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeDEVICE() {
-
 		if (!getVar() || !checkEOL()) return false;
+
+		Locale loc = Locale.getDefault();
+		String[] keys = {
+			"Brand", "Model", "Device", "Product", "OS",
+			"Language", "Locale", "PhoneNumber"
+		};
+		String[] vals = {
+			Build.BRAND, Build.MODEL, Build.DEVICE, Build.PRODUCT, Build.VERSION.RELEASE,
+			loc.getDisplayLanguage(), loc.toString(), getMyPhoneNumber()
+		};
+		int len = keys.length;
+		int i = 0;
+
 		if (VarIsNumeric) {											// bundle format
 			Bundle b = new Bundle();
 			int bundleIndex = theBundles.size();
 			theBundles.add(b);
+			for (; i < len; ++i) {
+				bundlePut(b, keys[i], vals[i]);
+			}
 			NumericVarValues.set(theValueIndex, (double)bundleIndex);
-
-			bundlePut(b, "Brand", Build.BRAND);						// same info as executeDEVICE()
-			bundlePut(b, "Model", Build.MODEL);
-			bundlePut(b, "Device", Build.DEVICE);
-			bundlePut(b, "Product", Build.PRODUCT);
-			bundlePut(b, "OS", Build.VERSION.RELEASE);
-																	// new stuff for Bundle format
-			bundlePut(b, "Language", Locale.getDefault().getDisplayLanguage());
-			bundlePut(b, "Locale", Locale.getDefault().toString());
-			bundlePut(b, "PhoneNumber", getMyPhoneNumber());
-		} else {
-			String info =											// legacy string format
-				"Brand = " + Build.BRAND + "\n" +
-				"Model = " + Build.MODEL + "\n" +
-				"Device = " + Build.DEVICE + "\n" +
-				"Product = " + Build.PRODUCT + "\n" +
-				"OS = " + Build.VERSION.RELEASE;
-			StringVarValues.set(theValueIndex, info);
+		} else {													// string format
+			StringBuilder s = new StringBuilder();
+			while (true) {
+				s.append(keys[i]).append(" = ").append(vals[i]);
+				if (++i == len) break;
+				s.append('\n');
+			}
+			StringVarValues.set(theValueIndex, s.toString());
 		}
 		return true;
 	}
