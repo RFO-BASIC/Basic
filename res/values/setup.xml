@@ -61,6 +61,8 @@ This file is part of BASIC! for Android
     <integer name="color1">0xff000000</integer>
     <integer name="color2">0xffffffff</integer>
     <integer name="color3">0xff006478</integer>
+    <!-- The default selection and highlight color -->
+    <integer name="color4">0xff00c000</integer>
 
     <!--
         Message lines displayed on the opening screen while files are loading.

@@ -64,6 +64,11 @@ This file is part of BASIC! for Android
 
     <string name="cancel_button_label">Cancel</string>
     <string name="ok_button_label">OK</string>
+    <string name="yes_button_label">Yes</string>
+    <string name="no_button_label">No</string>
+    <string name="choose_one">Choose one</string>
+    <string name="hex_color">Enter a hex color value</string>
+    <string name="color_chars">0123456789abcdefxABCDEFX#</string>
 
 <string name="run">Run</string>
 <string name="load">Load</string>

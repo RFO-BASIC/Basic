@@ -41,6 +41,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -51,6 +52,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -848,6 +850,7 @@ public class Basic extends Activity  {
 		public int mTextColor;
 		public int mBackgroundColor;
 		public int mLineColor;
+		public int mHighlightColor;
 		public float mSize;
 		public Typeface mTypeface;
 
@@ -861,13 +864,15 @@ public class Basic extends Activity  {
 		}
 
 		public TextStyle(TextStyle from) {
-			this(from.mTextColor, from.mBackgroundColor, from.mLineColor, from.mSize, from.mTypeface);
+			this(from.mTextColor, from.mBackgroundColor,
+				 from.mLineColor, from.mHighlightColor,
+				 from.mSize, from.mTypeface);
 		}
 
-		public TextStyle(int fg, int bg, int lc, float size, Typeface typeface) {
+		public TextStyle(int fg, int bg, int lc, int hl, float size, Typeface typeface) {
 			mTextColor = fg; mBackgroundColor = bg;
-			mLineColor = lc; mSize = size;
-			mTypeface = typeface;
+			mLineColor = lc; mHighlightColor = hl;
+			mSize = size; mTypeface = typeface;
 		}
 
 		public void refresh() {									// set fields from setup.xml values and Preferences settings
@@ -876,31 +881,58 @@ public class Basic extends Activity  {
 			mTypeface = Settings.getConsoleTypeface(BasicContext);
 		}
 
-		public void getScreenColors() {
-			// By default, color1 is solid black, color2 is solid white,
-			// and color3 is a shade of blue that Paul originally chose for "WBL".
-			// The programmer may define the colors any way she likes in res/values/setup.xml.
-			Resources res = BasicContext.getResources();
-			int black = res.getInteger(R.integer.color1);
-			int white = res.getInteger(R.integer.color2);
-			int blue  = res.getInteger(R.integer.color3);
-			String colorSetting = Settings.getEditorColor(BasicContext);
-			if (colorSetting.equals("BW")) {
-				mTextColor = black;
-				mBackgroundColor = white;
-				mLineColor = mTextColor;
-			} else
-			if (colorSetting.equals("WB")) {
-				mTextColor = white;
-				mBackgroundColor = black;
-				mLineColor = mTextColor;
-			} else
-			if (colorSetting.equals("WBL")) {
-				mTextColor = white;
-				mBackgroundColor = blue;
-				mLineColor = black;
+		public boolean getCustomColors(int[] colors) {
+			boolean useCustom = Settings.useCustomColors(BasicContext);
+			if (useCustom) {
+				String[] prefs = Settings.getCustomColors(BasicContext);
+				for (int i = 0; i < 4; ++i) {
+					String pref = prefs[i].trim().replace("0x", "#");
+					if (!pref.contains("#")) pref = "#" + pref;
+					try {
+						colors[i] = Color.parseColor(pref);
+					} catch (IllegalArgumentException ex) {	// leave unchanged
+						Log.d(LOGTAG, "getPrefColors: failed to parse <" + pref + ">");
+					}
+				}
 			}
-			mLineColor &= 0x80ffffff;		// half alpha
+			return useCustom;
+		}
+
+		public void getScreenColors() {
+			int[] colors = new int[4];
+
+			// The programmer may define the colors in res/values/setup.xml.
+			Resources res = BasicContext.getResources();
+			colors[0] = res.getInteger(R.integer.color1);		// default is solid black
+			colors[1] = res.getInteger(R.integer.color2);		// default is solid white
+			colors[2] = res.getInteger(R.integer.color3);		// default is blue Paul chose for "WBL"
+			colors[3] = res.getInteger(R.integer.color4);		// default is green, same in all schemes
+
+			// The user may change the colors in Preferences.
+			if (getCustomColors(colors)) {
+				mTextColor = colors[1];
+				mBackgroundColor = colors[2];
+				mLineColor = colors[0];
+			} else {
+				String colorSetting = Settings.getColorScheme(BasicContext);
+				if (colorSetting.equals("BW")) {
+					mTextColor = colors[0];
+					mBackgroundColor = colors[1];
+					mLineColor = mTextColor;
+				} else
+				if (colorSetting.equals("WB")) {
+					mTextColor = colors[1];
+					mBackgroundColor = colors[0];
+					mLineColor = mTextColor;
+				} else
+				if (colorSetting.equals("WBL")) {
+					mTextColor = colors[1];
+					mBackgroundColor = colors[2];
+					mLineColor = colors[0];
+				}
+				mLineColor &= 0x80ffffff;		// half alpha
+			}
+			mHighlightColor = colors[3];
 		}
 	} // class ScreenColors
 
@@ -924,6 +956,7 @@ public class Basic extends Activity  {
 		public int getTextColor() { return mTextStyle.mTextColor; }
 		public int getBackgroundColor() { return mTextStyle.mBackgroundColor; }
 		public int getLineColor() { return mTextStyle.mLineColor; }
+		public int getHighlightColor() { return mTextStyle.mHighlightColor; }
 
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent) {
@@ -938,6 +971,7 @@ public class Basic extends Activity  {
 			text.setText(mList.get(position));
 			if (mTextStyle.mTypeface != null) { text.setTypeface(mTextStyle.mTypeface); }
 			text.setBackgroundColor(mTextStyle.mBackgroundColor);
+			text.setHighlightColor(mTextStyle.mHighlightColor);
 
 			return row;
 		}

@@ -37,6 +37,7 @@ import java.util.StringTokenizer;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Environment;
@@ -150,7 +151,7 @@ public class Settings extends PreferenceActivity {
 	@Override
 	public boolean onPreferenceTreeClick (PreferenceScreen preferenceScreen, Preference preference) {
 		String title = preference.getTitle().toString();
-		changeBaseDrive = title.equals("Base Drive");
+		changeBaseDrive |= title.equals("Base Drive");
 		return false;
 	}
 
@@ -212,10 +213,35 @@ public class Settings extends PreferenceActivity {
            .getBoolean("lined_console", true);
 	   }
 
-	   public static String getEditorColor(Context context){
-		   return PreferenceManager.getDefaultSharedPreferences(context)
-           .getString("es_pref", "BW");
-	   }
+	public static String getColorScheme(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getString("es_pref", "BW");
+	}
+
+	public static boolean useCustomColors(Context context) {
+		SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
+		boolean useCustom = pref.getBoolean("custom_colors_pref", false);
+		if (!useCustom) {
+			SharedPreferences.Editor prefEdit = pref.edit();
+			Resources res = context.getResources();
+			prefEdit.putString("tc_pref", String.format("%#06x", res.getInteger(R.integer.color2)));
+			prefEdit.putString("bc_pref", String.format("%#06x", res.getInteger(R.integer.color3)));
+			prefEdit.putString("lc_pref", String.format("%#06x", res.getInteger(R.integer.color1)));
+			prefEdit.putString("hc_pref", String.format("%#06x", res.getInteger(R.integer.color4)));
+			prefEdit.commit();
+		}
+		return useCustom;
+	}
+
+	public static String[] getCustomColors(Context context) {
+		SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
+		String[] colors = new String[4];				// use same mapping as "WBL"
+		colors[0] = pref.getString("lc_pref", "");		// color1
+		colors[1] = pref.getString("tc_pref", "");		// color2
+		colors[2] = pref.getString("bc_pref", "");		// color3
+		colors[3] = pref.getString("hc_pref", "");		// color4 (highlight)
+		return colors;
+	}
 
 	   public static int getSreenOrientation(Context context){
 		   String SO = PreferenceManager.getDefaultSharedPreferences(context)

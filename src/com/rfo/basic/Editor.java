@@ -225,6 +225,7 @@ public class Editor extends Activity {
 			Basic.TextStyle style = Basic.defaultTextStyle;
 			mText.setTextColor(style.mTextColor);
 			mText.setBackgroundColor(style.mBackgroundColor);
+			mText.setHighlightColor(style.mHighlightColor);
 			mPaint.setColor(style.mLineColor);
 			setTextSize(1, Settings.getFont(context));
 			mLinesSetting = Settings.getLinedEditor(context);

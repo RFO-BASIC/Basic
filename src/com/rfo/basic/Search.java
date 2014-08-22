@@ -89,6 +89,7 @@ public class Search extends Activity {
 		Basic.TextStyle style = Basic.defaultTextStyle;					// Get text color from Settings
 		theTextView.setTextColor(style.mTextColor);
 		theTextView.setBackgroundColor(style.mBackgroundColor);
+		theTextView.setHighlightColor(style.mHighlightColor);
 		rText.setTextColor(style.mTextColor);
 		rText.setBackgroundColor(style.mBackgroundColor);
 		sText.setTextColor(style.mTextColor);
