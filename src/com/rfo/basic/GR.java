@@ -353,7 +353,7 @@ public class GR extends Activity {
         startActivityForResult(enableIntent, Run.REQUEST_ENABLE_BT);
     }
 
-	public class DrawView extends View  {
+	public class DrawView extends View {
 		private static final String TAG = "DrawView";
 
 		public DrawView(Context context) {
@@ -484,190 +484,163 @@ public class GR extends Activity {
             
         }
 
-        public void doDraw(Canvas canvas, Bundle b){
-//        	Log.v(GR.LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
-        	
-        	int x1;
-        	int y1;
-        	int x2;
-        	int y2;
-        	int r;
-        	
-        	Paint thePaint;
-        	Bitmap theBitmap;
-//        	canvas.scale(scaleX, scaleY);
-        	
-           		thePaint = null;
-           		int type = dNull;
-           		if (b != null){
-           			type = b.getInt("type");
-           			if (b.getInt("hide")!=0 ) type = dNull;
-           			else {
-           				int pIndex = b.getInt("paint");
-           				if (Run.PaintList.size()==0) return;
-          				if (pIndex < 1 || pIndex >= Run.PaintList.size()) return;
-           				thePaint = newPaint(Run.PaintList.get(pIndex));
-           				int alpha = b.getInt("alpha");
-           				if (alpha < 256) thePaint.setAlpha(alpha);
-           				}
-           			}
-          		
-           		switch (type) {
-           			case dNull:
-           				break;
-           			case dClose:
-           				finish();
-           				break;
-           			case dCircle:
-                    
-           				x1= b.getInt("x");
-           				y1 =b.getInt("y");
-           				r = b.getInt("radius");
-           				canvas.drawCircle(x1, y1, r, thePaint);
-           				break;
-           			case dRect:
-           				x1= b.getInt("left");
-           				x2 =b.getInt("top");
-           				y2= b.getInt("bottom");
-           				y1 =b.getInt("right");
-           				canvas.drawRect(x1,x2,y1,y2, thePaint);
-           				break;
-           			case dClip:
-           				x1= b.getInt("left");
-           				x2 =b.getInt("top");
-           				y2= b.getInt("bottom");
-           				y1 =b.getInt("right");
-           				int RO = b.getInt("RO");
-           				switch (RO){
-           					case 0:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.INTERSECT);
-           						break;
-           					case 1:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.DIFFERENCE);
-           						break;
-           					case 2:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.REPLACE );
-           						break;
-           					case 3:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.REVERSE_DIFFERENCE );
-           						break;
-           					case 4:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.UNION );
-           						break;
-           					case 5:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.XOR );
-           						break;
-           				}
-           				
-           				break;
-           			case dOval:
-           				x1= b.getInt("left");
-           				x2 =b.getInt("top");
-           				y1 =b.getInt("right");
-           				y2= b.getInt("bottom");
-           				RectF rect = new RectF(x1,x2,y1,y2);
-           				canvas.drawOval(rect , thePaint);
-           				break;
-           			case dArc:
-           				x1= b.getInt("left");
-           				x2 =b.getInt("top");
-           				y1 =b.getInt("right");
-           				y2= b.getInt("bottom");
-           				rect = new RectF(x1,x2,y1,y2);
-           				int sa = b.getInt("start_angle");
-           				int ea = b.getInt("sweep_angle");
-        				int iflag = b.getInt("fill_mode");
-        				boolean bflag = true;
-        				if (iflag == 0) bflag = false;
-        				canvas.drawArc(rect, sa,ea,bflag, thePaint);
-        				break;
-           			case dLine:
-           				x1= b.getInt("x1");
-           				x2 =b.getInt("x2");
-           				y1= b.getInt("y1");
-           				y2 =b.getInt("y2");
-           				canvas.drawLine(x1,y1,x2,y2, thePaint);
-           				break;
-           			case dPoint:
-           				x1= b.getInt("x");
-           				y1 =b.getInt("y");
-           				canvas.drawPoint(x1,y1, thePaint);
-           				break;
-           			case dsetPixels:
-           				x1=b.getInt("x");
-        				y1=b.getInt("y");
-           				int pBase = b.getInt("pbase");
-           				int pLength = b.getInt("plength");
-           				float[] pixels;
-           				pixels = new float[pLength];
-           				for (int j = 0; j<pLength-1; ++j){
-           					pixels[j] = (float) (double) Run.NumericVarValues.get(pBase+j) + x1;
-           					++j;
-           					pixels[j] = (float) (double) Run.NumericVarValues.get(pBase+j) + y1;
-           				}
-           				canvas.drawPoints(pixels, thePaint);
-           				break;
-           				
-           			case dPoly:
-           				x1=b.getInt("x");
-        				y1=b.getInt("y");
-        				int ListIndex = b.getInt("list");
-        				ArrayList<Double> thisList = Run.theLists.get(ListIndex);
-        				
-        				Path p = new Path();
-        				float firstX = (float)(double) thisList.get(0) + (float) x1;
-        				float firstY = (float)(double) thisList.get(1) + (float) y1;
-        				p.moveTo(firstX, firstY);
-        				
-        				for (int i = 2; i<thisList.size(); ++i){
-        					float nextX = (float)(double) thisList.get(i) + (float) x1;
-        					++i;
-        					float nextY = (float)(double) thisList.get(i) + (float) y1;
-        					p.lineTo(nextX, nextY);
-        				}
-        				p.lineTo(firstX, firstY);
-        				p.close();
-        				canvas.drawPath(p, thePaint);
-        				break;
- 
-           			case dText:
-           				x1=b.getInt("x");
-        				y1=b.getInt("y");
-        				String s = b.getString("text");
-        				canvas.drawText(s, x1, y1, thePaint);
-        				break;
-        			case dBitmap:
-        				x1 = b.getInt("x");
-        				y1 = b.getInt("y");
-        				theBitmap = Run.BitmapList.get(b.getInt("bitmap"));
-        				if (theBitmap != null) {
-        					if (theBitmap.isRecycled()){
-        						Run.BitmapList.set(b.getInt("bitmap"), null);
-        						theBitmap = null;
-        					}
-        				}
-        				if (theBitmap != null)
-        					canvas.drawBitmap(theBitmap, x1, y1, thePaint);
-        				else
-        					NullBitMap = true;
-        				break;
-        			case dRotate_Start:
-        				int angle = b.getInt("angle");
-        				x1 = b.getInt("x");
-        				y1 = b.getInt("y");
-        				canvas.save();
-        				canvas.rotate( angle, x1, y1);
-        				break;
-        			case dRotate_End:
-        				canvas.restore();
-        				break;
-        			default:
-           			}
-           		
-        }
-    }
-    
-    
+		public void doDraw(Canvas canvas, Bundle b) {
+//			Log.v(GR.LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
 
+			int x1;
+			int y1;
+			int x2;
+			int y2;
+			int r;
+			float fx1;
+			float fy1;
+
+			Paint thePaint;
+			Bitmap theBitmap;
+//			canvas.scale(scaleX, scaleY);
+
+			thePaint = null;
+			int type = dNull;
+			if ((b != null) && (b.getInt("hide") == 0)) {
+				type = b.getInt("type");
+				int pIndex = b.getInt("paint");
+				if (Run.PaintList.size() == 0) return;
+				if (pIndex < 1 || pIndex >= Run.PaintList.size()) return;
+				thePaint = newPaint(Run.PaintList.get(pIndex));
+				int alpha = b.getInt("alpha");
+				if (alpha < 256) thePaint.setAlpha(alpha);
+			}
+
+			switch (type) {
+				case dNull:
+					break;
+				case dClose:
+					finish();
+					break;
+				case dCircle:
+					x1 = b.getInt("x");
+					y1 = b.getInt("y");
+					r = b.getInt("radius");
+					canvas.drawCircle(x1,y1,r, thePaint);
+					break;
+				case dRect:
+					x1 = b.getInt("left");
+					x2 = b.getInt("top");
+					y2 = b.getInt("bottom");
+					y1 = b.getInt("right");
+					canvas.drawRect(x1,x2,y1,y2, thePaint);
+					break;
+				case dClip:
+					x1 = b.getInt("left");
+					x2 = b.getInt("top");
+					y2 = b.getInt("bottom");
+					y1 = b.getInt("right");
+					int RO = b.getInt("RO");
+					Region.Op[] ops = {
+						Region.Op.INTERSECT, Region.Op.DIFFERENCE, Region.Op.REPLACE,
+						Region.Op.REVERSE_DIFFERENCE, Region.Op.UNION, Region.Op.XOR
+					};
+					canvas.clipRect(x1,x2,y1,y2, ops[RO]);
+					break;
+				case dOval:
+					x1 = b.getInt("left");
+					x2 = b.getInt("top");
+					y1 = b.getInt("right");
+					y2 = b.getInt("bottom");
+					RectF rect = new RectF(x1,x2,y1,y2);
+					canvas.drawOval(rect , thePaint);
+					break;
+				case dArc:
+					x1 = b.getInt("left");
+					x2 = b.getInt("top");
+					y1 = b.getInt("right");
+					y2 = b.getInt("bottom");
+					rect = new RectF(x1,x2,y1,y2);
+					int sa = b.getInt("start_angle");
+					int ea = b.getInt("sweep_angle");
+					boolean fill = (b.getInt("fill_mode") != 0);
+					canvas.drawArc(rect, sa,ea,fill, thePaint);
+					break;
+				case dLine:
+					x1 = b.getInt("x1");
+					x2 = b.getInt("x2");
+					y1 = b.getInt("y1");
+					y2 = b.getInt("y2");
+					canvas.drawLine(x1,y1,x2,y2, thePaint);
+					break;
+				case dPoint:
+					x1 = b.getInt("x");
+					y1 = b.getInt("y");
+					canvas.drawPoint(x1,y1, thePaint);
+					break;
+				case dsetPixels:
+					fx1 = b.getInt("x");
+					fy1 = b.getInt("y");
+					int pBase = b.getInt("pbase");
+					int pLength = b.getInt("plength");
+					float[] pixels = new float[pLength];
+					for (int j = 0; j < pLength; ++j) {
+						pixels[j] = Run.NumericVarValues.get(pBase + j).floatValue() + fx1;
+						++j;
+						pixels[j] = Run.NumericVarValues.get(pBase + j).floatValue() + fy1;
+					}
+					canvas.drawPoints(pixels, thePaint);
+					break;
+				case dPoly:
+					fx1 = b.getInt("x");
+					fy1 = b.getInt("y");
+					int ListIndex = b.getInt("list");
+					ArrayList<Double> thisList = Run.theLists.get(ListIndex);
+					Path p = new Path();
+					float firstX = thisList.get(0).floatValue() + fx1;
+					float firstY = thisList.get(1).floatValue() + fy1;
+					p.moveTo(firstX, firstY);
+					int size = thisList.size();
+					for (int i = 2; i < size; ) {
+						float nextX = thisList.get(i++).floatValue() + fx1;
+						float nextY = thisList.get(i++).floatValue() + fy1;
+						p.lineTo(nextX, nextY);
+					}
+					p.lineTo(firstX, firstY);
+					p.close();
+					canvas.drawPath(p, thePaint);
+					break;
+				case dText:
+					x1 = b.getInt("x");
+					y1 = b.getInt("y");
+					String s = b.getString("text");
+					canvas.drawText(s, x1, y1, thePaint);
+					break;
+				case dBitmap:
+					x1 = b.getInt("x");
+					y1 = b.getInt("y");
+					theBitmap = Run.BitmapList.get(b.getInt("bitmap"));
+					if (theBitmap != null) {
+						if (theBitmap.isRecycled()) {
+							Run.BitmapList.set(b.getInt("bitmap"), null);
+							theBitmap = null;
+						}
+					}
+					if (theBitmap != null) {
+						canvas.drawBitmap(theBitmap, x1, y1, thePaint);
+					} else {
+						NullBitMap = true;
+					}
+					break;
+				case dRotate_Start:
+					int angle = b.getInt("angle");
+					x1 = b.getInt("x");
+					y1 = b.getInt("y");
+					canvas.save();
+					canvas.rotate(angle, x1, y1);
+					break;
+				case dRotate_End:
+					canvas.restore();
+					break;
+				default:
+			}
+		} // doDraw()
+
+	} // class DrawView
 
 }

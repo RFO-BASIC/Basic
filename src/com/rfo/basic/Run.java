@@ -4669,9 +4669,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+	private int getIndexArg(int max) {					// return 1-based index, 0 if error, default 1
+		int index = 1;
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return 0;
+			index = EvalNumericExpressionValue.intValue();
+			if ((index < 1) || (index > max)) {
+				RunTimeError("Index (" + index + ") out of range");
+				return 0;
+			}
+		}
+		return index;
+	}
+
 	private boolean executeMF_ASCII() {
 		if (!getStringArg()) { return false; }			// Get and check the string expression
-		EvalNumericExpressionIntValue = StringConstant.equals("") ? 256L : (StringConstant.charAt(0) & 0x00FF);
+		int index = getIndexArg(StringConstant.length());	// get 1-based string index
+		if (--index < 0) { return false; }					// convert to 0-based index 
+		EvalNumericExpressionIntValue = StringConstant.equals("") ? 256L : (StringConstant.charAt(index) & 0x00FF);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
 		VarIsInt = true;
 		return true;
@@ -4679,7 +4694,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeMF_UCODE() {
 		if (!getStringArg()) { return false; }			// Get and check the string expression
-		EvalNumericExpressionIntValue = StringConstant.equals("") ? 0x10000L : StringConstant.charAt(0);
+		int index = getIndexArg(StringConstant.length());	// get 1-based string index
+		if (--index < 0) { return false; }					// convert to 0-based index
+		EvalNumericExpressionIntValue = StringConstant.equals("") ? 0x10000L : StringConstant.charAt(index);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
 		VarIsInt = true;
 		return true;
@@ -5031,9 +5048,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeSF_CHR() {													// CHR$
-		if (!evalNumericExpression()) { return false; }
+		StringBuilder sb = new StringBuilder();
+		do {
+			if (!evalNumericExpression()) { return false; }
+			sb.append((char)EvalNumericExpressionValue.intValue());
+		} while (isNext(','));
 		if (!isNext(')')) { return false; }				// Function must end with ')'
-		StringConstant = "" + (char)EvalNumericExpressionValue.intValue();
+		StringConstant = sb.toString();
 		return true;
 	}
 
@@ -9542,21 +9563,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(GrText_cmd, "Gr.Text");
 	}
 
-	  public void DisplayListAdd(Bundle b){
-		  b.putInt("alpha", 256);
-		  b.putInt("paint", PaintList.size()-1);							// paint for this lines
-		  
-		  if (drawintoCanvas != null){
-			  GR.drawView.doDraw(drawintoCanvas, b);
-			  return;
-		  }
+	private void DisplayListAdd(Bundle b) {
+		b.putInt("alpha", 256);
+		b.putInt("paint", PaintList.size() - 1);							// paint for this object
 
-		  RealDisplayList.add(DisplayList.size());
-		  DisplayList.add(b);
-	  }
-	  
+		if (drawintoCanvas != null) {
+			GR.drawView.doDraw(drawintoCanvas, b);
+			return;
+		}
+
+		RealDisplayList.add(DisplayList.size());
+		DisplayList.add(b);
+	}
+
 	  public boolean execute_gr_bitmap_drawinto_start(){
-		   if (!evalNumericExpression()) return false;					// 
+		   if (!evalNumericExpression()) return false;
 		   if (!checkEOL()) return false;
 		   int q = EvalNumericExpressionValue.intValue();
 		   if (q<1 | q >= BitmapList.size()){
@@ -9891,11 +9912,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		aBundle.putInt("x", x);
 		aBundle.putInt("y", y);
-		int p = PaintList.size();								// Set the most current paint as the paint
-		aBundle.putInt("paint", p-1);							// paint for this point
-		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
 
-		DisplayListAdd(aBundle);								// Add the line to the display list
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);								// Add the point to the display list
 		return true;
 	}
 
@@ -9924,13 +9943,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		aBundle.putInt("y2", EvalNumericExpressionValue.intValue());
 		if (!checkEOL()) return false;
 
-
-		  int p = PaintList.size();								// Set the most current paint as the paint
-		  aBundle.putInt("paint", p-1);							// paint for this lines
-		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-
-		  DisplayListAdd(aBundle);				// Add the line to the display list
-		  return true;
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);								// Add the line to the display list
+		return true;
 	}
 
 	private boolean execute_gr_rect(){
@@ -9958,12 +9973,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
 		if (!checkEOL()) return false;
 
-		  int p = PaintList.size();						// Set current paint as this circle's paint
-		  aBundle.putInt("paint", p-1);
-		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-
-		  DisplayListAdd(aBundle);
-		  return true;
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size()); 	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);
+		return true;
 	}
 
 	private boolean execute_gr_arc(){
@@ -10003,12 +10015,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		aBundle.putInt("fill_mode", EvalNumericExpressionValue.intValue());
 		if (!checkEOL()) return false;
 
-		  int p = PaintList.size();						// Set the current paint as this objct's paint
-		  aBundle.putInt("paint", p-1);
-		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-
-		  DisplayListAdd(aBundle);
-		  return true;
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size()); 	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);
+		return true;
 	}
 
 	private boolean execute_gr_circle(){
@@ -10032,11 +10041,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		aBundle.putInt("radius", EvalNumericExpressionValue.intValue());
 		if (!checkEOL()) return false;
 
-		  int p = PaintList.size();					// Set the current paint as this object's paint
-		  aBundle.putInt("paint", p-1);
-		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
-		  DisplayListAdd(aBundle);
-		  return true;
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size()); // Save the GR Object index into the var
+		DisplayListAdd(aBundle);
+		return true;
 	}
 
 	private boolean execute_gr_oval(){
@@ -10064,11 +10071,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
 		if (!checkEOL()) return false;
 
-		  int p = PaintList.size();						// Set the current paint as this object's paint
-		  aBundle.putInt("paint", p-1);
-		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-		  DisplayListAdd(aBundle);
-		  return true;
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size()); 	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);
+		return true;
 	}
 
 	  private double gr_collide(int Object1, int Object2){
@@ -10373,12 +10378,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		aBundle.putString("text", StringConstant);
 		if (!checkEOL()) return false;
 
-		  int p = PaintList.size();												// Set the current paint	
-		  aBundle.putInt("paint", p-1);											// as the text paint
-
-		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
-		  DisplayListAdd(aBundle);
-
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);
 		return true;
 	}
 
@@ -10732,14 +10733,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
 		if (!checkEOL()) return false;
 
-		  int p = PaintList.size();						// Set current paint as this circle's paint
-		  aBundle.putInt("paint", p-1);
-		  
-		  aBundle.putInt("alpha", 255);
-
-		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
-		  DisplayListAdd(aBundle);
-
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);
 		return true;
 	}
 
@@ -10769,7 +10764,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			   return RunTimeError(e);
 		   }
 		   
-		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
+		   NumericVarValues.set(SaveValueIndex, (double)BitmapList.size());	// Save the GR Object index into the var
 		   BitmapList.add(aBitmap);
 		   		  
 		return true;
@@ -10777,7 +10772,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_gr_rotate_start(){
 
-		  Bundle aBundle = new Bundle();            // Create a new display list object of type rotate
+		  Bundle aBundle = new Bundle();			// Create a new display list object of type rotate
 		  aBundle.putInt("type", GR.dRotate_Start);
 		  aBundle.putInt("hide", 0);
 
@@ -10794,17 +10789,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (isNext(',')) {
 			if (!getNVar()) return false;
-			NumericVarValues.set(theValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
+			NumericVarValues.set(theValueIndex, (double)DisplayList.size()); // Save the GR Object index into the var
 		}
 		if (!checkEOL()) return false;
 
 		DisplayListAdd(aBundle);					// Put the new object into the display list
-
 		return true;
 	}
 
 	private boolean execute_gr_rotate_end(){
-		  Bundle aBundle = new Bundle();           // Create a new object of type Rotate end
+		  Bundle aBundle = new Bundle();			// Create a new object of type Rotate end
 		  aBundle.putInt("type", GR.dRotate_End); 
 		  aBundle.putInt("hide", 0);
 
@@ -10814,8 +10808,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (!checkEOL()) return false;
 		}
 
-		  DisplayListAdd(aBundle);					// add the object to the display list
-		  return true;
+		DisplayListAdd(aBundle);					// add the object to the display list
+		return true;
 	}
 
 	private boolean execute_gr_modify(){
@@ -10955,12 +10949,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		aBundle.putInt("x", x);
 		aBundle.putInt("y", y);
 
-		int p = PaintList.size();								// Set the most current paint as the paint
-		aBundle.putInt("paint", p-1);							// paint for these pixels
-
-		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
-		DisplayListAdd(aBundle);								// Add the line to the display list
-
+		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);
 		return true;
 	}
 
@@ -11211,12 +11201,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		  int p = PaintList.size();						// Set current paint as this circle's paint
-		  aBundle.putInt("paint", p-1);
-		  NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-
-		  DisplayListAdd(aBundle);
-		  return true;
+		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);
+		return true;
 	}
 
 	private boolean execute_gr_poly(){
@@ -11259,17 +11246,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-	  		aBundle.putInt("x", x);
-	  		aBundle.putInt("y", y);
+		aBundle.putInt("x", x);
+		aBundle.putInt("y", y);
 
-
-		   int p = PaintList.size();						// Set current paint as this circle's paint
-		   aBundle.putInt("paint", p-1);
-		   NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-
-		   DisplayListAdd(aBundle);
-
-		  return true;
+		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
+		DisplayListAdd(aBundle);
+		return true;
 	}
 
 	@SuppressLint("NewApi")										// Uses value from API 9
