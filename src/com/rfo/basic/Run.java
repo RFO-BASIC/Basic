@@ -4674,9 +4674,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (isNext(',')) {
 			if (!evalNumericExpression()) return 0;
 			index = EvalNumericExpressionValue.intValue();
-			if ((index < 1) || (index > max)) {
-				RunTimeError("Index (" + index + ") out of range");
-				return 0;
+			if (max != 0) {								// if empty string, index is irrelevant
+				if ((index < 1) || (index > max)) {
+					RunTimeError("Index (" + index + ") out of range");
+					return 0;
+				}
 			}
 		}
 		return index;
@@ -4684,9 +4686,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeMF_ASCII() {
 		if (!getStringArg()) { return false; }			// Get and check the string expression
-		int index = getIndexArg(StringConstant.length());	// get 1-based string index
-		if (--index < 0) { return false; }					// convert to 0-based index 
-		EvalNumericExpressionIntValue = StringConstant.equals("") ? 256L : (StringConstant.charAt(index) & 0x00FF);
+		int len = StringConstant.length();
+		int index = getIndexArg(len);					// get 1-based string index, 0 if error
+		if (--index < 0) { return false; }				// convert to 0-based index
+
+		EvalNumericExpressionIntValue = (len == 0) ? 256L : (StringConstant.charAt(index) & 0x00FF);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
 		VarIsInt = true;
 		return true;
@@ -4694,9 +4698,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeMF_UCODE() {
 		if (!getStringArg()) { return false; }			// Get and check the string expression
-		int index = getIndexArg(StringConstant.length());	// get 1-based string index
-		if (--index < 0) { return false; }					// convert to 0-based index
-		EvalNumericExpressionIntValue = StringConstant.equals("") ? 0x10000L : StringConstant.charAt(index);
+		int len = StringConstant.length();
+		int index = getIndexArg(len);					// get 1-based string index, 0 if error
+		if (--index < 0) { return false; }				// convert to 0-based index
+
+		EvalNumericExpressionIntValue = (len == 0) ? 0x10000L : StringConstant.charAt(index);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
 		VarIsInt = true;
 		return true;
