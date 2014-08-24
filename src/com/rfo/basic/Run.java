@@ -10818,46 +10818,43 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_gr_modify(){
+	private boolean execute_gr_modify() {
 
 		if (!evalNumericExpression()) return false;							// Get Object Number
 		int index = EvalNumericExpressionValue.intValue();
 		if (index < 0 || index >= DisplayList.size()) {
 			return RunTimeError("Object Number out of range");
 		}
-
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;									// get the parameter string
-		if (!isNext(',')) return false;
-		String parm = StringConstant;
-
 		Bundle b = DisplayList.get(index);									// Get the bundle to change
-		if (!b.containsKey(parm)) {
-			return RunTimeError("Object does not contain: " + parm);
-		}
 
-		if (parm.equals("text")) {
+		while (isNext(',')) {
 			if (!getStringArg()) return false;								// get the parameter string
-			if (!checkEOL()) return false;
-			b.putString(parm, StringConstant);
-		} else {
-			if (!evalNumericExpression()) return false;						// Get parameter value
-			if (!checkEOL()) return false;
-			int value = EvalNumericExpressionValue.intValue();
-			if (parm.equals("bitmap")) {
-				if (value < 0 | value >= BitmapList.size()) {
-					return RunTimeError("Bitmap pointer out of range");
-				}
-			} else if (parm.equals("paint")) {
-				if (value < 1 || value >= PaintList.size()) {
-					return RunTimeError ("Invalid Paint object number");
-				}
-			}
-			b.putInt(parm, value);
-		}
+			if (!isNext(',')) return false;
+			String parm = StringConstant;
 
-		DisplayList.set(index, b);
-		return true;
+			if (!b.containsKey(parm)) {
+				return RunTimeError("Object does not contain: " + parm);
+			}
+
+			if (parm.equals("text")) {
+				if (!getStringArg()) return false;							// get the parameter string
+				b.putString(parm, StringConstant);
+			} else {
+				if (!evalNumericExpression()) return false;					// Get parameter value
+				int value = EvalNumericExpressionValue.intValue();
+				if (parm.equals("bitmap")) {
+					if (value < 0 | value >= BitmapList.size()) {
+						return RunTimeError("Bitmap pointer out of range");
+					}
+				} else if (parm.equals("paint")) {
+					if (value < 1 || value >= PaintList.size()) {
+						return RunTimeError ("Invalid Paint object number");
+					}
+				}
+				b.putInt(parm, value);
+			}
+		}
+		return checkEOL();
 	}
 
 	private boolean execute_gr_orientation(){
