@@ -442,13 +442,13 @@ public class Run extends ListActivity {
 	private final int CID_STATUS = 6;
 	private final int CID_DATALINK = 7;
 
-	/* Special case: need a reference to LET */
-	private final Command CMD_LET = new Command(BKW_LET) { public boolean run() { return executeLET(); } };
+	/* Special case: what to do if no command keyword at the beginning of the line */
+	private final Command CMD_IMPLICIT = new Command("") { public boolean run() { return executeImplicitCommand(); } };
 
 	// Map BASIC! command keywords to their execution functions.
 	// The order of this list determines the order of the linear keyword search, which affects performance.
 	private final Command[] BASIC_cmd = new Command[] {
-		CMD_LET,
+		new Command(BKW_LET)                    { public boolean run() { return executeLET(); } },
 		new Command(BKW_IF,     CID_SKIP_TO_ENDIF) { public boolean run() { return executeIF(); } },
 		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
 		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
@@ -3501,7 +3501,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private  boolean StatementExecuter() {				// Execute one basic line (statement)
 
 		Command c = findCommand(BASIC_cmd);				// get the keyword that may start the line
-		if (c == null) { c = CMD_LET; }					// if no keyword, then assume pseudo LET
+		if (c == null) { c = CMD_IMPLICIT; }			// if no keyword, then assume pseudo LET or CALL
 
 		if (!IfElseStack.empty()) {						// if inside IF-ELSE-ENDIF
 			Integer q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
@@ -3826,14 +3826,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		theValueIndex = kk;
 	}
 
-	private int createNewVar(String var) {			// make a new var table entry with default value
+	private int createNewVar(String var) {			// make a new var table entry with dummy list index
 		return createNewVar(var, 0);
 	}
 
-	private int createNewVar(String var, int val) {	// make a new var table entry
-		VarNumber = VarNames.size();
-		VarNames.add(var);
-		VarIndex.add(val);							// keep VarIndex in sync
+	private int createNewVar(String var, int val) {	// make a new var table entry; val is an index into one of the lists
+		VarNumber = VarNames.size();				// index into both name list and index list
+		VarNames.add(var);							// create entry in list of variable names
+		VarIndex.add(val);							// create corresponding index list entry
 		return VarNumber;
 	}
 
@@ -3921,8 +3921,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return fn;
 	}
 
-	private  boolean executeLET() {						// Execute a real or pseudo LET
-															// Execute LET (an assignment statement)
+	private boolean executeImplicitCommand() {			// no keyword at beginning of line
+		int LI = LineIndex;
+		String var = parseVar(USER_FN_OK);					// look for a variable or function name
+		if (var == null) return false;
+
+		LineIndex = LI;										// rewind the LineIndex for re-parse
+		return VarIsFunction ? executeCALL() : executeLET();
+	}
+
+	private boolean executeLET() {						// Execute LET (an assignment statement)
 		if (!getVar()) {									// Must start with a variable
 			return false;									// to assign a value to
 		}
@@ -4012,7 +4020,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (!SEisLE) return false;							// If was not a logical string expression, fail
 			theValueStack.push(EvalNumericExpressionValue);
 		}
-		else if (isUserFunction(TYPE_NUMERIC)) {				// Try User Function
+		else if (isUserFunction(true, TYPE_NUMERIC)) {			// Try User Function
 			if (!doUserFunction()) return false;
 			ufBundle = ufb;
 			theValueStack.push(EvalNumericExpressionValue);
@@ -4369,7 +4377,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		boolean flag = false;
 		Bundle ufb = ufBundle;
-		if (isUserFunction(TYPE_STRING)) {
+		if (isUserFunction(true, TYPE_STRING)) {				// Try User Function
 			flag = doUserFunction();
 			ufBundle = ufb;
 		} else {
@@ -5428,7 +5436,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		ArrayEntry.putInt("base", ArrayValueStart);				// The pointer the first array element value
 
 		int varNum = createNewVar(var);
-		VarIndex.set(varNum, ArrayTable.size());				// The var's value is its array table index
+		VarIndex.set(varNum, ArrayTable.size());				// The VarIndex value is the ArrayTable index
 		ArrayTable.add(ArrayEntry);								// Put the element bundle into the array table
 
 		return true;
@@ -6996,19 +7004,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeCALL() {
-		if (isUserFunction(TYPE_NUMERIC)) return doUserFunction();
-		if (isUserFunction(TYPE_STRING)) return doUserFunction();
-		return false;
+		boolean isOk = false;
+		if (isUserFunction(false, false)) {					// don't check type
+			isOk = doUserFunction();
+			isOk &= checkEOL();
+		}
+		return isOk;
 	}
 
-	private boolean isUserFunction(boolean isNumeric) {
+	private boolean isUserFunction(boolean checkType, boolean isNumeric) {	// if first arg is false, second is ignored
 
 		if (FunctionTable.size() == 0) return false;					// If function table empty, return fail
 
 		for (Bundle b : FunctionTable) {								// for each Bundle in the Function Table
 			String name = b.getString("fname");							// get the function name
 			if (ExecutingLineBuffer.startsWith(name, LineIndex)) {		// if in list
-				if (isNumeric != b.getBoolean("isNumeric")) return false;
+				if (checkType && (isNumeric != b.getBoolean("isNumeric"))) return false;
 				ufBundle = b;
 				LineIndex += name.length();
 				return true;											// report found
