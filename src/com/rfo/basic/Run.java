@@ -2767,7 +2767,6 @@ private void InitVars(){
     ConsoleLongTouch = false;
     TouchedConsoleLine = 0;						// first valid line number is 1
 
-
     errorMsg = "No error";
     
     InChar = new ArrayList<String>();
@@ -2836,6 +2835,8 @@ private void InitVars(){
 	PrintLineReady = false;								// Signals a line is ready to print or write
 
 	Labels = new HashMap<String, Integer>();			// A list of all labels and associated line numbers
+
+	PossibleKeyWord = "";
 
 	VarNames = new ArrayList<String>() ;				// Each entry has the variable name string
 	VarIndex = new ArrayList<Integer>();				// Each entry is an index into [...]
@@ -3499,13 +3500,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private  boolean StatementExecuter() {				// Execute one basic line (statement)
 
-		PossibleKeyWord = "";
 		Command c = findCommand(BASIC_cmd);				// get the keyword that may start the line
 		if (c == null) { c = CMD_LET; }					// if no keyword, then assume pseudo LET
 
 		if (!IfElseStack.empty()) {						// if inside IF-ELSE-ENDIF
 			Integer q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
-			if ((q == IEskip1) &&(c.id != CID_SKIP_TO_ELSE)
+			if ((q == IEskip1) && (c.id != CID_SKIP_TO_ELSE)
 							   && (c.id != CID_SKIP_TO_ENDIF)) {
 				return true;							// skip unless IF, ELSEIF, ELSE, or ENDIF
 			} else if ((q == IEskip2) && (c.id != CID_SKIP_TO_ENDIF)) {
@@ -3529,11 +3529,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			RunTimeError("Syntax Error");				// not been displayed them display
 			SyntaxError = true;							// Then set the flag so we don't do it again.
 		}
-		
-		
+
 		// If graphics is opened then the user will not be able to see error messages
 		// Provide a Haptic notice
-		
+
 		if (GRopen){
 			lv.performHapticFeedback(2, 1);
 			try {Thread.sleep(300);}catch(InterruptedException e){}
@@ -3922,24 +3921,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return fn;
 	}
 
-	private  boolean executeLET(){						// Execute a real or pseudo LET
+	private  boolean executeLET() {						// Execute a real or pseudo LET
 															// Execute LET (an assignment statement)
-		if (!getVar()){										// Must start with a variable
+		if (!getVar()) {									// Must start with a variable
 			return false;									// to assign a value to
 		}
-		
+
 		if (isNext(':')) {									// If this is a label,			
 			return checkEOL();								// then done
 		}
-		
+
 		if (!isNext('=')) {									// Var must be followed by =
 			return false;
 		}
-		
-//		if (theValueIndex == null) return false;            // Why? Because it is sometimes null
-		
+
 		int AssignToVarNumber = theValueIndex;				// Save the assign to Var Number
-		
+
 		if (VarIsNumeric) {									// if var is number then 
 			if (!evalNumericExpression()) { return false; }	// evaluate following numeric expression
 			NumericVarValues.set(AssignToVarNumber, EvalNumericExpressionValue);  // and assign results to the var
@@ -3948,12 +3945,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			StringVarValues.set(AssignToVarNumber, StringConstant); // Assign result to the string var
 		}
 		return checkEOL();
-	}	
-	
-	private  boolean evalNumericExpression(){			// Evaluate a numeric expression
+	}
 
-		if (LineIndex >= ExecutingLineBuffer.length() ) return false;
-															// Evaluate a Numeric Expression
+	private boolean evalToPossibleKeyword(String keyword) {	// use with midline keywords THEN, TO, STEP
+		// Evaluate a numeric expression, terminated either by EOL or by the given possible keyword.
+		// Expression value is left in EvalNumericExpressionValue; return true is expression is valid.
+		PossibleKeyWord = keyword;					// tell parseVar to expect the keyword
+		boolean ok = evalNumericExpression();
+		PossibleKeyWord = "";						// restore global before return
+		return ok;
+	}
+
+	private  boolean evalNumericExpression() {			// Evaluate a numeric expression
+
+		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
 		char c = ExecutingLineBuffer.charAt(LineIndex);
 		if (c == '\n' || c == ')') { return false; }		// If eol or starts with ')', there is not an expression
 
@@ -3967,75 +3972,67 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return false;									// and die
 		}
 
-		if (ValueStack.empty()) return false;
+		if (ValueStack.empty()) { return false; }
 		EvalNumericExpressionValue = ValueStack.pop();		// Recursive eval succeeded. Pop stack for results
 		return true;
 	}
-		
-	private boolean ENE(Stack<Integer> theOpStack, Stack<Double> theValueStack){ // Part of evaluating a number expression
+
+	private boolean ENE(Stack<Integer> theOpStack, Stack<Double> theValueStack) { // Part of evaluating a number expression
 
 																// The recursive part of Eval Expression
 		Bundle ufb = ufBundle;
 		Command cmd;
-			
-		char c = ExecutingLineBuffer.charAt(LineIndex);         // First character
+
+		char c = ExecutingLineBuffer.charAt(LineIndex);			// First character
  
-		if (c == '+'){											// Check for unary operators
-			theOpStack.push(UPLUS);
-			++LineIndex;
+		if (c == '+') {											// Check for unary operators
+			theOpStack.push(UPLUS);								// save the operator
+			++LineIndex;										// and move to the next character
 		}
-		else if(c == '-'){
+		else if(c == '-') {
 			theOpStack.push(UMINUS);
 			++LineIndex;
 		}
-		else if (c == '!'){
+		else if (c == '!') {
 			theOpStack.push(NOT);
 			++LineIndex;
 		}
-		
-		if (getNumber()){								// Not a var, must be a number
-			theValueStack.push(GetNumberValue);			// if it is, push the number
-		}
-		
-		else if (getNVar()){							// Try numeric variable									
-			theValueStack.push(NumericVarValues.get(theValueIndex));	// Push value of Var
-		}
 
-		else if ((cmd = getFunction(MF_map)) != null) {		// Try Math Function
-			if (!doMathFunction(cmd)) return false;			// Math Function failed
+		if (getNumber()) {										// Is it a number?
+			theValueStack.push(GetNumberValue);					// push the number
+		}
+		else if (getNVar()) {									// Try numeric variable
+			theValueStack.push(NumericVarValues.get(theValueIndex));	// push the value
+		}
+		else if ((cmd = getFunction(MF_map)) != null) {			// Try Math Function
+			if (!doMathFunction(cmd)) return false;				// Math Function failed
+			theValueStack.push(EvalNumericExpressionValue);		// Push the result of the function
+		}
+		else if (evalStringExpression()) {						// Try String Logical Expression
+			if (!SEisLE) return false;							// If was not a logical string expression, fail
 			theValueStack.push(EvalNumericExpressionValue);
 		}
-
-		else if (evalStringExpression()){					// Try String Logical Expression
-			if (!SEisLE) return false;						// If was not a logical string expression, fail
-			theValueStack.push(EvalNumericExpressionValue);
-		}
-
-		else if (isUserFunction(TYPE_NUMERIC)) {			// Try User Function
+		else if (isUserFunction(TYPE_NUMERIC)) {				// Try User Function
 			if (!doUserFunction()) return false;
 			ufBundle = ufb;
 			theValueStack.push(EvalNumericExpressionValue);
 		}
-		else if (isNext('(')) {								// Handle possible (
+		else if (isNext('(')) {									// Handle possible (
 			String holdPKW = PossibleKeyWord;
 			PossibleKeyWord = "";
-			if (!evalNumericExpression()){return false;} 	// if ( then eval expression inside the parens
-			theValueStack.push(EvalNumericExpressionValue);
-			PossibleKeyWord = holdPKW;
-			if (!isNext(')')) {return false;}
+			boolean ok = evalNumericExpression() && isNext(')');	// eval expression inside the parens
+			PossibleKeyWord = holdPKW;							// restore global before possible return
+			if (!ok) { return false; }
+			theValueStack.push(EvalNumericExpressionValue);		// no errors, push expression value
 		}
-		else {
-			return false;									// nothing left, fail
-		}
+		else { return false; }									// nothing left, fail
 
-		if (LineIndex >= ExecutingLineBuffer.length() ) return false;
+		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
 		c = ExecutingLineBuffer.charAt(LineIndex);
-		
-		int k = LineIndex;
-		
-		if (!PossibleKeyWord.equals("")){
-			if (ExecutingLineBuffer.startsWith(PossibleKeyWord, LineIndex)){
-				return handleOp(EOL,  theOpStack, theValueStack);
+
+		if (!PossibleKeyWord.equals("")) {
+			if (ExecutingLineBuffer.startsWith(PossibleKeyWord, LineIndex)) {
+				return handleOp(EOL, theOpStack, theValueStack);
 			}
 		}
 
@@ -4043,17 +4040,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return handleOp(EOL, theOpStack, theValueStack);
 		}
 
-		k = LineIndex;
-		if (!getOp()){return false;}						// If operator does not follow, then fail
-		
+		int k = LineIndex;
+		if (!getOp()) { return false; }						// If operator does not follow, then fail
+
 		switch (OperatorValue) {							// Handle special case operators
 															// (This is probably reduntant given the above)
 		case EOL:
-			if (!handleOp(EOL,  theOpStack, theValueStack)){return false;}
+			if (!handleOp(EOL,  theOpStack, theValueStack)) { return false; }
 			--LineIndex;
 			return true;
 		case RPRN:
-			if (!handleOp(RPRN,  theOpStack, theValueStack)){return false;}
+			if (!handleOp(RPRN,  theOpStack, theValueStack)) { return false; }
 			if (theOpStack.isEmpty()) { return true; }		// ')' was removed with matching '('
 			if ((theOpStack.pop() == RPRN) && !theOpStack.isEmpty()) {
 				if (theOpStack.pop() == SOE) {
@@ -4072,7 +4069,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return ENE(theOpStack, theValueStack);				// Recursively call ENE for rest of expression
 	}
 
-	private boolean getOp(){								// Get an expression operator if there is one
+	private boolean getOp() {								// Get an expression operator if there is one
 
 		int lastOp = OperatorString.length;					// Look for operator
 		for (int i = 0; i < lastOp; ++i) {
@@ -4090,7 +4087,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;
 	}
 
-	private  boolean handleOp(int op, Stack<Integer> theOpStack, Stack<Double> theValueStack ){	// handle an expression operator
+	private  boolean handleOp(int op, Stack<Integer> theOpStack, Stack<Double> theValueStack) {	// handle an expression operator
 
 											// Execute operator in turn by their precedence
 
@@ -4110,7 +4107,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 											// is less then the TOS Come Off Precedence and then
 											// push the current operator onto the operator stack
 		
-		while (ComesOffPrecedence[theOpStack.peek()] >= GoesOnPrecedence[op]){
+		while (ComesOffPrecedence[theOpStack.peek()] >= GoesOnPrecedence[op]) {
 
 				if (theValueStack.empty()) return false;	// Avoid a crash
 				ExecOp = theOpStack.pop();
@@ -4119,22 +4116,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 											// In general values are popped from the stack and then
 											// operated on by the operator
 											// the result is then pushed onto the value stack
-				switch (ExecOp){
+				switch (ExecOp) {
+
 				case UMINUS:
 					d1 = theValueStack.pop();
 					d1 = -d1;
 					theValueStack.push(d1);
 					break;
+
 				case UPLUS:
 					break;
-					
+
 				case PLUS:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
 					d1 = d2 + d1;
 					theValueStack.push(d1);
 					break;
-					
+
 				case MINUS:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
@@ -4166,42 +4165,42 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					d1 = Math.pow(d2,d1);
 					theValueStack.push(d1);
 					break;
-					
+
 				case LE:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
 					d1 = (d2 <= d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
-					
+
 				case NE:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
 					d1 = (d2 != d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
-					
+
 				case GE:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
 					d1 = (d2 >= d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
-					
+
 				case GT:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
 					d1 = (d2 > d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
-					
+
 				case LT:
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
 					d1 = (d2 < d1) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
-					
+
 				case LEQ:						// Logical Equals 
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
@@ -4228,6 +4227,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					d1 = (d1 == 0) ? 1.0 : 0.0;
 					theValueStack.push(d1);
 					break;
+
 				case LPRN:
 					if (op != RPRN) { return false; }
 					break;
@@ -4238,14 +4238,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				case SOE:
 					return true;
 				case EOL:
-					d1=d2;
+					d1 = d2;
 					break;
 				default:
 				}
 //			if (op == RPRN) break;
 
-
-		}  // End of while pop stack operations
+		} // End of while pop stack operations
 		
 		theOpStack.push(op);          // Push the current operator
 		return true;
@@ -5581,44 +5580,37 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// else return false to signal a syntax error.
 	private boolean buildPrintLine(String line, String newline) {
 		StringBuilder printLine = new StringBuilder((line == null) ? "" : line);
-		boolean WasSemicolon = false;
+		char sep = ' ';
 		do {										// do each field in the print statement
-			int LI = LineIndex;
+			char c = ExecutingLineBuffer.charAt(LineIndex);
+			if (c == '\n') {
+				break;								// done processing the line
+			}
+													// not EOL: expression is required
 			if (evalNumericExpression()) {
 				printLine.append(EvalNumericExpressionValue);	// convert to string
-				WasSemicolon = false;
+			} else
+			if (evalStringExpression()) {
+				printLine.append(StringConstant);				// field is string
 			} else {
-				if (evalStringExpression()) {
-					printLine.append(StringConstant);			// field is string
-					WasSemicolon = false;
-				} else {
-					if (VarIsFunction) { return false; }
-					if (LI == LineIndex) {						// if no more fields, append newline
-						if (!checkEOL()) { return false; }		// unless there is junk on the line
-					}
-				}
+				if (!SyntaxError) checkEOL();		// report junk at EOL unless prior error
+				return false;
 			}
 			if (SyntaxError) { return false; }
 
-			char c = ExecutingLineBuffer.charAt(LineIndex);
-			if (c == ',') {							// if the separator is a comma
-				printLine.append(", ");				// add comma + blank to the line
+			sep = ExecutingLineBuffer.charAt(LineIndex);		// get possible separator
+			if (sep == ',') {						// if the separator is a comma
+				printLine.append(sep).append(' ');	// add comma + blank to the line
 				++LineIndex;
-			} else if (c == ';') {					// if separator is semicolon
-													// don't add anything to output
-				WasSemicolon = true;				// and signal we had a semicolon
-				c = ExecutingLineBuffer.charAt(++LineIndex);	// is next char eol?
-			}
-
-			if (c == '\n') {						// Done processing the line
-				if (!WasSemicolon) {				// if not ended in semicolon
-					printLine.append(newline);		// add newline character(s)
-				}
-				break;
+			} else if (sep == ';') {				// if separator is semicolon
+				++LineIndex;						// don't add anything to output
 			}
 		} while (true);								// Exit loop happens internal to loop
-		
-		PrintLineReady = !WasSemicolon;
+
+		PrintLineReady = (sep != ';');
+		if (PrintLineReady) {						// if not ended in semicolon
+			printLine.append(newline);				// add newline character(s)
+		}
 		StringConstant = printLine.toString();
 		return true;
 	}
@@ -5706,7 +5698,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private  boolean executeIF(){
+	private boolean executeIF() {
 		
 		if (!IfElseStack.empty()){			 								// if inside of an IF block		
 			Integer q = IfElseStack.peek();
@@ -5724,27 +5716,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		}
 		// Execute this IF
-		
-		PossibleKeyWord = "then";					// Tell parseVar to expect a THEN
-		if (!evalNumericExpression()) { return false; }
-		PossibleKeyWord = "";						// parseVar should no longer expect THEN
+
+		String kw = "then";
+		if (!evalToPossibleKeyword(kw)) { return false; }		// tell getVar that THEN is expected
 		boolean condition = (EvalNumericExpressionValue != 0);
-		
+
 		if (ExecutingLineBuffer.charAt(LineIndex) != '\n') {
-			if (!ExecutingLineBuffer.startsWith("then", LineIndex)) { checkEOL(); return false; }
-			LineIndex = LineIndex + 4;
+			if (!ExecutingLineBuffer.startsWith(kw, LineIndex)) { checkEOL(); return false; }
+			LineIndex += 4;
 
 			if (!isNext('\n')) { return SingleLineIf(condition); }			// assume single-line IF
 
 			// at this point: "IF condition THEN\n" and LineIndex is after '\n'
 		}
-		
+
 		IfElseStack.push((condition) ? IEexec : IEskip1);
 
 		return true;
 	}
-	
-	private boolean SingleLineIf(boolean condition){
+
+	private boolean SingleLineIf(boolean condition) {
 		int index = ExecutingLineBuffer.lastIndexOf("else");
 		
 		if (condition) {
@@ -5761,7 +5752,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 	
-	private  boolean executeELSE(){
+	private  boolean executeELSE() {
 		
 		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
 			RunTimeError("Misplaced ELSE");
@@ -5775,7 +5766,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 	
-	private boolean executeELSEIF(){
+	private boolean executeELSEIF() {
 		
 		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
 			RunTimeError("Misplaced ELSEIF");
@@ -5787,30 +5778,28 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (q == IEexec) {
 			IfElseStack.push(IEskip2);
 		} else {
-			PossibleKeyWord = "then";					// Tell parseVar to expect a THEN
-			if (!evalNumericExpression()) { return false; }
-			PossibleKeyWord = "";						// parseVar should no longer expect THEN
+			String kw = "then";
+			if (!evalToPossibleKeyword(kw)) { return false; }	// tell getVar that THEN is expected
 			boolean condition = (EvalNumericExpressionValue != 0);
 
-			if (ExecutingLineBuffer.startsWith("then", LineIndex)) LineIndex = LineIndex + 4;
+			if (ExecutingLineBuffer.startsWith(kw, LineIndex)) { LineIndex += 4; }
 			if (!checkEOL()) { return false; }
 
 			IfElseStack.push((condition) ? IEexec : IEskip1);
 		}
 		return true;
 	}
-	
-		private boolean executeENDIF(){
-			
-			if (IfElseStack.empty()){			// Something must be on the stack
-				RunTimeError("Misplaced ENDIF");
-				return false;
-			}
-			if (!checkEOL() ) return false;
-			IfElseStack.pop();					// but we do not care what it is
-			return true;
 
+	private boolean executeENDIF() {
+
+		if (IfElseStack.empty()) {			// Something must be on the stack
+			return RunTimeError("Misplaced ENDIF");
 		}
+		if (!checkEOL()) return false;
+		IfElseStack.pop();					// but we do not care what it is
+		return true;
+
+	}
 
 	private boolean skipTo(String target, String nest, String errMsg) {
 		int lineNum;
@@ -5834,49 +5823,47 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeFOR(){
 
-		Bundle b = new Bundle();						// A bundle to hold value for stack
+		Bundle b = new Bundle();								// A bundle to hold value for stack
 
-		b.putInt("line",ExecutingLineIndex);							// Loop return location
+		b.putInt("line",ExecutingLineIndex);					// Loop return location
 
 		if (!getNVar()) { return false; }
 		b.putInt("var", theValueIndex);										// For Var
 		int IndexValueIndex = theValueIndex;
-		
+
 		if (!isNext('=')) { return false; }									// For Var =
 
-		PossibleKeyWord = "to";						// Tell get var that a TO is expected
-		if (!evalNumericExpression()) { return false; }						// for Var = <exp>
-		PossibleKeyWord = "";
+		String kw = "to";
+		if (!evalToPossibleKeyword(kw)) { return false; }		// tell getVar that TO is expected
 		double fstart = EvalNumericExpressionValue;
-		NumericVarValues.set(IndexValueIndex, fstart);   // assign <exp> to Var
+		NumericVarValues.set(IndexValueIndex, fstart);			// assign <exp> to Var
 
-		if (!ExecutingLineBuffer.startsWith("to", LineIndex)) return false;
-		LineIndex = LineIndex +2;
-		
-		PossibleKeyWord = "step";
-		if (!evalNumericExpression()) { return false; }						// For Var = <exp> to <exp>
-		PossibleKeyWord = "";
+		if (!ExecutingLineBuffer.startsWith(kw, LineIndex)) return false;
+		LineIndex += 2;
+
+		kw = "step";
+		if (!evalToPossibleKeyword(kw)) { return false; }					// For Var = <exp> to <exp>
 		b.putDouble("limit", EvalNumericExpressionValue);
 		double flimit = EvalNumericExpressionValue;
 
-		double step = 1.0;													//For Var = <exp> to <exp> <default step> 
-		if (ExecutingLineBuffer.startsWith("step", LineIndex)){
-			LineIndex = LineIndex + 4;
+		double step = 1.0;													// For Var = <exp> to <exp> <default step> 
+		if (ExecutingLineBuffer.startsWith(kw, LineIndex)){
+			LineIndex += 4;
 			if (!evalNumericExpression()) { return false; }					// For Var = <exp> to <exp> step <exp>
 			step = EvalNumericExpressionValue;
 		}
-		
+
 		if (!checkEOL()) return false;
-		
+
 		b.putDouble("step", step);
-		
+
 		if (step > 0) {											// Test the initial condition
-			if (fstart > flimit) {return SkipToNext();}			// If exceeds limit then skip to NEXT
+			if (fstart > flimit) { return SkipToNext(); }		// If exceeds limit then skip to NEXT
 		} else {
-			if (fstart < flimit) {return SkipToNext();}
+			if (fstart < flimit) { return SkipToNext(); }
 		}
 		ForNextStack.push(b);
-		
+
 		return true;
 	}
 
@@ -7008,13 +6995,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return checkEOL();
 	}
 
-	private boolean executeCALL(){
+	private boolean executeCALL() {
 		if (isUserFunction(TYPE_NUMERIC)) return doUserFunction();
 		if (isUserFunction(TYPE_STRING)) return doUserFunction();
 		return false;
 	}
 
-	private boolean isUserFunction(boolean isNumeric){
+	private boolean isUserFunction(boolean isNumeric) {
 
 		if (FunctionTable.size() == 0) return false;					// If function table empty, return fail
 
@@ -7030,7 +7017,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;													// report fail
 	}
 
-	private boolean doUserFunction(){
+	private boolean doUserFunction() {
 
 	Bundle fsb = new Bundle();											// The Function Stack Bundle
 
@@ -7118,24 +7105,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	if (i != pCount) { return RunTimeError("Too few calling parameters at:"); }
 
-	// Every function must have a closing right parenthesis.
-	if (!isNext(')')) { return false; }
+	if (!isNext(')')) { return false; }					// Every function must have a closing right parenthesis.
 
-	fsb.putInt("LI", LineIndex);                        // Save out index into the line buffer
+	fsb.putInt("LI", LineIndex);						// Save out index into the line buffer
 
 	FunctionStack.push(fsb);							// Push the function bundle
 	VarSearchStart = sVarNames;							// Set the new start location for var name searches
 
-	ExecutingLineIndex = ufBundle.getInt("line")+1;     // Set to execute first line after fn.def statement
+	ExecutingLineIndex = ufBundle.getInt("line") + 1;	// Set to execute first line after fn.def statement
 
 	fnRTN = false;										// Will be set true by fn.rtn
 														// cause RunLoop() to return when true
 
 	boolean flag = theBackground.RunLoop();				// Now go execute the function
 
-	if (FunctionStack.isEmpty()){
-		RunTimeError("System problem. Wait 10 seconds before rerunning.");
-		return false;
+	if (FunctionStack.isEmpty()) {
+		return RunTimeError("System problem. Wait 10 seconds before rerunning.");
 	}
 
 	fsb = FunctionStack.pop();							// Function execution done. Restore stuff
@@ -7152,7 +7137,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
 
-	return flag;                                      // Pass on the pass/fail state from the function
+	return flag;										// Pass on the pass/fail state from the function
 	}
 
 	// ************************************ Switch Statements *************************************
