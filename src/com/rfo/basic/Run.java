@@ -164,10 +164,13 @@ import android.os.Vibrator;
 import android.os.SystemClock;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
+import android.telephony.CellLocation;
 import android.telephony.PhoneStateListener;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
+import android.telephony.cdma.CdmaCellLocation;
+import android.telephony.gsm.GsmCellLocation;
 import android.text.format.Time;
 import android.text.ClipboardManager;
 
@@ -2306,15 +2309,17 @@ public class Run extends ListActivity {
 	private static final String BKW_PHONE_CALL = "call";
 	private static final String BKW_PHONE_RCV_INIT = "rcv.init";
 	private static final String BKW_PHONE_RCV_NEXT = "rcv.next";
+	private static final String BKW_PHONE_INFO = "info";
 
 	private static final String phone_KW[] = {			// Command list for Format
-		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT
+		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT, BKW_PHONE_INFO
 	};
 
 	private final Command[] phone_cmd = new Command[] {	// Map phone command keywords to their execution functions
 		new Command(BKW_PHONE_CALL)             { public boolean run() { return executePHONE_CALL(); } },
 		new Command(BKW_PHONE_RCV_INIT)         { public boolean run() { return executePHONE_RCV_INIT(); } },
-		new Command(BKW_PHONE_RCV_NEXT)         { public boolean run() { return executePHONE_RCV_NEXT(); } }
+		new Command(BKW_PHONE_RCV_NEXT)         { public boolean run() { return executePHONE_RCV_NEXT(); } },
+		new Command(BKW_PHONE_INFO)             { public boolean run() { return executePHONE_INFO(); } }
 	};
 
 	public static int phoneState = 0;
@@ -8991,17 +8996,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getVar() || !checkEOL()) return false;
 
 		Locale loc = Locale.getDefault();
+		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+		String failMsg = "Not available";
 		String[] keys = {
 			"Brand", "Model", "Device", "Product", "OS",
-			"Language", "Locale", "PhoneNumber"
+			"Language", "Locale",
+			"PhoneType", "PhoneNumber", "DeviceID",
+			"SIM SN", "SIM MCC/MNC", "SIM Provider"
 		};
 		String[] vals = {
 			Build.BRAND, Build.MODEL, Build.DEVICE, Build.PRODUCT, Build.VERSION.RELEASE,
-			loc.getDisplayLanguage(), loc.toString(), getMyPhoneNumber()
+			loc.getDisplayLanguage(), loc.toString(),
+			getPhoneType(tm), getPhoneNumber(tm, failMsg),
+			getDeviceID(tm, failMsg), getSimSN(tm, failMsg),
+			getSimOperator(tm, failMsg), getSimOpName(tm, failMsg)
 		};
+
 		int len = keys.length;
 		int i = 0;
-
 		if (VarIsNumeric) {											// bundle format
 			Bundle b = new Bundle();
 			int bundleIndex = theBundles.size();
@@ -14998,25 +15010,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  return true;
 	  }
 
-	// *********************************** Get my phone number ************************************
-
-	private boolean executeMYPHONENUMBER() {
-
-		if (!getSVar()) return false;
-		if (!checkEOL()) return false;
-
-		String pn = getMyPhoneNumber();
-		StringVarValues.set(theValueIndex, pn);
-
-		return true;		// Leave theValueIndex intact for executeDEVICE
-	}
-
-	private String getMyPhoneNumber() {
-		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
-		String pn = (tm != null) ? tm.getLine1Number() : null;
-		return (pn != null) ? pn : "Get phone number failed.";
-	}
-
 	// ***************************************** Headset ******************************************
 
 	private boolean executeHEADSET() {
@@ -15115,7 +15108,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 	};
 
-	// **************************************** Phone Call ****************************************
+	// *********************************** Phone Calls and Info ***********************************
 
 	private boolean executePHONE() {							// Get phone command keyword if it is there
 		return executeCommand(phone_cmd, "Phone");				// and execute the command
@@ -15178,6 +15171,136 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		StringVarValues.set(numberIndex, phoneNumber);
 
 		return true;
+	}
+
+	private boolean executeMYPHONENUMBER() {
+
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+
+		String pn = getPhoneNumber(null, "Get phone number failed.");
+		StringVarValues.set(theValueIndex, pn);
+
+		return true;		// Leave theValueIndex intact for executeDEVICE
+	}
+
+	private boolean executePHONE_INFO() {		// This is dynamic info. Some static
+												// phone info is available from executeDEVICE().
+		if (!getNVar() || !checkEOL()) return false;
+		Bundle b = new Bundle();
+
+		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+		String phoneType = getPhoneType(tm);
+		String networkType = getNetworkType(tm);
+		bundlePut(b, "PhoneType", phoneType);
+		bundlePut(b, "NetworkType", networkType);
+
+		CellLocation loc = (tm != null) ? tm.getCellLocation() : null;
+		if (loc == null) {
+			// no CellLocation available - not on a network?
+		} else if (phoneType.equals("GSM")) {
+			double cid = ((GsmCellLocation)loc).getCid();
+			double lac = ((GsmCellLocation)loc).getLac();
+			bundlePut(b, "CID", cid);
+			bundlePut(b, "LAC", lac);
+
+			String mcc_mnc = tm.getNetworkOperator();
+			String operator = tm.getNetworkOperatorName();
+			bundlePut(b, "MCC/MNC", mcc_mnc);
+			bundlePut(b, "Operator", operator);
+		} else if (phoneType.equals("CDMA")) {
+			double baseID = ((CdmaCellLocation)loc).getBaseStationId();
+			double networkID = ((CdmaCellLocation)loc).getNetworkId();
+			double systemID = ((CdmaCellLocation)loc).getSystemId();
+			bundlePut(b,  "BaseID", baseID);
+			bundlePut(b,  "NetworkID", networkID);
+			bundlePut(b,  "SystemID", systemID);
+		}
+		int bundleIndex = theBundles.size();
+		theBundles.add(b);
+		NumericVarValues.set(theValueIndex, (double)bundleIndex);
+		return true;
+	}
+
+	private String getPhoneNumber(TelephonyManager tm, String failMsg) {
+		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
+		String pn = (tm != null) ? tm.getLine1Number() : null;
+		return (pn != null) ? pn : failMsg;
+	}
+
+	private String getDeviceID(TelephonyManager tm, String failMsg) {
+		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
+		String id = (tm != null) ? tm.getDeviceId() : null;
+		return (id != null) ? id : failMsg;
+	}
+
+	private String getPhoneType(TelephonyManager tm) {
+		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
+		int typecode = (tm != null) ? tm.getPhoneType() : TelephonyManager.PHONE_TYPE_NONE;
+		String type;
+		switch (typecode) {
+			default:
+			case TelephonyManager.PHONE_TYPE_NONE:	type = "None";	break;
+			case TelephonyManager.PHONE_TYPE_GSM:	type = "GSM";	break;
+			case TelephonyManager.PHONE_TYPE_CDMA:	type = "CDMA";	break;
+			case TelephonyManager.PHONE_TYPE_SIP:	type = "SIP";	break;	// API level >= 11
+		}
+		return type;
+	}
+
+	private String getNetworkType(TelephonyManager tm) {
+		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
+		int typecode = (tm != null) ? tm.getNetworkType() : TelephonyManager.NETWORK_TYPE_UNKNOWN;
+		String type;
+		switch (typecode) {
+			default:
+			case TelephonyManager.NETWORK_TYPE_UNKNOWN:	type = "Unknown";	break;
+			case TelephonyManager.NETWORK_TYPE_GPRS:	type = "GPRS";		break;
+			case TelephonyManager.NETWORK_TYPE_EDGE:	type = "EDGE";		break;
+			case TelephonyManager.NETWORK_TYPE_UMTS:	type = "UMTS";		break;
+			case TelephonyManager.NETWORK_TYPE_CDMA:	type = "CDMA";		break;
+			case TelephonyManager.NETWORK_TYPE_EVDO_0:	type = "EVDOrev0";	break;
+			case TelephonyManager.NETWORK_TYPE_EVDO_A:	type = "EVDOrevA";	break;
+			case TelephonyManager.NETWORK_TYPE_1xRTT:	type = "1xRTT";		break;
+			case TelephonyManager.NETWORK_TYPE_HSDPA:	type = "HSDPA";		break;
+			case TelephonyManager.NETWORK_TYPE_HSUPA:	type = "HSUPA";		break;
+			case TelephonyManager.NETWORK_TYPE_HSPA:	type = "HSPA" ;		break;
+			case TelephonyManager.NETWORK_TYPE_IDEN:	type = "iDen";		break;	// API level >= 8
+			case TelephonyManager.NETWORK_TYPE_EVDO_B:	type = "EVDOrevB";	break;	// API level >= 9
+			case TelephonyManager.NETWORK_TYPE_LTE:		type = "LTE";		break;	// API level >= 11
+			case TelephonyManager.NETWORK_TYPE_EHRPD:	type = "EHRPD";		break;	// API level >= 11
+			case TelephonyManager.NETWORK_TYPE_HSPAP:	type = "HSPAP+";	break;	// API level >= 13
+		}
+		return type;
+	}
+
+	private int getSimState(TelephonyManager tm) {
+		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
+		return (tm != null) ? tm.getSimState() : TelephonyManager.SIM_STATE_UNKNOWN;
+	}
+
+	private String getSimSN(TelephonyManager tm, String failMsg) {
+		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
+		String sn = failMsg;
+		if (tm != null) {
+			int state = getSimState(tm);
+			if (state == TelephonyManager.SIM_STATE_ABSENT) { sn = "No SIM"; }
+			else if (state == TelephonyManager.SIM_STATE_READY) {
+				String realSN = tm.getSimSerialNumber();
+				if (realSN != null) { sn = realSN; }
+			}
+		}
+		return sn;
+	}
+
+	private String getSimOperator(TelephonyManager tm, String failMsg) {
+		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
+		return (getSimState(tm) == TelephonyManager.SIM_STATE_READY) ? tm.getSimOperator() : failMsg;
+	}
+
+	private String getSimOpName(TelephonyManager tm, String failMsg) {
+		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
+		return (getSimState(tm) == TelephonyManager.SIM_STATE_READY) ? tm.getSimOperatorName() : failMsg;
 	}
 
 	// ****************************************** EMAIL *******************************************
