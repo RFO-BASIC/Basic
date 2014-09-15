@@ -1203,8 +1203,6 @@ public class Run extends ListActivity {
 
 	private boolean mInputCancelled = false;			// Signal between background task and foreground
 //	private boolean mInputDismissed = false;			// This will be used only if we dismiss the dialog in onPause
-	private AlertDialog mAlertDialog;
-	private EditText mInputText;
 
 	// ******************** Popup Command variables ********************************
 
@@ -2603,9 +2601,7 @@ public class Run extends ListActivity {
 			case MESSAGE_DEFAULT_GROUP:
 				switch (msg.what) {
 				case MESSAGE_INPUT_DIALOG:
-					Bundle args = (Bundle)msg.obj;
-					doInputDialog(args).show();
-					setInputDialogButtonListeners(args);
+					doInputDialog((Bundle)msg.obj);
 					break;
 				case MESSAGE_TOAST:
 					Toast toast = Toaster(ToastMsg, ToastDuration);
@@ -2884,10 +2880,7 @@ private void InitVars(){
 
 	// ******************** Input Command variables ********************************
 
-	mInputCancelled = false;
 	// mInputDismissed = false;						// This will be used only if we dismiss the dialog in onPause
-	mAlertDialog = null;
-	mInputText = null;
 
 	// ******************** Popup Command variables ********************************
 
@@ -3548,7 +3541,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	}
 
-	private boolean RunTimeError(String... msgs){
+	private boolean RunTimeError(String... msgs) {
 		Show(msgs[0]);								// Display error message
 		Show(ExecutingLineBuffer);					// Display offending line
 		for (int i = 1; i < msgs.length; ++i) {		// Display any supplemental text
@@ -6057,9 +6050,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) return false;
 
 		Bundle b = new Bundle();
-		b.putString("prompt", prompt);
+		b.putString("title", prompt);
 		b.putBoolean("isNumeric", isNumeric);
 		b.putString("default", inputDefault);
+		b.putString("button1", "Ok");
 		b.putInt("varIndex", varIndex);
 		HaveTextInput = false;
 		mInputCancelled = false;
@@ -6068,10 +6062,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		waitForLOCK();										// wait for the user to exit the Dialog
 
 		if (mInputCancelled) {
+			String err = "Input dialog cancelled";
 			if (OnErrorLine != 0) {
+				errorMsg = err;
 				ExecutingLineIndex = OnErrorLine;
 			} else {										// tell user we are stopping
-				PrintShow("Input dialog cancelled");
+				PrintShow(err);
 				PrintShow("Execution halted");
 				Stop = true;								// and stop executing
 			}
@@ -6090,104 +6086,77 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 	}
 
-	private AlertDialog doInputDialog(Bundle args) {
+	private void doInputDialog(Bundle args) {
 		Context context = getContext();
-		AlertDialog.Builder dialog = new AlertDialog.Builder(context);
-		mInputText = new EditText(context);
-		mInputText.setText(args.getString("default"));
-		if (args.getBoolean("isNumeric")) {
-			mInputText.setInputType(0x00003002);			// Limits keys to signed decimal numbers
-		}
-		dialog
-			.setView(mInputText)
-			.setCancelable(true)
-			.setTitle(args.getString("prompt"))
-			.setPositiveButton("Ok", null);					// will replace listener after show()
 
-		dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+		EditText text = new EditText(context);
+		text.setText(args.getString("default"));
+		if (args.getBoolean("isNumeric")) {
+			text.setInputType(0x00003002);					// Limits keys to signed decimal numbers
+		}
+		String btnLabel = args.getString("button1");
+		if (btnLabel == null) { btnLabel = "Ok"; }
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(context);
+		builder
+			.setView(text)
+			.setCancelable(true)
+			.setTitle(args.getString("title"))				// default null, no title displayed if null or empty
+			.setPositiveButton(btnLabel, null);				// need to override default View click handler to prevent
+															// auto-dismiss, but can't do it until after show()
+
+		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
 			public void onCancel(DialogInterface dialog) {
-				Log.d(LOGTAG, "AlertDialog onCancel");
-				mInputCancelled = true;
+				Log.d(LOGTAG, "Input Dialog onCancel");
+				mInputCancelled = true;						// signal read by executeINPUT
 			}
 		});
 
-		mAlertDialog = dialog.create();
-		mAlertDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+		AlertDialog dialog = builder.create();
+		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
 			public void onDismiss( DialogInterface dialog) {
-				Log.d(LOGTAG, "AlertDialog onDismiss");
-				HaveTextInput = true;
+				Log.d(LOGTAG, "Input Dialog onDismiss");
+				HaveTextInput = true;						// semaphore used in waitForLOCK
 				synchronized (LOCK) {
 					LOCK.notify();							// release the lock that executeINPUT is waiting for
-					mAlertDialog = null;
 				}
 			}
 		});
-
-		return mAlertDialog;
+		dialog.show();
+		dialog.getButton(DialogInterface.BUTTON_POSITIVE)	// now we can replace the View click listener
+			.setOnClickListener(new InputDialogClickListener(dialog, text, args));	// to prevent auto-dismiss
 	}
 
-	private void setInputDialogButtonListeners(Bundle b) {
-		final Bundle args = b;
-		mAlertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
-			public void onClick(View view) {
-				String theInput = mInputText.getText().toString();
-				int varIndex = args.getInt("varIndex");
-				if (args.getBoolean("isNumeric")) {				// Numeric Input Handling
-					double d = 0;
-					try {
-						d = Double.parseDouble(theInput.trim());// have java parse it into a double
-					} catch (Exception e) {
-						Log.d(LOGTAG, "AlertDialog bad input");
-						Toaster("Not a number. Try Again.").show();
-						return;
-					}
-					NumericVarValues.set(varIndex, d);
-				} else {										// String Input Handling
-					StringVarValues.set(varIndex, theInput);
+	private class InputDialogClickListener implements View.OnClickListener {
+		// Use inner class members so we don't need as many outer class members.
+		private final AlertDialog mmDialog;
+		private final EditText mmText;
+		private final boolean mmIsNumeric;
+		private final int mmVarIndex;
+		public InputDialogClickListener(AlertDialog dialog, EditText text, Bundle args) {
+			mmDialog = dialog;
+			mmText = text;
+			mmIsNumeric = args.getBoolean("isNumeric");		// default false
+			mmVarIndex = args.getInt("varIndex");			// default 0
+		}
+
+		public void onClick(View view) {
+			String theInput = mmText.getText().toString();
+			if (mmIsNumeric) {								// Numeric Input Handling
+				try {
+					double d = Double.parseDouble(theInput.trim());	// have java parse it into a double
+					NumericVarValues.set(mmVarIndex, d);
+				} catch (Exception e) {
+					Log.d(LOGTAG, "Input Dialog bad input");
+					Toaster("Not a number. Try Again.").show();
+					return;
 				}
-				mAlertDialog.dismiss();
-				Log.d(LOGTAG, "AlertDialog done, positive");
+			} else {										// String Input Handling
+				StringVarValues.set(mmVarIndex, theInput);
 			}
-		});
-	}
-
-	private boolean executeBACK_RESUME(){
-		if (interruptResume == -1){
-			RunTimeError("Back key not hit");
-			return false;
+			mmDialog.dismiss();
+			Log.d(LOGTAG, "Input Dialog done, positive");
 		}
-		return doResume();
-	}
-	
-	private boolean executeMENUKEY_RESUME(){
-		if (interruptResume == -1){
-			RunTimeError("Menu key not hit");
-			return false;
-		}
-		return doResume();
-	}
-	
-	private boolean executeCONSOLETOUCH_RESUME(){
-		if (interruptResume == -1){
-			RunTimeError("Console not touched");
-			return false;
-		}
-		return doResume();
-	}
-	
-	private boolean doResume(){
-		ExecutingLineIndex = interruptResume;
-		interruptResume = -1;
-		VarSearchStart = interruptVarSearchStart;
-		// Pull the IEinterrupt from the If Else stack
-		// It is possible that IFs were executed in the interrupt code
-		// so pop entries until we get to the IEinterrupt
-		while (IfElseStack.peek() != IEinterrupt) {
-			IfElseStack.pop();
-		}
-		IfElseStack.pop();  // Top is stack is now IEInterrupt, pop it
-				
-		return true;
 	}
 
 	// ************************************** Read Commands ***************************************
@@ -8538,6 +8507,33 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// ************************************** Miscellaneous Non-core commands **************************
 
+	private boolean doResume(String errMsg) {
+		if (interruptResume == -1) {
+			return RunTimeError(errMsg);
+		}
+
+		ExecutingLineIndex = interruptResume;
+		interruptResume = -1;
+		VarSearchStart = interruptVarSearchStart;
+		// Pull the IEinterrupt from the If Else stack
+		// It is possible that IFs were executed in the interrupt code
+		// so pop entries until we get to the IEinterrupt
+		while (IfElseStack.peek() != IEinterrupt) {
+			IfElseStack.pop();
+		}
+		IfElseStack.pop();  // Top is stack is now IEInterrupt, pop it
+
+		return true;
+	}
+
+	private boolean executeBACK_RESUME() {
+		return doResume("Back key not hit");
+	}
+
+	private boolean executeMENUKEY_RESUME() {
+		return doResume("Menu key not hit");
+	}
+
 	private boolean executePAUSE(){
 		if (!evalNumericExpression()) return false;							// Get pause duration value
 		if (!checkEOL()) return false;
@@ -8583,10 +8579,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeKEY_RESUME() {
-		if (interruptResume == -1 ) {
-			return RunTimeError("No Current Key Interrupt");
-		}
-		return doResume();
+		return doResume("No Current Key Interrupt");
 	}
 
 	private boolean executePOPUP(){
@@ -11411,11 +11404,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  return true;
 	}
 
-	private boolean execute_gr_touch_resume(){
-		if (interruptResume == -1) {
-			return RunTimeError("No onTouch Interrupt");
-		}
-		return doResume();
+	private boolean execute_gr_touch_resume() {
+		return doResume("No onTouch Interrupt");
 	}
 
 	// ****************************************** Audio *******************************************
@@ -14440,15 +14430,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		    	return true;
 		    	
 		    }
-		    
-		    private boolean execute_BT_readReady_Resume(){
-		    	if (interruptResume == -1) {
-		    		RunTimeError("No Bluetooth Read Ready Interrupt");
-		    		return false;	    		
-		    	}
-		    	return doResume();
-		    }
-		    
+
+	private boolean execute_BT_readReady_Resume() {
+		return doResume("No Bluetooth Read Ready Interrupt");
+	}
+
 		    private boolean execute_BT_read_bytes(){
 		    	
 		        if (bt_state != STATE_CONNECTED) {
@@ -14627,6 +14613,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			NumericVarValues.set(longTouchVarIndex, isLongTouch);
 		}
 		return true;
+	}
+
+	private boolean executeCONSOLETOUCH_RESUME() {
+		return doResume("Console not touched");
 	}
 
 	private boolean executeCONSOLE_DUMP(){
@@ -15774,10 +15764,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeTIMER_RESUME() {
-		if (interruptResume == -1) {
-			return RunTimeError("No timer interrupt to reseume");
-		}
-		return doResume();
+		return doResume("No timer interrupt to resume");
 	}
 
 	// *************************************** Home Command ***************************************
@@ -15790,10 +15777,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeBACKGROUND_RESUME() {
-		if (interruptResume == -1) {
-			return RunTimeError("No background state change");
-		}
-		return doResume();
+		return doResume("No background state change");
 	}
 
 } // End of Run
