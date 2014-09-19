@@ -166,6 +166,7 @@ import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.telephony.CellLocation;
 import android.telephony.PhoneStateListener;
+import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
@@ -1282,7 +1283,6 @@ public class Run extends ListActivity {
 	public static ArrayList<Integer> RealDisplayList;
 	public static ArrayList<Paint> PaintList;
 	public static ArrayList<Bitmap> BitmapList;
-	public static ArrayList<Float> PixelPoints;
 	public static Paint aPaint;
 	public static Bitmap aBitmap ;
 	public static boolean GRrunning;
@@ -1903,6 +1903,7 @@ public class Run extends ListActivity {
 	private static final String BKW_DEBUG_SHOW_PROGRAM = "show.program";
 	private static final String BKW_DEBUG_SHOW = "show";
 	private static final String BKW_DEBUG_CONSOLE = "console";
+	private static final String BKW_DEBUG_STATS = "stats";
 
 	private static final String Debug_KW[] = {			// Command list for Format
 		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_DEBUG_PRINT, BKW_DEBUG_ECHO_ON,
@@ -1912,7 +1913,7 @@ public class Run extends ListActivity {
 		BKW_DEBUG_WATCH_CLEAR, BKW_DEBUG_WATCH, BKW_DEBUG_SHOW_SCALARS,
 		BKW_DEBUG_SHOW_ARRAY, BKW_DEBUG_SHOW_LIST, BKW_DEBUG_SHOW_STACK,
 		BKW_DEBUG_SHOW_BUNDLE, BKW_DEBUG_SHOW_WATCH, BKW_DEBUG_SHOW_PROGRAM,
-		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE
+		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE, BKW_DEBUG_STATS
 	};
 
 	private final Command[] debug_cmd = new Command[] {	// Map debug command keywords to their execution functions
@@ -1937,6 +1938,7 @@ public class Run extends ListActivity {
 		new Command(BKW_DEBUG_SHOW_PROGRAM)     { public boolean run() { return executeDEBUG_SHOW_PROGRAM(); } },
 		new Command(BKW_DEBUG_SHOW)             { public boolean run() { return executeDEBUG_SHOW(); } },
 		new Command(BKW_DEBUG_CONSOLE)          { public boolean run() { return executeDEBUG_CONSOLE(); } },
+		new Command(BKW_DEBUG_STATS)            { public boolean run() { return executeDEBUG_STATS(); } },
 	};
 
 	public static boolean Debug = false;
@@ -2320,10 +2322,11 @@ public class Run extends ListActivity {
 		new Command(BKW_PHONE_INFO)             { public boolean run() { return executePHONE_INFO(); } }
 	};
 
-	public static int phoneState = 0;
-	public static String phoneNumber = "";
-	public static boolean phoneRcvInited = false;
-	public static TelephonyManager mTM;
+	public int phoneState = 0;
+	public String phoneNumber = "";
+	public boolean phoneRcvInited = false;
+	public TelephonyManager mTM;
+	public SignalStrength mSignalStrength = null;
 
 	// ****************** Headset Broadcast Receiver ***********************
 
@@ -2907,7 +2910,6 @@ private void InitVars(){
     RealDisplayList = new ArrayList<Integer>() ;
     PaintList = new ArrayList<Paint>();
     BitmapList = new ArrayList<Bitmap>();
-    PixelPoints = new ArrayList<Float> ();
     aPaint = new Paint();
 	PaintList = new ArrayList<Paint>();
     GRrunning = false;
@@ -2998,14 +3000,14 @@ private void InitVars(){
      OnTimerLine = 0;
      theTimer = null;
      timerExpired = false;
-     
-     theTimeZone = "";
-     
-	 phoneState = 0;
-	 phoneNumber = "";
-	 phoneRcvInited = false;
-	 mTM = null;
 
+	theTimeZone = "";
+
+	phoneState = 0;
+	phoneNumber = "";
+	phoneRcvInited = false;
+	mTM = null;
+	mSignalStrength = null;
 }
 
 public void cleanUp(){
@@ -3130,6 +3132,12 @@ public void cleanUp(){
 			
 			finishActivity(BASIC_GENERAL_INTENT);
 
+	if (mTM != null) {
+		Log.d(LOGTAG, "mTM: unlistening");
+		mTM.listen(PSL, PhoneStateListener.LISTEN_NONE);
+		mTM = null;
+	}
+	mSignalStrength = null;
 }
 
 
@@ -6278,6 +6286,27 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeECHO_OFF(){
 		if (!checkEOL()) return false;
 		Echo = false;
+		return true;
+	}
+
+	private boolean executeDEBUG_STATS() {
+		if (Debug) {
+			PrintShow("# labels   : " + Labels.size());
+			PrintShow("# variables: " + VarNames.size());
+			PrintShow("  numeric  : " + NumericVarValues.size());
+			PrintShow("  string   : " + StringVarValues.size());
+			PrintShow("  arrays   : " + ArrayTable.size());
+			PrintShow("  lists    : " + (theLists.size() - 1));		// item 0 always present but not accessible
+			PrintShow("  stacks   : " + (theStacks.size() - 1));	// item 0 always present but not accessible
+			PrintShow("  bundles  : " + (theBundles.size() - 1));	// item 0 always present but not accessible
+			PrintShow("  functions: " + FunctionTable.size());
+			PrintShow("    nested : " + FunctionStack.size());
+			PrintShow("DL size    : " + DisplayList.size());
+			PrintShow("RealDL size: " + RealDisplayList.size());
+			PrintShow("RealDL size: " + RealDisplayList.size());
+			PrintShow("# paints   : " + PaintList.size());
+			PrintShow("# bitmaps  : " + BitmapList.size());
+		}
 		return true;
 	}
 
@@ -10939,12 +10968,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Not an even number of elements in pixel array");
 		}
 
-/*		int pixelBase = PixelPoints.size();
-		for (int i = 0; i < length; ++i){
-			double d = NumericVarValues.get(base+i);
-			PixelPoints.add((float) d);
-		}
-*/
 		Bundle aBundle = new Bundle();
 		aBundle.putInt("type", GR.dsetPixels);
 		aBundle.putInt("hide", 0);
@@ -12703,26 +12726,31 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_BUNDLE_CREATE() {
-
-		if (!getNVar()) return false;							// Bundle pointer variable
-		if (!checkEOL()) return false;
-		int SaveValueIndex = theValueIndex;
-		Bundle b = new Bundle();
-
-		int bundleIndex = theBundles.size();
-		theBundles.add(b);
-
-		NumericVarValues.set(SaveValueIndex, (double) bundleIndex);
-
+		if (!getNVar() || !checkEOL()) return false;			// get the Bundle pointer variable
+		createBundle(theValueIndex);
 		return true;
 	}
 
-	private int getBundleArg() {										// Get the Bundle pointer
+	private int createBundle(int varValueIndex) {				// create a new bundle and put it on the list
+		int bundleIndex = theBundles.size();
+		NumericVarValues.set(varValueIndex, (double)bundleIndex);
+		theBundles.add(new Bundle());
+		return bundleIndex;
+	}
+
+	private int getBundleArg() {								// Get the Bundle pointer
+		int startLI = LineIndex;
 		if (evalNumericExpression()) {
 			int bundleIndex = EvalNumericExpressionValue.intValue();
 			if ((bundleIndex > 0) && (bundleIndex < theBundles.size())) {
-				return bundleIndex;
+				return bundleIndex;								// expression is valid Bundle pointer
 			}
+			int endLI = LineIndex;
+			LineIndex = startLI;
+			if (getNVar() && (LineIndex == endLI)) {			// if NVar is entire expression
+				return createBundle(theValueIndex);				// create a new Bundle
+			}
+			LineIndex = endLI;
 			RunTimeError("Invalid Bundle Pointer");
 		}
 		return 0;
@@ -15127,17 +15155,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		phoneRcvInited = true;
 
 		mTM = (TelephonyManager)this.getSystemService(Context.TELEPHONY_SERVICE);
-		mTM.listen(PSL, PhoneStateListener.LISTEN_CALL_STATE);
- 
+		mTM.listen(PSL, PhoneStateListener.LISTEN_CALL_STATE
+						+ PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
+
 		return true;
 	}
 
 	PhoneStateListener PSL = new PhoneStateListener() {
+		@Override
 		public void onCallStateChanged(int state,  String incomingNumber) {
 			phoneState = state;
 			if (phoneState == TelephonyManager.CALL_STATE_RINGING) {
 				phoneNumber = incomingNumber;
 			}
+		}
+
+		@Override
+		public void onSignalStrengthsChanged(SignalStrength signalStrength) {
+			mSignalStrength = signalStrength;
 		}
 	};
 
@@ -15176,8 +15211,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executePHONE_INFO() {		// This is dynamic info. Some static
 												// phone info is available from executeDEVICE().
-		if (!getNVar() || !checkEOL()) return false;
-		Bundle b = new Bundle();
+		int bundleIndex = getBundleArg();						// get the Bundle pointer
+		if (bundleIndex == 0) return false;
+		if (!checkEOL()) return false;
+
+		Bundle b = theBundles.get(bundleIndex);
 
 		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
 		String phoneType = getPhoneType(tm);
@@ -15206,9 +15244,28 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			bundlePut(b,  "NetworkID", networkID);
 			bundlePut(b,  "SystemID", systemID);
 		}
-		int bundleIndex = theBundles.size();
-		theBundles.add(b);
-		NumericVarValues.set(theValueIndex, (double)bundleIndex);
+		if (mSignalStrength != null) {
+			// The PhoneStateListener is listening and caught a signal strength change.
+			// Try to use reflection to find "@hide" methods available in some API levels.
+			try {
+				Class<?> c = Class.forName("android.telephony.SignalStrength");
+				java.lang.reflect.Method m = c.getMethod("getLevel");
+				Integer level = (Integer)m.invoke(mSignalStrength, (Object[])null);
+				bundlePut(b,  "SignalLevel", level.doubleValue());
+			} catch (NoSuchMethodException nsm) {				// fall back on less flexible methods
+				if (phoneType.equals("GSM")) {
+					bundlePut(b, "GsmSignal", (double)mSignalStrength.getGsmSignalStrength());
+				} else if (phoneType.equals("CDMA")) {
+					bundlePut(b, "CdmaDbm", (double)mSignalStrength.getCdmaDbm());
+				}
+			} catch (Exception e) {}
+			try {
+				Class<?> c = Class.forName("android.telephony.SignalStrength");
+				java.lang.reflect.Method m = c.getMethod("getAsuLevel");
+				Integer level = (Integer)m.invoke(mSignalStrength, (Object[])null);
+				bundlePut(b,  "SignalASU", level.doubleValue());
+			} catch (Exception e) {}
+		}
 		return true;
 	}
 
