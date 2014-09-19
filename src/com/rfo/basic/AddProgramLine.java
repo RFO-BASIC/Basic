@@ -58,75 +58,81 @@ public class AddProgramLine {
 		 */
 		if (line == null) { return; }
 
-    	// Look for block comments. All lines between block comments
-    	// are tossed out
+		int linelen = line.length();
+		int i = 0;
+		for (; i < linelen; ++i) {					// skip leading spaces and tabs
+			char c = line.charAt(i);
+			if (c != ' ' && c != '\t') { break; }
+		}
 
-    	if (BlockFlag) {
-    		if (line.startsWith("!!")) {
-    			BlockFlag = false;
-    		}
-    		return;
-    	}
-		if (line.startsWith("!!")) {
+		// Look for block comments. All lines between block comments
+		// are tossed out
+
+		if (BlockFlag) {
+			if (line.startsWith("!!", i)) {
+				BlockFlag = false;
+			}
+			return;
+		}
+		if (line.startsWith("!!", i)) {
 			BlockFlag = true;
 			return;
 		}
 
-		String Temp = "";
+		StringBuilder sb = new StringBuilder();
 
-		int linelen = line.length();
-		for (int i=0; i < linelen; ++i) {			// do not mess with characters
+		for (; i < linelen; ++i) {					// do not mess with characters
 			char c = line.charAt(i);				// between quote marks
 			if (c == '"' || c == '\u201c') {		// Change funny quote to real quote
-				StringBuilder sb = new StringBuilder();
 				i = doQuotedString(line, i, linelen, sb);
-				Temp += sb.toString();
 			} else if (c == '%') {					// if the % character appears,
 				break;								// drop it and the rest of the line
 			} else if (c == '~') {					// Pre-processor: check for line continuation '~'
 				int j = i;							// scan after character, skipping spaces and tabs
 				do { ++j; } while ((j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0));
-				if ((j >= linelen) || (line.charAt(j) == '%')) { 	// EOL or comment
-					Temp += "{+nl}";				// add line continuation marker
+				if ((j >= linelen) || (line.charAt(j) == '%')) {	// EOL or comment
+					sb.append("{+nl}");				// add line continuation marker
 					break;
 				}
 			} else if (c != ' ' && c != '\t') {		// toss out spaces and tabs
 				c = Character.toLowerCase(c);		// normal character: convert to lower case
-				Temp += c;							// and add it to the line
+				sb.append(c);						// and add it to the line
 			}
 		}
+		String Temp = sb.toString();
 
 		if (Temp.startsWith(kw_include)) {			// If include,
 			doInclude(Temp);						// Do the include
 			return;
 		}
 
-   		if (Temp.startsWith("rem")) { Temp = ""; }	// toss out REM lines
-   		if (Temp.startsWith("!"))   { Temp = ""; }	// and whole-line comments
-   		if (Temp.startsWith("%"))   { Temp = ""; }	// and end-of-line comments
-   		if (!Temp.equals("")) {						// and empty lines
-   			if (stemp.length() == 0) {					// whole line, or first line of a collection
-   														// connected with continuation markers
-   	   			lineCharCounts.add(charCount);			// add char count to array of char counts
-   			}
-			if (Temp.endsWith("{+nl}")) {    		// Pre-processor: test for include next line sequence
-				Temp = Temp.substring(0, Temp.length() - 5);	// remove the include next line sequence
-				stemp = (stemp.length() == 0) ? Temp : mergeLines(stemp, Temp);	// and collect the line
-				return;
-			} else if (stemp.length() > 0) {
-				Temp = mergeLines(stemp, Temp); // add stemp collection to line
-				stemp = "";     // clear the collection
-			}
-			Temp = shorthand(Temp);					// Pre-processor: expand C/Java-like operators
-			if (Temp.contains("{")) {				// Pre-processor: out any hidden substrings
-				Temp = Temp.replace("{+&=}", "+=");
-				Temp = Temp.replace("{-&=}", "-=");
-				Temp = Temp.replace("{*&=}", "*=");
-				Temp = Temp.replace("{/&=}", "/=");
-			}
-   			Temp = Temp + "\n";						// end the line with New Line
-   			Basic.lines.add(Temp);					// add to Basic.lines
-   		}
+		if (Temp.equals(""))        { return; }		// toss out empty lines
+		if (Temp.startsWith("!"))   { return; }		// and whole-line comments
+		if (Temp.startsWith("%"))   { return; }		// and end-of-line comments
+		if (Temp.startsWith("rem")) { return; }		// and REM lines
+
+		if (stemp.length() == 0) {					// whole line, or first line of a collection
+													// connected with continuation markers
+			lineCharCounts.add(charCount);			// add char count to array of char counts
+		}
+		if (Temp.endsWith("{+nl}")) {				// Pre-processor: test for include next line sequence
+			Temp = Temp.substring(0, Temp.length() - 5);	// remove the include next line sequence
+			stemp = (stemp.length() == 0) ? Temp : mergeLines(stemp, Temp);	// and collect the line
+			return;
+		}
+		if (stemp.length() > 0) {
+			Temp = mergeLines(stemp, Temp);			// add stemp collection to line
+			stemp = "";								// clear the collection
+		}
+		Temp = shorthand(Temp);						// Pre-processor: expand C/Java-like operators
+		if (Temp.contains("{")) {					// Pre-processor: out any hidden substrings
+			Temp = Temp.replace("{+&=}", "+=");
+			Temp = Temp.replace("{-&=}", "-=");
+			Temp = Temp.replace("{*&=}", "*=");
+			Temp = Temp.replace("{/&=}", "/=");
+		}
+		Temp += "\n";								// end the line with New Line
+		Basic.lines.add(Temp);						// add to Basic.lines
 	}
 
 	private int doQuotedString(String line, int index, int linelen, StringBuilder s) {
