@@ -72,7 +72,7 @@ This file is part of BASIC! for Android
 
     <string-array name="csf_list_preference">
         <item>Monospace</item>
-        <item>San Serif</item>
+        <item>Sans Serif</item>
         <item>Serif</item>
     </string-array>
     

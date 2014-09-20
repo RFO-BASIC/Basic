@@ -214,25 +214,31 @@ public class Run extends ListActivity {
 	public static Object LOCK = new Object();
 
 	// ********************* Message types for the Handler *********************
-																// message numbers < 256 are in "default" group 0
-	private static final int MESSAGE_INPUT_DIALOG      = 1;		// for INPUT command
-	private static final int MESSAGE_TOAST             = 2;		// for POPUP command
-	private static final int MESSAGE_CONSOLE_WRITE     = 3;		// write to the console
-	private static final int MESSAGE_CLEAR_SCREEN      = 4;		// for CLS command
-	private static final int MESSAGE_CONSOLE_TITLE     = 5;		// for CONSOLE.TITLE command
-	private static final int MESSAGE_CONSOLE_LINE_NEW  = 6;		// for CONSOLE.LINE.NEW command
-	private static final int MESSAGE_CONSOLE_LINE_CHAR = 7;		// for CONSOLE.LINE.CHAR command
-	private static final int MESSAGE_START_GPS         = 8;		// for GPS.OPEN command
-	private static final int MESSAGE_CHECKPOINT        = 9;		// for checkpointMessage() method
-	private static final int MESSAGE_PUBLISH_PROGRESS  = 20;
 
 	private static final int MESSAGE_GROUP_MASK        = 0x0F00;// groups can be 0x1 through 0xF
 
 	private static final int MESSAGE_DEFAULT_GROUP     = 0x0000;
-	private static final int MESSAGE_BT_GROUP          = 0x0100;// add this offset to messages from BlueTooth commands
-	private static final int MESSAGE_HTML_GROUP        = 0x0200;// add this offset to messages from HTML commands
+	private static final int MESSAGE_CONSOLE_GROUP     = 0x0100;
+	private static final int MESSAGE_DIALOG_GROUP      = 0x0200;
+	private static final int MESSAGE_BT_GROUP          = 0x0300;// add this offset to messages from BlueTooth commands
+	private static final int MESSAGE_HTML_GROUP        = 0x0400;// add this offset to messages from HTML commands
 
 	private static final int MESSAGE_DEBUG_GROUP       = 0x0F00;// add this offset to messages from debug commands
+
+																// message numbers < 256 are in "default" group 0
+	private static final int MESSAGE_PUBLISH_PROGRESS  = 1;
+	private static final int MESSAGE_CHECKPOINT        = 2;		// for checkpointMessage() method
+	private static final int MESSAGE_START_GPS         = 3;		// for GPS.OPEN command
+
+	private static final int MESSAGE_CONSOLE_WRITE     = MESSAGE_CONSOLE_GROUP + 0;	// write to the console
+	private static final int MESSAGE_CLEAR_SCREEN      = MESSAGE_CONSOLE_GROUP + 1;	// for CLS command
+	private static final int MESSAGE_CONSOLE_TITLE     = MESSAGE_CONSOLE_GROUP + 2;	// for CONSOLE.TITLE command
+	private static final int MESSAGE_CONSOLE_LINE_NEW  = MESSAGE_CONSOLE_GROUP + 3;	// for CONSOLE.LINE.NEW command
+	private static final int MESSAGE_CONSOLE_LINE_CHAR = MESSAGE_CONSOLE_GROUP + 4;	// for CONSOLE.LINE.CHAR command
+
+	private static final int MESSAGE_TOAST             = MESSAGE_DIALOG_GROUP + 0;	// for POPUP command
+	private static final int MESSAGE_INPUT_DIALOG      = MESSAGE_DIALOG_GROUP + 1;	// for INPUT command
+	private static final int MESSAGE_ALERT_DIALOG      = MESSAGE_DIALOG_GROUP + 2;	// for DIALOG.* commands
 
 	// ***************************** Command class *****************************
 
@@ -295,6 +301,7 @@ public class Run extends ListActivity {
 	private static final String BKW_DEBUG_GROUP = "debug.";
 	private static final String BKW_DECRYPT = "decrypt";
 	private static final String BKW_DEVICE = "device";
+	private static final String BKW_DIALOG_GROUP = "dialog.";
 	private static final String BKW_DIM = "dim";
 	private static final String BKW_DIR = "dir";				// same as "file.dir"
 	private static final String BKW_DO = "do";
@@ -403,7 +410,8 @@ public class Run extends ListActivity {
 		BKW_GR_GROUP, BKW_DIM, BKW_UNDIM,
 		BKW_ARRAY_GROUP, BKW_BUNDLE_GROUP,
 		BKW_LIST_GROUP, BKW_STACK_GROUP,
-		BKW_INKEY, BKW_INPUT, BKW_SELECT, BKW_TGET,
+		BKW_INKEY, BKW_INPUT, BKW_DIALOG_GROUP,
+		BKW_SELECT, BKW_TGET,
 		BKW_FILE_GROUP, BKW_TEXT_GROUP, BKW_BYTE_GROUP, BKW_READ_GROUP,
 		BKW_DIR, BKW_MKDIR, BKW_RENAME,
 		BKW_GRABFILE, BKW_GRABURL,
@@ -485,6 +493,7 @@ public class Run extends ListActivity {
 		new Command(BKW_STACK_GROUP, CID_GROUP) { public boolean run() { return executeSTACK(); } },
 		new Command(BKW_INKEY)                  { public boolean run() { return executeINKEY(); } },
 		new Command(BKW_INPUT)                  { public boolean run() { return executeINPUT(); } },
+		new Command(BKW_DIALOG_GROUP,CID_GROUP) { public boolean run() { return executeDIALOG(); } },
 		new Command(BKW_SELECT)                 { public boolean run() { return executeSELECT(); } },
 		new Command(BKW_TGET)                   { public boolean run() { return executeTGET(); } },
 		new Command(BKW_FILE_GROUP, CID_GROUP)  { public boolean run() { return executeFILE(); } },
@@ -582,6 +591,7 @@ public class Run extends ListActivity {
 			keywordLists.put(BKW_BUNDLE_GROUP,    Bundle_KW);
 			keywordLists.put(BKW_BYTE_GROUP,      byte_KW);
 			keywordLists.put(BKW_CONSOLE_GROUP,   Console_KW);
+			keywordLists.put(BKW_DIALOG_GROUP,    Dialog_KW);
 			keywordLists.put(BKW_DEBUG_GROUP,     Debug_KW);
 			keywordLists.put(BKW_FILE_GROUP,      file_KW);
 			keywordLists.put(BKW_FN_GROUP,        fn_KW);
@@ -1204,6 +1214,22 @@ public class Run extends ListActivity {
 
 	private boolean mInputCancelled = false;			// Signal between background task and foreground
 //	private boolean mInputDismissed = false;			// This will be used only if we dismiss the dialog in onPause
+
+	// ******************** Dialog Command variables *******************************
+
+	private static final String BKW_DIALOG_MESSAGE = "message";
+	private static final String BKW_DIALOG_SELECT = "select";
+
+	private static final String Dialog_KW[] = {		// Dialog command list for Format
+		BKW_DIALOG_MESSAGE, BKW_DIALOG_SELECT
+	};
+
+	private final Command[] Dialog_cmd = new Command[] {	// Map dialog command keywords to their execution functions
+		new Command(BKW_DIALOG_MESSAGE)         { public boolean run() { return executeDIALOG_MESSAGE(); } },
+		new Command(BKW_DIALOG_SELECT)          { public boolean run() { return executeDIALOG_SELECT(); } },
+	};
+
+	private int mAlertItemID = 0;						// index of button or list item
 
 	// ******************** Popup Command variables ********************************
 
@@ -2603,14 +2629,13 @@ public class Run extends ListActivity {
 			switch (msg.what & MESSAGE_GROUP_MASK) {
 			case MESSAGE_DEFAULT_GROUP:
 				switch (msg.what) {
-				case MESSAGE_INPUT_DIALOG:
-					doInputDialog((Bundle)msg.obj);
+				case MESSAGE_PUBLISH_PROGRESS:
+					onProgressUpdate((String[])msg.obj);
 					break;
-				case MESSAGE_TOAST:
-					Toast toast = Toaster(ToastMsg, ToastDuration);
-					toast.setGravity(Gravity.CENTER, ToastX, ToastY);
-					toast.show();
-					break;
+				}
+				break;
+			case MESSAGE_CONSOLE_GROUP:
+				switch (msg.what) {
 				case MESSAGE_CLEAR_SCREEN:
 					output.clear();
 					break;
@@ -2618,10 +2643,21 @@ public class Run extends ListActivity {
 					String title = (String)msg.obj;
 					setTitle((title != null) ? title : getResources().getString(R.string.run_name));
 					break;
-				case MESSAGE_PUBLISH_PROGRESS:
-					onProgressUpdate((String[])msg.obj);
+				}
+				break;
+			case MESSAGE_DIALOG_GROUP:
+				switch (msg.what) {
+				case MESSAGE_INPUT_DIALOG:
+					doInputDialog((Bundle)msg.obj);
 					break;
-				default:
+				case MESSAGE_ALERT_DIALOG:
+					doAlertDialog((Bundle)msg.obj);
+					break;
+				case MESSAGE_TOAST:
+					Toast toast = Toaster(ToastMsg, ToastDuration);
+					toast.setGravity(Gravity.CENTER, ToastX, ToastY);
+					toast.show();
+					break;
 				}
 				break;
 			case MESSAGE_BT_GROUP:
@@ -6167,6 +6203,133 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 	}
 
+	// ************************************** Dialog Commands *************************************
+
+	private boolean executeDIALOG() {						// Get Dialog command keyword if it is there
+		return executeCommand(Dialog_cmd, "Dialog");
+	}
+
+	private boolean executeDIALOG_MESSAGE() {				// Show a Dialog with title, message, and 0 - 3 buttons
+		String title = null;
+		String msg = null;
+		String[] btn = { null, null, null };
+
+		if (!isNext(',')) {									// 1st comma
+			if (!getStringArg()) return false;				// get Dialog title
+			title = StringConstant;
+			if (!isNext(',')) return false;					// 1st comma
+		}
+		if (!isNext(',')) {									// 2nd comma
+			if (!getStringArg()) return false;				// get Dialog message
+			msg = StringConstant;
+			if (!isNext(',')) return false;					// 2nd comma
+		}
+		if (!getNVar()) return false;						// variable for returned button number
+		int varIndex = theValueIndex;
+
+		for (int i = 0; (i < 3) && isNext(','); ++i) {
+			if (!getStringArg()) return false;
+			btn[i] = StringConstant.trim();
+			if (btn[i].length() == 0) return false;			// do not allow empty string as button label
+		}
+		if (!checkEOL()) return false;
+
+		Bundle b = new Bundle();
+		if (title != null) { b.putString("title", title); }
+		if (msg != null) { b.putString("message", msg); }
+
+		String[] btnKey = { "button1", "button2", "button3" };
+		for (int i = 0; (i < 3) && (btn[i] != null); ++i) {
+			b.putString(btnKey[i], btn[i]);
+		}
+
+		HaveTextInput = false;
+		sendMessage(MESSAGE_ALERT_DIALOG, b);				// signal UI to start the dialog
+
+		waitForLOCK();										// wait for the user to exit the Dialog
+
+		NumericVarValues.set(varIndex, (double)mAlertItemID);
+		return true;
+	}
+
+	private void doAlertDialog(Bundle args) {
+		Context context = getContext();
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(context);
+		String positive = args.getString("button1");		// default null
+		String neutral = args.getString("button2");
+		String negative = args.getString("button3");
+		String[] list = args.getStringArray("list");
+		AlertDialogClickListener listener = new AlertDialogClickListener();
+
+		builder
+			.setCancelable(true)
+			.setTitle(args.getString("title"));				// default null, no title if null or empty
+		if (positive != null) { builder.setPositiveButton(positive, listener); }
+		if (neutral != null) { builder.setNeutralButton(neutral, listener); }
+		if (negative != null) { builder.setNegativeButton(negative, listener); }
+
+		if (list != null) {
+			builder.setItems(list, new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					mAlertItemID = which + 1;				// convert to 1-based index
+				}
+			});
+		} else {
+			builder.setMessage(args.getString("message"));	// list and message are mutually exclusive
+		}
+
+		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
+				Log.d(LOGTAG, "Alert Dialog onCancel");
+				mAlertItemID = 0;							// no button clicked or item selected
+			}
+		});
+
+		AlertDialog dialog = builder.create();
+		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+			public void onDismiss( DialogInterface dialog) {
+				Log.d(LOGTAG, "Alert Dialog onDismiss");
+				HaveTextInput = true;						// semaphore used in waitForLOCK
+				synchronized (LOCK) {
+					LOCK.notify();							// release the lock that executeINPUT is waiting for
+				}
+			}
+		});
+		dialog.show();
+	}
+
+	private class AlertDialogClickListener implements DialogInterface.OnClickListener {
+		public void onClick(DialogInterface dialog, int buttonID) {
+			Log.d(LOGTAG, "AlertDialog done, button " + buttonID);
+			int id = 0;										// default: no button
+			switch (buttonID) {
+				case DialogInterface.BUTTON_POSITIVE: id = 1; break;
+				case DialogInterface.BUTTON_NEUTRAL:  id = 2; break;
+				case DialogInterface.BUTTON_NEGATIVE: id = 3; break;
+			}
+			mAlertItemID = id;
+		}
+	}
+
+	private boolean executeDIALOG_SELECT() {				// Show a Dialog with a selection list
+		Bundle args = new Bundle();
+		ArrayList<String> selectList = new ArrayList<String>();
+		if (!parseSelect(args, selectList)) return false;
+
+		String[] array = new String[selectList.size()];
+		selectList.toArray(array);
+		args.putStringArray("list", array);
+
+		HaveTextInput = false;
+		sendMessage(MESSAGE_ALERT_DIALOG, args);				// signal UI to start the dialog
+
+		waitForLOCK();										// wait for the user to exit the Dialog
+
+		NumericVarValues.set(args.getInt("returnVarIndex"), (double)mAlertItemID);
+		return true;
+	}
+
 	// ************************************** Read Commands ***************************************
 
 	private boolean executeREAD() {								// Get READ command keyword if it is there
@@ -8638,13 +8801,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	public boolean executeSELECT(){
+	private boolean parseSelect(Bundle args, ArrayList<String> selectList) {	// get SELECT parameters from program line
 
 		if (!getNVar()) return false;								// get the var to put the key value into
-		int SaveValueIndex = theValueIndex;
+		int returnVarIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		ArrayList<String> selectList;
 		int saveLineIndex = LineIndex;
 		if ((getVarAndType() != null) && VarIsArray) {
 			if (!isNext(']'))	{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); } // Array must not have any indices
@@ -8655,9 +8817,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			int length = ArrayEntry.getInt("length");				// get the array length
 			int base = ArrayEntry.getInt("base");					// and the start of values in the value space
 
-			selectList = new ArrayList<String>();					// Create a list to copy array values into
-
-			for (int i = 0; i < length; ++i) { 						// Copy the array values into that list
+			for (int i = 0; i < length; ++i) { 						// Copy the array values into the list
 				selectList.add(StringVarValues.get(base+i));
 			}
 		} else {
@@ -8665,13 +8825,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (!evalNumericExpression()) return false;
 
 			int listIndex = EvalNumericExpressionValue.intValue();
-			if (listIndex < 1 || listIndex >= theLists.size()){
+			if ((listIndex < 1) || (listIndex >= theLists.size())) {
 				return RunTimeError("Invalid List Pointer");
 			}
-			if (theListsType.get(listIndex) != list_is_string){
+			if (theListsType.get(listIndex) != list_is_string) {
 				return RunTimeError("Not a string list");
 			}
-			selectList = theLists.get(listIndex);
+			selectList.addAll(theLists.get(listIndex));
 		}
 
 		String title = null;										// set defaults
@@ -8701,6 +8861,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
+		args.putString("title", title);
+		args.putString("message", msg);
+		args.putInt("returnVarIndex", returnVarIndex);
+		args.putInt("longClickVarIndex", isLongClickValueIndex);
+		return true;
+	}
+
+	private boolean executeSELECT() {
+		Bundle args = new Bundle();
+		ArrayList<String> selectList = new ArrayList<String>();
+		if (!parseSelect(args, selectList)) return false;
+
+		String title = args.getString("title");						// default null
+		String msg = args.getString("message");						// default null
+
 		SelectedItem = 0;											// intialize return values
 		ItemSelected = false;
 		SelectLongClick = false;
@@ -8716,12 +8891,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				try { LOCK.wait(); }								// Wait for signal from Selected.java thread
 				catch (InterruptedException e) { ItemSelected = true; }
 			}
-		}
-		NumericVarValues.set(SaveValueIndex, (double) SelectedItem); // Put the item selected into the var
+		}															// Put the item selected into the return var
+		NumericVarValues.set(args.getInt("returnVarIndex"), (double) SelectedItem);
 
+		int isLongClickValueIndex = args.getInt("longClickVarIndex", -1);
 		if (isLongClickValueIndex != -1) {
-			double isLongPress = SelectLongClick ? 1 : 0;			// Get the actual value
-			NumericVarValues.set(isLongClickValueIndex, isLongPress); // Set the return value
+			double isLongPress = SelectLongClick ? 1 : 0;				// Get the actual value
+			NumericVarValues.set(isLongClickValueIndex, isLongPress);	// Set the LongClick return value
 		}
 
 		return true;
@@ -14605,6 +14781,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeCONSOLE_LINE_COUNT(){
 		if (!getNVar()) return false;							// variable to hold the number of lines
 		if (!checkEOL()) return false;
+
+		theBackground.checkpointProgress();						// allow any pending Console activity to complete
+		while (ProgressPending) { Thread.yield(); }				// wait for checkpointProgress semaphore to clear
 
 		int count = output.size();								// number of lines written to console
 		NumericVarValues.set(theValueIndex, (double)count);
