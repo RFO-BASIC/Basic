@@ -63,6 +63,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1745,11 +1746,12 @@ public class Run extends ListActivity {
 	private static final String BKW_BUNDLE_COPY = "copy";
 	private static final String BKW_BUNDLE_CLEAR = "clear";
 	private static final String BKW_BUNDLE_CONTAIN = "contain";
+	private static final String BKW_BUNDLE_REMOVE = "remove";
 
 	private static final String Bundle_KW[] = {			// Command list for Format
 		BKW_BUNDLE_CREATE, BKW_BUNDLE_PUT, BKW_BUNDLE_GET,
-		BKW_BUNDLE_TYPE, BKW_BUNDLE_KEYS,
-		BKW_BUNDLE_COPY, BKW_BUNDLE_CLEAR, BKW_BUNDLE_CONTAIN
+		BKW_BUNDLE_TYPE, BKW_BUNDLE_KEYS, BKW_BUNDLE_COPY,
+		BKW_BUNDLE_CLEAR, BKW_BUNDLE_CONTAIN, BKW_BUNDLE_REMOVE
 	};
 
 	private final Command[] bundle_cmd = new Command[] {// Map bundle command keywords to their execution functions
@@ -1761,6 +1763,7 @@ public class Run extends ListActivity {
 		new Command(BKW_BUNDLE_COPY)            { public boolean run() { return execute_BUNDLE_COPY(); } },
 		new Command(BKW_BUNDLE_CLEAR)           { public boolean run() { return execute_BUNDLE_CLEAR(); } },
 		new Command(BKW_BUNDLE_CONTAIN)         { public boolean run() { return execute_BUNDLE_CONTAIN(); } },
+		new Command(BKW_BUNDLE_REMOVE)          { public boolean run() { return execute_BUNDLE_REMOVE(); } },
 	};
 
 	private static ArrayList <Bundle> theBundles;
@@ -1929,6 +1932,7 @@ public class Run extends ListActivity {
 	private static final String BKW_DEBUG_SHOW_PROGRAM = "show.program";
 	private static final String BKW_DEBUG_SHOW = "show";
 	private static final String BKW_DEBUG_CONSOLE = "console";
+	private static final String BKW_DEBUG_COMMANDS = "commands";
 	private static final String BKW_DEBUG_STATS = "stats";
 
 	private static final String Debug_KW[] = {			// Command list for Format
@@ -1939,7 +1943,8 @@ public class Run extends ListActivity {
 		BKW_DEBUG_WATCH_CLEAR, BKW_DEBUG_WATCH, BKW_DEBUG_SHOW_SCALARS,
 		BKW_DEBUG_SHOW_ARRAY, BKW_DEBUG_SHOW_LIST, BKW_DEBUG_SHOW_STACK,
 		BKW_DEBUG_SHOW_BUNDLE, BKW_DEBUG_SHOW_WATCH, BKW_DEBUG_SHOW_PROGRAM,
-		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE, BKW_DEBUG_STATS
+		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE,
+		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS
 	};
 
 	private final Command[] debug_cmd = new Command[] {	// Map debug command keywords to their execution functions
@@ -1964,6 +1969,7 @@ public class Run extends ListActivity {
 		new Command(BKW_DEBUG_SHOW_PROGRAM)     { public boolean run() { return executeDEBUG_SHOW_PROGRAM(); } },
 		new Command(BKW_DEBUG_SHOW)             { public boolean run() { return executeDEBUG_SHOW(); } },
 		new Command(BKW_DEBUG_CONSOLE)          { public boolean run() { return executeDEBUG_CONSOLE(); } },
+		new Command(BKW_DEBUG_COMMANDS)         { public boolean run() { return executeDEBUG_COMMANDS(); } },
 		new Command(BKW_DEBUG_STATS)            { public boolean run() { return executeDEBUG_STATS(); } },
 	};
 
@@ -6452,6 +6458,32 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+	private boolean executeDEBUG_COMMANDS() {
+		if (Debug) {
+			if (!getNVar() || !checkEOL()) return false;
+
+			int theIndex = createNewList(list_is_string);					// Try to create list
+			if (theIndex < 0) return false;									// Create failed
+
+			ArrayList<String> list = theLists.get(theIndex);				// The list of commands
+			HashMap<String, String[]> groups = getKeywordLists();			// Command groups
+
+			for (String kw : MathFunctions)   { list.add(kw + ')'); }
+			for (String kw : StringFunctions) { list.add(kw + ')'); }
+			for (String kw : BasicKeyWords) {
+				if (!kw.endsWith(".")) { list.add(kw); }
+				else {
+					String[] group = groups.get(kw);
+					for (String sub : group) {
+						list.add(kw + sub);
+					}
+				}
+			}
+			NumericVarValues.set(theValueIndex, (double)theIndex);			// Return the list pointer
+		}
+		return true;
+	}
+
 	private boolean executeDEBUG_STATS() {
 		if (Debug) {
 			PrintShow("# labels   : " + Labels.size());
@@ -10495,10 +10527,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (var == null) { return false; }							// must name a new string array variable
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
-		Set<String> keySet = b.keySet();							// get parameters from Bundle
-		keySet.remove("type");
-		keySet.remove("hide");
-		ArrayList<String> keys = new ArrayList<String>(keySet);
+		Set<String> keySet = b.keySet();							// get reference to Set of parameters in Bundle
+		Set<String> keyCopy = new HashSet<String>(keySet);			// make copy so remove won't affect Bundle
+		keyCopy.remove("type");
+		keyCopy.remove("hide");
+		ArrayList<String> keys = new ArrayList<String>(keyCopy);
 
 		/* Puts the list of keys into a new array */
 		return ListToBasicStringArray(var, keys, keys.size());
@@ -13077,6 +13110,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		double thereis = (b.containsKey(tag)) ? 1.0 : 0.0;
 		NumericVarValues.set(theValueIndex, thereis);
 
+		return true;
+	}
+
+	private boolean execute_BUNDLE_REMOVE(){
+		int bundleIndex = getBundleArg();								// Get the Bundle pointer
+		if (bundleIndex == 0) return false;
+		if (!isNext(',')) return false;
+
+		if (!getStringArg()) return false;								// Get the key to remove
+		if (!checkEOL()) return false;
+		String key = StringConstant;
+
+		Bundle theBundle = theBundles.get(bundleIndex);					// Get the  bundle
+		theBundle.remove(key);											// Remove the requested key
+		theBundle.remove("@@@N." + key);								// Remove the corresponding type key
 		return true;
 	}
 
