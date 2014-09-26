@@ -1701,7 +1701,6 @@ public class Run extends ListActivity {
 	private static final String BKW_LIST_REMOVE = "remove";
 	private static final String BKW_LIST_INSERT = "insert";
 	private static final String BKW_LIST_SIZE = "size";
-	private static final String BKW_LIST_CONTAINS = "contains";
 	private static final String BKW_LIST_TOARRAY = "toarray";
 	private static final String BKW_LIST_SEARCH = "search";
 
@@ -1710,7 +1709,7 @@ public class Run extends ListActivity {
 		BKW_LIST_ADD_ARRAY, BKW_LIST_ADD, BKW_LIST_REPLACE,
 		BKW_LIST_TYPE, BKW_LIST_GET, BKW_LIST_CLEAR,
 		BKW_LIST_REMOVE, BKW_LIST_INSERT, BKW_LIST_SIZE,
-		BKW_LIST_CONTAINS, BKW_LIST_TOARRAY, BKW_LIST_SEARCH
+		BKW_LIST_TOARRAY, BKW_LIST_SEARCH
 	};
 
 	private final Command[] list_cmd = new Command[] {	// Map list command keywords to their execution functions
@@ -1725,7 +1724,6 @@ public class Run extends ListActivity {
 		new Command(BKW_LIST_REMOVE)            { public boolean run() { return execute_LIST_REMOVE(); } },
 		new Command(BKW_LIST_INSERT)            { public boolean run() { return execute_LIST_INSERT(); } },
 		new Command(BKW_LIST_SIZE)              { public boolean run() { return execute_LIST_SIZE(); } },
-		new Command(BKW_LIST_CONTAINS)          { public boolean run() { return execute_LIST_CONTAINS(); } },
 		new Command(BKW_LIST_TOARRAY)           { public boolean run() { return execute_LIST_TOARRAY(); } },
 		new Command(BKW_LIST_SEARCH)            { public boolean run() { return execute_LIST_SEARCH(); } },
 	};
@@ -6459,28 +6457,57 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeDEBUG_COMMANDS() {
-		if (Debug) {
-			if (!getNVar() || !checkEOL()) return false;
+		if (!Debug) return true;
 
-			int theIndex = createNewList(list_is_string);					// Try to create list
-			if (theIndex < 0) return false;									// Create failed
+		if (!getNVar()) return false;
+		int listVarIndex = theValueIndex;
+		boolean isComma = isNext(',');
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				if (!getNVar()) return false;							// var for count of math functions
+				NumericVarValues.set(theValueIndex, (double)MathFunctions.length);
+				isComma = isNext(',');
+			}
+		}
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				if (!getNVar()) return false;							// var for count of string functions
+				NumericVarValues.set(theValueIndex, (double)StringFunctions.length);
+				isComma = isNext(',');
+			}
+		}
+		int countVarIndex = -1;
+		if (isComma) {
+			if (!getNVar()) return false;								// var for count of command keywords
+			countVarIndex = theValueIndex;								// don't have the count yet
+		}
+		if (!checkEOL()) return false;
 
-			ArrayList<String> list = theLists.get(theIndex);				// The list of commands
-			HashMap<String, String[]> groups = getKeywordLists();			// Command groups
+		int theIndex = createNewList(list_is_string);					// Try to create list
+		if (theIndex < 0) return false;									// Create failed
 
-			for (String kw : MathFunctions)   { list.add(kw + ')'); }
-			for (String kw : StringFunctions) { list.add(kw + ')'); }
-			for (String kw : BasicKeyWords) {
-				if (!kw.endsWith(".")) { list.add(kw); }
-				else {
-					String[] group = groups.get(kw);
-					for (String sub : group) {
-						list.add(kw + sub);
-					}
+		ArrayList<String> list = theLists.get(theIndex);				// The list of commands
+		HashMap<String, String[]> groups = getKeywordLists();			// Command groups
+
+		int kwCount = 0;
+		for (String kw : MathFunctions)   { list.add(kw + ')'); }
+		for (String kw : StringFunctions) { list.add(kw + ')'); }
+		for (String kw : BasicKeyWords) {
+			if (!kw.endsWith(".")) {
+				list.add(kw);
+				++kwCount;
+			} else {
+				String[] group = groups.get(kw);
+				for (String sub : group) {
+					list.add(kw + sub);
+					++kwCount;
 				}
 			}
-			NumericVarValues.set(theValueIndex, (double)theIndex);			// Return the list pointer
 		}
+		NumericVarValues.set(listVarIndex, (double)theIndex);			// Return the list pointer
+		if (countVarIndex != -1) { NumericVarValues.set(countVarIndex, (double)kwCount); }
 		return true;
 	}
 
@@ -6558,7 +6585,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) return false;
 
 		WatchedStack = stackIndex;
-		ArrayList<String> lines = dbDoList("");
+		ArrayList<String> lines = dbDoStack("");
 		for (String line : lines) {
 			if (line != null) { PrintShow(line); }
 		}
@@ -12269,6 +12296,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (getArrayVarForRead() == null) { return false; }				// Get the array variable
 		int arrayTableIndex = VarIndex.get(VarNumber);
+		boolean isNumeric = VarIsNumeric;
 
 		Integer[] p = { null, null };
 		if (!getIndexPair(p)) return false;								// Get values inside [], if any
@@ -12278,7 +12306,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int base = p[0].intValue();
 		int length = p[1].intValue();
 
-		if (VarIsNumeric) {											// Numeric Array
+		if (isNumeric) {											// Numeric Array
 			ArrayList <Double> Values = new ArrayList<Double>();	// Create a list to copy array values into
 
 			for (int i = 0; i < length; ++i) {						// Copy the array values into that list
@@ -12900,10 +12928,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		NumericVarValues.set(theValueIndex, (double) size);
 
 		return true;
-	}
-
-	private boolean execute_LIST_CONTAINS(){
-		return false;
 	}
 
 	private boolean execute_LIST_TOARRAY(){
