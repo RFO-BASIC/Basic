@@ -66,7 +66,7 @@ x = bprint(b1, "B1 with Age Value changed")
 
 ! Remove a key
 
-BUNDLE.REMOVE b1, "Age",
+BUNDLE.REMOVE b1, "Age"
 x = bprint(b1, "B1 with Age removed")
 
 END
