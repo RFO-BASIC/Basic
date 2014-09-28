@@ -9818,25 +9818,25 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;
 	}
 
-	private boolean executeGR_BITMAP(){
+	private boolean executeGR_BITMAP() {
 		return executeCommand(GrBitmap_cmd, "Gr.Bitmap");
 	}
 
-	private boolean executeGR_CAMERA(){
+	private boolean executeGR_CAMERA() {
 		return executeCommand(GrCamera_cmd, "Gr.Camera");
 	}
 
-	private boolean executeGR_GET(){
+	private boolean executeGR_GET() {
 		return executeCommand(GrGet_cmd, "Gr.Get");
 	}
 
-	private boolean executeGR_TEXT(){
+	private boolean executeGR_TEXT() {
 		return executeCommand(GrText_cmd, "Gr.Text");
 	}
 
 	private void DisplayListAdd(Bundle b) {
 		b.putInt("alpha", 256);
-		b.putInt("paint", PaintList.size() - 1);							// paint for this object
+		b.putInt("paint", PaintList.size() - 1);					// paint for this object
 
 		if (drawintoCanvas != null) {
 			GR.drawView.doDraw(drawintoCanvas, b);
@@ -9847,71 +9847,73 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		DisplayList.add(b);
 	}
 
-	  public boolean execute_gr_bitmap_drawinto_start(){
-		   if (!evalNumericExpression()) return false;
-		   if (!checkEOL()) return false;
-		   int q = EvalNumericExpressionValue.intValue();
-		   if (q<1 | q >= BitmapList.size()){
-			   RunTimeError("Invalid Bitmap Pointer");
-			   return false;			   
-		   }
-		   Bitmap SrcBitMap = BitmapList.get(q);
-		   if (SrcBitMap == null){
-			   RunTimeError("Bitmap was deleted");
-			   return false;
-		   }
-		   if (!SrcBitMap.isMutable()){
-			   RunTimeError("Bitmaps loaded from files not changeable.");
-			   return false;
-		   }
-		   
-		   if (SrcBitMap.isRecycled()){
-			   RunTimeError("Bitmap was recycled");
-			   SrcBitMap = null;
-			   return false;
-		   }
-		   drawintoCanvas = new Canvas(SrcBitMap);
-		   SrcBitMap = null;
-		  
-		  return true;
-	  }
-	  
-	  public boolean execute_gr_bitmap_drawinto_end(){
-		  drawintoCanvas = null;
-		  return true;
-	  }
-	  
-	  
-	  public  void DisplayListClear(){
-//			StopDisplay = true;											// Sigmal GR to stop display
-//	    	try {Thread.sleep(500);}catch(InterruptedException e){}     // Give GR some time to do it
+	private boolean execute_gr_bitmap_drawinto_start() {
+		int bitmapPtr = getBitmapArg();								// get the bitmap number
+		if (bitmapPtr < 0) return false;
+		if (!checkEOL()) return false;
+
+		Bitmap bitmap = BitmapList.get(bitmapPtr);					// get the bitmap
+		if (bitmap == null) {
+			return RunTimeError("Bitmap was deleted");
+		}
+		if (!bitmap.isMutable()) {
+			return RunTimeError("Bitmaps loaded from files not changeable.");
+		}
+		if (bitmap.isRecycled()) {
+			bitmap = null;
+			return RunTimeError("Bitmap was recycled");
+		}
+		drawintoCanvas = new Canvas(bitmap);
+		bitmap = null;
+
+		return true;
+	}
+
+	private boolean execute_gr_bitmap_drawinto_end() {
+		drawintoCanvas = null;
+		return true;
+	}
+
+	private Paint newPaint(Paint fromPaint) {						// does a new Paint
+		Typeface tf = fromPaint.getTypeface();						// while preserving the type face
+		Paint rPaint = new Paint(fromPaint);
+		rPaint.setTypeface(tf);
+		return rPaint;
+	}
+
+	private Paint initPaint(Paint paint, int a, int r, int g, int b) {
+		paint.setARGB(a, r, g, b);									// set the colors, etc
+		paint.setAntiAlias(true);
+		paint.setStyle(Paint.Style.FILL);
+		paint.setStrokeWidth(0.0f);
+//		int f = paint.getFlags();
+//		paint.setFlags(f | Paint.FILTER_BITMAP_FLAG);
+		return paint;
+	}
+
+	private void DisplayListClear() {
+//		StopDisplay = true;											// Sigmal GR to stop display
+//		try {Thread.sleep(500);}catch(InterruptedException e){}		// Give GR some time to do it
 //		BitmapList.clear();
-//		BitmapList.add(null);                             // Set Zero entry as null
+//		BitmapList.add(null);										// Set Zero entry as null
 
-	  	DisplayList.clear();										// Clear the Display List
-	  	RealDisplayList.clear();
-	  	PaintList.clear();											// and the Paint list
-	    PaintListAdd(aPaint);								        // Add dummy element 0
+		DisplayList.clear();										// Clear the Display List
+		RealDisplayList.clear();
+		PaintList.clear();											// and the Paint list
+		PaintList.add(aPaint);										// Add dummy element 0
 
-	  	Bundle b = new Bundle();									// Create a new Display list
-          b.putInt("type", GR.dNull);								// with a null entry
+		Bundle b = new Bundle();									// Create a new Display list
+		b.putInt("type", GR.dNull);									// with a null entry
 
-		   Paint tPaint = newPaint(aPaint);							// Create a newPaint object
-		   tPaint.setARGB(255, 0, 0, 0);							// Set the colors, etc
-		   tPaint.setAntiAlias(true);
-		   tPaint.setStyle(Paint.Style.FILL );
-		   tPaint.setStrokeWidth(0);
-		   int f= tPaint.getFlags();
-//		   tPaint.setFlags(f | Paint.FILTER_BITMAP_FLAG);
-		   aPaint = newPaint(tPaint);							// Copy the temp paint to aPaint
-	       PaintListAdd(aPaint);								// Add the newPaint to the Paint List
+		aPaint = initPaint(newPaint(aPaint), 255, 0, 0, 0);			// Create a newPaint object
+		PaintList.add(aPaint);										// Add the newPaint to the Paint List
 
-	       DisplayListAdd(b);
+		DisplayListAdd(b);
 
-//    	StopDisplay = false;										// Tell GR it can start displaying again
-	  }
+//		StopDisplay = false;										// Tell GR it can start displaying again
+	}
 
-	private boolean execute_gr_getdl(){
+	private boolean execute_gr_getdl() {
 
 		String var = getArrayVarForWrite(TYPE_NUMERIC);				// get the result array variable
 		if (var == null) { return false; }							// must name a new numeric array variable
@@ -9941,7 +9943,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_gr_newdl(){
+	private boolean execute_gr_newdl() {
 
 		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
 		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); } // Insure that it is a numeric array
@@ -9969,36 +9971,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	public void PaintListAdd(Paint p){
-		PaintList.add(p);
-	}
-
-	public Paint newPaint(Paint fromPaint){							// Does a new Paint
-		Typeface tf = fromPaint.getTypeface();						// while preserving the type face
-		Paint rPaint = new Paint(fromPaint);
-		rPaint.setTypeface(tf);
-		return rPaint;
-	}
-
-	private boolean execute_gr_open(){
+	private boolean execute_gr_open() {
 		if (GRopen) {
 			return RunTimeError("Graphics already Opened");
 		}
 
-		if (!evalNumericExpression()) return false;					// Get alpha
-		int a = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;					// Get red
-		int r = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;					// Get green
-		int g = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;					// Get blue
-		int b = EvalNumericExpressionValue.intValue();
+		int[] argb = getArgs4I();									// [a, r, g, b]
+		if (argb == null) return false;								// error getting values
+		int a = argb[0];
+		int r = argb[1];
+		int g = argb[2];
+		int b = argb[3];
 
 		int showStatusBar = 0;										// default to status bar not showing
 		int orientation = 0;										// default to landscape
@@ -10017,20 +10000,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 								g * 0x100 +
 								b;
 
-		  drawintoCanvas = null;
-		  DisplayListClear();
-		  BitmapList.clear();
-		  BitmapList.add(null);                             // Set Zero entry as null
+		drawintoCanvas = null;
+		DisplayListClear();
+		BitmapList.clear();
+		BitmapList.add(null);										// Set Zero entry as null
 
-		   Paint tPaint = new Paint();					// Create a newPaint object
-		   tPaint.setARGB(a, r, g, b);							// Set the colors, etc
-		   tPaint.setAntiAlias(true);
-		   tPaint.setStyle(Paint.Style.FILL );
-		   tPaint.setStrokeWidth(0f);
-		   int f= tPaint.getFlags();
-//		   tPaint.setFlags(f | Paint.FILTER_BITMAP_FLAG);
-		   aPaint = newPaint(tPaint);							// Copy the temp paint to aPaint
-	       PaintListAdd(aPaint);								// Add the newPaint to the Paint List as element 1
+		aPaint = initPaint(new Paint(), a, r, g, b);				// Create a newPaint object
+		PaintList.add(aPaint);										// Add the newPaint to the Paint List as element 1
 
 		GRclass = new Intent(this, GR.class);						// Set up parameters for the Graphics Activity
 		GRclass.putExtra(GR.EXTRA_SHOW_STATUSBAR, showStatusBar);
@@ -10042,346 +10018,275 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		startActivityForResult(GRclass, BASIC_GENERAL_INTENT);		// Start the Graphics Activity
 		while (!GRrunning) Thread.yield();							// Do not continue until GR signals it is running
 
-	       background = false;
-	       GRopen = true;									// Set some more signals
-	       RunPaused = false;
-	       NewTouch[0] = false;
-	       NewTouch[1] = false;
-	       NewTouch[2] = false;
-	       GR.doSTT = false;
-	       GRFront = true;
-	       CameraNumber = -1;
-	       setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		  return true;
-	  }
-	  
-	  private boolean execute_paint_get(){
-		  if (!getNVar()) return false;
-		  NumericVarValues.set(theValueIndex, (double) PaintList.size()-1);
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_close(){
-			if (!checkEOL()) return false;
-		  
-		  DisplayListClear();                 // Clear the existing display list
-		  
-		  Bundle aBundle = new Bundle();	  // Create a new display list bundle
-		  aBundle.putInt("type", GR.dClose);  // which commands GR.java to close
-		  aBundle.putInt("hide", 0);
-		  DisplayListAdd(aBundle);
-		  
-			synchronized (GR.Rendering) {
-				if (GR.Rendering) return true;
-				GR.Rendering = true;
-			}
+		background = false;
+		GRopen = true;												// Set some more signals
+		RunPaused = false;
+		NewTouch[0] = false;
+		NewTouch[1] = false;
+		NewTouch[2] = false;
+		GR.doSTT = false;
+		GRFront = true;
+		CameraNumber = -1;
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		return true;
+	}
 
-		  GR.drawView.postInvalidate();		  // Start the draw so the command will get executed.
-		  GRopen = false;
-		  GRFront = false;
-		  return true;
-	  }
-	  
-	  private boolean execute_gr_render(){
-			if (!checkEOL()) return false;
-		  if (GR.drawView == null){				// Make sure drawView has not gone null
-			  Stop = true;
-			  return false;
-		  }
-		  
+	private boolean execute_paint_get() {
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+		NumericVarValues.set(theValueIndex, (double) PaintList.size()-1);
+		return true;
+	}
+
+	private boolean execute_gr_close()	{
+		if (!checkEOL()) return false;
+
+		DisplayListClear();											// Clear the existing display list
+
+		Bundle aBundle = new Bundle();								// Create a new display list bundle
+		aBundle.putInt("type", GR.dClose);							// which commands GR.java to close
+		aBundle.putInt("hide", 0);
+		DisplayListAdd(aBundle);
+
 		synchronized (GR.Rendering) {
 			if (GR.Rendering) return true;
 			GR.Rendering = true;
 		}
-		  
-		  GR.NullBitMap = false;
-		  
-		  GR.drawView.postInvalidate();			// Start GR drawing.
-		  while (GR.Rendering)
-		  	{Thread.yield();}
 
-		  if (GR.NullBitMap){
-			  RunTimeError("Display List had deleted bitmap.");
-			  GR.NullBitMap = false;
-			  return false;
-		  }
-		  return true;
-	  }
-
-	private boolean execute_gr_color(){
-
-		if (!evalNumericExpression()) return false;							// Get alpha
-		int a = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get red
-		int r = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get green
-		int g = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get blue
-		int b = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get fill
-		double d = EvalNumericExpressionValue;
-		if (!checkEOL()) return false;
-
-		   Paint tPaint = newPaint(aPaint);					// Create a newPaint object
-		   tPaint.setARGB(a, r, g, b);							// Set the colors, etc
-//		   tPaint.setAntiAlias(true);
-		   if (d == 0) tPaint.setStyle(Paint.Style.STROKE );
-		   else if (d == 1) tPaint.setStyle(Paint.Style.FILL);
-		   else tPaint.setStyle(Paint.Style.FILL_AND_STROKE);
-		   aPaint = newPaint(tPaint);							// Copy the temp paint to aPaint
-	       PaintListAdd(aPaint);								// Add the newPaint to the Paint List
-		  return true;
-	}
-
-	private boolean execute_gr_antialias(){
-		if (!evalNumericExpression()) return false;				// Get the boolean
-		Paint tPaint = newPaint(aPaint);
-		tPaint.setAntiAlias(EvalNumericExpressionValue != 0);
-		aPaint = newPaint(tPaint);								// Copy the temp paint to aPaint
-		PaintListAdd(aPaint);									// Add the newPaint to the Paint List
+		GR.drawView.postInvalidate();								// Start the draw so the command will get executed.
+		GRopen = false;
+		GRFront = false;
 		return true;
 	}
 
-	private boolean execute_gr_stroke_width(){
-		if (!evalNumericExpression()) return false;				// Get the width
+	private boolean execute_gr_render() {
+		if (!checkEOL()) return false;
+
+		if (GR.drawView == null) {									// Make sure drawView has not gone null
+			Stop = true;
+			return false;
+		}
+
+		synchronized (GR.Rendering) {
+			if (GR.Rendering) return true;
+			GR.Rendering = true;
+		}
+
+		GR.NullBitMap = false;
+
+		GR.drawView.postInvalidate();								// Start GR drawing.
+		while (GR.Rendering) { Thread.yield(); }
+
+		if (GR.NullBitMap) {
+			GR.NullBitMap = false;
+			return RunTimeError("Display List had deleted bitmap.");
+		}
+		return true;
+	}
+
+	private boolean execute_gr_color() {
+		int[] argb = getArgs4I();									// [a, r, g, b]
+		if (argb == null) return false;								// error getting values
+		int a = argb[0];
+		int r = argb[1];
+		int g = argb[2];
+		int b = argb[3];
+
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression()) return false;					// get fill style
+		int style = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+
+		Paint tPaint = newPaint(aPaint);							// clone the current paint
+		tPaint.setARGB(a, r, g, b);									// set the colors, etc
+//		tPaint.setAntiAlias(true);
+		if      (style == 0) { tPaint.setStyle(Paint.Style.STROKE); }
+		else if (style == 1) { tPaint.setStyle(Paint.Style.FILL); }
+		else                 { tPaint.setStyle(Paint.Style.FILL_AND_STROKE); }
+
+		aPaint = tPaint;											// set the new current paint
+		PaintList.add(aPaint);										// and add it to the paint list
+		return true;
+	}
+
+	private boolean execute_gr_antialias() {
+		if (!evalNumericExpression()) return false;					// Get the boolean
+		if (!checkEOL()) return false;
+
+		Paint tPaint = newPaint(aPaint);
+		tPaint.setAntiAlias(EvalNumericExpressionValue != 0);
+		aPaint = tPaint;
+		PaintList.add(aPaint);										// Add the newPaint to the Paint List
+		return true;
+	}
+
+	private boolean execute_gr_stroke_width() {
+		if (!evalNumericExpression()) return false;					// Get the width
+		if (!checkEOL()) return false;
+
 		float width = EvalNumericExpressionValue.floatValue();
 		if (width < 0) {
 			return RunTimeError("Width must be >= 0");
 		}
-		Paint tPaint = newPaint(aPaint);						// Create a newPaint object
-		tPaint.setStrokeWidth(width);							// Set the stroke width
-		aPaint = newPaint(tPaint);								// Copy the temp paint to aPaint
-		PaintListAdd(aPaint);									// Add the newPaint to the Paint List
-
+		Paint tPaint = newPaint(aPaint);							// Create a newPaint object
+		tPaint.setStrokeWidth(width);								// Set the stroke width
+		aPaint = tPaint;
+		PaintList.add(aPaint);										// Add the newPaint to the Paint List
 		return true;
 	}
 
-	private boolean execute_gr_point(){
-		Bundle aBundle = new Bundle();
-		aBundle.putInt("type", GR.dPoint);
-		aBundle.putInt("hide", 0);
+	// Common processing for the beginning of a command that creates a graphical object.
+	// Expect a numeric variable on the command line. Leave its index in global theValueIndex.
+	private Bundle createGrObj_start(int type) {
+		if (!getNVar()) return null;
+		Bundle b = new Bundle();
+		b.putInt("type", type);
+		b.putInt("hide", 0);
+		return b;
+	}
 
-		if (!getNVar()) return false;							// Graphic Object Variable
-		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
+	// Common parameter handler for commands that create graphical objects.
+	private boolean nextArgNumberToBundle(Bundle b, String name) {
+		if (!isNext(',') || !evalNumericExpression()) return false;	// expect a comma and a numeric expression.
+		b.putInt(name, EvalNumericExpressionValue.intValue());		// put the expression value in the bundle
+		return true;
+	}
 
-		if (!evalNumericExpression()) return false;				// Get x
-		int x = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
+	// Common parameter handler for commands that create graphical objects.
+	private boolean nextArgStringToBundle(Bundle b, String name) {
+		if (!isNext(',') || !getStringArg()) return false;			// expect a comma and a string expression.
+		b.putString(name, StringConstant);							// put the expression value in the bundle
+		return true;
+	}
 
-		if (!evalNumericExpression()) return false;				// Get y
-		int y = EvalNumericExpressionValue.intValue();
+	// Common processing for the end of a command that creates a graphical object.
+	private boolean createGrObj_finish(Bundle b, int varIndex) {
 		if (!checkEOL()) return false;
-
-		aBundle.putInt("x", x);
-		aBundle.putInt("y", y);
-
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);								// Add the point to the display list
+		NumericVarValues.set(varIndex, (double)DisplayList.size());	// save the object index into the var
+		DisplayListAdd(b);											// add the object to the Display List
 		return true;
 	}
 
-	private boolean execute_gr_line(){
-		  Bundle aBundle = new Bundle();
-		  aBundle.putInt("type", GR.dLine);
-		  aBundle.putInt("hide", 0);
+	// Common processing for the end of a command that creates a bitmap.
+	private boolean createBitmap_finish(Bitmap bitmap, int varIndex) {
+		NumericVarValues.set(varIndex, (double)BitmapList.size());	// save the GR Object index into the var
+		BitmapList.add(bitmap); 									// add the new bitmap to the bitmap list
+		return true;
+	}
 
-		if (!getNVar()) return false;										// Graphic Object Variable
+	private boolean execute_gr_point() {
+		Bundle aBundle = createGrObj_start(GR.dPoint);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get x1
-		aBundle.putInt("x1", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		if (!nextArgNumberToBundle(aBundle, "x")) return false;
+		if (!nextArgNumberToBundle(aBundle, "y")) return false;
 
-		if (!evalNumericExpression()) return false;							// Get y1
-		aBundle.putInt("y1", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get x2
-		aBundle.putInt("x2", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get y2
-		aBundle.putInt("y2", EvalNumericExpressionValue.intValue());
-		if (!checkEOL()) return false;
-
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);								// Add the line to the display list
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	private boolean execute_gr_rect(){
-		  Bundle aBundle = new Bundle();
-		  aBundle.putInt("type", GR.dRect);
-		  aBundle.putInt("hide", 0);
-
-		if (!getNVar()) return false;										// Graphic Object Variable
+	private boolean execute_gr_line() {
+		Bundle aBundle = createGrObj_start(GR.dLine);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get left
-		aBundle.putInt("left", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		if (!nextArgNumberToBundle(aBundle, "x1")) return false;
+		if (!nextArgNumberToBundle(aBundle, "y1")) return false;
+		if (!nextArgNumberToBundle(aBundle, "x2")) return false;
+		if (!nextArgNumberToBundle(aBundle, "y2")) return false;
 
-		if (!evalNumericExpression()) return false;							// Get top
-		aBundle.putInt("top", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get right
-		aBundle.putInt("right", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get bottom
-		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
-		if (!checkEOL()) return false;
-
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size()); 	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	private boolean execute_gr_arc(){
-		  Bundle aBundle = new Bundle();
-		  aBundle.putInt("type", GR.dArc);
-		  aBundle.putInt("hide", 0);
-
-		if (!getNVar()) return false;										// Graphic Object Variable
+	private boolean execute_gr_rect() {
+		Bundle aBundle = createGrObj_start(GR.dRect);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get left
-		aBundle.putInt("left", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		if (!nextArgNumberToBundle(aBundle, "left")) return false;
+		if (!nextArgNumberToBundle(aBundle, "top")) return false;
+		if (!nextArgNumberToBundle(aBundle, "right")) return false;
+		if (!nextArgNumberToBundle(aBundle, "bottom")) return false;
 
-		if (!evalNumericExpression()) return false;							// Get top
-		aBundle.putInt("top", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get right
-		aBundle.putInt("right", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get bottom
-		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get start angle
-		aBundle.putInt("start_angle", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get end angle
-		aBundle.putInt("sweep_angle", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get flag
-		aBundle.putInt("fill_mode", EvalNumericExpressionValue.intValue());
-		if (!checkEOL()) return false;
-
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size()); 	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	private boolean execute_gr_circle(){
-		  Bundle aBundle = new Bundle();
-		  aBundle.putInt("type", GR.dCircle);
-		  aBundle.putInt("hide", 0);
-
-		if (!getNVar()) return false;										// Graphic Object Variable
+	private boolean execute_gr_arc() {
+		Bundle aBundle = createGrObj_start(GR.dArc);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get x
-		aBundle.putInt("x", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		if (!nextArgNumberToBundle(aBundle, "left")) return false;
+		if (!nextArgNumberToBundle(aBundle, "top")) return false;
+		if (!nextArgNumberToBundle(aBundle, "right")) return false;
+		if (!nextArgNumberToBundle(aBundle, "bottom")) return false;
+		if (!nextArgNumberToBundle(aBundle, "start_angle")) return false;
+		if (!nextArgNumberToBundle(aBundle, "sweep_angle")) return false;
+		if (!nextArgNumberToBundle(aBundle, "fill_mode")) return false;
 
-		if (!evalNumericExpression()) return false;							// Get x
-		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get r
-		aBundle.putInt("radius", EvalNumericExpressionValue.intValue());
-		if (!checkEOL()) return false;
-
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size()); // Save the GR Object index into the var
-		DisplayListAdd(aBundle);
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	private boolean execute_gr_oval(){
-		  Bundle aBundle = new Bundle();
-		  aBundle.putInt("type", GR.dOval);
-		  aBundle.putInt("hide", 0);
-
-		if (!getNVar()) return false;										// Graphic Object Variable
+	private boolean execute_gr_circle() {
+		Bundle aBundle = createGrObj_start(GR.dCircle);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get left
-		aBundle.putInt("left", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		if (!nextArgNumberToBundle(aBundle, "x")) return false;
+		if (!nextArgNumberToBundle(aBundle, "y")) return false;
+		if (!nextArgNumberToBundle(aBundle, "radius")) return false;
 
-		if (!evalNumericExpression()) return false;							// Get top
-		aBundle.putInt("top", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get right
-		aBundle.putInt("right", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get bottom
-		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
-		if (!checkEOL()) return false;
-
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size()); 	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	  private double gr_collide(int Object1, int Object2){
+	private boolean execute_gr_oval() {
+		Bundle aBundle = createGrObj_start(GR.dOval);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
+		int SaveValueIndex = theValueIndex;
 
-		  double fail = -1;
-		  double xfalse = 0;
-		  double xtrue = 1;
-		  
-		  if (Object1 <0 || Object1 >= DisplayList.size()){
-			  RunTimeError("Object 1 Number out of range");
-			  return fail;
-		  }
-		  Bundle b1 = DisplayList.get(Object1);									// Get the bundle to change
-		  if (b1.getInt("hide") != 0) return xfalse;								// If hidden then no collide
-		  Rect r1 = gr_getRect(b1);
-		  if (r1 == null) return fail;
-		  
-		  if (Object2 <0 || Object2 >= DisplayList.size()){
-			  RunTimeError("Object 2 Number out of range");
-			  return fail;
-		  }
-		  Bundle b2 = DisplayList.get(Object2);									// Get the bundle to change
-		  if (b2.getInt("hide") != 0) return xfalse;								// If hidden then no collide
-		  Rect r2 = gr_getRect(b2);
-		  if (r2 == null) return fail;
-		  
-		  if (r1.bottom < r2.top)				// Test for collision
-			  return xfalse;
-			if (r1.top > r2.bottom)
-			  return xfalse;
-			if (r1.right < r2.left)
-			  return xfalse;
-			if (r1.left > r2.right)
-			  return xfalse;
+		if (!nextArgNumberToBundle(aBundle, "left")) return false;
+		if (!nextArgNumberToBundle(aBundle, "top")) return false;
+		if (!nextArgNumberToBundle(aBundle, "right")) return false;
+		if (!nextArgNumberToBundle(aBundle, "bottom")) return false;
 
-		  return xtrue;
-	  }
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+	}
+
+	private double gr_collide(int Object1, int Object2) {
+
+		double fail = -1;
+		double xfalse = 0;
+		double xtrue = 1;
+
+		if (Object1 < 0 || Object1 >= DisplayList.size()) {
+			RunTimeError("Object 1 Number out of range");
+			return fail;
+		}
+		Bundle b1 = DisplayList.get(Object1);						// Get the first object
+		if (b1.getInt("hide") != 0) return xfalse;					// If hidden then no collide
+		Rect r1 = gr_getRect(b1);
+		if (r1 == null) return fail;
+
+		if (Object2 < 0 || Object2 >= DisplayList.size()) {
+			RunTimeError("Object 2 Number out of range");
+			return fail;
+		}
+		Bundle b2 = DisplayList.get(Object2);						// Get the second object
+		if (b2.getInt("hide") != 0) return xfalse;					// If hidden then no collide
+		Rect r2 = gr_getRect(b2);
+		if (r2 == null) return fail;
+
+		if (r1.bottom < r2.top)										// Test for collision
+			return xfalse;
+		if (r1.top > r2.bottom)
+			return xfalse;
+		if (r1.right < r2.left)
+			return xfalse;
+		if (r1.left > r2.right)
+			return xfalse;
+
+		return xtrue;
+	}
 
 	private Rect gr_getRect(Bundle b) {
 		Rect theRect = null;
@@ -10440,56 +10345,67 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return theRect;
 	}
 
-	  private boolean execute_gr_cls(){
-			if (!checkEOL()) return false;
-		  
-		  DisplayListClear();
-		  return true;
-	  }
-
-	private Bundle getObjectBundle() {						// get and validate the user-sepecified graphics object
-		Bundle b = null;
-		if (!evalNumericExpression()) return b;					// Get Object Number
-		int obj = EvalNumericExpressionValue.intValue();
-		if (obj < 0 || obj >= DisplayList.size()) {
-			RunTimeError("Object out of range");
-		} else {
-			b = DisplayList.get(obj);							// Get the specified display object
-		}
-		return b;
-	}
-
-	private boolean execute_gr_hide(){
-		if (!evalNumericExpression()) return false;							// Get Object Number
-		int obj = EvalNumericExpressionValue.intValue();
-		if (obj < 0 || obj >= DisplayList.size()) {
-			return RunTimeError("Hide parameter out of range");
-		}
+	private boolean execute_gr_cls() {
 		if (!checkEOL()) return false;
 
-		Bundle b = DisplayList.get(obj);				// Get the specified display object
-		b.putInt("hide", 1);							// Set hide to true
-		DisplayList.set(obj, b);						// put the modified object back
+		DisplayListClear();
 		return true;
 	}
 
-	private boolean execute_gr_show(){
-		if (!evalNumericExpression()) return false;							// Get Object Number
+	private int getBitmapArg() {									// get the bitmap number
+		return getBitmapArg("Invalid Bitmap Pointer");				// with the default error message
+	}
+
+	private int getBitmapArg(String errMsg) {						// get and validate the bitmap number
+		if (!evalNumericExpression()) return -1;
+		int bitmapPtr = EvalNumericExpressionValue.intValue();
+		if (bitmapPtr < 1 | bitmapPtr >= BitmapList.size()) {
+			RunTimeError(errMsg);
+			bitmapPtr = -1;
+		}
+		return bitmapPtr;
+	}
+
+	private int getObjectNumber() {									// get the Graphics Object Number
+		return getObjectNumber("Object out of range");				// with the default error message
+	}
+
+	private int getObjectNumber(String errMsg) {					// get and validate the Graphics Object Number
+		if (!evalNumericExpression()) return -1;
 		int obj = EvalNumericExpressionValue.intValue();
 		if (obj < 0 || obj >= DisplayList.size()) {
-			return RunTimeError("Show parameter out of range");
+			RunTimeError(errMsg);
+			obj = -1;
 		}
+		return obj;
+	}
+
+	private boolean execute_gr_hide() {
+		int obj = getObjectNumber("Hide parameter out of range");
+		if (obj < 0) return false;
 		if (!checkEOL()) return false;
 
-		Bundle b = DisplayList.get(obj);				// Get the specified display object
-		b.putInt("hide", 0);							// Set hide to false
-		DisplayList.set(obj, b);						// put the modified object back
+		Bundle b = DisplayList.get(obj);							// get the Graphics Object
+		b.putInt("hide", 1);										// set hide to true
+		DisplayList.set(obj, b);									// put the modified object back
 		return true;
 	}
 
-	private boolean execute_gr_get_position(){
-		Bundle b = getObjectBundle();
-		if (b == null) return false;
+	private boolean execute_gr_show() {
+		int obj = getObjectNumber("Show parameter out of range");
+		if (obj < 0) return false;
+		if (!checkEOL()) return false;
+
+		Bundle b = DisplayList.get(obj);							// get the Graphics Object
+		b.putInt("hide", 0);										// set hide to false
+		DisplayList.set(obj, b);									// put the modified object back
+		return true;
+	}
+
+	private boolean execute_gr_get_position() {
+		int obj = getObjectNumber();
+		if (obj < 0) return false;
+		Bundle b = DisplayList.get(obj);							// get the Graphics Object
 
 		if (!isNext(',') || !getNVar()) return false;
 		int xIndex = theValueIndex;
@@ -10497,12 +10413,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int yIndex = theValueIndex;
 		if (!checkEOL()) return false;
 
-		     int x = 0;									// get the position value
-		     int y = 0;
-		     if (b.containsKey("x")) x = b.getInt("x");
-		     else x = b.getInt("left");
-		     if (b.containsKey("y")) y = b.getInt("y");
-		     else y = b.getInt("top");
+		int x = b.getInt(b.containsKey("x") ? "x" : "left");		// get the position values
+		int y = b.getInt(b.containsKey("y") ? "y" : "top");
 
 		NumericVarValues.set(xIndex, (double) x);
 		NumericVarValues.set(yIndex, (double) y);
@@ -10510,9 +10422,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_gr_get_value(){
-		Bundle b = getObjectBundle();								// get the graphics object
-		if (b == null) return false;
+	private boolean execute_gr_get_value() {
+		int obj = getObjectNumber();
+		if (obj < 0) return false;
+		Bundle b = DisplayList.get(obj);							// get the Graphics Object
 
 		if (!isNext(',') || !getStringArg()) return false;			// get the parameter string
 		String parm = StringConstant;
@@ -10521,7 +10434,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Object does not contain " + parm);
 		}
 
-		if (!isNext(',') || !getVar() || !checkEOL()) return false;
+		if (!isNext(',') || !getVar() || !checkEOL()) return false;	// var for value
 		if (VarIsNumeric == parm.equals("text")) {					// error if numeric var and "text" tag
 			return RunTimeError("Wrong var type for tag: " + parm);	// or string var and not "text" tag
 		}
@@ -10536,9 +10449,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_get_type() {
-		Bundle b = getObjectBundle();								// get the graphics object
-		if (b == null) return false;
-		if (!isNext(',') || !getStringArg() || !checkEOL()) return false;// var for type string
+		int obj = getObjectNumber();
+		if (obj < 0) return false;
+		Bundle b = DisplayList.get(obj);							// get the Graphics Object
+
+		if (!isNext(',') || !getVar() || !checkEOL()) return false;	// var for type string
 
 		int type = b.getInt("type");
 		StringVarValues.set(theValueIndex, GR.types[type]);
@@ -10546,8 +10461,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_get_params() {
-		Bundle b = getObjectBundle();								// get the graphics object
-		if (b == null) return false;
+		int obj = getObjectNumber();
+		if (obj < 0) return false;
+		Bundle b = DisplayList.get(obj);							// get the Graphics Object
 
 		if (!isNext(',')) { return false; }
 		String var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
@@ -10564,181 +10480,150 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return ListToBasicStringArray(var, keys, keys.size());
 	}
 
-	private boolean execute_gr_touch(int p){
-		if (!getNVar()) return false;							// Graphic boolean Variable
+	private boolean execute_gr_touch(int p) {
+		if (!getNVar()) return false;								// boolean variable
 		int SaveBooleanIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!getNVar()) return false;							// Graphic X variable
+		if (!getNVar()) return false;								// x variable
 		int SaveXIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!getNVar()) return false;							// Graphic Y variable
+		if (!getNVar()) return false;								// y variable
 		int SaveYIndex = theValueIndex;
 		if (!checkEOL()) return false;
 
-		   double flag = 0.0;
-		   if (NewTouch[p]) {					// If touched
-			   flag = 1;						// set flag to tue
-//			   GR.NewTouch[p] = false;
-		   }
-		   
-		   NumericVarValues.set(SaveBooleanIndex, flag);  // Return the values to the user
-		   NumericVarValues.set(SaveXIndex, TouchX[p]);
-		   NumericVarValues.set(SaveYIndex, TouchY[p]);
-		   return true;
+		double flag = 0.0;
+		if (NewTouch[p]) {											// if touched
+			flag = 1;												// set flag to true
+//			GR.NewTouch[p] = false;
+		}
+
+		NumericVarValues.set(SaveBooleanIndex, flag);				// return the values to the user
+		NumericVarValues.set(SaveXIndex, TouchX[p]);
+		NumericVarValues.set(SaveYIndex, TouchY[p]);
+		return true;
 	}
 
-	private boolean execute_gr_bound_touch(int p){
-		if (!getNVar()) return false;							// Graphic boolean Variable
+	private boolean execute_gr_bound_touch(int p) {
+		if (!getNVar()) return false;								// boolean variable
 		int SaveBooleanIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;				// Get left
-		double left = EvalNumericExpressionValue;
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;				// Get top
-		double top = EvalNumericExpressionValue;
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;				// Get right
-		double right = EvalNumericExpressionValue;
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;				// Get bottom
-		double bottom = EvalNumericExpressionValue;
+		int[] bounds = getArgs4I();									// [left, top, right, bottom]
+		if (bounds == null) return false;							// error getting values
+		int left   = bounds[0];
+		int top    = bounds[1];
+		int right  = bounds[2];
+		int bottom = bounds[3];
 		if (!checkEOL()) return false;
 
-			   boolean flag = false;
-			   if (NewTouch[p]) {					// If touched
-				   flag = true;						// set flag to true
-//				   GR.NewTouch[p] = false;				// then set not touched
-			   }
-
-			   if (!flag){                                       // If not touched
-				   NumericVarValues.set(SaveBooleanIndex, 0.0);  // Return the false boolean to the user
-				   return true;
-			   }
-			   
-			   if (TouchX[p] >= left && TouchX[p] <= right &&      // If the touch was in the bounding rect
-			       TouchY[p] >= top  && TouchY[p] <= bottom) {
-				   NumericVarValues.set(SaveBooleanIndex, 1.0);    // Return the true boolean to the user
-			   } else NumericVarValues.set(SaveBooleanIndex, 0.0); // else return the false boolean to the user
-
+		boolean flag = false;
+		if (NewTouch[p]) {											// if touched
+			flag = (TouchX[p] >= left && TouchX[p] <= right &&		// true iff touch was in bounding rect
+					TouchY[p] >= top  && TouchY[p] <= bottom);
+//			GR.NewTouch[p] = false;									// set not touched
+		}
+		NumericVarValues.set(SaveBooleanIndex, flag ? 1.0 : 0.0);	// return flag as numerical value
 		return true;
 	}
 
-	private boolean execute_gr_text_draw(){
-		  Bundle aBundle = new Bundle();       // Create a new object of type text
-		  aBundle.putInt("type", GR.dText);
-		  aBundle.putInt("hide", 0);
-
-		if (!getNVar()) return false;										// Graphic Object Variable
+	private boolean execute_gr_text_draw() {
+		Bundle aBundle = createGrObj_start(GR.dText);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get x
-		aBundle.putInt("x", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		if (!nextArgNumberToBundle(aBundle, "x")) return false;
+		if (!nextArgNumberToBundle(aBundle, "y")) return false;
+		if (!nextArgStringToBundle(aBundle, "text")) return false;
 
-		if (!evalNumericExpression()) return false;							// Get y
-		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+	}
 
-		if (!getStringArg()) return false;									// Get the text
-		aBundle.putString("text", StringConstant);
+	private boolean execute_gr_text_align() {
+		if (!evalNumericExpression()) return false;					// get Align parameter
 		if (!checkEOL()) return false;
 
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);
+		int align = EvalNumericExpressionValue.intValue();
+		Paint tPaint = newPaint(aPaint);							// clone the current paint
+		if      (align == 1) { tPaint.setTextAlign(Paint.Align.LEFT); }
+		else if (align == 2) { tPaint.setTextAlign(Paint.Align.CENTER); }
+		else if (align == 3) { tPaint.setTextAlign(Paint.Align.RIGHT); }
+		else {
+			return RunTimeError( "Align value not 1, 2 or 3 at ");
+		}
+
+		aPaint = tPaint;											// set the new current paint
+		PaintList.add(aPaint);										// and add it to the paint list
 		return true;
 	}
 
-	private boolean execute_gr_text_align(){
-		  Paint tPaint = newPaint(aPaint);										// Clone the current paint
-		  if (!evalNumericExpression()) return false;							// Get Align parameter
-			  double d = EvalNumericExpressionValue;
-			  if (d == 1){ tPaint.setTextAlign(Paint.Align.LEFT);}              // Set the paint align value
-			  else if (d == 2){ tPaint.setTextAlign(Paint.Align.CENTER);}
-			  else if (d == 3){ tPaint.setTextAlign(Paint.Align.RIGHT);}
-			  else {
-				  RunTimeError( "Align value not 1, 2 or 3 at ");
-				  return false;
-			  }
-				if (!checkEOL()) return false;
-			  aPaint = newPaint(tPaint);				// Set the new current paint
-		      PaintListAdd(aPaint);						// and add it to the paint list
-			  return true;
+	private boolean execute_gr_text_size() {
+		if (!evalNumericExpression()) return false;					// get desired size
+		if (!checkEOL()) return false;
+
+		float size = EvalNumericExpressionValue.floatValue();
+		if (size < 1.0f) {
+			return RunTimeError( "must be > 0");
+		}
+		Paint tPaint = newPaint(aPaint);							// clone the current paint
+		tPaint.setTextSize(size);
+
+		aPaint = tPaint;											// set the new current paint
+		PaintList.add(aPaint);										// and add it to the paint list
+		return true;
 	}
 
-	private boolean execute_gr_text_size(){
-			Paint tPaint = newPaint(aPaint);            // Clone the current paint
-			if (!evalNumericExpression()) return false; // Get desired size
-			double d = EvalNumericExpressionValue;
-			if (!checkEOL()) return false;
-			if (d < 1){
-				RunTimeError( "must be > 0");
-				return false;
-			 }
-			tPaint.setTextSize((int)d);					// Set the text size in paint
-			 aPaint = newPaint(tPaint);				// Clone the temp paint into current paint
-			 PaintListAdd(aPaint);						// Add current paint to the paint list
-			 return true;
+	private boolean execute_gr_text_underline() {
+		if (!evalNumericExpression()) return false;					// get Underline parameter
+		if (!checkEOL()) return false;
+
+		boolean flag = (EvalNumericExpressionValue != 0.0);			// do underline if non-zero
+		Paint tPaint = newPaint(aPaint);							// clone the current paint
+		tPaint.setUnderlineText(flag);
+
+		aPaint = tPaint;											// set the new current paint
+		PaintList.add(aPaint);										// and add it to the paint list
+		return true;
 	}
 
-	private boolean execute_gr_text_underline(){
-			Paint tPaint = newPaint(aPaint);
-			if (!evalNumericExpression()) return false;							// Get boolean
-			if (!checkEOL()) return false;
-			double d = EvalNumericExpressionValue;
-			if (d==0) tPaint.setUnderlineText(false);
-			else tPaint.setUnderlineText(true);
-			
-			 aPaint = newPaint(tPaint);
-			 PaintListAdd(aPaint);
-			 return true;
+	private boolean execute_gr_text_skew() {
+		if (!evalNumericExpression()) return false;					// get Skew parameter
+		if (!checkEOL()) return false;
+
+		float skew = EvalNumericExpressionValue.floatValue();
+		Paint tPaint = newPaint(aPaint);							// clone the current paint
+		tPaint.setTextSkewX(skew);
+
+		aPaint = tPaint;											// set the new current paint
+		PaintList.add(aPaint);										// and add it to the paint list
+		return true;
 	}
 
-	private boolean execute_gr_text_skew(){
-			Paint tPaint = newPaint(aPaint);
-			if (!evalNumericExpression()) return false;							// Get Skew
-			double d = EvalNumericExpressionValue;
-			if (!checkEOL()) return false;
-			tPaint.setTextSkewX((float)d);
-			 aPaint = newPaint(tPaint);
-			 PaintListAdd(aPaint);
-			 return true;
+	private boolean execute_gr_text_bold() {
+		if (!evalNumericExpression()) return false;					// get Bold parameter 
+		if (!checkEOL()) return false;
+
+		boolean flag = (EvalNumericExpressionValue != 0.0);			// do bold if non-zero
+		Paint tPaint = newPaint(aPaint);							// clone the current paint
+		tPaint.setFakeBoldText(flag);
+
+		aPaint = tPaint;											// set the new current paint
+		PaintList.add(aPaint);										// and add it to the paint list
+		return true;
 	}
 
-	private boolean execute_gr_text_bold(){
-			Paint tPaint = newPaint(aPaint);
-			if (!evalNumericExpression()) return false;							// Get boolean 
-			double d = EvalNumericExpressionValue;
-			if (!checkEOL()) return false;
-			int flag = tPaint.getFlags();
-			if ( d==0) flag = flag & 0xdf;
-			else flag = flag | 0x20;
-			tPaint.setFlags(flag);
+	private boolean execute_gr_text_strike() {
+		if (!evalNumericExpression()) return false;					// get Strike parameter 
+		if (!checkEOL()) return false;
 
-			aPaint = newPaint(tPaint);
-			 PaintListAdd(aPaint);
-			 return true;
-	}
+		boolean flag = (EvalNumericExpressionValue != 0.0);			// do strike if non-zero
+		Paint tPaint = newPaint(aPaint);
+		tPaint.setStrikeThruText(flag);
 
-	private boolean execute_gr_text_strike(){
-			Paint tPaint = newPaint(aPaint);
-			if (!evalNumericExpression()) return false;							// Get boolean 
-			double d = EvalNumericExpressionValue;
-			if (!checkEOL()) return false;
-			int flag = tPaint.getFlags();
-			if ( d==0) flag = flag & 0xef;
-			else flag = flag | 0x10;
-			tPaint.setFlags(flag);
-
-			aPaint = newPaint(tPaint);
-			 PaintListAdd(aPaint);
-			 return true;
+		aPaint = tPaint;											// set the new current paint
+		PaintList.add(aPaint);										// and add it to the paint list
+		return true;
 	}
 
 	private Bundle getTextBundle(int dlIndex) {
@@ -10757,22 +10642,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_gr_get_textbounds() {
 		Paint paint;
 		String text;
-		if (evalNumericExpression()) {						// if argument is an object number
+		if (evalNumericExpression()) {								// if argument is an object number
 			int index = EvalNumericExpressionValue.intValue();
 			Bundle b = getTextBundle(index);
 			if (b == null) return false;
-			paint = PaintList.get(b.getInt("paint"));		// use the text object's paint
-			text = b.getString("text");						// get text from the text object
+			paint = PaintList.get(b.getInt("paint"));				// use the text object's paint
+			text = b.getString("text");								// get text from the text object
 		} else {
 			if (SyntaxError) return false;
 			if (!getStringArg()) return false;
-			text = StringConstant;							// argument is the text to measure
-			paint = aPaint;									// use current Paint
+			text = StringConstant;									// argument is the text to measure
+			paint = aPaint;											// use current Paint
 		}
 
 		if (!isNext(',')) return false;
-		int[] ind = getArgs4NVar();							// [left, top, right, bottom]
-		if (ind == null) return false;						// error getting variables
+		int[] ind = getArgs4NVar();									// [left, top, right, bottom]
+		if (ind == null) return false;								// error getting variables
 		if (!checkEOL()) return false;
 
 		Rect bounds = new Rect();
@@ -10787,105 +10672,95 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_text_width() {
-		if (!getNVar()) return false;						// Width return  Variable
+		if (!getNVar()) return false;								// width return variable
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
 		Paint paint;
 		String text;
-		if (evalNumericExpression()) {						// if argument is an object number
+		if (evalNumericExpression()) {								// if argument is an object number
 			int index = EvalNumericExpressionValue.intValue();
 			Bundle b = getTextBundle(index);
 			if (b == null) return false;
-			paint = PaintList.get(b.getInt("paint"));		// use the text object's paint
-			text = b.getString("text");						// get text from the text object
+			paint = PaintList.get(b.getInt("paint"));				// use the text object's paint
+			text = b.getString("text");								// get text from the text object
 		} else {
 			if (SyntaxError) return false;
 			if (!getStringArg()) return false;
-			text = StringConstant;							// argument is the text to measure
-			paint = aPaint;									// use current Paint
+			text = StringConstant;									// argument is the text to measure
+			paint = aPaint;											// use current Paint
 		}
 		if (!checkEOL()) return false;
 
-		double w = paint.measureText(text);					// Get the string's width
-		NumericVarValues.set(SaveValueIndex, w);			// Save the width into the var
+		double w = paint.measureText(text);							// get the string's width
+		NumericVarValues.set(SaveValueIndex, w);					// save the width into the var
 
 		return true;
 	}
 
-	private boolean execute_gr_bitmap_load(){
-		if (!getNVar()) return false;									// Graphic Bitmap Pointer Variable
+	private boolean execute_gr_bitmap_load() {
+		if (!getNVar()) return false;								// bitmap pointer variable
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!getStringArg()) return false;								// Get the file path
+		if (!getStringArg()) return false;							// get the file path
 		if (!checkEOL()) return false;
 
-		String fileName = StringConstant;								// The filename as given by the user
-		BufferedInputStream bis = null;									// Establish an input stream
+		String fileName = StringConstant;							// the filename as given by the user
+		BufferedInputStream bis = null;								// establish an input stream
 		try { bis = Basic.getBufferedInputStream(Basic.DATA_DIR, fileName); }
 		catch (Exception e) { return RunTimeError(e); }
-		if (bis == null) { return RunTimeError("No bitmap found"); }	// Can this happen?
+		if (bis == null) { return RunTimeError("No bitmap found"); }	// can this happen?
 
-		System.gc();													// Garbage collect
+		System.gc();												// garbage collect
 
-		aBitmap = BitmapFactory.decodeStream(bis);				// Create bitmap from the input stream
+		aBitmap = BitmapFactory.decodeStream(bis);					// create bitmap from the input stream
 
 		try { bis.close(); }
 		catch (Exception e) { return RunTimeError(e); }
 
-		if (aBitmap == null) return RunTimeError("Bitmap load failed at:");
-		   
-		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
-		   
-		   BitmapList.add(aBitmap); // Add the new bit map to the bitmap list
-		   
-		   return true;
+		if (aBitmap == null) { return RunTimeError("Bitmap load failed at:"); }
+
+		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
 	}
 
-	private boolean execute_gr_bitmap_delete(){
-		   if (!evalNumericExpression()) return false; 
-		   if (!checkEOL()) return false;
-		   int q = EvalNumericExpressionValue.intValue();
-		   if (q<1 | q >= BitmapList.size()){
-			   RunTimeError("Invalid Bitmap Pointer");
-			   return false;			   
-		   }
-		   Bitmap SrcBitMap = BitmapList.get(q);
-		   if (SrcBitMap != null)
-		      SrcBitMap.recycle();
-		   BitmapList.set(q, null);
-		   System.gc();
-		  return true;
+	private boolean execute_gr_bitmap_delete() {
+		int bitmapPtr = getBitmapArg();								// get the bitmap number
+		if (bitmapPtr < 0) return false;
+		if (!checkEOL()) return false;
+
+		Bitmap bitmap = BitmapList.get(bitmapPtr);					// get the bitmap
+		if (bitmap != null) {
+			bitmap.recycle();
+		}
+		BitmapList.set(bitmapPtr, null);
+		System.gc();
+		return true;
 	}
 
-	private boolean execute_gr_bitmap_scale(){
+	private boolean execute_gr_bitmap_scale() {
 
-		if (!getNVar()) return false;							// Graphic Destination Bitmap Pointer Variable
+		if (!getNVar()) return false;								// destination bitmap pointer variable
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;				// Get Source Bitmap
-		int q = EvalNumericExpressionValue.intValue();
-		if (q < 1 | q >= BitmapList.size()) {
-			return RunTimeError("Invalid Bitmap Pointer");
-		}
-
-		Bitmap SrcBitMap = BitmapList.get(q);
+		int bitmapPtr = getBitmapArg();								// get source bitmap number
+		if (bitmapPtr < 0) return false;
+		Bitmap SrcBitMap = BitmapList.get(bitmapPtr);				// get the bitmap
 		if (SrcBitMap == null){
 			return RunTimeError("Bitmap was deleted");
 		}
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get Width
+		if (!evalNumericExpression()) return false;					// get width
 		int Width = EvalNumericExpressionValue.intValue();
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get Height
+		if (!evalNumericExpression()) return false;					// get height
 		int Height = EvalNumericExpressionValue.intValue();
 
 		boolean parm = true;
-		if (isNext(',')) {													// optional scale parameter
+		if (isNext(',')) {											// optional scale parameter
 			if (!evalNumericExpression()) return false;
 			if (EvalNumericExpressionValue == 0.0) parm = false;
 		}
@@ -10898,203 +10773,144 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		try { aBitmap = Bitmap.createScaledBitmap(SrcBitMap, Width, Height, parm); }
 		catch (Exception e) { return RunTimeError(e); }
 
-			System.gc();
-			NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
-			System.gc();
-			BitmapList.add(aBitmap);
-
-		return true;
+		System.gc();
+		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
 	}
 
-	private boolean execute_gr_bitmap_size(){
-
-		if (!getNVar()) return false;							// Graphic Source Bitmap Pointer Variable
-		int q = NumericVarValues.get(theValueIndex).intValue();
-		if (q < 1 | q >= BitmapList.size()) {
-			return RunTimeError("Invalid Bitmap Pointer");
-		}
-
-		Bitmap SrcBitMap = BitmapList.get(q);					// Access the bitmap
+	private boolean execute_gr_bitmap_size() {
+		int bitmapPtr = getBitmapArg();								// get the bitmap number
+		if (bitmapPtr < 0) return false;
+		Bitmap SrcBitMap = BitmapList.get(bitmapPtr);				// access the bitmap
 		if (SrcBitMap == null) {
 			return RunTimeError("Bitmap was deleted");
 		}
 
-		int w = SrcBitMap.getWidth();							// Get the image width
-		int h = SrcBitMap.getHeight();							// Get the image height
+		int w = SrcBitMap.getWidth();								// get the image width
+		int h = SrcBitMap.getHeight();								// get the image height
 
 		if (!isNext(',')) return false;
-		if (!getNVar()) return false;							// Get the height variable
-		NumericVarValues.set(theValueIndex, (double) w);		// Set the height value
+		if (!getNVar()) return false;								// get the height variable
+		NumericVarValues.set(theValueIndex, (double)w);				// set the height value
 
 		if (!isNext(',')) return false;
-		if (!getNVar()) return false;							// Get the width variable
-		NumericVarValues.set(theValueIndex, (double) h);		// Set the width value
+		if (!getNVar()) return false;								// get the width variable
+		NumericVarValues.set(theValueIndex, (double)h);				// set the width value
+
 		if (!checkEOL()) return false;
-
 		return true;
 	}
 
-	private boolean execute_gr_bitmap_crop(){
-		if (!getNVar()) return false;							// Graphic Object Variable
+	private boolean execute_gr_bitmap_crop() {
+		if (!getNVar()) return false;								// dest Graphic Object variable
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;				// Get source bitmap index
-		int SourceBitmapIndex = EvalNumericExpressionValue.intValue();
-		if (SourceBitmapIndex < 0 || SourceBitmapIndex >= BitmapList.size()) {
-			return RunTimeError("Invalid Source Bitmap Pointer");
-		}
-		Bitmap SourceBitmap = BitmapList.get(SourceBitmapIndex);
-
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;							// Get x
-		int x = EvalNumericExpressionValue.intValue();
+		int bitmapPtr = getBitmapArg("Invalid Source Bitmap Pointer");	// get source bitmap number
+		if (bitmapPtr < 0) return false;
+		Bitmap SourceBitmap = BitmapList.get(bitmapPtr);			// get source bitmap
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get y
-		int y = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get width
-		int width = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get height
-		int height = EvalNumericExpressionValue.intValue();
+		int[] bounds = getArgs4I();									// [x, y, width, height]
+		if (bounds == null) return false;							// error getting values
 		if (!checkEOL()) return false;
 
-		  try {
-			  aBitmap = Bitmap.createBitmap(SourceBitmap, x, y, width, height);
-		  }
-		  catch (Exception e){
-			  return RunTimeError(e);
-		  }
-
-		   NumericVarValues.set(SaveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
-		   BitmapList.add(aBitmap);
-
-		return true;
+		try {
+			aBitmap = Bitmap.createBitmap(SourceBitmap, bounds[0], bounds[1], bounds[2], bounds[3]);
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
+		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
 	}
 
-	private boolean execute_gr_bitmap_draw(){
-		  Bundle aBundle = new Bundle();         // Create a new display object of type bitmap
-		  aBundle.putInt("type", GR.dBitmap);
-		  aBundle.putInt("hide", 0);
-
-		if (!getNVar()) return false;							// Graphic Object Variable
+	private boolean execute_gr_bitmap_draw() {
+		Bundle aBundle = createGrObj_start(GR.dBitmap);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;				// Get Bitmap obj pointer
-		int q = EvalNumericExpressionValue.intValue();
-		if (q < 1 | q >= BitmapList.size()) {
-			return RunTimeError("Invalid Bitmap Pointer");
-		}
-
-		if (BitmapList.get(q) == null) {
+		int bitmapPtr = getBitmapArg();								// get the bitmap number
+		if (bitmapPtr < 0) return false;
+		if (BitmapList.get(bitmapPtr) == null) {					// check the bitmap
 			return RunTimeError("Bitmap was deleted");
 		}
-		aBundle.putInt("bitmap", q);
-		if (!isNext(',')) return false;
+		aBundle.putInt("bitmap", bitmapPtr);						// store the bitmap number
 
-		if (!evalNumericExpression()) return false;							// Get x
-		aBundle.putInt("x", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		if (!nextArgNumberToBundle(aBundle, "x")) return false;
+		if (!nextArgNumberToBundle(aBundle, "y")) return false;
 
-		if (!evalNumericExpression()) return false;							// Get y
-		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
-		if (!checkEOL()) return false;
-
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	private boolean execute_gr_bitmap_create(){
-		if (!getNVar()) return false;										// Get bitmap ptr var
+	private boolean execute_gr_bitmap_create() {
+		if (!getNVar()) return false;								// get bitmap pointer variable
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get the width
+		if (!evalNumericExpression()) return false;					// get the width
 		int width = EvalNumericExpressionValue.intValue();
 		if (width <= 0) {
 			return RunTimeError("Width must be >= 0");
 		}
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get the height
+		if (!evalNumericExpression()) return false;					// get the height
 		int height = EvalNumericExpressionValue.intValue();
 		if (height <= 0) {
 			return RunTimeError("Height must be >= 0");
 		}
 		if (!checkEOL()) return false;
 
-		   try{
-			   aBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
-		   }
-		   catch (Exception e) {
-			   return RunTimeError(e);
-		   }
-		   
-		   NumericVarValues.set(SaveValueIndex, (double)BitmapList.size());	// Save the GR Object index into the var
-		   BitmapList.add(aBitmap);
-		   		  
-		return true;
+		try {
+			aBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
+		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_rotate_start(){
+		Bundle aBundle = new Bundle();								// create a new object of type Rotate Start
+		aBundle.putInt("type", GR.dRotate_Start);
+		aBundle.putInt("hide", 0);
 
-		  Bundle aBundle = new Bundle();			// Create a new display list object of type rotate
-		  aBundle.putInt("type", GR.dRotate_Start);
-		  aBundle.putInt("hide", 0);
-
-		if (!evalNumericExpression()) return false;							// Get angle
+		if (!evalNumericExpression()) return false;					// get angle
 		aBundle.putInt("angle", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
+		
+		if (!nextArgNumberToBundle(aBundle, "x")) return false;
+		if (!nextArgNumberToBundle(aBundle, "y")) return false;
 
-		if (!evalNumericExpression()) return false;							// Get x
-		aBundle.putInt("x", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get y
-		aBundle.putInt("y", EvalNumericExpressionValue.intValue());
-
-		if (isNext(',')) {
+		if (isNext(',')) {											// optional graphic object pointer variable
 			if (!getNVar()) return false;
-			NumericVarValues.set(theValueIndex, (double)DisplayList.size()); // Save the GR Object index into the var
+			NumericVarValues.set(theValueIndex, (double)DisplayList.size()); // save the object number into the var
 		}
 		if (!checkEOL()) return false;
 
-		DisplayListAdd(aBundle);					// Put the new object into the display list
+		DisplayListAdd(aBundle);									// put the new object into the display list
 		return true;
 	}
 
-	private boolean execute_gr_rotate_end(){
-		  Bundle aBundle = new Bundle();			// Create a new object of type Rotate end
-		  aBundle.putInt("type", GR.dRotate_End); 
-		  aBundle.putInt("hide", 0);
+	private boolean execute_gr_rotate_end() {
+		Bundle aBundle = new Bundle();								// create a new object of type Rotate End
+		aBundle.putInt("type", GR.dRotate_End);
+		aBundle.putInt("hide", 0);
 
 		if (!isEOL()) {
 			if (!getNVar()) return false; 
-			NumericVarValues.set(theValueIndex, (double) DisplayList.size()); // Save the GR Object index into the var
+			NumericVarValues.set(theValueIndex, (double)DisplayList.size()); // save the object number into the var
 			if (!checkEOL()) return false;
 		}
 
-		DisplayListAdd(aBundle);					// add the object to the display list
+		DisplayListAdd(aBundle);									// add the object to the display list
 		return true;
 	}
 
 	private boolean execute_gr_modify() {
-
-		if (!evalNumericExpression()) return false;							// Get Object Number
-		int index = EvalNumericExpressionValue.intValue();
-		if (index < 0 || index >= DisplayList.size()) {
-			return RunTimeError("Object Number out of range");
-		}
-		Bundle b = DisplayList.get(index);									// Get the bundle to change
+		int obj = getObjectNumber("Object Number out of range");
+		if (obj < 0) return false;
+		Bundle b = DisplayList.get(obj);							// Get the bundle to change
 
 		while (isNext(',')) {
-			if (!getStringArg()) return false;								// get the parameter string
+			if (!getStringArg()) return false;						// get the parameter string
 			if (!isNext(',')) return false;
 			String parm = StringConstant;
 
@@ -11103,10 +10919,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 
 			if (parm.equals("text")) {
-				if (!getStringArg()) return false;							// get the parameter string
+				if (!getStringArg()) return false;					// get the parameter string
 				b.putString(parm, StringConstant);
 			} else {
-				if (!evalNumericExpression()) return false;					// Get parameter value
+				if (!evalNumericExpression()) return false;			// get parameter value
 				int value = EvalNumericExpressionValue.intValue();
 				if (parm.equals("bitmap")) {
 					if (value < 0 | value >= BitmapList.size()) {
@@ -11123,25 +10939,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return checkEOL();
 	}
 
-	private boolean execute_gr_orientation(){
-		if (!evalNumericExpression()) return false;		// get the mode (landscape or portrait)
+	private boolean execute_gr_orientation() {
+		if (!evalNumericExpression()) return false;					// get the mode (landscape or portrait)
 		if (!checkEOL()) return false;
+
 		int mode = EvalNumericExpressionValue.intValue();
 		GR.drawView.setOrientation(mode);
 		return true;
 	}
 
 	private boolean execute_gr_screen() {
-		if (!getNVar()) return false;						// width variable
+		if (!getNVar()) return false;								// width variable
 		int widthIndex = theValueIndex;
 
 		if (!isNext(',')) return false;
-		if (!getNVar()) return false;						// height variable
+		if (!getNVar()) return false;								// height variable
 		int heightIndex = theValueIndex;
 
 		int densityIndex = -1;
 		if (isNext(',')) {
-			if (!getNVar()) return false;					// optional density variable
+			if (!getNVar()) return false;							// optional density variable
 			densityIndex = theValueIndex;
 		}
 		if (!checkEOL()) return false;
@@ -11157,34 +10974,35 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_gr_front(){
-		if (!evalNumericExpression()) return false;						// Get flag
-		if (EvalNumericExpressionValue == 0) {
-			  Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-			  startActivity(Basic.theProgramRunner);
-			  GRFront = false;
-		} else {
-			  GRclass.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-			  startActivity(GRclass);
-			  GRFront = true;
-		}
+	private boolean execute_gr_front() {
+		if (!evalNumericExpression()) return false;					// get flag
 		if (!checkEOL()) return false;
-		try {Thread.sleep(100);}catch(InterruptedException e){}
+
+		if (EvalNumericExpressionValue == 0) {
+			Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
+			startActivity(Basic.theProgramRunner);
+			GRFront = false;
+		} else {
+			GRclass.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+			startActivity(GRclass);
+			GRFront = true;
+		}
+		try { Thread.sleep(100); } catch(InterruptedException e) {}
 		return true;
 	}
 
-	private boolean execute_gr_set_pixels(){
-
-		if (!getNVar()) return false;							// Graphic Object Variable
+	private boolean execute_gr_set_pixels() {
+		Bundle aBundle = createGrObj_start(GR.dsetPixels);			// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
 
 		if (!isNext(',')) return false;
-		if (getArrayVarForRead() == null) return false;			// Get the array variable
+		if (getArrayVarForRead() == null) return false;				// get the array variable
 		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); }
 		int arrayTableIndex = VarIndex.get(VarNumber);
 
 		Integer[] pair = { null, null };
-		if (!getIndexPair(pair)) return false;					// Get values inside [], if any
+		if (!getIndexPair(pair)) return false;						// get values inside [], if any
 
 		int x = 0;
 		int y = 0;
@@ -11197,208 +11015,122 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		if (!getArraySegment(arrayTableIndex, pair)) { return false; }	// Get array base and length
+		if (!getArraySegment(arrayTableIndex, pair)) return false;	// get array base and length
 		int base = pair[0].intValue();
 		int length = pair[1].intValue();
-		if ((length % 2) != 0){
+		if ((length % 2) != 0) {
 			return RunTimeError("Not an even number of elements in pixel array");
 		}
 
-		Bundle aBundle = new Bundle();
-		aBundle.putInt("type", GR.dsetPixels);
-		aBundle.putInt("hide", 0);
 		aBundle.putInt("pbase", base);
 		aBundle.putInt("plength", length);
 		aBundle.putInt("x", x);
 		aBundle.putInt("y", y);
 
-		NumericVarValues.set(SaveValueIndex, (double)DisplayList.size());	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	  private boolean execute_gr_get_bmpixel(){
-		  if (!evalNumericExpression()) return false;
-		  int SourceBitmapIndex = EvalNumericExpressionValue.intValue();
-		  if (!isNext(',')) { return false; }
-		  
-		   if (SourceBitmapIndex < 0 || SourceBitmapIndex >= BitmapList.size()){
-			   RunTimeError("Invalid Source Bitmap Pointer");
-			   return false;
-		   }
-		   Bitmap SourceBitmap = BitmapList.get(SourceBitmapIndex);
-		   
-		   return getTheBMpixel(SourceBitmap);
-	  }
-	  
-	  private boolean execute_gr_get_pixel(){
-	  		
-            boolean retval = true;
-			Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
-			if (b == null){
-				RunTimeError("Could not capture screen bitmap. Sorry.");
-				retval = false;
-			} else {
+	private boolean execute_gr_get_bmpixel() {
+		int bitmapPtr = getBitmapArg();								// get the bitmap number
+		if (bitmapPtr < 0) return false;
+		if (!isNext(',')) { return false; }
 
-				retval = getTheBMpixel(b);								// get the requested pixel
+		Bitmap SourceBitmap = BitmapList.get(bitmapPtr);			// get the bitmap
+		return getTheBMpixel(SourceBitmap);
+	}
 
-				b.recycle();											// clean up bitmap
-				b = null;
-			}
-			GR.drawView.destroyDrawingCache();							// clean up DrawingCache
-			System.gc();
-			return retval;
-	  }
-
-		// After it's done with the Bitmap, caller should call destroyDrawingCache()
-		private Bitmap getTheBitmap() {
-			synchronized (GR.Rendering) {
-				GR.drawView.setDrawingCacheEnabled(true);
-				GR.Rendering = true;									// buildDrawingCache() renders
-				GR.drawView.buildDrawingCache();						// Build the cache
-				return GR.drawView.getDrawingCache();					// get the bitmap
-			}
+	private boolean execute_gr_get_pixel(){
+		boolean retval = true;
+		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
+		if (b == null) {
+			RunTimeError("Could not capture screen bitmap. Sorry.");
+			retval = false;
+		} else {
+			retval = getTheBMpixel(b);								// get the requested pixel
+			b.recycle();											// clean up bitmap
+			b = null;
 		}
+		GR.drawView.destroyDrawingCache();							// clean up DrawingCache
+		System.gc();
+		return retval;
+	}
 
-	private boolean getTheBMpixel(Bitmap b){
+	// After it's done with the Bitmap, caller should call destroyDrawingCache()
+	private Bitmap getTheBitmap() {
+		synchronized (GR.Rendering) {
+			GR.drawView.setDrawingCacheEnabled(true);
+			GR.Rendering = true;									// buildDrawingCache() renders
+			GR.drawView.buildDrawingCache();						// Build the cache
+			return GR.drawView.getDrawingCache();					// get the bitmap
+		}
+	}
 
-		if (!evalNumericExpression()) return false;						// Get x
+	private boolean getTheBMpixel(Bitmap b) {
+
+		if (!evalNumericExpression()) return false;					// get x
 		int x = EvalNumericExpressionValue.intValue();
 		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;						// Get y
+		if (!evalNumericExpression()) return false;					// get y
 		int y = EvalNumericExpressionValue.intValue();
 		if (!isNext(',')) return false;
 
-		int w = b.getWidth();											// Get the image width
-		int h = b.getHeight();											// Get the image height
+		int[] argb = getArgs4NVar();								// [a, r, g, b]
+		if (argb == null) return false;								// error getting variables
+		if (!checkEOL()) return false;
+
+		int w = b.getWidth();										// get the image width
+		int h = b.getHeight();										// get the image height
 		if (x < 0 || x >= w || y < 0 || y >= h) {
 			return RunTimeError("x or y exceeds size of screen");
 		}
 
-		int pixel = (b == null) ? 0 : b.getPixel(x, y);					// get the pixel from the bitmap
+		int pixel = (b == null) ? 0 : b.getPixel(x, y);				// get the pixel from the bitmap
 
-		int alpha = Color.alpha(pixel);									// get the components of the pixel
+		int alpha = Color.alpha(pixel);								// get the components of the pixel
 		int red = Color.red(pixel);
 		int green = Color.green(pixel);
 		int blue = Color.blue(pixel);
 
-		if (!getNVar()) return false;									// Alpha Var
-		NumericVarValues.set(theValueIndex, (double) alpha);
-		if (!isNext(',')) return false;
-
-		if (!getNVar()) return false;									// Red Var
-		NumericVarValues.set(theValueIndex, (double) red);
-		if (!isNext(',')) return false;
-
-		if (!getNVar()) return false;									// Blue Green
-		NumericVarValues.set(theValueIndex, (double) green);
-		if (!isNext(',')) return false;
-
-		if (!getNVar()) return false;									// Green Blue
-		NumericVarValues.set(theValueIndex, (double) blue);
-		if (!checkEOL()) return false;
+		NumericVarValues.set(argb[0], (double)alpha);
+		NumericVarValues.set(argb[1], (double)red);
+		NumericVarValues.set(argb[2], (double)green);
+		NumericVarValues.set(argb[3], (double)blue);
 
 		return true;
 	}
 
 	private boolean writeBitmapToFile(Bitmap b, String fn, int quality) {
-		CompressFormat format = CompressFormat.PNG;						// Assume png
-		String tFN = fn.toUpperCase(Locale.getDefault());				// temp convert fn to upper case
-		if (tFN.endsWith(".JPG")) format = CompressFormat.JPEG;			// Test jpg
-		else if (!tFN.endsWith(".PNG")) fn = fn + ".png";				// Test png
+		CompressFormat format = CompressFormat.PNG;					// assume png
+		String tFN = fn.toUpperCase(Locale.getDefault());			// temp convert fn to upper case
+		if (tFN.endsWith(".JPG")) format = CompressFormat.JPEG;		// test jpg
+		else if (!tFN.endsWith(".PNG")) fn += ".png";				// test png
 
-		File file = new File(Basic.getDataPath(fn));					// build full path
+		File file = new File(Basic.getDataPath(fn));				// build full path
 		FileOutputStream ostream = null;
 
-		try {															// Write the file
+		try {														// write the file
 			file.createNewFile();
 			ostream = new FileOutputStream(file);
 
-			b.compress(format, quality, ostream);						// Write png or jpg
+			b.compress(format, quality, ostream);					// write png or jpg
 			ostream.close();
-		} 
-		catch (Exception e) {
+		} catch (Exception e) {
 			closeStream(ostream, null);
 			return RunTimeError(e);
 		}
 		return true;
 	}
 
-	private boolean execute_gr_save(){
+	private boolean execute_gr_save() {
 
 		if (!getStringArg()) return false;							// Get the filename
 		String fn = StringConstant;
 
-			int quality = 50;											// set default jpeg quality
-			if (isNext(','))											// if there is an optional quality parm
-			{
-				if (!evalNumericExpression()) return false;				// evaluate it
-				quality = EvalNumericExpressionValue.intValue();
-				if (quality < 0 || quality > 100) {
-					return RunTimeError("Quality must be between 0 and 100");
-				}
-			}
-			if (!checkEOL()) return false;
-
-			boolean retval = true;
-			Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
-			if (b == null) {
-				RunTimeError("Problem creating bitmap");
-				retval = false;
-			} else {
-
-				retval = writeBitmapToFile(b, fn, quality);
-
-				b.recycle();											// clean up bitmap
-				b = null;
-			}
-			GR.drawView.destroyDrawingCache();							// clean up DrawingCache
-			System.gc();
-			return retval;
-	}
-
-	private boolean  execute_screen_to_bitmap(){
-		if (!getNVar()) return false;
-		if (!checkEOL()) return false;
-		boolean retval = true;
-		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
-		if (b == null) {
-			return RunTimeError("Could not capture screen bitmap. Sorry.");
-		} else {
-
-			  NumericVarValues.set(theValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
-			  BitmapList.add(b.copy(Bitmap.Config.ARGB_8888 , true));			
-			  retval = true;
-
-			  b.recycle();												// clean up bitmap
-			  b = null;
-		  }
-		  GR.drawView.destroyDrawingCache();							// clean up DrawingCache
-		  System.gc();
-		  return retval;
-	}
-
-	private boolean execute_bitmap_save(){
-
-		if (!evalNumericExpression()) return false;			// Get Source Bitmap
-		int q = EvalNumericExpressionValue.intValue();
-		if (q < 1 | q >= BitmapList.size()) {
-			return RunTimeError("Invalid Bitmap Pointer");
-		}
-
-		Bitmap SrcBitMap = BitmapList.get(q);
-		if (SrcBitMap == null) {
-			return RunTimeError("Bitmap was deleted");
-		}
-		if (!isNext(',')) return false;
-
-		if (!getStringArg()) return false;					// Get the filename
-		String fn = StringConstant;
-
-		int quality = 50;									// set default jpeg quality
-		if (isNext(',')) {									// if there is an optional quality parm
-			if (!evalNumericExpression()) return false;		// evaluate it
+		int quality = 50;											// set default jpeg quality
+		if (isNext(','))											// if there is an optional quality parm
+		{
+			if (!evalNumericExpression()) return false;				// evaluate it
 			quality = EvalNumericExpressionValue.intValue();
 			if (quality < 0 || quality > 100) {
 				return RunTimeError("Quality must be between 0 and 100");
@@ -11406,20 +11138,76 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-			boolean retval = writeBitmapToFile(SrcBitMap, fn, quality);
-
-		    SrcBitMap = null;
-		    System.gc();
-			return retval;
+		boolean retval = true;
+		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
+		if (b == null) {
+			RunTimeError("Problem creating bitmap");
+			retval = false;
+		} else {
+			retval = writeBitmapToFile(b, fn, quality);
+			b.recycle();											// clean up bitmap
+			b = null;
+		}
+		GR.drawView.destroyDrawingCache();							// clean up DrawingCache
+		System.gc();
+		return retval;
 	}
 
-	private boolean execute_gr_scale(){
+	private boolean execute_screen_to_bitmap() {
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
+		boolean retval = true;
+		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
+		if (b == null) {
+			RunTimeError("Could not capture screen bitmap. Sorry.");
+			retval = false;
+		} else {
+			NumericVarValues.set(theValueIndex, (double)BitmapList.size()); // Save the GR Object index into the var
+			BitmapList.add(b.copy(Bitmap.Config.ARGB_8888 , true));			
+			retval = true;
+			b.recycle();											// clean up bitmap
+			b = null;
+		}
+		GR.drawView.destroyDrawingCache();							// clean up DrawingCache
+		System.gc();
+		return retval;
+	}
 
-		if (!evalNumericExpression()) return false;								// Get x
+	private boolean execute_bitmap_save() {
+		int bitmapPtr = getBitmapArg();								// get the bitmap number
+		if (bitmapPtr < 0) return false;
+		Bitmap SrcBitMap = BitmapList.get(bitmapPtr);				// get the bitmap
+		if (SrcBitMap == null) {
+			return RunTimeError("Bitmap was deleted");
+		}
+		if (!isNext(',')) return false;
+
+		if (!getStringArg()) return false;							// get the filename
+		String fn = StringConstant;
+
+		int quality = 50;											// set default jpeg quality
+		if (isNext(',')) {											// if there is an optional quality parm
+			if (!evalNumericExpression()) return false;				// evaluate it
+			quality = EvalNumericExpressionValue.intValue();
+			if (quality < 0 || quality > 100) {
+				return RunTimeError("Quality must be between 0 and 100");
+			}
+		}
+		if (!checkEOL()) return false;
+
+		boolean retval = writeBitmapToFile(SrcBitMap, fn, quality);
+		SrcBitMap = null;
+		System.gc();
+		return retval;
+	}
+
+	private boolean execute_gr_scale() {
+
+		if (!evalNumericExpression()) return false;					// get x
 		double x = EvalNumericExpressionValue;
 
 		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;								// Get y
+		if (!evalNumericExpression()) return false;					// get y
 		double y = EvalNumericExpressionValue;
 		if (!checkEOL()) return false;
 
@@ -11429,30 +11217,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_gr_clip(){
-
-		  Bundle aBundle = new Bundle();
-		  aBundle.putInt("type", GR.dClip);
-		  aBundle.putInt("hide", 0);
-
-		if (!getNVar()) return false;							// Graphic Object Variable
+	private boolean execute_gr_clip() {
+		Bundle aBundle = createGrObj_start(GR.dClip);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;							// Get left
-		aBundle.putInt("left", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get top
-		aBundle.putInt("top", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get right
-		aBundle.putInt("right", EvalNumericExpressionValue.intValue());
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;							// Get bottom
-		aBundle.putInt("bottom", EvalNumericExpressionValue.intValue());
+		if (!nextArgNumberToBundle(aBundle, "left")) return false;
+		if (!nextArgNumberToBundle(aBundle, "top")) return false;
+		if (!nextArgNumberToBundle(aBundle, "right")) return false;
+		if (!nextArgNumberToBundle(aBundle, "bottom")) return false;
 
 		if (isNext(',')) {
 			if (!evalNumericExpression()) return false;
@@ -11462,23 +11235,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			aBundle.putInt("RO", RegionOp);
 		}
-		if (!checkEOL()) return false;
-
-		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	private boolean execute_gr_poly(){
-		  Bundle aBundle = new Bundle();
-		  aBundle.putInt("type", GR.dPoly);
-		  aBundle.putInt("hide", 0);
-
-		if (!getNVar()) return false;							// Graphic Object Variable
+	private boolean execute_gr_poly() {
+		Bundle aBundle = createGrObj_start(GR.dPoly);				// create bundle and get Graphic Object variable
+		if (aBundle == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		if (!evalNumericExpression()) return false;
+		if (!isNext(',')) return false;
+		if (!evalNumericExpression()) return false;					// list pointer
 		int theListIndex = EvalNumericExpressionValue.intValue();
 		if (theListIndex < 1 || theListIndex >= theLists.size()) {
 			return RunTimeError("Invalid list pointer");
@@ -11491,7 +11257,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (thisList.size() < 6) {
 			return RunTimeError("List must have at least three points");
 		}
-
 		int r = thisList.size() % 2;
 		if (r != 0) {
 			return RunTimeError("List must have even number of elements");
@@ -11507,33 +11272,29 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (!evalNumericExpression()) return false;
 			y = EvalNumericExpressionValue.intValue();
 		}
-		if (!checkEOL()) return false;
-
 		aBundle.putInt("x", x);
 		aBundle.putInt("y", y);
 
-		NumericVarValues.set(SaveValueIndex, (double) DisplayList.size()); 	// Save the GR Object index into the var
-		DisplayListAdd(aBundle);
-		return true;
+		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
 	}
 
-	@SuppressLint("NewApi")										// Uses value from API 9
+	@SuppressLint("NewApi")											// Uses value from API 9
 	private static int getNumberOfCameras() {
 
-			int cameraCount;
-			int level = Build.VERSION.SDK_INT;
-			if (level < 9) {											// if SDK < 9 there can be only one camera
-				Camera tCamera = Camera.open();							// Check to see if there is any camera at all
-				cameraCount = (tCamera == null) ? 0 : 1;
-				tCamera.release();
-			} else {
-				cameraCount = Camera.getNumberOfCameras();				// May be more than one camera
-			}
-			return cameraCount;
+		int cameraCount;
+		int level = Build.VERSION.SDK_INT;
+		if (level < 9) {											// if SDK < 9 there can be only one camera
+			Camera tCamera = Camera.open();							// Check to see if there is any camera at all
+			cameraCount = (tCamera == null) ? 0 : 1;
+			tCamera.release();
+		} else {
+			cameraCount = Camera.getNumberOfCameras();				// May be more than one camera
+		}
+		return cameraCount;
 	}
 
-	@SuppressLint("NewApi")										// Uses value from API 9
-	private boolean execute_gr_camera_select(){
+	@SuppressLint("NewApi")											// Uses value from API 9
+	private boolean execute_gr_camera_select() {
 
 		if (NumberOfCameras < 0) { NumberOfCameras = getNumberOfCameras(); }
 		if (NumberOfCameras == 0) { return RunTimeError("This device does not have a camera."); }
@@ -11569,7 +11330,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_camera_shoot(int pictureMode){
+	private boolean execute_camera_shoot(int pictureMode) {
 
 		if (NumberOfCameras < 0) { NumberOfCameras = getNumberOfCameras(); }
 		if (NumberOfCameras == 0) { return RunTimeError("This device does not have a camera."); }
@@ -11604,19 +11365,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		while (!CameraDone) Thread.yield();
 
-			if (CameraBitmap != null) {
-			   NumericVarValues.set(saveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
-			   BitmapList.add(CameraBitmap);
-			} else {
-			   NumericVarValues.set(saveValueIndex, (double) 0); // Save the GR Object index into the var
-			}
-			CameraBitmap = null;
-		    System.gc();
+		if (CameraBitmap != null) {
+			NumericVarValues.set(saveValueIndex, (double) BitmapList.size()); // Save the GR Object index into the var
+			BitmapList.add(CameraBitmap);
+		} else {
+			NumericVarValues.set(saveValueIndex, (double) 0); // Save the GR Object index into the var
+		}
+		CameraBitmap = null;
+		System.gc();
 
-			return true;
+		return true;
 	}
 
-	private boolean execute_statusbar_show(){
+	private boolean execute_statusbar_show() {
 		String[] msg = {
 			"This command deprecated.",							// First line is base of errorMsg
 			"To show status bar, use:",
@@ -11625,42 +11386,39 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return RunTimeError(msg);
 	}
 
-	private boolean execute_brightness(){
+	private boolean execute_brightness() {
 		if (!evalNumericExpression()) return false;
 		if (!checkEOL()) return false;
-		double value = EvalNumericExpressionValue;
-		if (value < 0.01) value = 0.01;
-		if (value > 1.0) value = 1.0;
-		GR.Brightness = (float) value;
+
+		float value = EvalNumericExpressionValue.floatValue();
+		if (value < 0.01f) { value = 0.01f; }
+		if (value > 1.0f)  { value = 1.0f; }
+		GR.Brightness = value;
 		return true;
 	}
 
-	private boolean execute_gr_text_typeface(){
-		if (!evalNumericExpression()) return false;							// Get type
+	private boolean execute_gr_text_typeface() {
+		if (!evalNumericExpression()) return false;					// get type
 		if (!checkEOL()) { return false; }
 		int face = EvalNumericExpressionValue.intValue();
 
-			int style = Typeface.NORMAL;	
+		int style = Typeface.NORMAL;	
 
-			Typeface tf ;														// Interpret typeface
-			if (face == 1)
-				tf = Typeface.create(Typeface.DEFAULT, style);
-			else if (face == 2)
-				tf = Typeface.create(Typeface.MONOSPACE, style);
-			else if (face == 3)
-				tf = Typeface.create(Typeface.SANS_SERIF, style);
-			else if (face == 4)
-				tf = Typeface.create(Typeface.SERIF, style);
-			else {
-				return RunTimeError("Typface must be 1, 2, 3 or 4");
-			}
-			
-			Paint tPaint = newPaint(aPaint);						// Put the typeface into Paint
-			tPaint.setTypeface(tf);
-			aPaint =  newPaint(tPaint);							// Copy the temp paint to aPaint
-		    PaintListAdd(aPaint);								// Add the newPaint to the Paint List
-			
-		  return true;
+		Typeface tf;												// interpret typeface
+		if      (face == 1) { tf = Typeface.create(Typeface.DEFAULT, style); }
+		else if (face == 2) { tf = Typeface.create(Typeface.MONOSPACE, style); }
+		else if (face == 3) { tf = Typeface.create(Typeface.SANS_SERIF, style); }
+		else if (face == 4) { tf = Typeface.create(Typeface.SERIF, style); }
+		else {
+			return RunTimeError("Typface must be 1, 2, 3 or 4");
+		}
+
+		Paint tPaint = newPaint(aPaint);							// clone the current paint
+		tPaint.setTypeface(tf);										// put the typeface into Paint
+
+		aPaint = tPaint;											// set the new current paint
+		PaintList.add(aPaint);										// and add it to the paint list
+		return true;
 	}
 
 	private boolean execute_gr_touch_resume() {
