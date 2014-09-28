@@ -129,6 +129,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.content.res.Resources.NotFoundException;
 //import android.content.ClipboardManager;
 import android.database.Cursor;
@@ -1320,6 +1321,7 @@ public class Run extends ListActivity {
 	public static boolean NewTouch[] = {false, false, false};
 	public static int OnTouchLine;
 	public static Canvas drawintoCanvas = null;
+	private boolean mShowStatusBar;
 
 	// Graphics command keywords
 	private static final String BKW_GR_ARC = "arc";
@@ -1356,6 +1358,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_SET_PIXELS = "set.pixels";
 	private static final String BKW_GR_SET_STROKE = "set.stroke";
 	private static final String BKW_GR_SHOW = "show";
+	private static final String BKW_GR_STATUSBAR = "statusbar";
 	private static final String BKW_GR_STATUSBAR_SHOW = "statusbar.show";
 	private static final String BKW_GR_TOUCH = "touch";
 	private static final String BKW_GR_TOUCH2 = "touch2";
@@ -1393,6 +1396,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_TEXT_ALIGN = "align";
 	private static final String BKW_GR_TEXT_BOLD = "bold";
 	private static final String BKW_GR_TEXT_DRAW = "draw";
+	private static final String BKW_GR_TEXT_HEIGHT = "height";
 	private static final String BKW_GR_TEXT_SIZE = "size";
 	private static final String BKW_GR_TEXT_SKEW = "skew";
 	private static final String BKW_GR_TEXT_STRIKE = "strike";
@@ -1414,8 +1418,8 @@ public class Run extends ListActivity {
 		BKW_GR_RECT, BKW_GR_ROTATE_START, BKW_GR_ROTATE_END,
 		BKW_GR_SAVE, BKW_GR_SCALE,
 		BKW_GR_SCREEN, BKW_GR_SCREEN_TO_BITMAP,
-		BKW_GR_SET_ANTIALIAS, BKW_GR_SET_PIXELS,
-		BKW_GR_SET_STROKE, BKW_GR_STATUSBAR_SHOW,
+		BKW_GR_SET_ANTIALIAS, BKW_GR_SET_PIXELS, BKW_GR_SET_STROKE,
+		BKW_GR_STATUSBAR, BKW_GR_STATUSBAR_SHOW,
 
 		// GR subgroups - Format can handle only one level of grouping
 		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_CREATE,
@@ -1443,6 +1447,7 @@ public class Run extends ListActivity {
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_BOLD,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_DRAW,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_HEIGHT,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_SIZE,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_SKEW,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_STRIKE,
@@ -1495,6 +1500,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_SET_STROKE)              { public boolean run() { return execute_gr_stroke_width(); } },
 		new Command(BKW_GR_SHOW)                    { public boolean run() { return execute_gr_show(); } },
 		new Command(BKW_GR_STATUSBAR_SHOW)          { public boolean run() { return execute_statusbar_show(); } },
+		new Command(BKW_GR_STATUSBAR)               { public boolean run() { return execute_gr_statusbar(); } },
 	};
 
 	private final Command[] GrBitmap_cmd = new Command[] {	// Map GR.bitmap command keywords to their execution functions
@@ -1532,6 +1538,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_TEXT_ALIGN)              { public boolean run() { return execute_gr_text_align(); } },
 		new Command(BKW_GR_TEXT_BOLD)               { public boolean run() { return execute_gr_text_bold(); } },
 		new Command(BKW_GR_TEXT_DRAW)               { public boolean run() { return execute_gr_text_draw(); } },
+		new Command(BKW_GR_TEXT_HEIGHT)             { public boolean run() { return execute_gr_text_height(); } },
 		new Command(BKW_GR_TEXT_SIZE)               { public boolean run() { return execute_gr_text_size(); } },
 		new Command(BKW_GR_TEXT_SKEW)               { public boolean run() { return execute_gr_text_skew(); } },
 		new Command(BKW_GR_TEXT_STRIKE)             { public boolean run() { return execute_gr_text_strike(); } },
@@ -2955,6 +2962,7 @@ private void InitVars(){
     GRrunning = false;
     OnTouchLine = 0;
     Touched = false;
+	mShowStatusBar = false;
 
     // ********************************* Variables for Audio Commands
 
@@ -9999,6 +10007,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 								r * 0x10000 +
 								g * 0x100 +
 								b;
+		mShowStatusBar = (showStatusBar != 0);						// record choice for GR.StatusBar command
 
 		drawintoCanvas = null;
 		DisplayListClear();
@@ -10671,6 +10680,39 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+	private boolean execute_gr_text_height() {
+		int hvi = -1, uvi = -1, dvi = -1;
+		boolean isComma = isNext(',');
+		if (!isComma) {
+			if (!getNVar()) return false;							// height return variable
+			hvi = theValueIndex;
+			isComma = isNext(',');
+		}
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				if (!getNVar()) return false;						// up return variable
+				uvi = theValueIndex;
+				isComma = isNext(',');
+			}
+		}
+		if (isComma) {
+			if (!getNVar()) return false;							// down return variable
+			dvi = theValueIndex;
+		}
+		if (!checkEOL()) return false;
+
+		Paint.FontMetrics fm = aPaint.getFontMetrics();
+
+		double height = aPaint.getTextSize();
+		double ascent = fm.ascent;
+		double descent = fm.descent;
+		if (hvi >= 0) { NumericVarValues.set(hvi, height); }		// save the total height value into the var
+		if (uvi >= 0) { NumericVarValues.set(uvi, ascent); }		// save the top/up value into the var
+		if (dvi >= 0) { NumericVarValues.set(dvi, descent); }		// save the bottom/down value into the var
+		return true;
+	}
+
 	private boolean execute_gr_text_width() {
 		if (!getNVar()) return false;								// width return variable
 		int SaveValueIndex = theValueIndex;
@@ -10970,6 +11012,36 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		NumericVarValues.set(heightIndex, (double)size.y);
 		if (densityIndex != -1) {
 			NumericVarValues.set(densityIndex, (double)densityDpi);
+		}
+		return true;
+	}
+
+	private boolean execute_gr_statusbar() {
+		int heightIndex = -1;
+		int showingIndex = -1;
+		boolean isComma = isNext(',');
+		if (!isComma) {
+			if (!getNVar()) return false;							// height variable
+			heightIndex = theValueIndex;
+			isComma = isNext(',');
+		}
+		if (isComma) {
+			if (!getNVar()) return false;							// showing variable
+			showingIndex = theValueIndex;
+		}
+		if (!checkEOL()) return false;
+
+		if (heightIndex != -1) {
+			double height = 0.0;
+			Resources res = getResources();
+			int resID = res.getIdentifier("status_bar_height", "dimen", "android");
+			if (resID > 0) {
+				height = res.getDimensionPixelSize(resID);
+			}
+			NumericVarValues.set(heightIndex, height);
+		}
+		if (showingIndex != -1) {
+			NumericVarValues.set(showingIndex, mShowStatusBar ? 1.0 : 0.0);
 		}
 		return true;
 	}
