@@ -6091,17 +6091,27 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int varIndex = theValueIndex;
 
 		String inputDefault = "";
-		if (isNext(',')) {									// 2nd comma, get input default
-			if (isNumeric) {
-				if (!evalNumericExpression()) return false;
-				inputDefault = String.valueOf(EvalNumericExpressionValue);
-				if (inputDefault.endsWith(".0")) {
-					inputDefault = inputDefault.replace(".0", "");
+		int canceledIndex = -1;
+		isComma = isNext(',');
+		if (isComma) {										// 2nd comma, get input default
+			isComma = isNext(',');							// 3rd comma
+			if (!isComma) {
+				if (isNumeric) {
+					if (!evalNumericExpression()) return false;
+					inputDefault = String.valueOf(EvalNumericExpressionValue);
+					if (inputDefault.endsWith(".0")) {
+						inputDefault = inputDefault.replace(".0", "");
+					}
+				} else {
+					if (!getStringArg()) return false;
+					inputDefault = StringConstant;
 				}
-			} else {
-				if (!getStringArg()) return false;
-				inputDefault = StringConstant;
+				isComma = isNext(',');						// 3rd comma
 			}
+		}
+		if (isComma) {										// 3rd comma
+			if (!getNVar()) return false;
+			canceledIndex = theValueIndex;
 		}
 		if (!checkEOL()) return false;
 
@@ -6117,18 +6127,28 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		waitForLOCK();										// wait for the user to exit the Dialog
 
+		if (canceledIndex != -1) {							// use cancel var to report if canceled
+			NumericVarValues.set(canceledIndex, mInputCancelled ? 1.0 : 0.0);
+		}
 		if (mInputCancelled) {
-			String err = "Input dialog cancelled";
-			if (OnErrorLine != 0) {
-				errorMsg = err;
-				ExecutingLineIndex = OnErrorLine;
-			} else {										// tell user we are stopping
-				PrintShow(err);
-				PrintShow("Execution halted");
-				Stop = true;								// and stop executing
+			if (isNumeric) {								// if canceled, listener did not set value
+				NumericVarValues.set(varIndex, 0.0);
+			} else {
+				StringVarValues.set(varIndex, "");
+			}
+
+			if (canceledIndex == -1) {						// no cancel var, report cancel as error
+				String err = "Input dialog cancelled";
+				if (OnErrorLine != 0) {						// allow program to trap cancel as error
+					errorMsg = err;
+					ExecutingLineIndex = OnErrorLine;
+				} else {									// tell user we are stopping
+					PrintShow(err);
+					PrintShow("Execution halted");
+					Stop = true;							// and stop executing
+				}
 			}
 		}
-
 		return true;
 	}
 
