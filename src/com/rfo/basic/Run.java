@@ -141,8 +141,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.Region;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 
@@ -321,6 +324,7 @@ public class Run extends ListActivity {
 	private static final String BKW_F_N_CONTINUE = "f_n.continue";
 	private static final String BKW_FILE_GROUP = "file.";
 	private static final String BKW_FN_GROUP = "fn.";
+	private static final String BKW_FONT_GROUP = "font.";
 	private static final String BKW_FOR = "for";
 	private static final String BKW_FTP_GROUP = "ftp.";
 	private static final String BKW_GOSUB = "gosub";
@@ -424,8 +428,8 @@ public class Run extends ListActivity {
 		BKW_RINGER_GROUP, BKW_TONE,
 		BKW_CLIPBOARD_GET, BKW_CLIPBOARD_PUT,
 		BKW_ENCRYPT, BKW_DECRYPT, BKW_SWAP,
-		BKW_SPLIT_ALL, BKW_SPLIT,
-		BKW_CLS, BKW_CONSOLE_GROUP, BKW_DEBUG_GROUP,
+		BKW_SPLIT_ALL, BKW_SPLIT, BKW_CLS,
+		BKW_FONT_GROUP, BKW_CONSOLE_GROUP, BKW_DEBUG_GROUP,
 		BKW_DEVICE, BKW_ECHO_ON, BKW_ECHO_OFF,
 		BKW_KB_TOGGLE, BKW_KB_HIDE,
 		BKW_NOTIFY, BKW_RUN, // BKW_EMPTY_PROGRAM,		// Format does not need EMPTY_PROGRAM
@@ -529,6 +533,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SPLIT_ALL)              { public boolean run() { return executeSPLIT(-1); } },
 		new Command(BKW_SPLIT)                  { public boolean run() { return executeSPLIT(0); } },
 		new Command(BKW_CLS)                    { public boolean run() { return executeCLS(); } },
+		new Command(BKW_FONT_GROUP, CID_GROUP)  { public boolean run() { return executeFONT(); } },
 		new Command(BKW_CONSOLE_GROUP,CID_GROUP){ public boolean run() { return executeCONSOLE(); } },
 		new Command(BKW_DEBUG_GROUP, CID_GROUP) { public boolean run() { return executeDEBUG(); } },
 		new Command(BKW_DEVICE)                 { public boolean run() { return executeDEVICE(); } },
@@ -597,6 +602,7 @@ public class Run extends ListActivity {
 			keywordLists.put(BKW_DEBUG_GROUP,     Debug_KW);
 			keywordLists.put(BKW_FILE_GROUP,      file_KW);
 			keywordLists.put(BKW_FN_GROUP,        fn_KW);
+			keywordLists.put(BKW_FONT_GROUP,      font_KW);
 			keywordLists.put(BKW_FTP_GROUP,       ftp_KW);
 			keywordLists.put(BKW_GPS_GROUP,       GPS_KW);
 			keywordLists.put(BKW_GR_GROUP,        GR_KW);
@@ -1184,6 +1190,24 @@ public class Run extends ListActivity {
 	private int readNext = 0;
 	private ArrayList <Bundle> readData;
 
+	// ********************** Font Command variables *********************************
+
+	private static final String BKW_FONT_LOAD = "load";
+	private static final String BKW_FONT_DELETE = "delete";
+	private static final String BKW_FONT_CLEAR = "clear";
+
+	private static final String font_KW[] = {			// Font command list for Format
+		BKW_FONT_LOAD, BKW_FONT_DELETE, BKW_FONT_CLEAR
+	};
+
+	private final Command[] font_cmd = new Command[] {	// Map font command keywords to their execution functions
+			new Command(BKW_FONT_LOAD)              { public boolean run() { return executeFONT_LOAD(); } },
+			new Command(BKW_FONT_DELETE)            { public boolean run() { return executeFONT_DELETE(); } },
+			new Command(BKW_FONT_CLEAR)             { public boolean run() { return executeFONT_CLEAR(); } },
+	};
+
+	public static ArrayList<Typeface> FontList;
+
 	// ******************** Console Command variables ********************************
 
 	private static final String BKW_CONSOLE_FRONT = "front";
@@ -1305,22 +1329,26 @@ public class Run extends ListActivity {
 
 	// ******************************** Graphics Declarations **********************************
 
-	public static Intent GRclass;						// Graphics Intent Class
+	private Intent GRclass;								// Graphics Intent Class
 	public static boolean GRopen = false;				// Graphics Open Flag
+
 	public static ArrayList<Bundle> DisplayList;
 	public static ArrayList<Integer> RealDisplayList;
+
 	public static ArrayList<Paint> PaintList;
 	public static ArrayList<Bitmap> BitmapList;
-	public static Paint aPaint;
-	public static Bitmap aBitmap ;
+	private Paint aPaint;
+	private Bitmap aBitmap;
+
 	public static boolean GRrunning;
-	public static boolean GRFront;
 	public static boolean Touched;
 	public static double TouchX[] = {0,0,0};
 	public static double TouchY[] = {0,0,0};
 	public static boolean NewTouch[] = {false, false, false};
-	public static int OnTouchLine;
-	public static Canvas drawintoCanvas = null;
+	private int OnTouchLine;
+
+	private boolean GRFront;
+	private Canvas drawintoCanvas = null;
 	private boolean mShowStatusBar;
 
 	// Graphics command keywords
@@ -1403,6 +1431,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_TEXT_TYPEFACE = "typeface";
 	private static final String BKW_GR_TEXT_UNDERLINE = "underline";
 	private static final String BKW_GR_TEXT_WIDTH = "width";
+	private static final String BKW_GR_TEXT_SETFONT = "setfont";
 
 	private static final String GR_KW[] = {				// Command list for Format
 		BKW_GR_RENDER, BKW_GR_MODIFY,
@@ -1454,6 +1483,7 @@ public class Run extends ListActivity {
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_TYPEFACE,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_UNDERLINE,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_WIDTH,
+		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_SETFONT,
 	};
 
 	private final Command[] GR_cmd = new Command[] {	// Map GR command keywords to their execution functions
@@ -1545,6 +1575,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_TEXT_TYPEFACE)           { public boolean run() { return execute_gr_text_typeface(); } },
 		new Command(BKW_GR_TEXT_UNDERLINE)          { public boolean run() { return execute_gr_text_underline(); } },
 		new Command(BKW_GR_TEXT_WIDTH)              { public boolean run() { return execute_gr_text_width(); } },
+		new Command(BKW_GR_TEXT_SETFONT)            { public boolean run() { return execute_gr_text_setfont(); } },
 	};
 
 	// ******************************** Variables for Audio commands ****************************
@@ -2928,6 +2959,11 @@ private void InitVars(){
 	readNext = 0;
 	readData = new ArrayList <Bundle>();
 
+	// ********************** Font Command variables *********************************
+
+	FontList = new ArrayList<Typeface>();
+	clearFontList();
+
 	// ******************** Input Command variables ********************************
 
 	// mInputDismissed = false;						// This will be used only if we dismiss the dialog in onPause
@@ -2951,17 +2987,18 @@ private void InitVars(){
 
 	// ******************************** Graphics Declarations **********************************
 
-    GRclass = null;									// Graphics Intent Class
-    GRopen = false;									// Graphics Open Flag
-    DisplayList = new ArrayList<Bundle>() ;
-    RealDisplayList = new ArrayList<Integer>() ;
-    PaintList = new ArrayList<Paint>();
-    BitmapList = new ArrayList<Bitmap>();
-    aPaint = new Paint();
+	GRclass = null;									// Graphics Intent Class
+	GRopen = false;									// Graphics Open Flag
+	DisplayList = new ArrayList<Bundle>() ;
+	RealDisplayList = new ArrayList<Integer>() ;
 	PaintList = new ArrayList<Paint>();
-    GRrunning = false;
-    OnTouchLine = 0;
-    Touched = false;
+	BitmapList = new ArrayList<Bitmap>();
+	PaintList = new ArrayList<Paint>();
+	aPaint = new Paint();
+	GRrunning = false;
+	GRFront = false;
+	Touched = false;
+	OnTouchLine = 0;
 	mShowStatusBar = false;
 
     // ********************************* Variables for Audio Commands
@@ -6539,6 +6576,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+	private String plusBase(int val) {
+		return (val == 0) ? "0" : "1 + " + (val - 1);
+	}
+
 	private boolean executeDEBUG_STATS() {
 		if (Debug) {
 			PrintShow("# labels   : " + Labels.size());
@@ -6546,16 +6587,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			PrintShow("  numeric  : " + NumericVarValues.size());
 			PrintShow("  string   : " + StringVarValues.size());
 			PrintShow("  arrays   : " + ArrayTable.size());
-			PrintShow("  lists    : " + (theLists.size() - 1));		// item 0 always present but not accessible
-			PrintShow("  stacks   : " + (theStacks.size() - 1));	// item 0 always present but not accessible
-			PrintShow("  bundles  : " + (theBundles.size() - 1));	// item 0 always present but not accessible
+			PrintShow("  lists    : " + plusBase(theLists.size()));		// item 0 always present but not accessible
+			PrintShow("  stacks   : " + plusBase(theStacks.size()));	// item 0 always present but not accessible
+			PrintShow("  bundles  : " + plusBase(theBundles.size()));	// item 0 always present but not accessible
 			PrintShow("  functions: " + FunctionTable.size());
 			PrintShow("    nested : " + FunctionStack.size());
-			PrintShow("DL size    : " + DisplayList.size());
-			PrintShow("RealDL size: " + RealDisplayList.size());
-			PrintShow("RealDL size: " + RealDisplayList.size());
-			PrintShow("# paints   : " + PaintList.size());
-			PrintShow("# bitmaps  : " + BitmapList.size());
+			PrintShow("  fonts    : " + plusBase(FontList.size()));		// item 0 always present but not accessible
+			PrintShow("  paints   : " + plusBase(PaintList.size()));	// item 0 present after GR.Open but not accessible
+			PrintShow("  bitmaps  : " + plusBase(BitmapList.size()));	// item 0 present after GR.Open but not accessible
+			PrintShow("DL size    : " + plusBase(DisplayList.size()));	// item 0 present after GR.Open but not accessible
+			PrintShow("RealDL size: " + plusBase(RealDisplayList.size()));// item 0 present after GR.Open but not accessible
 		}
 		return true;
 	}
@@ -8044,7 +8085,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 	
-	private boolean executeBYTE_COPY(){
+	private boolean executeBYTE_COPY() {
 		if (!evalNumericExpression()) { return false; }						// First parm is the source filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
 		if (!checkReadFile(FileNumber, BISlist)) { return false; }			// Check runtime errors
@@ -8061,10 +8102,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			RunTimeError("Attempt to read beyond the EOF at:");
 			return false;
 		}
-		
+
 		BufferedInputStream bis = BISlist.get(FileEntry.getInt("stream"));
-		int p = FileEntry.getInt("position");
-		
+
 		String theFileName = StringConstant;
 		File file = new File(Basic.getDataPath(theFileName));
 
@@ -8078,10 +8118,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			RunTimeError("Problem opening " + theFileName);
 			return false;
 		}
-		
+		return copyFile(bis, file, FileEntry);
+	}
+
+	// Bottom half of Byte.Copy: copy input stream to output file. Close the streams.
+	// For shared use, FileEntry may be null.
+	private boolean copyFile(BufferedInputStream bis, File outFile, Bundle FileEntry) {
+		if ((bis == null) || (outFile == null)) return false;
+		int p = (FileEntry != null) ? FileEntry.getInt("position") : 0;
+
 		BufferedOutputStream bos = null;
 		try {
-			bos = new BufferedOutputStream(new FileOutputStream(file), 8192);
+			bos = new BufferedOutputStream(new FileOutputStream(outFile), 8192);
 			byte[] buffer = new byte[1024];
 			int len = 0;
 
@@ -8097,8 +8145,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			try { bis.close(); } catch (Exception e) { return RunTimeError(e); }
 			try { bos.close(); } catch (Exception e) { return RunTimeError(e); }
 		}
-		FileEntry.putInt("position", p);
-		FileEntry.putBoolean("eof", true);
+		if (FileEntry != null) {
+			FileEntry.putInt("position", p);
+			FileEntry.putBoolean("eof", true);
+		}
 		return true;
 	}
 
@@ -10001,7 +10051,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_gr_open() {
 		if (GRopen) {
-			return RunTimeError("Graphics already Opened");
+			return RunTimeError("Graphics already opened");
 		}
 
 		int[] argb = getArgs4I();									// [a, r, g, b]
@@ -10442,8 +10492,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int yIndex = theValueIndex;
 		if (!checkEOL()) return false;
 
-		int x = b.getInt(b.containsKey("x") ? "x" : "left");		// get the position values
-		int y = b.getInt(b.containsKey("y") ? "y" : "top");
+		int x = b.getInt(b.containsKey("x") ? "x" : b.containsKey("left") ? "left" : "x1");
+		int y = b.getInt(b.containsKey("y") ? "y" : b.containsKey("top")  ? "top"  : "y1");
 
 		NumericVarValues.set(xIndex, (double) x);
 		NumericVarValues.set(yIndex, (double) y);
@@ -11490,31 +11540,119 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_text_typeface() {
-		if (!evalNumericExpression()) return false;					// get type
-		if (!checkEOL()) { return false; }
-		int face = EvalNumericExpressionValue.intValue();
+		int face = 1;												// default typeface
+		int style = 1;												// default style
 
-		int style = Typeface.NORMAL;	
+		boolean isComma = isNext(',');
+		if (!isComma && !isEOL()) {									// must be a typeface arg
+			if (!evalNumericExpression()) return false;				// get type
+			face = EvalNumericExpressionValue.intValue();
+			isComma = isNext(',');
+		}
+		if (isComma) {
+			if (!evalNumericExpression()) return false;				// get the style
+			style = EvalNumericExpressionValue.intValue();
+		}
+		if (!checkEOL()) { return false; }
 
 		Typeface tf;												// interpret typeface
-		if      (face == 1) { tf = Typeface.create(Typeface.DEFAULT, style); }
-		else if (face == 2) { tf = Typeface.create(Typeface.MONOSPACE, style); }
-		else if (face == 3) { tf = Typeface.create(Typeface.SANS_SERIF, style); }
-		else if (face == 4) { tf = Typeface.create(Typeface.SERIF, style); }
-		else {
-			return RunTimeError("Typface must be 1, 2, 3 or 4");
+		switch (face) {
+			case 1: tf = Typeface.DEFAULT;    break;
+			case 2: tf = Typeface.MONOSPACE;  break;
+			case 3: tf = Typeface.SANS_SERIF; break;
+			case 4: tf = Typeface.SERIF;      break;
+			default: return RunTimeError("Typeface must be 1, 2, 3 or 4");
 		}
+		switch (style) {											// interpret style
+			case 1: style = Typeface.NORMAL;      break;
+			case 2: style = Typeface.BOLD;        break;
+			case 3: style = Typeface.ITALIC;      break;
+			case 4: style = Typeface.BOLD_ITALIC; break;
+			default: return RunTimeError("Style must be 1, 2, 3 or 4");
+		}
+		tf = Typeface.create(tf, style);
 
-		Paint tPaint = newPaint(aPaint);							// clone the current paint
+		Paint tPaint = newPaint(aPaint);							// clone the current Paint
 		tPaint.setTypeface(tf);										// put the typeface into Paint
 
-		aPaint = tPaint;											// set the new current paint
-		PaintList.add(aPaint);										// and add it to the paint list
+		aPaint = tPaint;											// set the new current Paint
+		PaintList.add(aPaint);										// and add it to the Paint list
 		return true;
 	}
 
 	private boolean execute_gr_touch_resume() {
 		return doResume("No onTouch Interrupt");
+	}
+
+	private Typeface getTypeface(String fileName) {
+		Typeface tf = null;
+		File file = new File(Basic.getDataPath(fileName));
+		if (file.exists()) {
+			tf = Typeface.createFromFile(file);						// Create a new Typeface
+		} else {													// the file does not exist
+			if (Basic.isAPK) {										// we are in APK
+				int resID = Basic.getRawResourceID(fileName);		// try to load the file from a raw resource
+				if (resID != 0) {
+					InputStream is = getResources().openRawResource(resID);
+					String outPath = getCacheDir() + "/tmp" + System.currentTimeMillis() + ".raw";
+					File outFile = new File(outPath);
+					if (copyFile(new BufferedInputStream(is), outFile, null)) {
+						tf = Typeface.createFromFile(outPath);
+						outFile.delete();							// clean up
+					}
+				} else {											// try to load the file from assets
+					String assetPath = Basic.getAppFilePath(Basic.DATA_DIR, fileName);
+					tf = Typeface.createFromAsset(getAssets(), assetPath);
+				}
+			}
+		}
+		return tf;
+	}
+
+	private boolean execute_gr_text_setfont() {
+		int fontPtr = 0;
+		String familyName = null;									// default if no font arg
+		int style = Typeface.NORMAL;								// default if no style arg
+
+		boolean isComma = isNext(',');
+		if (!isComma && !isEOL()) {									// must be a font arg
+			int saveLI = LineIndex;
+			fontPtr = getFontArg();									// get the font number
+			if (fontPtr == -1) return false;						// invalid font pointer
+			if (fontPtr == -2) {									// not a numeric argument
+				LineIndex = saveLI;
+				if (!getStringArg()) return false;					// get the font family name
+				familyName = StringConstant.trim();
+			}
+			isComma = isNext(',');
+		}
+		if (isComma) {
+			if (!getStringArg()) return false;						// get the optional style
+			String str = StringConstant.trim().toLowerCase(Locale.US);
+			if      (str.equals("b")  || str.equals("bold"))        { style = Typeface.BOLD; }
+			else if (str.equals("i")  || str.equals("italic"))      { style = Typeface.ITALIC; }
+			else if (str.equals("bi") || str.equals("bold_italic")) { style = Typeface.BOLD_ITALIC; }
+		}
+		if (!checkEOL()) return false;
+
+		Typeface tf = null;
+		if (fontPtr > 0) {
+			tf = FontList.get(fontPtr);								// get specified custom font
+			if (tf == null) { return RunTimeError("Font was deleted"); }
+		} else if (fontPtr == 0) {									// no font arg
+			for (int fp = FontList.size() - 1; (fp > 0) && (tf == null); --fp) {
+				tf = FontList.get(fp);								// get last font loaded and not deleted
+			}														// if no such font, will set default family
+		}
+		if (tf == null) {								// font family arg, or no font arg and no fonts loaded
+			tf = Typeface.create(familyName, style);				// get the system font for this family name
+		}															// null family name sets system default
+
+		Paint tPaint = newPaint(aPaint);
+		tPaint.setTypeface(tf);
+		aPaint = tPaint;
+		PaintList.add(aPaint);										// add the new Paint to the PaintList
+		return true;
 	}
 
 	// ****************************************** Audio *******************************************
@@ -14681,6 +14819,76 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		    	return true;
 		    }
+
+	// *************************************** FONT Commands **************************************
+
+	private boolean executeFONT() {							// Get Console command keyword if it is there
+		return executeCommand(font_cmd, "Font");
+	}
+
+	private boolean executeFONT_LOAD() {
+		if (!getNVar()) return false;								// font pointer variable
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
+
+		if (!getStringArg()) return false;							// get the file path
+		String fileName = StringConstant;							// the filename as given by the user
+		if (!checkEOL()) return false;
+
+		Typeface aFont = getTypeface(fileName);
+		if (aFont == null) { return RunTimeError(fileName + " Not Found at:"); }
+
+		NumericVarValues.set(SaveValueIndex, (double)FontList.size());
+		FontList.add(aFont);
+		return true;
+	}
+
+	private int getFontArg() {										// get the font number
+		return getFontArg("Invalid Font Pointer");					// with the default error message
+	}
+
+	private int getFontArg(String errMsg) {							// get and validate the font number
+		if (!evalNumericExpression()) return -2;					// or return -2 if argument is not numeric
+		int fontPtr = EvalNumericExpressionValue.intValue();
+		if (fontPtr < 1 | fontPtr >= FontList.size()) {
+			RunTimeError(errMsg);
+			fontPtr = -1;
+		}
+		return fontPtr;
+	}
+
+	private boolean executeFONT_DELETE() {
+		Typeface font = null;
+		int fp;														// index into FontList
+		if (isEOL()) {												// no font number arg
+			for (fp = FontList.size() - 1; (fp > 0) && (font == null); --fp) {
+				font = FontList.get(fp);							// find last font loaded and not deleted
+			}
+			if (fp < 1) return true;								// nothing to do
+		} else {
+			fp = getFontArg();										// get the font number arg
+			if (fp < 0) return false;
+			if (!checkEOL()) return false;
+			font = FontList.get(fp);								// get the font
+		}
+		if (font != null) {
+			FontList.set(fp, null);
+			System.gc();
+		}
+		return true;
+	}
+
+	private boolean executeFONT_CLEAR() {							// command to clear the font list
+		if (!checkEOL()) return false;
+		clearFontList();
+		return true;
+	}
+
+	private void clearFontList() {
+		FontList.clear();											// clear the font list
+		FontList.add(null);											// add a dummy element 0
+		System.gc();
+	}
 
 	// ************************************* CONSOLE Commands *************************************
 
