@@ -27,6 +27,8 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 import android.content.Context;
+import android.location.GpsSatellite;
+import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -37,7 +39,7 @@ import android.util.Log;
 
 // Implements the GPS Listener. Started by Run
 
-public class GPS implements LocationListener {
+public class GPS implements GpsStatus.Listener, LocationListener {
 
 	private static final String LOGTAG = "GPS";
 
@@ -50,6 +52,8 @@ public class GPS implements LocationListener {
 	public static float Speed;
 	public static long Time;
 	public static String Provider = null;
+	public static int Status;
+	public static int Satellites;
 
 	private final Context mContext;
 	private LocationManager mLocator;
@@ -95,9 +99,10 @@ public class GPS implements LocationListener {
 
 		onLocationChanged(location);
 
-		// Start getting location change reports
+		// Start getting location change reports and status updates
 
 		mLocator.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+		mLocator.addGpsStatusListener(this);
 	}
 
 	public void onLocationChanged(Location location) {
@@ -126,10 +131,22 @@ public class GPS implements LocationListener {
 	public void onStatusChanged(String provider, int status, Bundle extras) {
 	}
 
+	public void onGpsStatusChanged(int event) {
+		if (event != GpsStatus.GPS_EVENT_STOPPED) {
+			GpsStatus status = mLocator.getGpsStatus(null);
+			int sats = 0;
+			for (GpsSatellite s : status.getSatellites()) {
+				++sats;
+			}
+			Satellites = sats;
+		}
+	}
+
 	public void stop() {
 		Log.i(LOGTAG, "Unregistering LocationListener");
 		if (mLocator != null) {
 			mLocator.removeUpdates(this);
+			mLocator.removeGpsStatusListener(this);
 			mLocator = null;
 		}
 		if (mThread != null) {

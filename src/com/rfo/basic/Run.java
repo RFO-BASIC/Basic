@@ -1663,25 +1663,28 @@ public class Run extends ListActivity {
 	private static final String BKW_GPS_ACCURACY = "accuracy";
 	private static final String BKW_GPS_SPEED = "speed";
 	private static final String BKW_GPS_PROVIDER = "provider";
+	private static final String BKW_GPS_SATELLITES = "satellites";
+	private static final String BKW_GPS_TIME = "time";
 	private static final String BKW_GPS_OPEN = "open";
 	private static final String BKW_GPS_CLOSE = "close";
-	private static final String BKW_GPS_TIME = "time";
 
 	private static final String GPS_KW[] = {			// Command list for Format
 		BKW_GPS_ALTITUDE, BKW_GPS_LATITUDE, BKW_GPS_LONGITUDE,
 		BKW_GPS_BEARING, BKW_GPS_ACCURACY, BKW_GPS_SPEED,
-		BKW_GPS_PROVIDER, BKW_GPS_OPEN, BKW_GPS_CLOSE, BKW_GPS_TIME
+		BKW_GPS_PROVIDER, BKW_GPS_SATELLITES, BKW_GPS_TIME,
+		BKW_GPS_OPEN, BKW_GPS_CLOSE,
 	};
 
 	private final Command[] GPS_cmd = new Command[] {	// Map GPS command keywords to their execution functions
-		new Command(BKW_GPS_ALTITUDE)           { public boolean run() { return execute_gps_altitude(); } },
-		new Command(BKW_GPS_LATITUDE)           { public boolean run() { return execute_gps_latitude(); } },
-		new Command(BKW_GPS_LONGITUDE)          { public boolean run() { return execute_gps_longitude(); } },
-		new Command(BKW_GPS_BEARING)            { public boolean run() { return execute_gps_bearing(); } },
-		new Command(BKW_GPS_ACCURACY)           { public boolean run() { return execute_gps_accuracy(); } },
-		new Command(BKW_GPS_SPEED)              { public boolean run() { return execute_gps_speed(); } },
-		new Command(BKW_GPS_PROVIDER)           { public boolean run() { return execute_gps_provider(); } },
-		new Command(BKW_GPS_TIME)               { public boolean run() { return execute_gps_time(); } },
+		new Command(BKW_GPS_ALTITUDE)           { public boolean run() { return execute_gps_num(GPS.Altitude); } },
+		new Command(BKW_GPS_LATITUDE)           { public boolean run() { return execute_gps_num(GPS.Latitude); } },
+		new Command(BKW_GPS_LONGITUDE)          { public boolean run() { return execute_gps_num(GPS.Longitude); } },
+		new Command(BKW_GPS_BEARING)            { public boolean run() { return execute_gps_num(GPS.Bearing); } },
+		new Command(BKW_GPS_ACCURACY)           { public boolean run() { return execute_gps_num(GPS.Accuracy); } },
+		new Command(BKW_GPS_SPEED)              { public boolean run() { return execute_gps_num(GPS.Speed); } },
+		new Command(BKW_GPS_PROVIDER)           { public boolean run() { return execute_gps_string(GPS.Provider); } },
+		new Command(BKW_GPS_SATELLITES)         { public boolean run() { return execute_gps_num(GPS.Satellites); } },
+		new Command(BKW_GPS_TIME)               { public boolean run() { return execute_gps_num(GPS.Time); } },
 		new Command(BKW_GPS_OPEN, CID_OPEN)     { public boolean run() { return execute_gps_open(); } },
 		new Command(BKW_GPS_CLOSE)              { public boolean run() { return execute_gps_close(); } },
 	};
@@ -12160,7 +12163,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	public boolean execute_gps_close(){
+	public boolean execute_gps_close() {
 		if (!checkEOL()) return false;
 		if (theGPS != null) {
 			Log.d(LOGTAG, "Stopping GPS on command");
@@ -12170,61 +12173,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_gps_altitude(){
-		if (!getNVar()) return false;							// Sensor Variable
+	private boolean execute_gps_num(double value) {
+		if (!getNVar()) return false;							// Variable for returned value
 		if (!checkEOL()) return false;
-		NumericVarValues.set(theValueIndex, GPS.Altitude);		// Set value into variable
+		NumericVarValues.set(theValueIndex, value);				// Set value into variable
 		return true;
 	}
 
-	private boolean execute_gps_latitude(){
-		if (!getNVar()) return false;							// Sensor Variable
-		if (!checkEOL()) return false;
-		NumericVarValues.set(theValueIndex, GPS.Latitude);
-		return true;
-	}
-
-	private boolean execute_gps_longitude(){
-		if (!getNVar()) return false;							// Sensor Variable
-		if (!checkEOL()) return false;
-		NumericVarValues.set(theValueIndex, GPS.Longitude);
-		return true;
-	}
-
-	private boolean execute_gps_bearing(){
-		if (!getNVar()) return false;							// Sensor Variable
-		if (!checkEOL()) return false;
-		NumericVarValues.set(theValueIndex, (double) GPS.Bearing);
-		return true;
-	}
-
-	private boolean execute_gps_accuracy(){
-		if (!getNVar()) return false;							// Sensor Variable
-		if (!checkEOL()) return false;
-		NumericVarValues.set(theValueIndex, (double) GPS.Accuracy);
-		return true;
-	}
-
-	private boolean execute_gps_speed(){
-		if (!getNVar()) return false;							// Sensor Variable
-		if (!checkEOL()) return false;
-		NumericVarValues.set(theValueIndex,(double) GPS.Speed);
-		return true;
-	}
-
-	private boolean execute_gps_time(){
-		if (!getNVar()) return false;							// Sensor Variable
-		if (!checkEOL()) return false;
-		NumericVarValues.set(theValueIndex,(double) GPS.Time);
-		return true;
-	}
-
-	private boolean execute_gps_provider(){
+	private boolean execute_gps_string(String value) {
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
-		String provider = GPS.Provider;
-		if (provider == null) { provider = ""; }
-		StringVarValues.set(theValueIndex, provider);
+		StringVarValues.set(theValueIndex, (value == null) ? "" : value);
 		return true;
 	}
 
