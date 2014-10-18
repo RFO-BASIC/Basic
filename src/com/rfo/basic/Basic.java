@@ -421,20 +421,10 @@ public class Basic extends Activity  {
 											: getFilePath(dir, path));	// dir is SOURCE_DIR, DATA_DIR, etc
 		BufferedReader buf = null;
 		if (file.exists()) {
-			try {
-				buf = new BufferedReader(new FileReader(file));			// open an input stream from the file
-				if (buf != null) buf.mark((int)file.length());			// this call may throw an exception
-			} catch (IOException ex) {
-				Log.e(LOGTAG, "getBufferedReader: " + ex);
-				if (buf != null) {
-					try { buf.close(); } catch (IOException e) { }		// ignore second exception, if any
-				}
-				throw ex;												// throw first exception
-			}
+			buf = new BufferedReader(new FileReader(file));				// open an input stream from the file
 		} else if (isAPK) {
 			InputStream inputStream = streamFromResource(dir, path);
 			if (inputStream != null) { buf = new BufferedReader(new InputStreamReader(inputStream)); }
-			// TODO: how to mark a non-file buffered stream?
 		}
 		return buf;
 	}
@@ -445,11 +435,9 @@ public class Basic extends Activity  {
 		BufferedInputStream buf = null;
 		if (file.exists()) {
 			buf = new BufferedInputStream(new FileInputStream(file));	// open an input stream from the file
-			if (buf != null) buf.mark((int)file.length());				// this call can NOT throw any exception
 		} else if (isAPK) {
 			InputStream inputStream = streamFromResource(dir, path);	// this call may throw an exception
 			if (inputStream != null) { buf = new BufferedInputStream(inputStream); }
-			// TODO: how to mark a non-file buffered stream?
 		}
 		return buf;
 	}

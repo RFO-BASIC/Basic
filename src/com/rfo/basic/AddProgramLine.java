@@ -254,8 +254,7 @@ public class AddProgramLine {
 		fileName = fileName.substring(kw_include.length()).trim();
 		BufferedReader buf = null;
 		try { buf = Basic.getBufferedReader(Basic.SOURCE_DIR, fileName); }
-		catch (Exception e) {}										// stream already closed if exception
-		if (buf == null) {
+		catch (Exception e) {									// stream not opened if exception
 			String t = "Error_Include_file (" + fileName + ") not_found";
 			AddLine(t);
 			return;
@@ -264,8 +263,8 @@ public class AddProgramLine {
 		String data = null;
 		do {
 			try { data = buf.readLine(); }
-			catch (IOException e) { data = null; }
-			AddLine(data);		 								// add the line
+			catch (IOException e) { data = "Error reading Include file " + fileName; return; }
+			finally { AddLine(data); }							// add the line
 		} while (data != null);									// while not EOF and no error
 	}
 
