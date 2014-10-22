@@ -21,11 +21,11 @@ GR.TEXT.DRAW p, x,y, "Provider:     " +  provider$
 
 y = 1*sp + sp - pad
 GPS.ACCURACY accuracy
-GR.TEXT.DRAW p, x,y, "Accuracy:   " + FORMAT$("###", accuracy) + " m"
+GR.TEXT.DRAW p, x,y, "Accuracy:  " + FORMAT$("####", accuracy) + " m"
 
 y = 2*sp + sp - pad
 GPS.SATELLITES sats
-GR.TEXT.DRAW p, x,y, "Satellites: " + FORMAT$("###", sats)
+GR.TEXT.DRAW p, x,y, "Satellites: " + FORMAT$("##%", sats)
 
 y = 3*sp + sp - pad
 GPS.LATITUDE latitude
@@ -37,7 +37,7 @@ GR.TEXT.DRAW p, x,y, "Longitude:  " + FORMAT$("##%.#####", longitude)
 
 y = 5*sp + sp - pad
 GPS.ALTITUDE altitude
-GR.TEXT.DRAW p, x,y, "Altitude: " + FORMAT$("#####", altitude) + " m"
+GR.TEXT.DRAW p, x,y, "Altitude: " + FORMAT$("####%", altitude) + " m"
 
 y = 6*sp + sp - pad
 GPS.BEARING bearing
@@ -49,7 +49,7 @@ GR.TEXT.DRAW p, x,y, "Speed:      " + FORMAT$("##%.##", speed) + " m/s"
 
 y = 8*sp + sp - pad
 GPS.TIME time
-GR.TEXT.DRAW p, x,y, "Time:       " + USING$(, "%tT", time)
+GR.TEXT.DRAW p, x,y, "Time:       " + USING$(, "%tT", int(time))
 
 GR.RENDER
 PAUSE 5000

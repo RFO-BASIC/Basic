@@ -10888,8 +10888,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		int bitmapPtr = getBitmapArg();								// get source bitmap number
 		if (bitmapPtr < 0) return false;
-		Bitmap SrcBitMap = BitmapList.get(bitmapPtr);				// get the bitmap
-		if (SrcBitMap == null){
+		Bitmap srcBitmap = BitmapList.get(bitmapPtr);				// get the bitmap
+		if (srcBitmap == null) {
 			return RunTimeError("Bitmap was deleted");
 		}
 		if (!isNext(',')) return false;
@@ -10912,8 +10912,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Width and Height must not be zero");
 		}
 
-		try { aBitmap = Bitmap.createScaledBitmap(SrcBitMap, Width, Height, parm); }
+		try { aBitmap = Bitmap.createScaledBitmap(srcBitmap, Width, Height, parm); }
 		catch (Exception e) { return RunTimeError(e); }
+		if (aBitmap == srcBitmap) {
+			aBitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
+		}
 
 		System.gc();
 		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
@@ -10922,21 +10925,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_gr_bitmap_size() {
 		int bitmapPtr = getBitmapArg();								// get the bitmap number
 		if (bitmapPtr < 0) return false;
-		Bitmap SrcBitMap = BitmapList.get(bitmapPtr);				// access the bitmap
-		if (SrcBitMap == null) {
+		Bitmap srcBitmap = BitmapList.get(bitmapPtr);				// access the bitmap
+		if (srcBitmap == null) {
 			return RunTimeError("Bitmap was deleted");
 		}
 
-		int w = SrcBitMap.getWidth();								// get the image width
-		int h = SrcBitMap.getHeight();								// get the image height
-
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;								// get the height variable
-		NumericVarValues.set(theValueIndex, (double)w);				// set the height value
+		int w = srcBitmap.getWidth();								// get the image width
+		int h = srcBitmap.getHeight();								// get the image height
 
 		if (!isNext(',')) return false;
 		if (!getNVar()) return false;								// get the width variable
-		NumericVarValues.set(theValueIndex, (double)h);				// set the width value
+		NumericVarValues.set(theValueIndex, (double)w);				// set the width value
+
+		if (!isNext(',')) return false;
+		if (!getNVar()) return false;								// get the height variable
+		NumericVarValues.set(theValueIndex, (double)h);				// set the height value
 
 		if (!checkEOL()) return false;
 		return true;
@@ -10949,17 +10952,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		int bitmapPtr = getBitmapArg("Invalid Source Bitmap Pointer");	// get source bitmap number
 		if (bitmapPtr < 0) return false;
-		Bitmap SourceBitmap = BitmapList.get(bitmapPtr);			// get source bitmap
+		Bitmap srcBitmap = BitmapList.get(bitmapPtr);				// get source bitmap
 		if (!isNext(',')) return false;
 
 		int[] bounds = getArgs4I();									// [x, y, width, height]
 		if (bounds == null) return false;							// error getting values
 		if (!checkEOL()) return false;
 
-		try {
-			aBitmap = Bitmap.createBitmap(SourceBitmap, bounds[0], bounds[1], bounds[2], bounds[3]);
-		} catch (Exception e) {
-			return RunTimeError(e);
+		try { aBitmap = Bitmap.createBitmap(srcBitmap, bounds[0], bounds[1], bounds[2], bounds[3]); }
+		catch (Exception e) { return RunTimeError(e); }
+		if (aBitmap == srcBitmap) {
+			aBitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
 		}
 		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
 	}
