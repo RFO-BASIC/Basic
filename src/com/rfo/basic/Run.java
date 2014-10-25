@@ -3337,6 +3337,8 @@ public boolean onTouchEvent(MotionEvent event){
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {		// Called when the menu key is pressed.
 		super.onCreateOptionsMenu(menu);
+		if (!Settings.getConsoleMenu(this)) { return false; }
+
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.run, menu);
 		MenuItem item = menu.getItem(1);

@@ -163,55 +163,60 @@ public class Settings extends PreferenceActivity {
 		PreferenceManager.setDefaultValues(context, R.xml.settings, force);
 	}
 
-	   public static String getBaseDrive(Context context) {
-		      String baseDrive = PreferenceManager.getDefaultSharedPreferences(context)
-			            .getString("base_drive_pref", "none");
-		      return baseDrive;
-	   }
+	public static String getBaseDrive(Context context) {
+		String baseDrive = PreferenceManager.getDefaultSharedPreferences(context)
+				.getString("base_drive_pref", "none");
+		return baseDrive;
+	}
 
-	   public static float getFont(Context context) {
+	public static float getFont(Context context) {
 
-		      String font = PreferenceManager.getDefaultSharedPreferences(context)
-		            .getString("font_pref", "Medium");
+		String font = PreferenceManager.getDefaultSharedPreferences(context)
+				.getString("font_pref", "Medium");
 
-		      if (font.equals("Small")) return Small_font;
-		      if (font.equals("Medium")) return Medium_font;
-		      return Large_font;
-	   }
+		if (font.equals("Small")) return Small_font;
+		if (font.equals("Medium")) return Medium_font;
+		return Large_font;
+	}
 
-	   public static int  getLOadapter(Context context){
-		      String font = PreferenceManager.getDefaultSharedPreferences(context)
-	            .getString("font_pref", "Medium");
+	public static int  getLOadapter(Context context){
+		String font = PreferenceManager.getDefaultSharedPreferences(context)
+				.getString("font_pref", "Medium");
 
-	      if (font.equals("Small")) return R.layout.simple_list_layout_s;
-	      if (font.equals("Medium")) return R.layout.simple_list_layout_m;
-	      return R.layout.simple_list_layout_l;
-	   }
+		if (font.equals("Small")) return R.layout.simple_list_layout_s;
+		if (font.equals("Medium")) return R.layout.simple_list_layout_m;
+		return R.layout.simple_list_layout_l;
+	}
 
-	   public static Typeface getConsoleTypeface(Context context){
-		      String font = PreferenceManager.getDefaultSharedPreferences(context)
-	            .getString("csf_pref", "MS");
+	public static Typeface getConsoleTypeface(Context context){
+		String font = PreferenceManager.getDefaultSharedPreferences(context)
+				.getString("csf_pref", "MS");
 
-	      if (font.equals("MS")) return Typeface.MONOSPACE;
-	      if (font.equals("SS")) return Typeface.SANS_SERIF;
-	      if (font.equals("S")) return Typeface.SERIF;
-	      return Typeface.MONOSPACE;
-	   }
+		if (font.equals("MS")) return Typeface.MONOSPACE;
+		if (font.equals("SS")) return Typeface.SANS_SERIF;
+		if (font.equals("S")) return Typeface.SERIF;
+		return Typeface.MONOSPACE;
+	}
 
-	   public static boolean getLinedEditor(Context context){
-		   return PreferenceManager.getDefaultSharedPreferences(context)
-           .getBoolean("lined_editor", true);
-	   }
+	public static boolean getConsoleMenu(Context context){
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("console_menu", true);
+	}
 
-	   public static boolean getAutoIndent(Context context){
-		   return PreferenceManager.getDefaultSharedPreferences(context)
-           .getBoolean("autoindent", false);
-	   }
+	public static boolean getLinedConsole(Context context){
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("lined_console", true);
+	}
 
-	   public static boolean getLinedConsole(Context context){
-		   return PreferenceManager.getDefaultSharedPreferences(context)
-           .getBoolean("lined_console", true);
-	   }
+	public static boolean getLinedEditor(Context context){
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("lined_editor", true);
+	}
+
+	public static boolean getAutoIndent(Context context){
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("autoindent", false);
+	}
 
 	public static String getColorScheme(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
@@ -243,41 +248,18 @@ public class Settings extends PreferenceActivity {
 		return colors;
 	}
 
-	   public static int getSreenOrientation(Context context){
-		   String SO = PreferenceManager.getDefaultSharedPreferences(context)
-           .getString("so_pref", "0");
+	public static int getSreenOrientation(Context context){
+		String SO = PreferenceManager.getDefaultSharedPreferences(context)
+				.getString("so_pref", "0");
 
-		   int RV = 0;
-		   int nSO = 0;
-		   if (SO.equals("0")) nSO = 0;
-		   if (SO.equals("1")) nSO = 1;
-		   if (SO.equals("2")) nSO = 2;
-		   if (SO.equals("3")) nSO = 3;
-		   if (SO.equals("4")) nSO = 4;
-
-		   switch (nSO){
-			case 0:
-				RV = ActivityInfo.SCREEN_ORIENTATION_SENSOR;
-				break;
-			case 1:
-				RV = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-				break;
-			case 2:
-				RV = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
-				break;
-			case 3:
-				RV = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-				break;
-			case 4:
-				RV = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
-				break;
-			default:
-				RV = ActivityInfo.SCREEN_ORIENTATION_SENSOR;
-		}
+		int RV = ActivityInfo.SCREEN_ORIENTATION_SENSOR;	// value "0", default
+		if      (SO.equals("1")) RV = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+		else if (SO.equals("2")) RV = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
+		else if (SO.equals("3")) RV = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+		else if (SO.equals("4")) RV = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
 
 		return RV;
-
-	   }
+	}
 
 }
 
