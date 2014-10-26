@@ -110,7 +110,7 @@ public class Basic extends Activity  {
 															// 'r' for either readable or writable
 		String state = Environment.getExternalStorageState();
 		if (Environment.MEDIA_MOUNTED.equals(state)) { return true; }	// mounted for both read and write
-		if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state) && (mount == 'r')) return true;
+		if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state) && (mount == 'r')) { return true; }
 		return false;
 	}
 
@@ -283,7 +283,7 @@ public class Basic extends Activity  {
 
 	}
 
-	public static void InitDirs(){
+	public static void InitDirs() {
 
 		// Initializes (creates) the directories used by Basic
 
@@ -316,14 +316,14 @@ public class Basic extends Activity  {
 
 	}
 
-	public static void clearProgram(){
+	public static void clearProgram() {
 
 		lines = new ArrayList<String>();					// The lines array list is the program
 		lines.add("");										// add an empty string to lines
 		Editor.DisplayText="REM Start of BASIC! Program\n";	// Display text is the editors program storage for display
 	}
 
-	private static boolean AreSamplesLoaded(){		// Sample program files have not been loaded
+	private static boolean AreSamplesLoaded() {		// Sample program files have not been loaded
 													// if the sample programs directory is empty
 		String samplesPath = getSamplesPath(null);
 		File sdDir = new File(samplesPath);
@@ -466,7 +466,7 @@ public class Basic extends Activity  {
 			}
 		} while (data != null);											// while not EOF and no error
 
-		if (list.isEmpty()){
+		if (list.isEmpty()) {
 			list.add("!");
 			size = 2;
 		}
@@ -635,18 +635,18 @@ public class Basic extends Activity  {
 
 		private void copyAssets(String path) {	// Recursively copy all the assets in the named subdirectory to the SDCard
 			String[] dirs = null;
-			try { dirs = getAssets().list(path); }
+			try { dirs = getAssets().list(path); }				// Get the names of subdirectories and files in this directory
 			catch (IOException e) { Log.e(LOGTAG, "copyAssets: " + e); }
 			if (dirs == null) return;
 
 			if (dirs.length == 0) {
-				copyAssetToFile(path);
+				copyAssetToFile(path);							// File, not directory. Copy it.
 				return;
 			}
 
-			new File(getBasePath() + File.separatorChar + path).mkdirs();
+			new File(getBasePath() + File.separatorChar + path).mkdirs();	// Create subdirectory to copy into
 			for (String dir : dirs) {
-				copyAssets(path + File.separatorChar + dir);
+				copyAssets(path + File.separatorChar + dir);	// Step into the new subdirectory
 			}
 		}
 
@@ -664,9 +664,6 @@ public class Basic extends Activity  {
 
 			publishProgress(mProgressMarker);						// Show progress for each program loaded
 			File file = new File(getBasePath() + File.separatorChar + path);
-			File dir = new File(file.getParent());
-			if (!dir.exists()) { dir.mkdirs(); }
-
 			try {
 				in = new BufferedReader(new InputStreamReader(getAssets().open(path)));
 				out = new BufferedWriter(new FileWriter(file));
@@ -688,14 +685,14 @@ public class Basic extends Activity  {
 			File file = new File(getBasePath() + File.separatorChar + path);
 			byte[] bytes = new byte[8192];
 			int count = 0;
-			try {
+			try {													// Open the asset and copy it to the file
 				in = new BufferedInputStream(getAssets().open(path));
 				out = new BufferedOutputStream(new FileOutputStream(file));
 				do {
 					count = in.read(bytes, 0, 8192);
 					if (count > 0) {
 						out.write(bytes, 0, count);
-						publishProgress(mProgressMarker);
+						publishProgress(mProgressMarker);			// Show progress for each chunk, up to 8K
 					}
 				} while (count != -1);
 			} catch (IOException e) {
@@ -704,7 +701,7 @@ public class Basic extends Activity  {
 			closeStreams(in,out);
 		}
 
-		private void LoadGraphicsForAPK(){
+		private void LoadGraphicsForAPK() {
 
 			// Loads icons and audio to the SDcard.
 			// The files to create are listed in setup.xml:load_file_names.
@@ -721,28 +718,28 @@ public class Basic extends Activity  {
 			}
 		}
 
-		private void Load1Graphic(String dir, String fileName){
+		private void Load1Graphic(String dir, String fileName) {
 			BufferedInputStream in = null;
 			BufferedOutputStream out = null;
 
-			File file = new File(getFilePath(dir, fileName));
-			File parent = new File(file.getParent());
-			if (!parent.exists()) { parent.mkdirs(); }
+			File file = new File(getFilePath(dir, fileName));	// path must name a file
+			File parent = new File(file.getParent());			// get the directory the path is in
+			if (!parent.exists()) { parent.mkdirs(); }			// create the directory if it does not exist
 			if (!parent.exists()) {
 				Log.w(LOGTAG, "Load1Graphic: can not create directory " + file.getPath());
 				return;
 			}
 
-			byte[] bytes = new byte[8192];
+			byte[] bytes = new byte[8192];						// copy the file
 			int count = 0;
-			try {
+			try {												// source may be either a resource or an asset
 				in = new BufferedInputStream(streamFromResource(dir, fileName), 8192);
 				out = new BufferedOutputStream(new FileOutputStream(file));
 				do {
 					count = in.read(bytes, 0, 8192);
 					if (count > 0) {
 						out.write(bytes, 0, count);
-						publishProgress(mProgressMarker);
+						publishProgress(mProgressMarker);		// show progress for each chunk, up to 8K
 					}
 				} while (count != -1);
 			} catch (Exception e) {
@@ -751,7 +748,7 @@ public class Basic extends Activity  {
 			closeStreams(in, out);
 		}
 
-		public void doFirstLoad(){
+		public void doFirstLoad() {
 			// The first load is a short program of comments that will be displayed
 			// by the Editor
 
@@ -779,7 +776,7 @@ public class Basic extends Activity  {
 					"!!";
 		}
 
-		public void doCantLoad(){
+		public void doCantLoad() {
 			// A short program of comments that will be displayed
 			// by the Editor to indicate the Base Drive is not writable
 
@@ -796,7 +793,7 @@ public class Basic extends Activity  {
 					"!!";
 		}
 
-		private void LoadTheProgram(){
+		private void LoadTheProgram() {
 
 			// Reads the program file from res/raw or assets/<AppPath>/source and puts it into memory
 			AddProgramLine APL = new AddProgramLine();
