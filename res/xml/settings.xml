@@ -107,15 +107,21 @@ This file is part of BASIC! for Android
         android:dialogTitle="@string/choose_one" />
 
     <CheckBoxPreference
-        android:key="lined_editor"
-        android:title="Editor Lines"
-        android:summary="Use Lined Editor"
+        android:key="console_menu"
+        android:title="Console Menu"
+        android:summary="Display Console Menu"
         android:defaultValue="true" />
 
     <CheckBoxPreference
         android:key="lined_console"
         android:title="Console Lines"
         android:summary="Use Lined Console"
+        android:defaultValue="true" />
+
+    <CheckBoxPreference
+        android:key="lined_editor"
+        android:title="Editor Lines"
+        android:summary="Use Lined Editor"
         android:defaultValue="true" />
 
     <CheckBoxPreference
