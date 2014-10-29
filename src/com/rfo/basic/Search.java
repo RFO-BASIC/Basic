@@ -28,6 +28,7 @@ package com.rfo.basic;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -84,6 +85,12 @@ public class Search extends Activity {
 		doneButton = (Button) findViewById(R.id.done_button);
 
 		theTextView = (EditText) findViewById(R.id.the_text);			// The text display area
+
+		InputFilter[] filters = theTextView.getFilters();				// some devices (Samsung) have a filter that limits EditText size
+		if (filters.length != 0) {
+			theTextView.setFilters(new InputFilter[0]);					// if there are any filters, remove them
+		}
+
 		theTextView.setText(Editor.DisplayText);						// The Editor's display text
 
 		Basic.TextStyle style = Basic.defaultTextStyle;					// Get text color from Settings

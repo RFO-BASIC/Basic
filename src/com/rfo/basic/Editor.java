@@ -40,6 +40,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -260,6 +261,12 @@ public class Editor extends Activity {
 		setTitle(Name + Basic.ProgramFileName);
 
 		mText = (LinedEditText) findViewById(R.id.basic_text);	// mText is the TextView Object
+
+		InputFilter[] filters = mText.getFilters();				// some devices (Samsung) have a filter that limits EditText size
+		if (filters.length != 0) {
+			mText.setFilters(new InputFilter[0]);				// if there are any filters, remove them
+		}
+
 		mText.setMinLines(4096);
 		mText.setText(DisplayText);								// Put the text lines into Object
 		mText.setCursorVisible(true);
@@ -368,8 +375,10 @@ public class Editor extends Activity {
         			}
         		}
 
-				if (start > 0 && end > 0 && start <= end)					// make sure values are not crash bait
+				if (start > 0 && end > 0 && start <= end &&					// make sure values are not crash bait
+						 end < mText.length()) {		// Note: if RUN command, DisplayText may not match mText. TODO: FIX THIS!
 					mText.setSelection(start, end);							// Set the selection
+				}
 				mText.setCursorVisible(true);
 				SyntaxErrorDisplacement = -1;							// Reset the value
 			}
