@@ -1022,6 +1022,10 @@ public class Run extends ListActivity {
 	ClipboardManager clipboard;
 	private static long sTime;
 
+	// ********************************** RUN variables *********************************
+
+	private Intent runIntent;							// Intent to run from RUN command
+
 	// ******************* Variables for User-defined Functions ************************
 
 	private static final String BKW_FN_DEF = "def";
@@ -2489,8 +2493,12 @@ public class Run extends ListActivity {
 
 			if (PreScan()) { 				// The execution starts by scanning the source for labels and read.data
 				ExecutingLineIndex = 0;		// Just in case PreScan ever changes it
-				RunLoop();
+				boolean ok = RunLoop();
 				finishUp();
+				if (ok && runIntent != null) {
+					Run.this.startActivity(runIntent);	// start new AutoRun
+					Exit = true;				// and force this Run to finish
+				}
 			} else {						// We get here if PreScan found error or duplicate label
 				for (int i = 0; i < TempOutputIndex; ++i) {			// if new output lines, the send them
 					publishProgress(TempOutput[i]);					// to UI task
@@ -2498,7 +2506,7 @@ public class Run extends ListActivity {
 				TempOutputIndex = 0;
 			}
 			if (Exit) {
-				finish();
+				finish();					// stop the Run Activity, too
 			}
 		}
 
@@ -2528,8 +2536,8 @@ public class Run extends ListActivity {
 		// The RunLoop() drives the execution of the program. It is called from doInBackground and
 		// recursively from doUserFunction.
 
-        public  boolean RunLoop(){
-        	boolean flag = true;
+		public  boolean RunLoop() {
+			boolean flag = true;
         	do {
         		if (ExecutingLineIndex >= Basic.lines.size())break;
         		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
@@ -2627,14 +2635,14 @@ public class Run extends ListActivity {
 
 				++ExecutingLineIndex;								// Step to next line
 
-        		if (fnRTN){					// fn_rtn signal. If true make RunLoop() return
-        			fnRTN = false;			// to doUserFunction
-        			return true;
-        		}
-        		
-    		} while (ExecutingLineIndex < Basic.lines.size() && flag && !Stop) ;  //keep executing statements until end
-        	return flag;
-        }
+				if (fnRTN) {				// fn_rtn signal. If true make RunLoop() return
+					fnRTN = false;			// to doUserFunction
+					return true;
+				}
+
+			} while (ExecutingLineIndex < Basic.lines.size() && flag && !Stop) ;  //keep executing statements until end
+			return flag;
+		} // end RunLoop
 
         private void checkpointProgress() {		// give Run methods a way to checkpoint publishProgress
             ProgressPending = true;
@@ -2843,9 +2851,10 @@ public class Run extends ListActivity {
 		theBackground = new Background();						// Start the background task
 		theBackground.start();
 
-	}
+	} // end onCreate
 
-private void InitVars(){
+	private void InitVars() {
+	Log.d(LOGTAG, "InitVars() started");
 
     OnErrorLine = 0;							// Line number for OnError: label
     OnBackKeyLine = 0;
@@ -2955,6 +2964,10 @@ private void InitVars(){
 	interruptVarSearchStart = 0;						// Save VarSearchStart across interrupt
 
 	clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+
+	// ********************************** RUN variables *********************************
+
+	runIntent = null;									// Intent to run from RUN command
 
 	// ******************************* File I/O operation variables ************************
 
@@ -3103,9 +3116,12 @@ private void InitVars(){
 	phoneRcvInited = false;
 	mTM = null;
 	mSignalStrength = null;
-}
 
-public void cleanUp(){
+	Log.d(LOGTAG, "InitVars() done");
+	} // end InitVars
+
+	public void cleanUp() {
+	Log.d(LOGTAG, "cleaup() started");
 	if (theMP != null){
 		try {theMP.stop();} catch (IllegalStateException e){}
 		if (theMP != null) theMP.release();
@@ -3199,16 +3215,9 @@ public void cleanUp(){
 	if (!Basic.DoAutoRun && SyntaxError){
 		Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
 	} else Editor.SyntaxErrorDisplacement = -1;
-	
-	for (int i = 0; i <BitmapList.size(); ++i ){
-		   Bitmap SrcBitMap = BitmapList.get(i);
-		   if (SrcBitMap != null)
-		      SrcBitMap.recycle();
-		   BitmapList.set(i, null);
-		}
-	BitmapList.clear();
 
-	
+	BitmapListClear();
+
 		if (mChatService != null) {
 				mChatService.stop();
 				mChatService = null;
@@ -3233,7 +3242,9 @@ public void cleanUp(){
 		mTM = null;
 	}
 	mSignalStrength = null;
-}
+
+	Log.d(LOGTAG, "cleanup() done");
+	} // end cleanup
 
 
 // The following methods run in the foreground. The are called by asynchronous user events
@@ -3398,69 +3409,65 @@ public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is select
 protected void onResume() {
 	Log.v(LOGTAG, CLASSTAG + " On Resume " + kbShown);
 
-	  RunPaused = false;
-	  background = false;
-	  bgStateChange = true;
-//	  if (Stop) InitVars();
+	RunPaused = false;
+	background = false;
+	bgStateChange = true;
+//	if (Stop) InitVars();
 
-//	  if (WaitForInput) theAlertDialog = doInputDialog().show(); maybe???
-	  super.onResume();
-
+//	if (WaitForInput) { theAlertDialog = doInputDialog().show(); } maybe???
+	super.onResume();
 }
 
 @Override
-protected void onPause() {	
+protected void onPause() {
 	// The Android OS wants me to dismiss dialog while paused so I will
-	
-/*	if (WaitForInput){
+
+/*	if (WaitForInput) {
 		theAlertDialog.dismiss();
 		InputDismissed = true;
-		}*/
-	  
+	}
+*/
 	// If there is a Media Player running, pause it and hope
 	// that it works.
 	Log.v(LOGTAG, CLASSTAG + " onPause " + kbShown);
-	if (kbShown)  IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
-	
-/*	  if (theMP != null){
-		  try {theMP.pause();} catch (IllegalStateException e){}
-		  }
-*/	  
-	  RunPaused = true;
+	if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
+
+/*	if (theMP != null) {
+		try { theMP.pause(); } catch (IllegalStateException e) {}
+	}
+*/
+	RunPaused = true;
 
 	super.onPause();
 }
 
 @Override
-protected void onStart(){
+protected void onStart() {
 	Log.v(LOGTAG, CLASSTAG + " On Start");
 //	InitVars();
 	super.onStart();
 }
 
 @Override
-protected void onStop(){
+protected void onStop() {
 	Log.v(LOGTAG, CLASSTAG + " onStop " + kbShown);
 	System.gc();
 	if (!GRrunning) {
 		background = true;
 		bgStateChange = true;
-//		if (kbShown)  IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
-
+//		if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
 	}
 	super.onStop();
 }
 
 @Override
-protected void onRestart(){
+protected void onRestart() {
 	Log.v(LOGTAG, CLASSTAG + " onRestart");
-
 	super.onRestart();
-
 }
 
 @Override
-protected void onDestroy(){
+protected void onDestroy() {
 	Log.v(LOGTAG, CLASSTAG + " On Destroy");
 
 	if (theSensors != null) {
@@ -3474,36 +3481,27 @@ protected void onDestroy(){
 		theGPS = null;
 	}
 
-	if (theWakeLock != null){
+	if (theWakeLock != null) {
 		theWakeLock.release();
 		theWakeLock = null;
 	}
 
-	if (theWifiLock != null){
+	if (theWifiLock != null) {
 		theWifiLock.release();
 		theWifiLock = null;
-	}
-
-	if (BitmapList != null) {
-		for (int i = 0; i <BitmapList.size(); ++i) {
-			Bitmap SrcBitMap = BitmapList.get(i);
-			if (SrcBitMap != null)
-				SrcBitMap.recycle();
-			BitmapList.set(i, null);
-		}
-		BitmapList.clear();
-		   System.gc();
 	}
 
 	if (headsetBroadcastReceiver != null) {
 		unregisterReceiver(headsetBroadcastReceiver);
 	}
 
+	// 	BitmapListClear();
+
 	super.onDestroy();
 }
 
 @Override
-public void onLowMemory(){
+public void onLowMemory() {
 	Show("Warning: Low Memory");
 }
 
@@ -3511,10 +3509,10 @@ public void onLowMemory(){
 
 // The methods starting here are the core code for running a Basic program
 
-private void trimArray(ArrayList Array, int start){
+private void trimArray(ArrayList Array, int start) {
 	int last = Array.size()-1;
 	int k = last;
-	while (k>=start){
+	while (k >= start) {
 		Array.remove(k);
 		--k;
 	}
@@ -3655,6 +3653,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		SyntaxError = true;
 		errorMsg = msgs[0] + "\nLine: " + ExecutingLineBuffer;
+		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
 		return false;						// Always return false as convenience for caller
 	}
 
@@ -10023,6 +10022,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 //		StopDisplay = false;										// Tell GR it can start displaying again
 	}
 
+	private void BitmapListClear() {
+		if (BitmapList != null) {
+			for (int i = 0; i <BitmapList.size(); ++i) {
+				Bitmap bitmap = BitmapList.get(i);
+				if (bitmap != null) {
+					bitmap.recycle();
+					BitmapList.set(i, null);
+				}
+			}
+			BitmapList.clear();
+			System.gc();
+		}
+	}
+
 	private boolean execute_gr_getdl() {
 
 		String var = getArrayVarForWrite(TYPE_NUMERIC);				// get the result array variable
@@ -10113,7 +10126,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		drawintoCanvas = null;
 		DisplayListClear();
-		BitmapList.clear();
+		BitmapListClear();
 		BitmapList.add(null);										// Set Zero entry as null
 
 		aPaint = initPaint(new Paint(), a, r, g, b);				// Create a newPaint object
@@ -15925,12 +15938,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		bb.putString("data", data);
 		bb.putBoolean("RUN", true);											// tell AutoRun this is a RUN command
 
-		Intent intent = new Intent(this, AutoRun.class);
-		intent.putExtras(bb);
+		runIntent = new Intent(this, AutoRun.class);
+		runIntent.putExtras(bb);
 
-		startActivity(intent);
-		finish();
-
+		Stop = true;				// "Stop" would allow interrupt handling
 		return true;
 	}
 

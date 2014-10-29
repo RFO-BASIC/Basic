@@ -62,6 +62,7 @@ public class AutoRun extends Activity {
 			fromRun = b.getBoolean("RUN", false);					// from RUN command?
 			String fn = b.getString("fn");							// then go load the file
 			fileFound = FileLoader(fn);
+			Log.d(LOGTAG, "Run file " + fn);
 		} else {													// if bundle is empty
 			fileFound = FileLoader("System Error");					// then we have a problem
 		}
