@@ -3652,13 +3652,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 
 		SyntaxError = true;
-		errorMsg = msgs[0] + "\nLine: " + ExecutingLineBuffer;
-		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
+		writeErrorMsg(msgs[0]);
 		return false;						// Always return false as convenience for caller
 	}
 
 	private boolean RunTimeError(Exception e) {
 		return RunTimeError("Error: " + e);
+	}
+
+	private void writeErrorMsg(String msg) {		// Write errorMsg, do NOT set SyntaxError
+		errorMsg = msg + "\nLine: " + ExecutingLineBuffer;
+		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
+	}
+
+	private void writeErrorMsg(Exception e) {
+		writeErrorMsg("Error: " + e);
 	}
 
    private boolean nextLine() {				// Move to beginning of next line
@@ -7618,10 +7626,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(text_cmd, "Text");
 	}
 
-	private boolean executeTEXT_OPEN() {									// Open a file
-		boolean append = false;												// Assume not append
-		int FileMode = 0;													// Default to FMR
-		switch (ExecutingLineBuffer.charAt(LineIndex)) {					// First parm is a, w or r
+	private boolean executeTEXT_OPEN() {							// Open a file
+		boolean append = false;										// Assume not append
+		int FileMode = 0;											// Default to FMR
+		switch (ExecutingLineBuffer.charAt(LineIndex)) {			// First parm is a, w or r
 		case 'a':
 			append = true;					// append is a special case of write
 		case 'w':							// write
@@ -7633,78 +7641,68 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			++LineIndex;
 		}
 		if (!isNext(',')) return false;
-		if (!getNVar()) return false;				// Next parameter is the FileNumber variable
-		NumericVarValues.set(theValueIndex, (double)FileTable.size());
-		int saveValueIndex = theValueIndex;			// Save in case read file not found
+		if (!getNVar()) return false;								// Next parameter is the FileNumber variable
+		double fileNumber = FileTable.size();
+		int saveValueIndex = theValueIndex;
 
 		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;			// Final parameter is the filename
+		if (!getStringArg()) return false;							// Final parameter is the filename
 		String fileName = StringConstant;
 		if (!checkEOL()) return false;
 
 		File file = new File(Basic.getDataPath(fileName));
 
-		Bundle FileEntry = new Bundle();			// Prepare the filetable bundle
+		Bundle FileEntry = new Bundle();							// Prepare the filetable bundle
 		FileEntry.putInt("mode", FileMode);
 		FileEntry.putBoolean("eof", false);
 		FileEntry.putBoolean("closed",false);
 		FileEntry.putLong("position", 1);
 		FileEntry.putBoolean("isText", true);
 
-		if (FileMode == FMR) {												// Read was selected
+		if (FileMode == FMR) {										// Read was selected
 			BufferedReader buf = null;
 			int flen = (int)Math.min(file.length(), Integer.MAX_VALUE);
 			try {
 				buf = Basic.getBufferedReader(Basic.DATA_DIR, fileName);
-				if (buf.markSupported()) {
+				if (buf == null) {
+					writeErrorMsg(fileName + " not found");
+				} else if (buf.markSupported()) {
 					buf.mark(flen);
 					FileEntry.putLong("mark", 1);
 					FileEntry.putInt("marklimit", flen);
 				}
 			}
-			catch (FileNotFoundException ex1) { }							// file only
-			catch (NotFoundException ex2) { }								// resource/asset only
-			catch (Exception e) { return RunTimeError("Problem: " + e + " at:"); } // Something other than not found (?)
-			if (buf == null) {
-				if (Basic.isAPK) {
-					return false;
-				} else {													// standard BASIC!
-					NumericVarValues.set(saveValueIndex, (double) -1);		// change file index to report file does not exist
-					return true;
-				}
+			catch (Exception e) { writeErrorMsg(e); }
+			if (buf != null) {
+				FileEntry.putInt("stream", BRlist.size());			// The stream parm indexes
+				BRlist.add(buf);									// into the BRlist
+			} else {
+				fileNumber = -1;									// change file index to report file does not exist
 			}
-
-			FileEntry.putInt("stream", BRlist.size());		// The stream parm indexes
-			BRlist.add(buf);								// into the BRlist
-			FileTable.add(FileEntry);
 		}
 
-		else if (FileMode == FMW) {										// Write Selected
+		else if (FileMode == FMW) {									// Write Selected
+			FileWriter writer = null;
 			if (append && file.exists()) {
 				FileEntry.putLong("position", file.length() + 1);
-			} else {										// if not appending overwrite existing file
-				try {										// if no file create a new one
-					file.createNewFile();
-				} catch (Exception e) {
-					return RunTimeError(e);
-				}
+			} else {												// if not appending overwrite existing file
+				try { file.createNewFile(); }						// if no file create a new one
+				catch (IOException e) { writeErrorMsg(e); }
 			}
-			if (!(file.exists() && file.canWrite())) {
-				return RunTimeError("Problem opening " + fileName);
+			if (file.exists() && file.canWrite()) {
+				try { writer = new FileWriter(file, append); }		// open the filewriter for the SD Card
+				catch (IOException e) { writeErrorMsg(e); }
 			}
-
-			FileWriter writer = null;
-			try {
-				writer = new FileWriter(file, append);		// open the filewriter for the SD Card
-			} catch (Exception e) {
-				return RunTimeError(e);
+			if (writer != null) {
+				FileEntry.putInt("stream", FWlist.size());			// The stream parm indexes
+				FWlist.add(writer);									// into the FWlist
+			} else {
+				fileNumber = -1;									// change file index to report file does not exist
 			}
-
-			FileEntry.putInt("stream", FWlist.size());		// The stream parm indexes
-			FWlist.add(writer);								// into the FWlist
-			FileTable.add(FileEntry);
 		}
-		return true;													// Done
+		FileTable.add(FileEntry);
+		NumericVarValues.set(saveValueIndex, fileNumber);
+		return true;												// Done
 	}
 
 	private boolean executeTEXT_CLOSE() {
@@ -7964,10 +7962,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(byte_cmd, "Byte");
 	}
 
-	private boolean executeBYTE_OPEN() {									// Open a file
-		boolean append = false;												// Assume not append
-		int FileMode = 0;													// Default to FMR
-		switch (ExecutingLineBuffer.charAt(LineIndex)) {					// First parm is a, w or r
+	private boolean executeBYTE_OPEN() {							// Open a file
+		boolean append = false;										// Assume not append
+		int FileMode = 0;											// Default to FMR
+		switch (ExecutingLineBuffer.charAt(LineIndex)) {			// First parm is a, w or r
 		case 'a':
 			append = true;					// append is a special case of write
 		case 'w':							// write
@@ -7979,23 +7977,23 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			++LineIndex;
 		}
 		if (!isNext(',')) return false;
-		if (!getNVar()) return false;				// Next parameter is the FileNumber variable
-		NumericVarValues.set(theValueIndex, (double) FileTable.size());
-		int saveValueIndex = theValueIndex;			// Save in case read file not found
+		if (!getNVar()) return false;								// Next parameter is the FileNumber variable
+		double fileNumber = FileTable.size();
+		int saveValueIndex = theValueIndex;
 
 		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;			// Final parameter is the filename
+		if (!getStringArg()) return false;							// Final parameter is the filename
 		String fileName = StringConstant;
 		if (!checkEOL()) return false;
 
-		Bundle FileEntry = new Bundle();			// Prepare the filetable bundle
+		Bundle FileEntry = new Bundle();							// Prepare the filetable bundle
 		FileEntry.putInt("mode", FileMode);
 		FileEntry.putBoolean("eof", false);
 		FileEntry.putBoolean("closed",false);
 		FileEntry.putLong("position", 1);
 		FileEntry.putBoolean("isText", false);
 
-		if (FileMode == FMR) {												// Read was selected
+		if (FileMode == FMR) {										// Read was selected
 			BufferedInputStream buf = null;
 			if (fileName.startsWith("http")) {
 				try {
@@ -8003,68 +8001,54 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					URLConnection connection = url.openConnection();
 					buf = new BufferedInputStream(connection.getInputStream());
 				} catch (Exception e) {
-					return RunTimeError("Problem: " + e + " at:");
+					writeErrorMsg(e);
 				}
 			} else {
 				File file = new File(Basic.getDataPath(fileName));
 				int flen = (int)Math.min(file.length(), Integer.MAX_VALUE);
 				try {
 					buf = Basic.getBufferedInputStream(Basic.DATA_DIR, fileName);
-					if (buf.markSupported()) {
+					if (buf == null) {
+						writeErrorMsg(file + " not found");
+					} else if (buf.markSupported()) {
 						buf.mark(flen);
 						FileEntry.putLong("mark", 1);
 						FileEntry.putInt("marklimit", flen);
 					}
 				}
-				catch (FileNotFoundException ex1) { }						// file only
-				catch (NotFoundException ex2) { }							// resource/asset only
-				catch (Exception e) { return RunTimeError("Problem: " + e + " at:"); } // Something other than not found (?)
-				if (buf == null) {
-					if (Basic.isAPK) {
-						return false;
-					} else {												// standard BASIC!
-						NumericVarValues.set(saveValueIndex, (double) -1);	// change file index report file does not exist
-						return true;
-					}
-				}
+				catch (Exception e) { writeErrorMsg(e); }
 			}
-
-			FileEntry.putInt("stream", BISlist.size());		// The stream parm indexes
-			BISlist.add(buf);								// into the BISlist
-			FileTable.add(FileEntry);
+			if (buf != null) {
+				FileEntry.putInt("stream", BISlist.size());			// The stream parm indexes
+				BISlist.add(buf);									// into the BISlist
+			} else {
+				fileNumber = -1;									// change file index to report file does not exist
+			}
 		}
 
-		else if (FileMode == FMW) {											// Write Selected
-																			// Write to SD Card
+		else if (FileMode == FMW) {									// Write Selected
+			DataOutputStream dos = null;
 			File file = new File(Basic.getDataPath(fileName));
 			if (append && file.exists()) {
 				FileEntry.putLong("position", file.length() + 1);
-			} else {										// if not appending overwrite existing file
-				try {										// if no file create a new one
-					file.createNewFile();
-				} catch (Exception e) {
-					return RunTimeError(e);
-				}
+			} else {												// if not appending overwrite existing file
+				try { file.createNewFile(); }						// if no file create a new one
+				catch (IOException e) { writeErrorMsg(e); }
 			}
-			if (!(file.exists() && file.canWrite())) {
-				return RunTimeError("Problem opening " + fileName);
+			if (file.exists() && file.canWrite()) {
+				try { dos = new DataOutputStream(new FileOutputStream(file.getAbsolutePath(), append)); }
+				catch (Exception e) { writeErrorMsg(e); }
 			}
-
-			String afile = file.getAbsolutePath();
-			DataOutputStream dos = null;
-			try {
-				FileOutputStream fos = new FileOutputStream(afile, append);
-				dos = new DataOutputStream(fos);
+			if (dos != null) {
+				FileEntry.putInt("stream", DOSlist.size());			// The stream parm indexes
+				DOSlist.add(dos);									// into the DOSlist
+			} else {
+				fileNumber = -1;									// change file index to report file does not exist
 			}
-			catch (Exception e) {
-				return RunTimeError(e);
-			}
-
-			FileEntry.putInt("stream", DOSlist.size());		// The stream parm indexes
-			DOSlist.add(dos);								// into the DOSlist
-			FileTable.add(FileEntry);
 		}
-		return true;														// Done
+		FileTable.add(FileEntry);
+		NumericVarValues.set(saveValueIndex, fileNumber);
+		return true;												// Done
 	}
 
 	private boolean executeBYTE_CLOSE() {
