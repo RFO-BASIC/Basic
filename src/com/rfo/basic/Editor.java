@@ -38,6 +38,7 @@ import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -261,6 +262,8 @@ public class Editor extends Activity {
 		setTitle(Name + Basic.ProgramFileName);
 
 		mText = (LinedEditText) findViewById(R.id.basic_text);	// mText is the TextView Object
+		mText.setTypeface(Typeface.MONOSPACE);
+		mText.setHorizontallyScrolling(true);
 
 		InputFilter[] filters = mText.getFilters();				// some devices (Samsung) have a filter that limits EditText size
 		if (filters.length != 0) {
