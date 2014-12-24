@@ -47,7 +47,6 @@ import java.io.Flushable;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
@@ -110,6 +109,7 @@ import com.rfo.basic.Basic.TextStyle;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.app.Notification;
@@ -130,7 +130,6 @@ import android.content.pm.ResolveInfo;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
-import android.content.res.Resources.NotFoundException;
 //import android.content.ClipboardManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -141,11 +140,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.Point;
 import android.graphics.Rect;
-import android.graphics.RectF;
-import android.graphics.Region;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 
@@ -2389,6 +2385,7 @@ public class Run extends ListActivity {
 	//************************ Phone variables ***************************
 
 	private static final String BKW_PHONE_CALL = "call";
+	private static final String BKW_PHONE_DIAL = "dial";
 	private static final String BKW_PHONE_RCV_INIT = "rcv.init";
 	private static final String BKW_PHONE_RCV_NEXT = "rcv.next";
 	private static final String BKW_PHONE_INFO = "info";
@@ -2398,7 +2395,8 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] phone_cmd = new Command[] {	// Map phone command keywords to their execution functions
-		new Command(BKW_PHONE_CALL)             { public boolean run() { return executePHONE_CALL(); } },
+		new Command(BKW_PHONE_CALL)             { public boolean run() { return executePHONE_DIAL(Intent.ACTION_CALL); } },
+		new Command(BKW_PHONE_DIAL)             { public boolean run() { return executePHONE_DIAL(Intent.ACTION_DIAL); } },
 		new Command(BKW_PHONE_RCV_INIT)         { public boolean run() { return executePHONE_RCV_INIT(); } },
 		new Command(BKW_PHONE_RCV_NEXT)         { public boolean run() { return executePHONE_RCV_NEXT(); } },
 		new Command(BKW_PHONE_INFO)             { public boolean run() { return executePHONE_INFO(); } }
@@ -5189,7 +5187,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeSF_GETERROR() {												// GETERROR$
 		if (!isNext(')')) { return false; }				// Function must end with ')'
-		StringConstant = errorMsg;
+		StringConstant = (errorMsg != null) ? errorMsg : "unknown";
 		return true;
 	}
 
@@ -5521,10 +5519,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 			ArraySizes.add(0, TotalElements);				// insert the previous total in the ArraySizes List
 			TotalElements= TotalElements * dim;				// multiply this dimension by the previous size
-
-			if (TotalElements > 50000) {					// Limit the size of any one array
-				return RunTimeError("Array exceeds 50,000 elements");	// to 50,000 elements
-			}
 		}
 
 		if (IsNumeric) {									// Initialize Numeric Array Values
@@ -5735,8 +5729,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeEND() {
 
-		Stop = true;								// ALWAYS stop
-
 		String endMsg = "END";						// Default END message
 		boolean ok = true;
 		if (!isEOL()) {
@@ -5746,8 +5738,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				ok = checkEOL();
 			}
 		}
-
 		if (endMsg.length() > 0) { PrintShow(endMsg); }
+
+		Stop = true;								// ALWAYS stop
 		return ok;
 
 	}
@@ -6601,6 +6594,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeDEBUG_STATS() {
 		if (Debug) {
+			ActivityManager actvityManager = (ActivityManager)this.getSystemService(ACTIVITY_SERVICE);
+			PrintShow("Mem class  : " + actvityManager.getMemoryClass());
 			PrintShow("# labels   : " + Labels.size());
 			PrintShow("# variables: " + VarNames.size());
 			PrintShow("  numeric  : " + NumericVarValues.size());
@@ -7895,7 +7890,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int FileNumber;
 		int markLimit = -1;
 		boolean isComma = isNext(',');
-		if (!isComma && !isEOL()) {									// must be a file pointer arg
+		if (!isComma && !isEOL()) {									// there is a file pointer arg
 			if (!evalNumericExpression()) return false;
 			FileNumber = EvalNumericExpressionValue.intValue();
 			isComma = isNext(',');
@@ -8358,7 +8353,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int FileNumber;
 		int markLimit = -1;
 		boolean isComma = isNext(',');
-		if (!isComma && !isEOL()) {									// must be a file pointer arg
+		if (!isComma && !isEOL()) {									// there is a file pointer arg
 			if (!evalNumericExpression()) return false;
 			FileNumber = EvalNumericExpressionValue.intValue();
 			isComma = isNext(',');
@@ -11576,7 +11571,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int style = 1;												// default style
 
 		boolean isComma = isNext(',');
-		if (!isComma && !isEOL()) {									// must be a typeface arg
+		if (!isComma && !isEOL()) {									// there is a typeface arg
 			if (!evalNumericExpression()) return false;				// get type
 			face = EvalNumericExpressionValue.intValue();
 			isComma = isNext(',');
@@ -11647,7 +11642,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int style = Typeface.NORMAL;								// default if no style arg
 
 		boolean isComma = isNext(',');
-		if (!isComma && !isEOL()) {									// must be a font arg
+		if (!isComma && !isEOL()) {									// there is a font arg
 			int saveLI = LineIndex;
 			fontPtr = getFontArg();									// get the font number
 			if (fontPtr == -1) return false;						// invalid font pointer
@@ -13756,14 +13751,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
-		
+
 		String line = null;
 		try {
 			line = reader.readLine();
 		} catch (Exception e) {
 			return RunTimeError(e);
 		}
-		
+
 		if (line == null){
 			line = "NULL";
 		}
@@ -15138,81 +15133,80 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	  private boolean execute_SP_play(){
-		  
-		  if (!getNVar()) return false;                        			// Stream return variable
-		  int savedIndex = theValueIndex;
+	private boolean execute_SP_play() {
+		if (isEOL()) return true;									// no parameters
 
-			if (!isNext(',')) return false;								// Sound ID
-			if (!evalNumericExpression()) return false;
-			int soundID = EvalNumericExpressionValue.intValue();
-			
-			if (!isNext(',')) return false;								// Left Volume
-			if (!evalNumericExpression()) return false;
-			float leftVolume = EvalNumericExpressionValue.floatValue();
-			
-			if (!isNext(',')) return false;								// Right Volume
-			if (!evalNumericExpression()) return false;
-			float rightVolume = EvalNumericExpressionValue.floatValue();
-			
-			if (!isNext(',')) return false;								// Priority
-			if (!evalNumericExpression()) return false;
-			int priority = EvalNumericExpressionValue.intValue();
+		int streamVarIndex = -1;
+		boolean isComma = isNext(',');
+		if (!isComma) {
+			if (!getNVar()) return false;							// Stream return variable
+			streamVarIndex = theValueIndex;
+			isComma = isNext(',');
+		}
 
-			if (!isNext(',')) return false;								// Loop
-			if (!evalNumericExpression()) return false;
-			int loop = EvalNumericExpressionValue.intValue();
-			
-			if (!isNext(',')) return false;								// Rate
-			if (!evalNumericExpression()) return false;
-			float rate = EvalNumericExpressionValue.floatValue();
-			if (!checkEOL()) return false;
-			
-			if (leftVolume < 0 || leftVolume >= 1.0){
-				RunTimeError("Left volume out of range");
-				return false;
+		// soundID, rightVol, leftVol, priority, loop, rate
+		boolean[] isInt = { true , false, false, true , true , false };// true = int, false = float
+		float[]  fltVal = { 0.0f , 0.5f , 0.5f , 0.0f , 0.0f , 1.0f  };
+		int[]    intVal = { 0    , 0    , 0    , 0    , 0    , 0     };
+		int nArgs = isInt.length;
+		for (int arg = 0; arg < nArgs; ++arg) {
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (!evalNumericExpression()) return false;
+					if (isInt[arg]) {
+						int value = EvalNumericExpressionValue.intValue();
+						intVal[arg] = value;
+					} else {
+						float value = EvalNumericExpressionValue.floatValue();
+						fltVal[arg] = value;
+					}
+					isComma = isNext(',');
+				}
 			}
+		}
+		if (isComma || !checkEOL()) return false;
 
-			if (rightVolume < 0 || rightVolume >= 1.0){
-				RunTimeError("Right volume out of range");
-				return false;
-			}
-			
-			if (priority < 0 ){
-				RunTimeError("Priority less than zero");
-				return false;
-			}
+		int soundID = intVal[0];
+		float rightVolume = fltVal[1];
+		if (rightVolume < 0 || rightVolume >= 1.0) {
+			return RunTimeError("Right volume out of range");
+		}
+		float leftVolume = fltVal[2];
+		if (leftVolume < 0 || leftVolume >= 1.0) {
+			return RunTimeError("Left volume out of range");
+		}
+		int priority = intVal[3];
+		if (priority < 0 ){
+			return RunTimeError("Priority less than zero");
+		}
+		int loop = intVal[4];
+		float rate = fltVal[5];
 
-			if (rate < 0.5 || rate > 1.8  ){
-				RunTimeError("Rate out of range");
-				return false;
-			}
-			
-			
 		int streamID = theSoundPool.play(soundID, leftVolume, rightVolume, priority, loop, rate);
-			
-		  	NumericVarValues.set(savedIndex, (double) streamID );
-			
-		  return true;
-	  }
-	  
-	  private boolean execute_SP_stop(){
-			if (!evalNumericExpression()) return false;
-			if (!checkEOL()) return false;
-			int streamID = EvalNumericExpressionValue.intValue();
-			theSoundPool.stop(streamID);
+		if (streamVarIndex != -1) {
+			NumericVarValues.set(streamVarIndex, (double)streamID);
+		}
+		return true;
+	}
 
-		  return true;
-	  }
-	  
-	  private boolean execute_SP_unload(){
-			if (!evalNumericExpression()) return false;
-			if (!checkEOL()) return false;
-			int soundID = EvalNumericExpressionValue.intValue();
-			theSoundPool.unload(soundID);
+	private boolean execute_SP_stop(){
+		if (!evalNumericExpression()) return false;
+		if (!checkEOL()) return false;
+		int streamID = EvalNumericExpressionValue.intValue();
+		theSoundPool.stop(streamID);
 
-		  return true;
-	  }
+		return true;
+	}
+
+	private boolean execute_SP_unload(){
+		if (!evalNumericExpression()) return false;
+		if (!checkEOL()) return false;
+		int soundID = EvalNumericExpressionValue.intValue();
+		theSoundPool.unload(soundID);
+
+		return true;
+	}
 
 	@SuppressLint("NewApi")									// Uses value from API 8
 	private boolean execute_SP_pause(){
@@ -15244,9 +15238,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		  theSoundPool = null;
 		  return true;
 	  }
-	  
+
 	  private boolean execute_SP_setvolume(){
-		  
+
 			if (!evalNumericExpression()) return false;
 			int streamID = EvalNumericExpressionValue.intValue();
 			
@@ -15269,10 +15263,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 			theSoundPool.setVolume(streamID, leftVolume, rightVolume);
 
-
 		  return true;
 	  }
-	  
+
 	  private boolean execute_SP_setpriority(){
 			if (!evalNumericExpression()) return false;
 			int streamID = EvalNumericExpressionValue.intValue();
@@ -15286,12 +15279,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				RunTimeError("Priority less than zero");
 				return false;
 			}
-			
+
 			theSoundPool.setPriority(streamID, priority);
 
 		  return true;
 	  }
-	  
+
 	  private boolean execute_SP_setloop(){
 			if (!evalNumericExpression()) return false;
 			int streamID = EvalNumericExpressionValue.intValue();
@@ -15305,25 +15298,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		  return true;
 	  }
-	  
 
-	  private boolean execute_SP_setrate(){
-			if (!evalNumericExpression()) return false;
-			int streamID = EvalNumericExpressionValue.intValue();
-			
-			if (!isNext(',')) return false;								// Rate
-			if (!evalNumericExpression()) return false;
-			float rate = EvalNumericExpressionValue.floatValue();
-			if (!checkEOL()) return false;
-			
-			if (rate < 0.5 || rate > 1.8){
-				RunTimeError("Rate out of range");
-				return false;
-			}
-			
-			theSoundPool.setRate(streamID, rate);
-		  return true;
-	  }
+	private boolean execute_SP_setrate() {
+		if (!evalNumericExpression()) return false;
+		int streamID = EvalNumericExpressionValue.intValue();
+
+		if (!isNext(',')) return false;								// Rate
+		if (!evalNumericExpression()) return false;
+		float rate = EvalNumericExpressionValue.floatValue();
+		if (!checkEOL()) return false;
+
+		theSoundPool.setRate(streamID, rate);
+		return true;
+	}
 
 	// ***************************************** Headset ******************************************
 
@@ -15429,12 +15416,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(phone_cmd, "Phone");				// and execute the command
 	}
 
-	private boolean executePHONE_CALL() {
+	private boolean executePHONE_DIAL(String action) {			// Dial or call a phone number
 		if (!getStringArg()) return false;
 		if (!checkEOL()) return false;
 		String number = "tel:" + StringConstant;
 
-		Intent callIntent = new Intent(Intent.ACTION_CALL);
+		String encodedHash = Uri.encode("#");
+		number = number.replace("#", encodedHash);
+
+		Intent callIntent = new Intent(action);
 		callIntent.setData(Uri.parse(number));
 		// this will make such that when user returns to your app, your app is displayed, instead of the phone app.
 		callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -16091,7 +16081,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		timerExpired= false;
 		timerStarting = true;
 		theTimer = new Timer();
-		theTimer.scheduleAtFixedRate (tt, 100, interval);
+		theTimer.scheduleAtFixedRate(tt, 100, interval);
 
 		return true;
 	}
