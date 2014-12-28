@@ -4860,34 +4860,27 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean MF_startArg() {
-		if (isNext(',')) {
-			if (!evalNumericExpression()) return false;
-			if (EvalNumericExpressionValue < 1) {
-				return RunTimeError("Start value must be >= 1");
-			}
-		}
-		return true;
-	}
-
 	private boolean executeMF_IS_IN() {
 		String[] args = getArgsSS();
 		if (args == null) return false;
 		String searchFor = args[0];
 		String searchIn = args[1];
 
-		if (!MF_startArg()) return false;
-		int start = EvalNumericExpressionValue.intValue();
-		--start;											// make start index zero-based
-
-		int i1;
-		if (start < searchIn.length()) {					// if starting inside the string
-			int k = searchIn.indexOf(searchFor, start);		// do the search
-			i1 = k + 1;										// make results one-based
-		} else {
-			i1 = 0;											// else "not found"
+		int start = 1;
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			start = EvalNumericExpressionValue.intValue();
 		}
-		EvalNumericExpressionValue = (double)i1;
+
+		double k;											// result: index of matched substring
+		if (start < 0) {									// do reverse search
+			start += searchIn.length();						// zero-based index of start character
+			k = searchIn.lastIndexOf(searchFor, start);
+		} else {											// do forward search
+			--start;										// zero-based index of start character
+			k = searchIn.indexOf(searchFor, start);
+		}
+		EvalNumericExpressionValue = (k < 0) ? 0 : ++k;		// convert to one-based index
 		return true;
 	}
 
@@ -4896,9 +4889,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (args == null) return false;
 		String searchFor = args[0];
 		String searchIn = args[1];
+		int start = 1;
 
-		if (!MF_startArg()) return false;
-		int start = EvalNumericExpressionValue.intValue();
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			start = EvalNumericExpressionValue.intValue();
+			if (start < 1) {
+				return RunTimeError("Start value must be >= 1");
+			}
+		}
 
 		if (start > searchIn.length()) { start = searchIn.length(); }
 		if (--start < 0) { start = 0; }					// make one-based start index zero-based
