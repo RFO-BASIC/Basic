@@ -3014,7 +3014,6 @@ public class Run extends ListActivity {
 	RealDisplayList = new ArrayList<Integer>() ;
 	PaintList = new ArrayList<Paint>();
 	BitmapList = new ArrayList<Bitmap>();
-	PaintList = new ArrayList<Paint>();
 	aPaint = new Paint();
 	GRrunning = false;
 	GRFront = false;
@@ -3947,8 +3946,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// ************************************* end of getVar() **************************************
 
-	private  boolean getNumber(){						// Get a number if there is one
-														// Attempt to parse out a number
+	private boolean getNumber() {						// Get a number if there is one
 		char c = 0;
 		int max = ExecutingLineBuffer.length();
 		int i = LineIndex;
@@ -3986,16 +3984,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		GetNumberValue = d;													// Report the value 
 		return true;														// Say we found a number
 	}
-	
-	private  boolean GetStringConstant(){				// Get a string constant if there is one
-																		// parse out string constant
+
+	private boolean GetStringConstant() {				// Get a string constant if there is one
 		int max = ExecutingLineBuffer.length();
 		if (LineIndex >= max || LineIndex < 0) return false;
-		
+
 		int i = LineIndex;
 		StringConstant = "";
 		char c = ExecutingLineBuffer.charAt(i);
-		if (c!= '"'){return false;}										// first char not "", not String Constant
+		if (c != '"') { return false; }									// first char not "", not String Constant
 		while (true) {													// Get the rest of the String
 			++i;														// copy character until " or EOL
 			if (i >= max) return false;
@@ -4366,7 +4363,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean evalStringExpression(){						// Evaluate a string expression
+	private boolean evalStringExpression() {					// Evaluate a string expression
 
 		int max = ExecutingLineBuffer.length();
 		if (LineIndex >= max) { return false; }
@@ -4376,13 +4373,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		SEisLE = false;											// Assume not Logical Expression
 
-		String Temp1 = "";
-		do {
+		if (!ESE()) { return false; }							// Get the next element (constant, var, function, etc)
+		String Temp1 = StringConstant;
+		StringBuilder sb = null;
+		while (isNext('+')) {									// Another piece to concatenate?
 			if (!ESE()) { return false; }						// Get the next element (constant, var, function, etc)
-			Temp1 += StringConstant;							// save the resulting string 
-		} while (isNext('+'));									// Another piece to concatenate?
-
+			if (sb == null) { sb = new StringBuilder(Temp1); }
+			sb.append(StringConstant);							// save the resulting string
+		}
+		if (sb != null) { Temp1 = sb.toString(); }
 		StringConstant = Temp1;
+
 		EvalNumericExpressionValue = 0.0;						// Set Logical Compare Result to false
 		if (LineIndex >= max) { return false; }
 		c = ExecutingLineBuffer.charAt(LineIndex);
@@ -4457,7 +4458,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean ESE(){										// Get a String expression element
+	private boolean ESE() {										// Get a String expression element
 
 		if (GetStringConstant()) { return true; }				// Try String Constant
 
@@ -4597,7 +4598,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeMF_SQR() {
 		if (!evalNumericExpression()) return false;
-		EvalNumericExpressionValue = Math.sqrt(EvalNumericExpressionValue);
+		double d1 = EvalNumericExpressionValue;
+		if (d1 < 0) {
+			return RunTimeError("SQR parameter must be >= 0");
+		}
+		EvalNumericExpressionValue = Math.sqrt(d1);
 		return true;
 	}
 
@@ -4698,7 +4703,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeMF_ACOS() {
 		if (!evalNumericExpression()) return false;
 		double d1 = EvalNumericExpressionValue;
-		if (d1 < -1 || d1 > 1){
+		if (d1 < -1 || d1 > 1) {
 			return RunTimeError("ACOS parameter out of range");
 		}
 		EvalNumericExpressionValue = Math.acos(d1);
@@ -9992,8 +9997,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Bundle b = new Bundle();									// Create a new Display list
 		b.putInt("type", GR.dNull);									// with a null entry
 
-		aPaint = initPaint(newPaint(aPaint), 255, 0, 0, 0);			// Create a newPaint object
-		PaintList.add(aPaint);										// Add the newPaint to the Paint List
+		aPaint = initPaint(newPaint(aPaint), 255, 0, 0, 0);			// Create a new Paint object
+		PaintList.add(aPaint);										// Add to the Paint List as element 1
 
 		DisplayListAdd(b);
 
@@ -10107,8 +10112,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		BitmapListClear();
 		BitmapList.add(null);										// Set Zero entry as null
 
-		aPaint = initPaint(new Paint(), a, r, g, b);				// Create a newPaint object
-		PaintList.add(aPaint);										// Add the newPaint to the Paint List as element 1
+		aPaint = initPaint(new Paint(), a, r, g, b);				// Create a new Paint object
+		PaintList.add(aPaint);										// Add to the Paint List as element 2
 
 		GRclass = new Intent(this, GR.class);						// Set up parameters for the Graphics Activity
 		GRclass.putExtra(GR.EXTRA_SHOW_STATUSBAR, showStatusBar);
@@ -10218,7 +10223,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Paint tPaint = newPaint(aPaint);
 		tPaint.setAntiAlias(EvalNumericExpressionValue != 0);
 		aPaint = tPaint;
-		PaintList.add(aPaint);										// Add the newPaint to the Paint List
+		PaintList.add(aPaint);										// Add the new Paint to the Paint List
 		return true;
 	}
 
@@ -10230,10 +10235,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (width < 0) {
 			return RunTimeError("Width must be >= 0");
 		}
-		Paint tPaint = newPaint(aPaint);							// Create a newPaint object
+		Paint tPaint = newPaint(aPaint);							// Create a new Paint object
 		tPaint.setStrokeWidth(width);								// Set the stroke width
 		aPaint = tPaint;
-		PaintList.add(aPaint);										// Add the newPaint to the Paint List
+		PaintList.add(aPaint);										// Add the new Paint to the Paint List
 		return true;
 	}
 
