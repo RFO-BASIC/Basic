@@ -251,11 +251,18 @@ public class AddProgramLine {
 	}
 
 	private void doInclude(String fileName) {
-		fileName = fileName.substring(kw_include.length()).trim();
+		// If fileName is enclosed in quotes, the quotes preserved its case in AddLine().
+		// Error messages go back through AddLine() again, so keep the quotes.
+		String originalFileName = fileName.substring(kw_include.length()).trim();	// use this for error message
+		fileName = originalFileName.replace("\"",  "");								// use this for file operations
 		BufferedReader buf = null;
 		try { buf = Basic.getBufferedReader(Basic.SOURCE_DIR, fileName); }
-		catch (Exception e) {									// stream not opened if exception
-			String t = "Error_Include_file (" + fileName + ") not_found";
+		// If getBufferedReader() returns null, it could not open the file or asset.
+		// It may or may not throw an exception.
+		// TODO: "not_found" may not be a good error message. Can we change it?
+		catch (Exception e) { }
+		if (buf == null) {
+			String t = "Error_Include_file (" + originalFileName + ") not_found";
 			AddLine(t);
 			return;
 		}
@@ -263,7 +270,7 @@ public class AddProgramLine {
 		String data = null;
 		do {
 			try { data = buf.readLine(); }
-			catch (IOException e) { data = "Error reading Include file " + fileName; return; }
+			catch (IOException e) { data = "Error reading Include file " + originalFileName; return; }
 			finally { AddLine(data); }							// add the line
 		} while (data != null);									// while not EOF and no error
 	}
