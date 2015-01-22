@@ -43,27 +43,46 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 
 	private static final String LOGTAG = "GPS";
 
-	public static boolean GPSoff = true;
-	public static double Altitude;
-	public static double Latitude;
-	public static double Longitude;
-	public static float Bearing;
-	public static float Accuracy;
-	public static float Speed;
-	public static long Time;
-	public static String Provider = null;
-	public static int Status;
-	public static int Satellites;
+	private double Altitude;
+	private double Latitude;
+	private double Longitude;
+	private float Bearing;
+	private float Accuracy;
+	private float Speed;
+	private long Time;
+	private String Provider;
+	private int LastStatusEvent;	// 0 means no event received yet
+	private int SatelliteCount;		// satellite count from LocationListener
+	private Iterable<GpsSatellite> Satellites;
+	private int SatellitesInView;	// satellite count from GpsStatusListener
+	private int SatellitesInFix;	// also from GpsStatusListener
+	public enum GpsData {
+		ALTITUDE, LATITUDE, LONGITUDE, BEARING,
+		ACCURACY, SPEED, TIME, PROVIDER, STATUS,
+		SATELLITES, SATS_IN_VIEW, SATS_IN_FIX
+	};
 
 	private final Context mContext;
+	private final long mMinTime;
+	private final float mMinDistance;
 	private LocationManager mLocator;
 	private HandlerThread mThread;
+	private boolean mLooperPrepared;
 
-	public GPS(Context context) {
+	public GPS(Context context, long minTime, float minDistance) {
 		mContext = context;
+		mMinTime = minTime;
+		mMinDistance = minDistance;
 		mThread = new LocationHandler("LocationListener");
 		mThread.start();
-		mThread.getLooper();	// Wait for the Looper before letting the interpreter run
+		// Wait for onLooperPrepared to finish before letting the interpreter run.
+		// Using getLooper() to wait for Looper does not wait long enough.
+		synchronized (mThread) {
+			while (!mLooperPrepared) {
+				try { mThread.wait(); }
+				catch (InterruptedException e) { break; }
+			}
+		}
 	}
 
 	private class LocationHandler extends HandlerThread {
@@ -76,6 +95,10 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 		protected void onLooperPrepared() {
 			mLocator = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
 			startListener();
+			mLooperPrepared = true;
+			synchronized (mThread) {
+				mThread.notify();
+			}
 		}
 	}
 
@@ -101,7 +124,7 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 
 		// Start getting location change reports and status updates
 
-		mLocator.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+		mLocator.requestLocationUpdates(LocationManager.GPS_PROVIDER, mMinTime, mMinDistance, this);
 		mLocator.addGpsStatusListener(this);
 	}
 
@@ -119,6 +142,7 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 			Speed = location.getSpeed();
 			Provider = location.getProvider();
 			Time = location.getTime();
+			SatelliteCount = location.getExtras().getInt("satellites");
 		}
 	}
 
@@ -132,14 +156,77 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 	}
 
 	public void onGpsStatusChanged(int event) {
+		int inView = 0;
+		int inFix = 0;
 		if (event != GpsStatus.GPS_EVENT_STOPPED) {
 			GpsStatus status = mLocator.getGpsStatus(null);
-			int sats = 0;
-			for (GpsSatellite s : status.getSatellites()) {
-				++sats;
+			synchronized (this) {
+				Satellites = status.getSatellites();
+				for (GpsSatellite s : Satellites) {
+					++inView;
+					if (s.usedInFix()) { ++inFix; }
+				}
 			}
-			Satellites = sats;
+		} else {
+			inFix = inView = 0;
 		}
+		LastStatusEvent  = event;
+		SatellitesInView = inView;
+		SatellitesInFix  = inFix;
+	}
+
+	public double getNumericValue(GpsData type) {
+		switch (type) {
+			case ALTITUDE:		return Altitude;
+			case LATITUDE:		return Latitude;
+			case LONGITUDE:		return Longitude;
+			case BEARING:		return Bearing;
+			case ACCURACY:		return Accuracy;
+			case SPEED:			return Speed;
+			case TIME:			return Time;
+			case SATELLITES:	return SatelliteCount;
+			case SATS_IN_VIEW:	return SatellitesInView;
+			case SATS_IN_FIX:	return SatellitesInFix;
+			case STATUS:		return LastStatusEvent;
+			default:			break;
+		}
+		return 0.0;
+	}
+
+	public String getStringValue(GpsData type) {
+		String result = null;
+		switch (type) {
+			case PROVIDER:		result = Provider;				break;
+			case STATUS:
+				switch (LastStatusEvent) {
+					case GpsStatus.GPS_EVENT_STARTED:			return "Started";
+					case GpsStatus.GPS_EVENT_STOPPED:			return "Stopped";
+					case GpsStatus.GPS_EVENT_FIRST_FIX:			return "First Fix";
+					case GpsStatus.GPS_EVENT_SATELLITE_STATUS:	return "Updated";
+					default:	break;
+				}
+			break;
+			default:			break;
+		}
+		return (result != null) ? result : "";
+	}
+
+	public Bundle getSatellites() {
+		Bundle sats = new Bundle();
+		synchronized (this) {
+			if (Satellites != null) {
+				for (GpsSatellite s : Satellites) {
+					Bundle b = new Bundle();
+					b.putDouble("azimuth", s.getAzimuth());
+					b.putDouble("elevation", s.getElevation());
+					b.putDouble("snr", s.getSnr());
+					b.putDouble("infix", s.usedInFix() ? 1.0 : 0.0);
+					String number = String.format("%02x", s.getPrn());
+					sats.putBundle(number, b);
+				}
+			}
+		}
+		return sats;
 	}
 
 	public void stop() {

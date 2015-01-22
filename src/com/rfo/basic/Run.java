@@ -106,6 +106,7 @@ import org.apache.http.protocol.HTTP;
 import org.apache.http.util.ByteArrayBuffer;
 
 import com.rfo.basic.Basic.TextStyle;
+import com.rfo.basic.GPS.GpsData;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -1665,6 +1666,8 @@ public class Run extends ListActivity {
 	private static final String BKW_GPS_PROVIDER = "provider";
 	private static final String BKW_GPS_SATELLITES = "satellites";
 	private static final String BKW_GPS_TIME = "time";
+	private static final String BKW_GPS_LOCATION = "location";
+	private static final String BKW_GPS_STATUS = "status";
 	private static final String BKW_GPS_OPEN = "open";
 	private static final String BKW_GPS_CLOSE = "close";
 
@@ -1672,19 +1675,22 @@ public class Run extends ListActivity {
 		BKW_GPS_ALTITUDE, BKW_GPS_LATITUDE, BKW_GPS_LONGITUDE,
 		BKW_GPS_BEARING, BKW_GPS_ACCURACY, BKW_GPS_SPEED,
 		BKW_GPS_PROVIDER, BKW_GPS_SATELLITES, BKW_GPS_TIME,
+		BKW_GPS_LOCATION, BKW_GPS_STATUS,
 		BKW_GPS_OPEN, BKW_GPS_CLOSE,
 	};
 
 	private final Command[] GPS_cmd = new Command[] {	// Map GPS command keywords to their execution functions
-		new Command(BKW_GPS_ALTITUDE)           { public boolean run() { return execute_gps_num(GPS.Altitude); } },
-		new Command(BKW_GPS_LATITUDE)           { public boolean run() { return execute_gps_num(GPS.Latitude); } },
-		new Command(BKW_GPS_LONGITUDE)          { public boolean run() { return execute_gps_num(GPS.Longitude); } },
-		new Command(BKW_GPS_BEARING)            { public boolean run() { return execute_gps_num(GPS.Bearing); } },
-		new Command(BKW_GPS_ACCURACY)           { public boolean run() { return execute_gps_num(GPS.Accuracy); } },
-		new Command(BKW_GPS_SPEED)              { public boolean run() { return execute_gps_num(GPS.Speed); } },
-		new Command(BKW_GPS_PROVIDER)           { public boolean run() { return execute_gps_string(GPS.Provider); } },
-		new Command(BKW_GPS_SATELLITES)         { public boolean run() { return execute_gps_num(GPS.Satellites); } },
-		new Command(BKW_GPS_TIME)               { public boolean run() { return execute_gps_num(GPS.Time); } },
+		new Command(BKW_GPS_ALTITUDE)           { public boolean run() { return execute_gps_num(GpsData.ALTITUDE); } },
+		new Command(BKW_GPS_LATITUDE)           { public boolean run() { return execute_gps_num(GpsData.LATITUDE); } },
+		new Command(BKW_GPS_LONGITUDE)          { public boolean run() { return execute_gps_num(GpsData.LONGITUDE); } },
+		new Command(BKW_GPS_BEARING)            { public boolean run() { return execute_gps_num(GpsData.BEARING); } },
+		new Command(BKW_GPS_ACCURACY)           { public boolean run() { return execute_gps_num(GpsData.ACCURACY); } },
+		new Command(BKW_GPS_SPEED)              { public boolean run() { return execute_gps_num(GpsData.SPEED); } },
+		new Command(BKW_GPS_PROVIDER)           { public boolean run() { return execute_gps_string(GpsData.PROVIDER); } },
+		new Command(BKW_GPS_SATELLITES)         { public boolean run() { return execute_gps_satellites(); } },
+		new Command(BKW_GPS_TIME)               { public boolean run() { return execute_gps_num(GpsData.TIME); } },
+		new Command(BKW_GPS_LOCATION)           { public boolean run() { return execute_gps_location(); } },
+		new Command(BKW_GPS_STATUS)             { public boolean run() { return execute_gps_status(); } },
 		new Command(BKW_GPS_OPEN, CID_OPEN)     { public boolean run() { return execute_gps_open(); } },
 		new Command(BKW_GPS_CLOSE)              { public boolean run() { return execute_gps_close(); } },
 	};
@@ -4381,8 +4387,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (sb == null) { sb = new StringBuilder(Temp1); }
 			sb.append(StringConstant);							// save the resulting string
 		}
-		if (sb != null) { Temp1 = sb.toString(); }
-		StringConstant = Temp1;
+		if (sb != null) {
+			StringConstant = Temp1 = sb.toString();
+			sb = null;
+		}
 
 		EvalNumericExpressionValue = 0.0;						// Set Logical Compare Result to false
 		if (LineIndex >= max) { return false; }
@@ -4416,14 +4424,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		while (isNext('+')) {
 			SaveLineIndex = LineIndex - 1;						// index of the '+'
 			if (ESE()) {
-				Temp2 += StringConstant;						// build up the right side string
+				if (sb == null) { sb = new StringBuilder(Temp2); }
+				sb.append(StringConstant);						// build up the right side string
 			} else {											// what follows is not a string expression
 				LineIndex = SaveLineIndex;						// assume the + operation is numeric
 				break;
 			}
 		}
+		if (sb != null) { StringConstant = Temp2 = sb.toString(); }
 
-		if (Temp1 ==  null || Temp2 == null) { return false; }
+		if ((Temp1 == null) || (Temp2 == null)) { return false; }
 		int cv = Temp1.compareTo(Temp2);						// Do the compare
 		/* if Temp1 < Temp2, cv < 0
 		 * if Temp1 = Temp2, cv = 0
@@ -12157,10 +12167,43 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	public boolean execute_gps_open() {
+		int statusVarIndex = -1;
+		double errorCode = 1.0;
+		long minTime = 0l;
+		float minDistance = 0.0f;
+
+		boolean isComma = isNext(',');
+		if (!isComma && !isEOL()) {
+			if (!getNVar()) return false;
+			statusVarIndex = theValueIndex;
+			isComma = isNext(',');
+		}
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				if (!evalNumericExpression()) return false;
+				minTime = EvalNumericExpressionIntValue.longValue();
+				if (minTime < 0) { return RunTimeError("Time less than zero"); }
+				isComma = isNext(',');
+			}
+		}
+		if (isComma) {
+			if (!evalNumericExpression()) return false;
+			minDistance = EvalNumericExpressionIntValue.longValue();
+			if (minDistance < 0) { return RunTimeError("Distance less than zero"); }
+		}
 		if (!checkEOL()) return false;
 		if (theGPS != null) return true;					// already opened
 
-		theGPS = new GPS(this);								// start GPS
+		try {
+			theGPS = new GPS(this, minTime, minDistance);	// start GPS
+		} catch (Exception e) {
+			writeErrorMsg(e.getMessage());
+			errorCode = 0.0;
+		}
+		if (statusVarIndex != -1) {
+			NumericVarValues.set(statusVarIndex, errorCode);
+		}
 		return true;
 	}
 
@@ -12174,17 +12217,177 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_gps_num(double value) {
+	private boolean execute_gps_num(GPS.GpsData type) {
 		if (!getNVar()) return false;							// Variable for returned value
 		if (!checkEOL()) return false;
+		double value = theGPS.getNumericValue(type);
 		NumericVarValues.set(theValueIndex, value);				// Set value into variable
 		return true;
 	}
 
-	private boolean execute_gps_string(String value) {
+	private boolean execute_gps_string(GPS.GpsData type) {
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
+		String value = theGPS.getStringValue(type);
 		StringVarValues.set(theValueIndex, (value == null) ? "" : value);
+		return true;
+	}
+
+	private boolean execute_gps_satellites() {
+		if (isEOL()) return true;							// user asked for no fields
+		Bundle bSats = null;								// bundle in BASIC! format
+
+		if (!getNVar()) return false;						// variable for returned satellite count value
+		int satCountIndex = theValueIndex;
+		if (isNext(',')) {
+			int bundleIndex = getBundleArg();
+			if (bundleIndex == 0) return false;
+			bSats = theBundles.get(bundleIndex);
+		}
+		if (!checkEOL()) return false;
+		double value = theGPS.getNumericValue(GpsData.SATELLITES);
+		NumericVarValues.set(satCountIndex, value);			// set satellite count into variable
+		return updateGPSSatelliteBundle(bSats);				// update bundle if user reqeuested it
+	}
+
+	private boolean execute_gps_location() {
+		if (isEOL()) return true;							// user asked for no fields
+
+		// returns time, provider, satellites, accuracy, latitude, longitude, altitude, bearing, and speed
+		GpsData[] data = {
+			GpsData.TIME, GpsData.PROVIDER, GpsData.SATELLITES, GpsData.ACCURACY,
+			GpsData.LATITUDE, GpsData.LONGITUDE, GpsData.ALTITUDE,
+			GpsData.BEARING, GpsData.SPEED
+		};
+		boolean[] num = { true, false, true, true, true, true, true, true, true };
+		int[] index = { -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1  };
+		int nFlds = data.length;
+
+		boolean isComma = true;
+		for (int fld = 0; fld < nFlds; ++fld) {
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (! (num[fld] ? getNVar() : getSVar()) ) return false;
+					index[fld] = theValueIndex;
+					isComma = isNext(',');
+				}
+			}
+		}
+		if (isComma || !checkEOL()) return false;
+
+		for (int fld = 0; fld < nFlds; ++fld) {
+			int varIndex = index[fld];
+			if (varIndex != -1) {
+				if (num[fld]) {
+					double value = theGPS.getNumericValue(data[fld]);
+					NumericVarValues.set(index[fld], value);
+				} else {
+					String value = theGPS.getStringValue(data[fld]);
+					StringVarValues.set(index[fld], value);
+				}
+			}
+		}
+		return true;
+	}
+
+	private boolean execute_gps_status() {
+		if (isEOL()) return true;							// user asked for no fields
+
+		// returns status, count of satellites in fix, count of satellites in view,
+		// and bundle of satellites
+		int statusIndex = -1;
+		boolean statusIsNumeric = true;
+		int inFixIndex  = -1;
+		int inViewIndex = -1;
+		Bundle bSats = null;								// bundle in BASIC! format
+
+		boolean isComma = isNext(',');
+		if (!isComma) {
+			if (!getVar()) return false;
+			statusIsNumeric = VarIsNumeric;
+			statusIndex = theValueIndex;
+			isComma = isNext(',');
+		}
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				if (!getNVar()) return false;
+				inFixIndex = theValueIndex;
+				isComma = isNext(',');
+			}
+		}
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				if (!getNVar()) return false;
+				inViewIndex = theValueIndex;
+				isComma = isNext(',');
+			}
+		}
+		if (isComma) {
+			int bundleIndex = getBundleArg();
+			if (bundleIndex == 0) return false;
+			bSats = theBundles.get(bundleIndex);
+		}
+		if (!checkEOL()) return false;
+
+		if (statusIndex != -1) {
+			if (statusIsNumeric) {
+				double value = theGPS.getNumericValue(GpsData.STATUS);
+				NumericVarValues.set(statusIndex, value);
+			} else {
+				String value = theGPS.getStringValue(GpsData.STATUS);
+				StringVarValues.set(statusIndex, value);
+			}
+		}
+		if (inFixIndex != -1) {
+			double value = theGPS.getNumericValue(GpsData.SATS_IN_FIX);
+			NumericVarValues.set(inFixIndex, value);
+		}
+		if (inViewIndex != -1) {
+			double value = theGPS.getNumericValue(GpsData.SATS_IN_VIEW);
+			NumericVarValues.set(inViewIndex, value);
+		}
+		return updateGPSSatelliteBundle(bSats);				// update bundle if user reqeuested it
+	}
+
+	private boolean updateGPSSatelliteBundle(Bundle bSats) {
+		if (bSats == null) return true;						// No bundle, nothing to update
+
+		// jSats is a bundle in Java format and bSats is a bundle in BASIC! format.
+		// The bundle keys are GPS satellite PRNs.
+		// The jSats values are Java bundles of satellite data.
+		// The bSats values are indices of BASIC! bundles.
+		// Each jSats satellite bundle is copied to a BASIC! bundle whose index is in bSats.
+		// If a BASIC! bundle already exists for a satellite PRN, it is reused.
+
+		for (String sat : bSats.keySet()) {					// clear data from existing satellite bundles
+			if (sat.startsWith("@@@N.")) { continue; }		// skip BASIC! bundle type entries
+			int bSatIndex = (int)(bSats.getDouble(sat));	// index of BASIC! bundle for one satellite
+			if ((bSatIndex < 1) || (bSatIndex >= theBundles.size())) {
+				return RunTimeError("Satellite " + sat + ": Invalid Bundle Pointer");
+			}
+			theBundles.get(bSatIndex).clear();
+		}
+
+		Bundle jSats = theGPS.getSatellites();				// bundle of bundles of satellite data in Java format
+		for (String sat : jSats.keySet()) {					// copy satellite data into bundles
+			Bundle jSat = jSats.getBundle(sat);				// get satellite's Java bundle
+			int bSatIndex = (int)(bSats.getDouble(sat));	// get corresponding the BASIC! bundle index
+			if (bSatIndex == 0) {							// if no BASIC! bundle, create a new one
+				bSatIndex = theBundles.size();
+				theBundles.add(new Bundle());
+			}
+			Bundle bSat = theBundles.get(bSatIndex);		// get the BASIC! bundle for this satellite's data
+			for (String key : jSat.keySet()) {				// copy Java bundle data to BASIC! bundle
+				Double value = jSat.getDouble(key);
+				bundlePut(bSat, key, value);
+			}
+			if (!bSats.containsKey(sat)) {					// put the satellite bundle index into the BASIC! bundle
+				bundlePut(bSats, sat, (double)bSatIndex);
+			}
+		}
 		return true;
 	}
 
