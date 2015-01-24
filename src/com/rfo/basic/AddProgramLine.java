@@ -87,13 +87,6 @@ public class AddProgramLine {
 				i = doQuotedString(line, i, linelen, sb);
 			} else if (c == '%') {					// if the % character appears,
 				break;								// drop it and the rest of the line
-			} else if (c == '~') {					// Pre-processor: check for line continuation '~'
-				int j = i;							// scan after character, skipping spaces and tabs
-				do { ++j; } while ((j < linelen) && (" \t".indexOf(line.charAt(j)) >= 0));
-				if ((j >= linelen) || (line.charAt(j) == '%')) {	// EOL or comment
-					sb.append("{+nl}");				// add line continuation marker
-					break;
-				}
 			} else if (c != ' ' && c != '\t') {		// toss out spaces and tabs
 				c = Character.toLowerCase(c);		// normal character: convert to lower case
 				sb.append(c);						// and add it to the line
@@ -115,21 +108,14 @@ public class AddProgramLine {
 													// connected with continuation markers
 			lineCharCounts.add(charCount);			// add char count to array of char counts
 		}
-		if (Temp.endsWith("{+nl}")) {				// Pre-processor: test for include next line sequence
-			Temp = Temp.substring(0, Temp.length() - 5);	// remove the include next line sequence
+		if (Temp.endsWith("~")) {					// Pre-processor: test for line continuation marker
+			Temp = Temp.substring(0, Temp.length() - 1);	// remove the marker
 			stemp = (stemp.length() == 0) ? Temp : mergeLines(stemp, Temp);	// and collect the line
 			return;
 		}
 		if (stemp.length() > 0) {
 			Temp = mergeLines(stemp, Temp);			// add stemp collection to line
 			stemp = "";								// clear the collection
-		}
-		Temp = shorthand(Temp);						// Pre-processor: expand C/Java-like operators
-		if (Temp.contains("{")) {					// Pre-processor: out any hidden substrings
-			Temp = Temp.replace("{+&=}", "+=");
-			Temp = Temp.replace("{-&=}", "-=");
-			Temp = Temp.replace("{*&=}", "*=");
-			Temp = Temp.replace("{/&=}", "/=");
 		}
 		Temp += "\n";								// end the line with New Line
 		Basic.lines.add(Temp);						// add to Basic.lines
@@ -158,12 +144,7 @@ public class AddProgramLine {
 					s.append('\t');
 					++index;
 				}								// else remove the backslash
-			} else if ( (c2 == '=') &&			// Pre-processor:
-						("+-*/".indexOf(c) >= 0) ) {// if +=, -=, *=, /= in string
-				s.append('{').append(c)				// hide them temporarily
-				 .append("&=}");					// by converting to "{+&=}", etc.
-				++index;
-			} else { s.append(c); }				// not quote, backslash, or pre-processor operator
+			} else { s.append(c); }				// not quote or backslash
 		}
 		s.append('"');							// Close string. If no closing quote in user string, add one.
 												// If funny quote, convert it to ASCII quote.
@@ -177,77 +158,15 @@ public class AddProgramLine {
 		String specialCommands[] = { "array.load", "list.add" };
 		for (int i = 0; i < specialCommands.length; ++i) {
 			if ( base.startsWith(specialCommands[i]) &&					// command allows continuable data
-				 (base.length() > specialCommands[i].length()) &&		// the command is not alone on the line
-				 scanForComma(base) ) {									// the command's first parameter is already present
+				 (base.length() > specialCommands[i].length()) ) {		// the command is not alone on the line
 				char lastChar = base.charAt(base.length() - 1);
 				char nextChar = addition.charAt(0);
 				if (lastChar != ',' && nextChar != ',') {				// no comma between adjacent parameters
-					base += ',';										// insert comma between parameters
+					return base + ',' + addition;						// insert comma between parameters
 				}
-				break;
 			}
 		}
 		return base + addition;
-	}
-
-	// return true iff line has a comma that is not in balanced parentheses or quotes
-	private boolean scanForComma(String line) {
-		boolean isQuote = false;
-		int parens = 0;
-		int brackets = 0;
-		int len = line.length();
-		char prevc = '\0';
-		for (int i = 0; i < len; ++i) {
-			char c = line.charAt(i);
-			switch (c) {
-				case '(': ++parens; break;
-				case ')': --parens; break;
-				case '[': ++brackets; break;
-				case ']': --brackets; break;
-				case '\"':
-					if (prevc != '\\') { isQuote = !isQuote; }
-					break;
-				case ',':
-					if (parens == 0 && brackets == 0 && !isQuote) { return true; }
-			}
-			prevc = c;
-		}
-		return false;
-	}
-
-	private String shorthand(String line) {			// Pre-processor: expand C/Java-like operators
-		int ii = line.indexOf("let");
-		if (ii >= 0) {
-			ii += 3;								// length of "let"
-			return line.substring(0, ii) + shorthand(line.substring(ii));
-		}
-		ii = line.indexOf("then");
-		if (ii >= 0) {
-			ii += 4;								// length of "then"
-			return line.substring(0, ii) + shorthand(line.substring(ii));
-		}
-		if (line.startsWith("++") || line.startsWith("--")) {
-			line = line.substring(2) + "=" + line.substring(2) + line.charAt(0) + "1";
-		} else
-		if (line.endsWith("++") || line.endsWith("--")) {
-			int ll = line.length();
-			line = line.substring(0, ll - 2) + "=" + line.substring(0, ll - 1) + "1";
-		} else {
-			int tt = line.indexOf("+=");
-			if (tt < 0) {
-				tt = line.indexOf("-=");
-				if (tt < 0) {
-					tt = line.indexOf("*=");
-					if (tt < 0) {
-						tt = line.indexOf("/=");
-					}
-				}
-			}
-			if (tt > 0) {
-				line = line.substring(0, tt) + "=" + line.substring(0, tt + 1) + "(" + line.substring(tt + 2) + ")";
-			}
-		}
-		return line;
 	}
 
 	private void doInclude(String fileName) {

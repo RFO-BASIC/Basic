@@ -360,6 +360,8 @@ public class Run extends ListActivity {
 	private static final String BKW_PAUSE = "pause";
 	private static final String BKW_PHONE_GROUP = "phone.";
 	private static final String BKW_POPUP = "popup";
+	private static final String BKW_PREDEC = "--";				// omit from BasicKeyWords[]
+	private static final String BKW_PREINC = "++";				// omit from BasicKeyWords[]
 	private static final String BKW_PRINT = "print";
 	private static final String BKW_READ_GROUP = "read.";
 	private static final String BKW_REM = "rem";
@@ -401,6 +403,8 @@ public class Run extends ListActivity {
 
 	// This array lists all of the top-level keywords so Format can find them.
 	// The order of this list determines the order Format uses for its linear search.
+	// BKW_PREDEC and BKW_PREINC are omitted as they look like regular expressions (!).
+	// This array is also used by DEBUG.COMMANDS.
 	public static final String BasicKeyWords[] = {
 		BKW_LET, BKW_PRINT,
 		BKW_IF, BKW_ELSEIF, BKW_ELSE, BKW_ENDIF,
@@ -413,6 +417,7 @@ public class Run extends ListActivity {
 		BKW_GR_GROUP, BKW_DIM, BKW_UNDIM,
 		BKW_ARRAY_GROUP, BKW_BUNDLE_GROUP,
 		BKW_LIST_GROUP, BKW_STACK_GROUP,
+		// BKW_PREDEC, BKW_PREINC,						// Format can't handle these and doesn't need them
 		BKW_INKEY, BKW_INPUT, BKW_DIALOG_GROUP,
 		BKW_SELECT, BKW_TGET,
 		BKW_FILE_GROUP, BKW_TEXT_GROUP, BKW_BYTE_GROUP, BKW_READ_GROUP,
@@ -463,7 +468,7 @@ public class Run extends ListActivity {
 	// Map BASIC! command keywords to their execution functions.
 	// The order of this list determines the order of the linear keyword search, which affects performance.
 	private final Command[] BASIC_cmd = new Command[] {
-		new Command(BKW_LET)                    { public boolean run() { return executeLET(); } },
+		new Command(BKW_LET)                    { public boolean run() { return executeLET(0.0); } },
 		new Command(BKW_IF,     CID_SKIP_TO_ENDIF) { public boolean run() { return executeIF(); } },
 		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
 		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
@@ -494,6 +499,8 @@ public class Run extends ListActivity {
 		new Command(BKW_BUNDLE_GROUP,CID_GROUP) { public boolean run() { return executeBUNDLE(); } },
 		new Command(BKW_LIST_GROUP,  CID_GROUP) { public boolean run() { return executeLIST(); } },
 		new Command(BKW_STACK_GROUP, CID_GROUP) { public boolean run() { return executeSTACK(); } },
+		new Command(BKW_PREDEC)                 { public boolean run() { return executeLET(-1.0); } },
+		new Command(BKW_PREINC)                 { public boolean run() { return executeLET(1.0); } },
 		new Command(BKW_INKEY)                  { public boolean run() { return executeINKEY(); } },
 		new Command(BKW_INPUT)                  { public boolean run() { return executeINPUT(); } },
 		new Command(BKW_DIALOG_GROUP,CID_GROUP) { public boolean run() { return executeDIALOG(); } },
@@ -636,6 +643,7 @@ public class Run extends ListActivity {
 	private static final String MF_BACKGROUND = "background(";
 	private static final String MF_BAND = "band(";
 	private static final String MF_BIN = "bin(";
+	private static final String MF_BNOT = "bnot(";
 	private static final String MF_BOR = "bor(";
 	private static final String MF_BXOR = "bxor(";
 	private static final String MF_CBRT = "cbrt(";
@@ -686,7 +694,7 @@ public class Run extends ListActivity {
 		MF_ROUND, MF_TORADIANS, MF_TODEGREES,
 		MF_TIME, MF_EXP,
 		MF_IS_IN, MF_CLOCK,
-		MF_BOR, MF_BAND, MF_BXOR,
+		MF_BNOT, MF_BOR, MF_BAND, MF_BXOR,
 		MF_GR_COLLISION,
 		MF_ASCII, MF_STARTS_WITH, MF_ENDS_WITH,
 		MF_HEX, MF_OCT, MF_BIN, MF_SHIFT,
@@ -720,6 +728,7 @@ public class Run extends ListActivity {
 		new Command(MF_EXP)                     { public boolean run() { return executeMF_EXP(); } },
 		new Command(MF_IS_IN)                   { public boolean run() { return executeMF_IS_IN(); } },
 		new Command(MF_CLOCK)                   { public boolean run() { return executeMF_CLOCK(); } },
+		new Command(MF_BNOT)                    { public boolean run() { return executeMF_BNOT(); } },
 		new Command(MF_BOR)                     { public boolean run() { return executeMF_BOR(); } },
 		new Command(MF_BAND)                    { public boolean run() { return executeMF_BAND(); } },
 		new Command(MF_BXOR)                    { public boolean run() { return executeMF_BXOR(); } },
@@ -4038,33 +4047,91 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (var == null) return false;
 
 		LineIndex = LI;										// rewind the LineIndex for re-parse
-		return VarIsFunction ? executeCALL() : executeLET();
+		return VarIsFunction ? executeCALL() : executeLET(0.0);
 	}
 
-	private boolean executeLET() {						// Execute LET (an assignment statement)
-		if (!getVar()) {									// Must start with a variable
-			return false;									// to assign a value to
-		}
+	private double incdec() {
+		double result = 0.0;
+		if (ExecutingLineBuffer.startsWith("++", LineIndex)) { result = 1.0; }
+		if (ExecutingLineBuffer.startsWith("--", LineIndex)) { result = -1.0; }
+		if (result != 0.0) { LineIndex += 2; }				// found increment or decrement
+		return result;
+	}
 
-		if (isNext(':')) {									// If this is a label,			
-			return checkEOL();								// then done
-		}
+	private boolean executeLET(double preVal) {			// Execute LET (an assignment statement)
+		/*
+		 * This is the execution function for commands BKW_LET, BKW_PREDEC, and BKW_PREINC,
+		 * and it is also called from executeImplicitCommand() for implied LET commands.
+		 * A bare variable is an implied LET case, but pre-decrement and pre-increment with
+		 * not LET are treated as explicit BKW_PREDEC and BKW_PREINC commands.
+		 * The input argument identifies the caller and the case the caller wants handled.
+		 * The method itself also handles pre-ops in explict LET commands.
+		 */
+		String sval = "";
+		double nval = (preVal != 0.0) ? preVal : incdec();	// check for pre-increment/decrement
+		boolean islval = (nval == 0.0);						// assignable only if no inc/dec
 
-		if (!isNext('=')) {									// Var must be followed by =
-			return false;
-		}
+		if (!getVar()) return false;						// get or create the variable to assign a value to
 
-		int AssignToVarNumber = theValueIndex;				// Save the assign to Var Number
+		if (VarIsNumeric) {
+			double postincdec = incdec();					// check for post-increment/decrement
+			if (postincdec != 0) { nval += postincdec; islval = false; }
+		} else if (!islval) return false;					// can't inc/dec a string
+
+		if (isEOL()) {										// no more to do, may have created variable
+			if (VarIsNumeric && (nval != 0.0)) {			// pre/post inc/dec of numeric variable
+				double value = nval + NumericVarValues.get(theValueIndex);
+				NumericVarValues.set(theValueIndex, value);
+			}
+			return true;
+		}
+		else if (!islval) return false;						// can't be label or assignment if already inc/dec
+		else if (isNext(':')) return checkEOL();			// if label, must end line
+
+		// Implementation note: this should probably be put in a Java enum type. (TODO)
+		int varNumber = theValueIndex;						// variable to assign to
+		int op = ASSIGN;
+		if (!isNext('=')) {									// require some kind of assignment operator
+			// NOTE: The lvalue before assignment is the ORIGINAL value of the variable,
+			// not the value as modified by and '++' or '--' in the rvalue expression.
+			if (VarIsNumeric) { nval += NumericVarValues.get(theValueIndex); }
+			else              { sval  = StringVarValues.get(theValueIndex); }
+			if (ExecutingLineBuffer.startsWith("+=", LineIndex))			{ op = PLUS; }
+			else if (VarIsNumeric) {
+				if (ExecutingLineBuffer.startsWith("-=", LineIndex)) 		{ op = MINUS; }
+				else if (ExecutingLineBuffer.startsWith("*=", LineIndex))	{ op = MUL; }
+				else if (ExecutingLineBuffer.startsWith("/=", LineIndex))	{ op = DIV; }
+				else if (ExecutingLineBuffer.startsWith("^=", LineIndex))	{ op = EXP; }
+				else if (ExecutingLineBuffer.startsWith("&=", LineIndex))	{ op = AND; }
+				else if (ExecutingLineBuffer.startsWith("|=", LineIndex))	{ op = OR; }
+				else return false;
+			} else return false;
+			LineIndex += 2;
+		}
 
 		if (VarIsNumeric) {									// if var is number then 
 			if (!evalNumericExpression()) { return false; }	// evaluate following numeric expression
-			NumericVarValues.set(AssignToVarNumber, EvalNumericExpressionValue);  // and assign results to the var
-		} else {											// Assignment is string expression
-			if (!getStringArg()) { return false; }			// Evaluate the string expression
-			StringVarValues.set(AssignToVarNumber, StringConstant); // Assign result to the string var
+			if (op != ASSIGN) {
+				double val = EvalNumericExpressionValue;
+				switch (op) {								// apply the required operation
+					case PLUS:  nval += val; break;
+					case MINUS: nval -= val; break;
+					case MUL:   nval *= val; break;
+					case DIV:   nval /= val; break;
+					case EXP:   nval = Math.pow(nval, val); break;
+					case AND:   nval = ((nval != 0) && (val != 0)) ? 1.0 : 0.0;
+					case OR:    nval = ((nval != 0) || (val != 0)) ? 1.0 : 0.0;
+				}
+				EvalNumericExpressionValue = nval;
+			}
+			NumericVarValues.set(varNumber, EvalNumericExpressionValue); // assign result to the numeric var
+		} else {											// var is string
+			if (!getStringArg()) { return false; }			// evaluate the string expression
+			if (op == PLUS) { StringConstant = sval + StringConstant; }
+			StringVarValues.set(varNumber, StringConstant); // assign result to the string var
 		}
 		return checkEOL();
-	}
+	} // executeLET
 
 	private boolean evalToPossibleKeyword(String keyword) {	// use with midline keywords THEN, TO, STEP
 		// Evaluate a numeric expression, terminated either by EOL or by the given possible keyword.
@@ -4101,27 +4168,44 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 																// The recursive part of Eval Expression
 		Bundle ufb = ufBundle;
 		Command cmd;
+		double incdec = 0.0;									// for recording pre-inc/dec
 
 		char c = ExecutingLineBuffer.charAt(LineIndex);			// First character
  
-		if (c == '+') {											// Check for unary operators
-			theOpStack.push(UPLUS);								// save the operator
-			++LineIndex;										// and move to the next character
+		if (c == '+') {											// Check for unary operators or pre-inc/dec
+			++LineIndex;										// move to the next character
+			if (isNext('+')) { incdec = 1.0; }					// remember to pre-increment
+			else { theOpStack.push(UPLUS); }					// save the operator
 		}
 		else if(c == '-') {
-			theOpStack.push(UMINUS);
 			++LineIndex;
+			if (isNext('-')) { incdec = -1.0; }					// remember to post-decrement
+			else { theOpStack.push(UMINUS); }					// save the operator
 		}
 		else if (c == '!') {
 			theOpStack.push(NOT);
 			++LineIndex;
 		}
 
-		if (getNumber()) {										// Is it a number?
-			theValueStack.push(GetNumberValue);					// push the number
+		if (getNVar()) {										// Try numeric variable
+			double value = NumericVarValues.get(theValueIndex);
+			if (incdec != 0) {
+				value += incdec;								// pre-inc or dec
+				NumericVarValues.set(theValueIndex, value);
+			}
+			if (ExecutingLineBuffer.startsWith("++", LineIndex)) {
+				NumericVarValues.set(theValueIndex, value + 1);	// post-increment
+				LineIndex += 2;
+			}
+			else if (ExecutingLineBuffer.startsWith("--", LineIndex)) {
+				NumericVarValues.set(theValueIndex, value - 1);	// post-decrement
+				LineIndex += 2;
+			}
+			theValueStack.push(value);							// push the value
 		}
-		else if (getNVar()) {									// Try numeric variable
-			theValueStack.push(NumericVarValues.get(theValueIndex));	// push the value
+		else if (incdec != 0) { return false; }					// pre-inc/dec applies only to numeric variables
+		else if (getNumber()) {									// Is it a number?
+			theValueStack.push(GetNumberValue);					// push the number
 		}
 		else if ((cmd = getFunction(MF_map)) != null) {			// Try Math Function
 			if (!doMathFunction(cmd)) return false;				// Math Function failed
@@ -4845,6 +4929,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("DIVIDE BY ZERO AT:");
 		}
 		EvalNumericExpressionValue = (args[0] % args[1]);
+		return true;
+	}
+
+	private boolean executeMF_BNOT() {
+		if (!evalNumericExpression())	{ return false; }
+		long arg = EvalNumericExpressionValue.longValue();
+		EvalNumericExpressionIntValue = ~arg;
+		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
+		VarIsInt = true;
 		return true;
 	}
 
@@ -6550,7 +6643,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeDEBUG_COMMANDS() {
 		if (!Debug) return true;
 
-		if (!getNVar()) return false;
+		if (!getNVar()) return false;									// var for ptr to list of commands
 		int listVarIndex = theValueIndex;
 		boolean isComma = isNext(',');
 		if (isComma) {
@@ -12218,10 +12311,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gps_num(GPS.GpsData type) {
-		if (!getNVar()) return false;							// Variable for returned value
+		if (!getNVar()) return false;						// Variable for returned value
 		if (!checkEOL()) return false;
 		double value = theGPS.getNumericValue(type);
-		NumericVarValues.set(theValueIndex, value);				// Set value into variable
+		NumericVarValues.set(theValueIndex, value)		;	// Set value into variable
 		return true;
 	}
 
