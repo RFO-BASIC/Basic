@@ -149,6 +149,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.SensorManager;
+import android.location.GpsStatus;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -156,6 +157,7 @@ import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.media.SoundPool;
 import android.net.Uri;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -399,6 +401,7 @@ public class Run extends ListActivity {
 	private static final String BKW_W_R_CONTINUE = "w_r.continue";
 	private static final String BKW_WAKELOCK = "wakelock";
 	private static final String BKW_WHILE = "while";
+	private static final String BKW_WIFI_INFO = "wifi.info";
 	private static final String BKW_WIFILOCK = "wifilock";
 
 	// This array lists all of the top-level keywords so Format can find them.
@@ -441,7 +444,7 @@ public class Run extends ListActivity {
 		BKW_VIBRATE, BKW_WAKELOCK, BKW_WIFILOCK,
 		BKW_END, BKW_EXIT, BKW_HOME,
 		BKW_INCLUDE, BKW_PAUSE, BKW_REM,
-		BKW_HEADSET, BKW_MYPHONENUMBER,
+		BKW_WIFI_INFO, BKW_HEADSET, BKW_MYPHONENUMBER,
 		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
 		BKW_BACK_RESUME, BKW_BACKGROUND_RESUME,
 		BKW_CONSOLETOUCH_RESUME,
@@ -565,6 +568,7 @@ public class Run extends ListActivity {
 		new Command(BKW_INCLUDE)                { public boolean run() { return true; } },
 		new Command(BKW_PAUSE)                  { public boolean run() { return executePAUSE(); } },
 		new Command(BKW_REM)                    { public boolean run() { return true; } },
+		new Command(BKW_WIFI_INFO)              { public boolean run() { return executeWIFI_INFO(); } },
 		new Command(BKW_HEADSET)                { public boolean run() { return executeHEADSET(); } },
 		new Command(BKW_MYPHONENUMBER)          { public boolean run() { return executeMYPHONENUMBER(); } },
 		new Command(BKW_EMAIL_SEND)             { public boolean run() { return executeEMAIL_SEND(); } },
@@ -1802,6 +1806,7 @@ public class Run extends ListActivity {
 	private static final String BKW_BUNDLE_CREATE = "create";
 	private static final String BKW_BUNDLE_PUT = "put";
 	private static final String BKW_BUNDLE_GET = "get";
+	private static final String BKW_BUNDLE_NEXT = "next";
 	private static final String BKW_BUNDLE_TYPE = "type";
 	private static final String BKW_BUNDLE_KEYS = "keys";
 	private static final String BKW_BUNDLE_COPY = "copy";
@@ -1810,7 +1815,7 @@ public class Run extends ListActivity {
 	private static final String BKW_BUNDLE_REMOVE = "remove";
 
 	private static final String Bundle_KW[] = {			// Command list for Format
-		BKW_BUNDLE_CREATE, BKW_BUNDLE_PUT, BKW_BUNDLE_GET,
+		BKW_BUNDLE_CREATE, BKW_BUNDLE_PUT, BKW_BUNDLE_GET, BKW_BUNDLE_NEXT,
 		BKW_BUNDLE_TYPE, BKW_BUNDLE_KEYS, BKW_BUNDLE_COPY,
 		BKW_BUNDLE_CLEAR, BKW_BUNDLE_CONTAIN, BKW_BUNDLE_REMOVE
 	};
@@ -1819,6 +1824,7 @@ public class Run extends ListActivity {
 		new Command(BKW_BUNDLE_CREATE)          { public boolean run() { return execute_BUNDLE_CREATE(); } },
 		new Command(BKW_BUNDLE_PUT)             { public boolean run() { return execute_BUNDLE_PUT(); } },
 		new Command(BKW_BUNDLE_GET)             { public boolean run() { return execute_BUNDLE_GET(); } },
+		new Command(BKW_BUNDLE_NEXT)            { public boolean run() { return execute_BUNDLE_NEXT(); } },
 		new Command(BKW_BUNDLE_TYPE)            { public boolean run() { return execute_BUNDLE_TYPE(); } },
 		new Command(BKW_BUNDLE_KEYS)            { public boolean run() { return execute_BUNDLE_KEYSET(); } },
 		new Command(BKW_BUNDLE_COPY)            { public boolean run() { return execute_BUNDLE_COPY(); } },
@@ -3611,7 +3617,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 }
 
 
-	private  boolean StatementExecuter() {				// Execute one basic line (statement)
+	private boolean StatementExecuter() {				// Execute one basic line (statement)
 
 		Command c = findCommand(BASIC_cmd);				// get the keyword that may start the line
 		if (c == null) { c = CMD_IMPLICIT; }			// if no keyword, then assume pseudo LET or CALL
@@ -3634,11 +3640,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;									// Statement executed ok. Return to main looper.
 	}
 
-	private  void SyntaxError(){						// Called to output Syntax Error Message
-/*		if (OnErrorLine != 0){
+	private void SyntaxError() {						// Called to output Syntax Error Message
+/*		if (OnErrorLine != 0) {
 			return;
 		}*/
-		if (!SyntaxError){								// If a previous Syntax error message has
+		if (!SyntaxError) {								// If a previous Syntax error message has
 			RunTimeError("Syntax Error");				// not been displayed them display
 			SyntaxError = true;							// Then set the flag so we don't do it again.
 		}
@@ -3646,7 +3652,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		// If graphics is opened then the user will not be able to see error messages
 		// Provide a Haptic notice
 
-		if (GRopen){
+		if (GRopen) {
 			lv.performHapticFeedback(2, 1);
 			try {Thread.sleep(300);}catch(InterruptedException e){}
 			lv.performHapticFeedback(2, 1);
@@ -3726,6 +3732,30 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			catch (NumberFormatException e) { return false; }
 		}
 		return true;							// return value in EvalNumericExpressionValue
+	}
+
+	// Get optional arguments, where all are variables, not expressions.
+	// types: 1 numeric, 2 string, 3 either
+	// Type 3 coming in is overwritten to type of variable found on command line.
+	private boolean getOptVars(byte[] type, int[] index) {
+		int nFlds = type.length;
+		if (nFlds != index.length) return false;			// array lengths must match
+
+		boolean isComma = true;
+		for (int fld = 0; fld < nFlds; ++fld) {
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (!getVar()) return false;
+					byte vType = (byte)(VarIsNumeric ? 1 : 2);
+					if ((vType & type[fld]) == 0) return false;	// type mismatch
+					type[fld] = vType;
+					index[fld] = theValueIndex;
+					isComma = isNext(',');
+				}
+			}
+		}
+		return (!isComma && checkEOL());
 	}
 
 	// ************************* start of getVar() and its derivatives ****************************
@@ -4142,7 +4172,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return ok;
 	}
 
-	private  boolean evalNumericExpression() {			// Evaluate a numeric expression
+	private boolean evalNumericExpression() {			// Evaluate a numeric expression
 
 		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
 		char c = ExecutingLineBuffer.charAt(LineIndex);
@@ -4290,7 +4320,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;
 	}
 
-	private  boolean handleOp(int op, Stack<Integer> theOpStack, Stack<Double> theValueStack) {	// handle an expression operator
+	private boolean handleOp(int op, Stack<Integer> theOpStack, Stack<Double> theValueStack) {	// handle an expression operator
 
 											// Execute operator in turn by their precedence
 
@@ -5398,7 +5428,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return args.toArray();
 	}
 
-	private  boolean Format(String Fstring, double Fvalue){			// Format a number for output
+	private boolean Format(String Fstring, double Fvalue){			// Format a number for output
 																					// Do the heart of the FORMAT$ function
 		BigDecimal B = BigDecimal.valueOf(0.0);
 		try { B = BigDecimal.valueOf(Math.abs(Fvalue));}
@@ -5970,7 +6000,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 	
-	private  boolean executeELSE() {
+	private boolean executeELSE() {
 		
 		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
 			RunTimeError("Misplaced ELSE");
@@ -6718,6 +6748,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			PrintShow("  bitmaps  : " + plusBase(BitmapList.size()));	// item 0 present after GR.Open but not accessible
 			PrintShow("DL size    : " + plusBase(DisplayList.size()));	// item 0 present after GR.Open but not accessible
 			PrintShow("RealDL size: " + plusBase(RealDisplayList.size()));// item 0 present after GR.Open but not accessible
+			PrintShow("InKey count: " + InChar.size());
 		}
 		return true;
 	}
@@ -9276,8 +9307,55 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+	private boolean executeWIFI_INFO() {
+		if (isEOL()) return true;							// user asked for no fields
+
+		// First three return variables are strings. The IP address may be either string or numeric.
+		// The last variable is numeric.
+		byte[] type = { 2, 2, 2, 3, 1 };
+		int[] index = { -1, -1, -1, -1, -1 };
+		int nFlds = index.length;
+		WifiInfo wi = null;
+		if (!getOptVars(type, index)) return false;
+
+		try {
+			WifiManager wm = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+			wi = wm.getConnectionInfo();
+		} catch (Exception e) {
+			Log.d(LOGTAG, e.toString());
+			return RunTimeError("Cannot get WifiInfo: " + e.getMessage());
+		}
+
+		int fld = 0;
+		if (index[fld] != -1) {
+			StringVarValues.set(index[fld], wi.getSSID());
+		}
+		if (index[++fld] != -1) {
+			StringVarValues.set(index[fld], wi.getBSSID());
+		}
+		if (index[++fld] != -1) {
+			StringVarValues.set(index[fld], wi.getMacAddress());
+		}
+		if (index[++fld] != -1) {
+			int ip = wi.getIpAddress();
+			if (type[fld] == 1) {							// IP address variable is numeric
+				NumericVarValues.set(index[fld], (double)ip);
+			} else {										// convert to string
+				String ipString = "";
+				byte[] ipbytes = { (byte)(ip), (byte)(ip>>>8), (byte)(ip>>>16), (byte)(ip>>>24) };
+				try { ipString = InetAddress.getByAddress(ipbytes).getHostAddress(); }
+				catch (Exception e) { /* can't happen */ }
+				StringVarValues.set(index[fld], ipString);
+			}
+		}
+		if (index[++fld] != -1) {
+			NumericVarValues.set(index[fld], (double)wi.getLinkSpeed());
+		}
+		return (++fld == nFlds);							// sanity-check field count
+	}
+
 	@SuppressLint("InlinedApi")										// Uses a value from API 12
-	private boolean executeWIFILOCK(){
+	private boolean executeWIFILOCK() {
 		if (!evalNumericExpression()) return false;					// Get setting
 		int code  = EvalNumericExpressionValue.intValue();
 		if (!checkEOL()) return false;
@@ -12352,27 +12430,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			GpsData.LATITUDE, GpsData.LONGITUDE, GpsData.ALTITUDE,
 			GpsData.BEARING, GpsData.SPEED
 		};
-		boolean[] num = { true, false, true, true, true, true, true, true, true };
-		int[] index = { -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1  };
+		// PROVIDER is string, the rest are numeric
+		byte[] type = {  1,  2,  1,  1,  1,  1,  1,  1,  1  };
+		int[] index = { -1, -1, -1, -1, -1, -1, -1, -1, -1  };
 		int nFlds = data.length;
 
-		boolean isComma = true;
-		for (int fld = 0; fld < nFlds; ++fld) {
-			if (isComma) {
-				isComma = isNext(',');
-				if (!isComma) {
-					if (! (num[fld] ? getNVar() : getSVar()) ) return false;
-					index[fld] = theValueIndex;
-					isComma = isNext(',');
-				}
-			}
-		}
-		if (isComma || !checkEOL()) return false;
+		if (!getOptVars(type, index)) return false;
 
 		for (int fld = 0; fld < nFlds; ++fld) {
 			int varIndex = index[fld];
 			if (varIndex != -1) {
-				if (num[fld]) {
+				if (type[fld] == 1) {
 					double value = theGPS.getNumericValue(data[fld]);
 					NumericVarValues.set(index[fld], value);
 				} else {
@@ -13295,7 +13363,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		b.putBoolean("@@@N." + key, false);
 	}
 
-	private boolean execute_BUNDLE_GET(){
+	private boolean execute_BUNDLE_GET() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
 		if (bundleIndex == 0) return false;
 
@@ -13327,7 +13395,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_BUNDLE_TYPE(){
+	private boolean execute_BUNDLE_NEXT() {
+		return false;
+	}
+
+	private boolean execute_BUNDLE_TYPE() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
 		if (bundleIndex == 0) return false;
 
@@ -13351,7 +13423,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_BUNDLE_KEYSET(){
+	private boolean execute_BUNDLE_KEYSET() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
 		if (bundleIndex == 0) return false;
 
@@ -13375,11 +13447,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_BUNDLE_COPY(){
+	private boolean execute_BUNDLE_COPY() {
 		return false;
 	}
 
-	private boolean execute_BUNDLE_CLEAR(){
+	private boolean execute_BUNDLE_CLEAR() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
 		if (bundleIndex == 0) return false;
 		if (!checkEOL()) return false;
@@ -13389,7 +13461,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_BUNDLE_CONTAIN(){
+	private boolean execute_BUNDLE_CONTAIN() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
 		if (bundleIndex == 0) return false;
 
@@ -13408,7 +13480,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_BUNDLE_REMOVE(){
+	private boolean execute_BUNDLE_REMOVE() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
 		if (bundleIndex == 0) return false;
 		if (!isNext(',')) return false;
@@ -13429,7 +13501,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(stack_cmd, "Stack");				// and execute the command
 	}
 
-	private boolean execute_STACK_CREATE(){
+	private boolean execute_STACK_CREATE() {
 		char c = ExecutingLineBuffer.charAt(LineIndex);					// Get the type, s or n
 		++LineIndex;
 		int type = 0;
@@ -13469,7 +13541,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return 0;
 	}
 
-	private boolean execute_STACK_PUSH(){
+	private boolean execute_STACK_PUSH() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
 		if (stackIndex == 0) return false;
 		if (!isNext(',')) return false;										// move to the value
@@ -13486,7 +13558,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			break;
 
 		case stack_is_numeric:
-			if (!evalNumericExpression()){
+			if (!evalNumericExpression()) {
 				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
@@ -13499,13 +13571,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_STACK_POP(){
+	private boolean execute_STACK_POP() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
 		if (stackIndex == 0) return false;
 		if (!isNext(',')) return false;										// move to the value
 
 		Stack thisStack = theStacks.get(stackIndex);		 				// Get the Stack
-		if (thisStack.isEmpty()){
+		if (thisStack.isEmpty()) {
 			return RunTimeError("Stack is empty");
 		}
 
@@ -13535,7 +13607,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_STACK_PEEK(){
+	private boolean execute_STACK_PEEK() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
 		if (stackIndex == 0) return false;
 		if (!isNext(',')) return false;										// move to the value
@@ -13571,7 +13643,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_STACK_TYPE(){
+	private boolean execute_STACK_TYPE() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
 		if (stackIndex == 0) return false;
 		if (!isNext(',')) return false;										// move to the value
@@ -13594,7 +13666,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_STACK_ISEMPTY(){
+	private boolean execute_STACK_ISEMPTY() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
 		if (stackIndex == 0) return false;
 		if (!isNext(',')) return false;
@@ -13608,7 +13680,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_STACK_CLEAR(){
+	private boolean execute_STACK_CLEAR() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
 		if (stackIndex == 0) return false;
 		if (!checkEOL()) return false;
@@ -13625,7 +13697,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	/*
 	// This code does not work on devices with API level < 11
 	 
-	private boolean executeCLIPBOARD_GET(){
+	private boolean executeCLIPBOARD_GET() {
 		  if (!getSVar()) return false;						// get the var to put the clip into
 			ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 		  String data = "";
@@ -13639,7 +13711,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 	
-	private boolean executeCLIPBOARD_PUT(){
+	private boolean executeCLIPBOARD_PUT() {
 		int v = Integer.valueOf(Build.VERSION.SDK_INT);
 		if (!getStringArg()) return false;          // Get the string to put into the clipboard
 		ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
@@ -13651,7 +13723,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 	*/
 	
-	private boolean executeCLIPBOARD_GET(){
+	private boolean executeCLIPBOARD_GET() {
 		if (!getSVar()) return false;						// get the var to put the clip into
 		if (!checkEOL()) return false;
 		  String data;
@@ -13663,7 +13735,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 	
-	private boolean executeCLIPBOARD_PUT(){
+	private boolean executeCLIPBOARD_PUT() {
 		if (!getStringArg()) return false;					// Get the string to put into the clipboard
 		if (!checkEOL()) return false;
 		clipboard.setText(StringConstant);                  // Put the user expression into the clipboard
@@ -14318,7 +14390,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				NetworkInterface intf = en.nextElement();
 				for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
 					InetAddress inetAddress = enumIpAddr.nextElement();
-					if (!(inetAddress. isLoopbackAddress() || inetAddress. isLinkLocalAddress ())) {
+					if (!(inetAddress.isLoopbackAddress() || inetAddress.isLinkLocalAddress())) {
 						IP = inetAddress.getHostAddress().toString();
 						break;
 					}
@@ -14744,22 +14816,53 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private synchronized boolean execute_BT_status() {
-		if (!getNVar() || !checkEOL()) { return false; }
-		int state = (mBluetoothAdapter == null) ? STATE_NOT_ENABLED :
-					(mChatService == null)      ? STATE_NONE        : bt_state;
-		NumericVarValues.set(theValueIndex, (double) state);
-		return true;
+		if (isEOL()) return true;							// user asked for no fields
+
+		// status variable may be either numeric or string; the other two are numeric
+		byte[] type = { 3, 2, 2 };
+		int[] index = { -1, -1, -1 };
+		int nFlds = index.length;
+		if (!getOptVars(type, index)) return false;
+
+		int fld = 0;
+		if (index[fld] != -1) {
+			int state = (mBluetoothAdapter == null) ? STATE_NOT_ENABLED :
+						(mChatService == null)      ? STATE_NONE        : bt_state;
+			if (type[fld] == 1) {							// status variable is numeric
+				NumericVarValues.set(index[0], (double)state);
+			} else {
+				String st = "";								// string representation of state
+				switch (state) {
+					case STATE_NOT_ENABLED:	st = "Not enabled";	break;
+					case STATE_NONE:		st = "Idle";		break;
+					case STATE_LISTENING:	st = "Listening";	break;
+					case STATE_CONNECTING:	st = "Connecting";	break;
+					case STATE_CONNECTED:	st = "Connected";	break;
+					case STATE_READING:		st = "Reading";		break;
+					case STATE_WRITING:		st = "Writing";		break;
+					default:									break;
+				}
+				StringVarValues.set(index[fld], st);
+			}
+		}
+		if (index[++fld] != -1) {
+			String name = (mBluetoothAdapter == null) ? "" : mBluetoothAdapter.getName();
+			StringVarValues.set(index[fld], name);
+		}
+		if (index[++fld] != -1) {
+			String address = (mBluetoothAdapter == null) ? "" : mBluetoothAdapter.getAddress();
+			StringVarValues.set(index[fld], address);
+		}
+		return (++fld == nFlds);							// sanity-check field count
 	}
 
-		  private synchronized boolean execute_BT_open(){
+	private synchronized boolean execute_BT_open() {
 
-			  
 			  if (mBluetoothAdapter == null) {
 		            RunTimeError("Bluetooth is not available");
 		            return false;
 		        }
-			  
-			  
+
 		    	bt_Secure = true;												// this flag will be used when starting 
 		    	if (evalNumericExpression()) {									// the accept thread in BlueTootChatService
 		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
@@ -14784,7 +14887,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	            	return false;
 	            }
 	          }
-	            
+
 	            bt_state = STATE_NONE;
 	            btConnectDevice = null;
             	mOutStringBuffer = new StringBuffer("");
@@ -14795,8 +14898,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		        return true;
 
-		  }
-		  
+	}
+
 		  private boolean execute_BT_close(){
 			  if (mChatService != null) mChatService.stop();
 			  return checkEOL();
