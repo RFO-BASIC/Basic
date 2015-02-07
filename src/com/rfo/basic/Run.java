@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -6673,13 +6673,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeDEBUG_COMMANDS() {
 		if (!Debug) return true;
 
-		if (!getNVar()) return false;									// var for ptr to list of commands
-		int listVarIndex = theValueIndex;
+		int listIndex = getListArg(list_is_string);			// get a reusable List pointer - may create new list
+		if (listIndex < 0) return false;					// failed to get or create a list
+
 		boolean isComma = isNext(',');
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				if (!getNVar()) return false;							// var for count of math functions
+				if (!getNVar()) return false;				// var for count of math functions
 				NumericVarValues.set(theValueIndex, (double)MathFunctions.length);
 				isComma = isNext(',');
 			}
@@ -6687,23 +6688,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				if (!getNVar()) return false;							// var for count of string functions
+				if (!getNVar()) return false;				// var for count of string functions
 				NumericVarValues.set(theValueIndex, (double)StringFunctions.length);
 				isComma = isNext(',');
 			}
 		}
 		int countVarIndex = -1;
 		if (isComma) {
-			if (!getNVar()) return false;								// var for count of command keywords
-			countVarIndex = theValueIndex;								// don't have the count yet
+			if (!getNVar()) return false;					// var for count of command keywords
+			countVarIndex = theValueIndex;					// don't have the count yet
 		}
 		if (!checkEOL()) return false;
 
-		int theIndex = createNewList(list_is_string);					// Try to create list
-		if (theIndex < 0) return false;									// Create failed
-
-		ArrayList<String> list = theLists.get(theIndex);				// The list of commands
-		HashMap<String, String[]> groups = getKeywordLists();			// Command groups
+		ArrayList<String> list = theLists.get(listIndex);		// the list of commands
+		HashMap<String, String[]> groups = getKeywordLists();	// command groups
 
 		int kwCount = 0;
 		for (String kw : MathFunctions)   { list.add(kw + ')'); }
@@ -6720,7 +6718,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				}
 			}
 		}
-		NumericVarValues.set(listVarIndex, (double)theIndex);			// Return the list pointer
 		if (countVarIndex != -1) { NumericVarValues.set(countVarIndex, (double)kwCount); }
 		return true;
 	}
@@ -6786,7 +6783,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!Debug) return true;
 
 		int listIndex = getListArg();							// get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!checkEOL()) return false;
 
 		WatchedList = listIndex;
@@ -6802,7 +6799,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!Debug) return true;
 
 		int stackIndex = getStackIndexArg();					// get the stack pointer
-		if (stackIndex == 0) return false;
+		if (stackIndex < 0) return false;
 		if (!checkEOL()) return false;
 
 		WatchedStack = stackIndex;
@@ -6818,7 +6815,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!Debug) return true;
 
 		int bundleIndex = getBundleArg();						// get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 		if (!checkEOL()) return false;
 
 		WatchedBundle = bundleIndex;
@@ -6887,7 +6884,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!Debug) return true;
 
 		int listIndex = getListArg();							// get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 
 		WatchedList = listIndex;
 		DialogSelector(3);
@@ -6899,7 +6896,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!Debug) return true;
 
 		int stackIndex = getStackIndexArg();					// get the stack pointer
-		if (stackIndex == 0) return false;
+		if (stackIndex < 0) return false;
 
 		WatchedStack = stackIndex;
 		DialogSelector(4);
@@ -6911,7 +6908,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!Debug) return true;
 
 		int bundleIndex = getBundleArg();						// get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 
 		WatchedBundle = bundleIndex;
 		DialogSelector(5);
@@ -7330,12 +7327,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 
 		for (String s : set) {
-			if (!s.startsWith("@@@N.")) {
-				boolean isNumeric = b.getBoolean("@@@N." + s);
-				msg.add(prefix + s + ": " +
-						(isNumeric ? Double.toString(b.getDouble(s))
-								   : quote(b.getString(s))));
-			}
+			Object o = b.get(s);
+			boolean isNumeric = o instanceof Double;
+			msg.add(prefix + s + ": " +
+					(isNumeric ? (Double)o : quote((String)o)));
 		}
 		return msg;
 	}
@@ -8969,15 +8964,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeTIMEZONE_LIST() {								// Get a list of all valid time zone strings
-		if (!(getNVar() && checkEOL())) { return false; }
+		int listIndex = getListArg(list_is_string);			// get a reusable List pointer - may create new list
+		if (listIndex < 0) return false;					// failed to get or create a list
+		if (!checkEOL()) return false;
 
-		int theIndex = createNewList(list_is_string);						// Create a new empty string list
-		if (theIndex < 0) { return false; }									// Create failed
-		NumericVarValues.set(theValueIndex, (double) theIndex);				// Return the list pointer
-
-		ArrayList<String> theList = theLists.get(theIndex);
-		for (String zone : TimeZone.getAvailableIDs()) {					// Get all the zones the system knows
-			theList.add(zone);												// Put them in the list
+		ArrayList<String> theList = theLists.get(listIndex);
+		for (String zone : TimeZone.getAvailableIDs()) {	// get all the zones the system knows
+			theList.add(zone);								// put them in the list
 		}
 		return true;
 	}
@@ -9549,7 +9542,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			int bundleIndex = theBundles.size();
 			theBundles.add(b);
 			for (; i < len; ++i) {
-				bundlePut(b, keys[i], vals[i]);
+				b.putString(keys[i], vals[i]);
 			}
 			NumericVarValues.set(theValueIndex, (double)bundleIndex);
 		} else {													// string format
@@ -12406,18 +12399,27 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_gps_satellites() {
 		if (isEOL()) return true;							// user asked for no fields
+
+		int satCountVarIndex = -1;
 		Bundle bSats = null;								// bundle in BASIC! format
 
-		if (!getNVar()) return false;						// variable for returned satellite count value
-		int satCountIndex = theValueIndex;
-		if (isNext(',')) {
+		boolean isComma = isNext(',');
+		if (!isComma) {
+			if (!getNVar()) return false;					// variable for returned satellite count value
+			satCountVarIndex = theValueIndex;
+			isComma = isNext(',');
+		}
+		if (isComma) {
 			int bundleIndex = getBundleArg();
 			if (bundleIndex == 0) return false;
 			bSats = theBundles.get(bundleIndex);
 		}
 		if (!checkEOL()) return false;
-		double value = theGPS.getNumericValue(GpsData.SATELLITES);
-		NumericVarValues.set(satCountIndex, value);			// set satellite count into variable
+
+		if (satCountVarIndex != -1) {
+			double value = theGPS.getNumericValue(GpsData.SATELLITES);
+			NumericVarValues.set(satCountVarIndex, value);	// set satellite count into variable
+		}
 		return updateGPSSatelliteBundle(bSats);				// update bundle if user reqeuested it
 	}
 
@@ -12457,32 +12459,32 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		// returns status, count of satellites in fix, count of satellites in view,
 		// and bundle of satellites
-		int statusIndex = -1;
+		int statusVarIndex = -1;
 		boolean statusIsNumeric = true;
-		int inFixIndex  = -1;
-		int inViewIndex = -1;
+		int inFixVarIndex  = -1;
+		int inViewVarIndex = -1;
 		Bundle bSats = null;								// bundle in BASIC! format
 
 		boolean isComma = isNext(',');
 		if (!isComma) {
-			if (!getVar()) return false;
-			statusIsNumeric = VarIsNumeric;
-			statusIndex = theValueIndex;
+			if (!getVar()) return false;					// status variable
+			statusIsNumeric = VarIsNumeric;					// may be either numeric or string
+			statusVarIndex = theValueIndex;
 			isComma = isNext(',');
 		}
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				if (!getNVar()) return false;
-				inFixIndex = theValueIndex;
+				if (!getNVar()) return false;				// inFix variable, numeric
+				inFixVarIndex = theValueIndex;
 				isComma = isNext(',');
 			}
 		}
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				if (!getNVar()) return false;
-				inViewIndex = theValueIndex;
+				if (!getNVar()) return false;				// inView variable, numeric
+				inViewVarIndex = theValueIndex;
 				isComma = isNext(',');
 			}
 		}
@@ -12493,25 +12495,25 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		if (statusIndex != -1) {
+		if (statusVarIndex != -1) {
 			if (statusIsNumeric) {
 				double value = theGPS.getNumericValue(GpsData.STATUS);
-				NumericVarValues.set(statusIndex, value);
+				NumericVarValues.set(statusVarIndex, value);
 			} else {
 				String value = theGPS.getStringValue(GpsData.STATUS);
-				StringVarValues.set(statusIndex, value);
+				StringVarValues.set(statusVarIndex, value);
 			}
 		}
-		if (inFixIndex != -1) {
+		if (inFixVarIndex != -1) {
 			double value = theGPS.getNumericValue(GpsData.SATS_IN_FIX);
-			NumericVarValues.set(inFixIndex, value);
+			NumericVarValues.set(inFixVarIndex, value);
 		}
-		if (inViewIndex != -1) {
+		if (inViewVarIndex != -1) {
 			double value = theGPS.getNumericValue(GpsData.SATS_IN_VIEW);
-			NumericVarValues.set(inViewIndex, value);
+			NumericVarValues.set(inViewVarIndex, value);
 		}
 		return updateGPSSatelliteBundle(bSats);				// update bundle if user reqeuested it
-	}
+	} // execute_gps_status
 
 	private boolean updateGPSSatelliteBundle(Bundle bSats) {
 		if (bSats == null) return true;						// No bundle, nothing to update
@@ -12524,7 +12526,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		// If a BASIC! bundle already exists for a satellite PRN, it is reused.
 
 		for (String sat : bSats.keySet()) {					// clear data from existing satellite bundles
-			if (sat.startsWith("@@@N.")) { continue; }		// skip BASIC! bundle type entries
+			// TODO: verify that this is a valid satellite bundle
 			int bSatIndex = (int)(bSats.getDouble(sat));	// index of BASIC! bundle for one satellite
 			if ((bSatIndex < 1) || (bSatIndex >= theBundles.size())) {
 				return RunTimeError("Satellite " + sat + ": Invalid Bundle Pointer");
@@ -12543,10 +12545,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			Bundle bSat = theBundles.get(bSatIndex);		// get the BASIC! bundle for this satellite's data
 			for (String key : jSat.keySet()) {				// copy Java bundle data to BASIC! bundle
 				Double value = jSat.getDouble(key);
-				bundlePut(bSat, key, value);
+				bSat.putDouble(key, value);
 			}
 			if (!bSats.containsKey(sat)) {					// put the satellite bundle index into the BASIC! bundle
-				bundlePut(bSats, sat, (double)bSatIndex);
+				bSats.putDouble(sat, (double)bSatIndex);
 			}
 		}
 		return true;
@@ -12890,31 +12892,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		char c = ExecutingLineBuffer.charAt(LineIndex);					// Get the type, s or n
 		++LineIndex;
 		int type = 0;
-		
-		if (c == 'n' ){
-			type = list_is_numeric;
-		}
-		else if (c == 's'){
-			type = list_is_string;
-		} else return false;
+
+		if      (c == 'n') { type = list_is_numeric; }
+		else if (c == 's') { type = list_is_string; }
+		else return false;
 
 		if (!isNext(',')) return false;
-
 		if (!getNVar()) return false;									// List pointer variable
-		int SaveValueIndex = theValueIndex;
-
 		if (!checkEOL()) return false;
 
-		int theIndex = createNewList(type);								// Try to create list
+		int theIndex = createNewList(type, theValueIndex);				// Try to create list
 		if (theIndex < 0) return false;									// Create failed
-
-		NumericVarValues.set(SaveValueIndex, (double) theIndex);		// Return the list pointer
 		return true;
 	}
 
-	private int createNewList(int type) {						// Put a new ArrayList in global theLists
+	private int createNewList(int type, int varValueIndex) {	// Put a new ArrayList in global theLists
 																// Put its type in global theListsType 
-		int index = theLists.size();
+																// Write its index to user variable at varValueIndex
+		int listIndex = theLists.size();
 		if (type == list_is_string) {									// Create a string list
 			theLists.add(new ArrayList <String>());
 		} else if (type == list_is_numeric) {							// Create a numeric list
@@ -12923,7 +12918,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return -1;													// Unknown type, don't create anything
 		}
 		theListsType.add(type);											// Add the type
-		return index;
+		NumericVarValues.set(varValueIndex, (double)listIndex);			// tell the user where it is
+		return listIndex;
 	}
 
 	private int getListArg() {											// Get the List pointer
@@ -12938,12 +12934,39 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			RunTimeError(errorMsg);
 		}
-		return 0;
+		return -1;
+	}
+
+	private int getListArg(int type) {
+		// Type-restricted auto-create: if the command argument is a valid list pointer (index)
+		// of the correct type, return the list pointer for re-use. If it is not (i.e., it is
+		// out of range or the wrong type), and the command line argument is a simple numeric
+		// variable, create a new list and return its index.
+		// Otherwise post a RunTimeError and return -1.
+		// NOTE: if this method auto-creates a list, it writes the index to the user's variable.
+		int startLI = LineIndex;
+		if (evalNumericExpression()) {
+			int listIndex = EvalNumericExpressionValue.intValue();
+			if ((listIndex > 0) && (listIndex < theLists.size()) &&		// in range
+				(theListsType.get(listIndex) == type)) {				// type ok
+				return listIndex;							// expression is valid string List pointer
+			}
+			int endLI = LineIndex;
+			LineIndex = startLI;
+			if (getNVar() && (LineIndex == endLI)) {		// if NVar is entire expression
+				return createNewList(type, theValueIndex);	// try to create list, -1 if fail
+			}												// create writes index to user variable
+			LineIndex = endLI;
+			RunTimeError("Invalid " +
+				((type == list_is_numeric) ? "Numeric" : "String") +
+				" List Pointer");
+		}
+		return -1;
 	}
 
 	private boolean execute_LIST_ADDARRAY(){
 		int listIndex = getListArg();								// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 
 		if (!isNext(',')) return false;
 		if (getArrayVarForRead() == null) return false;				// Get the array variable
@@ -12970,11 +12993,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_ADDLIST(){
 		int destListIndex = getListArg("Invalid Destination List Pointer");	// Get the destination list pointer
-		if (destListIndex == 0) return false;
+		if (destListIndex < 0) return false;
 		if (!isNext(',')) return false;
 
 		int sourceListIndex = getListArg("Invalid Source List Pointer");	// Get the source list pointer
-		if (sourceListIndex == 0) return false;
+		if (sourceListIndex < 0) return false;
 		if (!checkEOL()) return false;
 
 		boolean isDestNumeric = (theListsType.get(destListIndex) == list_is_numeric);
@@ -12987,7 +13010,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_SEARCH(){
 		int listIndex = getListArg();									// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;									// move to the value
 
 		int found = -1;
@@ -13056,7 +13079,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_ADD(){
 		int listIndex = getListArg();								// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;								// move to the result value
 
 		boolean isListNumeric = (theListsType.get(listIndex) == list_is_numeric);
@@ -13072,7 +13095,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_SET(){
 		int listIndex = getListArg();								// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// Get the index to get
@@ -13116,7 +13139,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_GET(){
 		int listIndex = getListArg();								// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// Get the index to get
@@ -13160,7 +13183,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_GETTYPE(){
 		int listIndex = getListArg();								// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!getSVar()) return false;
@@ -13184,7 +13207,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_CLEAR(){
 		int listIndex = getListArg();								// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!checkEOL()) return false;
 		theLists.get(listIndex).clear();
 		return true;
@@ -13192,7 +13215,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_REMOVE(){
 		int listIndex = getListArg();								// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// Get the index to remove
@@ -13211,7 +13234,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_INSERT(){
 		int listIndex = getListArg();								// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// Get the index insert at
@@ -13257,7 +13280,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_SIZE(){
 		int listIndex = getListArg();									// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;									// move to the return var
 
 		if (!getNVar()) return false;
@@ -13271,7 +13294,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_LIST_TOARRAY(){
 		int listIndex = getListArg();									// Get the list pointer
-		if (listIndex == 0) return false;
+		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;									// move to the array var
 
 		String var = getArrayVarForWrite();								// get the result array variable
@@ -13305,12 +13328,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private int createBundle(int varValueIndex) {				// create a new bundle and put it on the list
 		int bundleIndex = theBundles.size();
-		NumericVarValues.set(varValueIndex, (double)bundleIndex);
 		theBundles.add(new Bundle());
+		NumericVarValues.set(varValueIndex, (double)bundleIndex);
 		return bundleIndex;
 	}
 
 	private int getBundleArg() {								// Get the Bundle pointer
+		// Auto-create: if the command argument is a valid bundle pointer (index),
+		// return the bundle pointer for re-use. If it is not, and the command line argument
+		// is a simple numeric variable, create a new bundle and return its index.
+		// Otherwise post a RunTimeError and return -1.
+		// NOTE: if this method auto-creates a bundle, it writes the index to the user's variable.
 		int startLI = LineIndex;
 		if (evalNumericExpression()) {
 			int bundleIndex = EvalNumericExpressionValue.intValue();
@@ -13325,12 +13353,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			LineIndex = endLI;
 			RunTimeError("Invalid Bundle Pointer");
 		}
-		return 0;
+		return -1;
 	}
 
 	private boolean execute_BUNDLE_PUT(){
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 
 		if (!isNext(',')) return false;									// move to the tag
 		if (!getStringArg()) return false;
@@ -13343,29 +13371,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int LI = LineIndex;
 		if (evalNumericExpression()) {
 			if (!checkEOL()) return false;
-			bundlePut(b, tag, EvalNumericExpressionValue);
+			b.putDouble(tag, EvalNumericExpressionValue);
 		} else {
 			LineIndex = LI;
 			if (!getStringArg()) return false;
 			if (!checkEOL()) return false;
-			bundlePut(b, tag, StringConstant);
+			b.putString(tag, StringConstant);
 		}
 		return true;
 	}
 
-	private void bundlePut(Bundle b, String key, Double value) {
-		b.putDouble(key, value);
-		b.putBoolean("@@@N." + key, true);
-	}
-
-	private void bundlePut(Bundle b, String key, String value) {
-		b.putString(key, value);
-		b.putBoolean("@@@N." + key, false);
-	}
-
 	private boolean execute_BUNDLE_GET() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 
 		if (!isNext(',')) return false;									// move to the tag
 		if (!getStringArg()) return false;
@@ -13380,17 +13398,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError(tag + " not in bundle");
 		}
 
-		boolean isNumeric = b.getBoolean("@@@N." + tag);
-		if (isNumeric) {
-			if (!VarIsNumeric) {
-				return RunTimeError(tag + " is not a string");
-			}
-			NumericVarValues.set(theValueIndex, b.getDouble(tag));
+		Object o = b.get(tag);
+		if (o instanceof Double) {
+			if (!VarIsNumeric) { return RunTimeError(tag + " is not a string"); }
+			NumericVarValues.set(theValueIndex, (Double)o);
 		} else {
-			if (VarIsNumeric) {
-				return RunTimeError(tag + " is not numeric");
-			}
-			StringVarValues.set(theValueIndex, b.getString(tag));
+			if (VarIsNumeric) { return RunTimeError(tag + " is not numeric"); }
+			StringVarValues.set(theValueIndex, (String)o);
 		}
 		return true;
 	}
@@ -13401,7 +13415,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_BUNDLE_TYPE() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 
 		if (!isNext(',')) return false;									// move to the tag
 		if (!getStringArg()) return false;
@@ -13412,37 +13426,25 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) return false;
 
 		Bundle b = theBundles.get(bundleIndex);
-		if (!b.containsKey(tag)) {
-			return RunTimeError(tag + " not in bundle");
-		}
+		if (!b.containsKey(tag)) { return RunTimeError(tag + " not in bundle"); }
 
-		boolean isNumeric = b.getBoolean("@@@N." + tag);
-		String type = (isNumeric) ? "N" : "S";
-
+		String type = (b.get(tag) instanceof Double) ? "N" : "S";
 		StringVarValues.set(theValueIndex, type);
 		return true;
 	}
 
 	private boolean execute_BUNDLE_KEYSET() {
-		int bundleIndex = getBundleArg();								// Get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		int bundleIndex = getBundleArg();					// get the Bundle pointer
+		if (bundleIndex < 0) return false;
 
-		if (!isNext(',')) return false;									// move to the list var
-		if (!getNVar()) return false;
+		if (!isNext(',')) return false;						// move to the list var
+		int listIndex = getListArg(list_is_string);			// get a reusable List pointer - may create new list
+		if (listIndex < 0) return false;					// failed to get or create a list
 		if (!checkEOL()) return false;
 
-		 ArrayList<String> theStringList = new ArrayList <String>();
-		 int theIndex = theLists.size();
-		 theLists.add(theStringList);
-		 theListsType.add(list_is_string);
-		 NumericVarValues.set(theValueIndex, (double) theIndex);
-
 		Bundle b = theBundles.get(bundleIndex);
-		Set<String> set= b.keySet();
-
-		for (String s : set) {
-			if (!s.startsWith("@@@N.")) { theStringList.add(s); }
-		}
+		ArrayList<String> theStringList = new ArrayList<String>(b.keySet());
+		theLists.set(listIndex, theStringList);				// put the new list on the list of lists
 
 		return true;
 	}
@@ -13453,7 +13455,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_BUNDLE_CLEAR() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 		if (!checkEOL()) return false;
 
 		Bundle b = theBundles.get(bundleIndex);
@@ -13463,7 +13465,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_BUNDLE_CONTAIN() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 
 		if (!isNext(',')) return false;									// move to the tag
 		if (!getStringArg()) return false;
@@ -13482,7 +13484,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_BUNDLE_REMOVE() {
 		int bundleIndex = getBundleArg();								// Get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!getStringArg()) return false;								// Get the key to remove
@@ -13491,7 +13493,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		Bundle theBundle = theBundles.get(bundleIndex);					// Get the  bundle
 		theBundle.remove(key);											// Remove the requested key
-		theBundle.remove("@@@N." + key);								// Remove the corresponding type key
 		return true;
 	}
 
@@ -13515,7 +13516,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) return false;
 
-		if (!getNVar()) return false;									// Stack pointer variable
+		if (!getNVar()) return false;									// stack pointer variable
 		int SaveValueIndex = theValueIndex;
 
 		if (!checkEOL()) return false;
@@ -13525,12 +13526,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	 theStacks.add(theStack);
 
 	   theStacksType.add(type);											// add the type
-	   NumericVarValues.set(SaveValueIndex, (double) theIndex);   		// Return the stack pointer    
+	   NumericVarValues.set(SaveValueIndex, (double) theIndex);			// return the stack pointer    
 
 		return true;
 	}
 
-	private int getStackIndexArg() {									// Get the Stack pointer
+	private int getStackIndexArg() {									// get the Stack pointer
 		if (evalNumericExpression()) {
 			int stackIndex = EvalNumericExpressionValue.intValue();
 			if ((stackIndex > 0) && (stackIndex < theStacks.size())) {
@@ -13538,15 +13539,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			RunTimeError("Invalid Stack Pointer");
 		}
-		return 0;
+		return -1;
 	}
 
 	private boolean execute_STACK_PUSH() {
-		int stackIndex = getStackIndexArg();								// Get the Stack pointer
-		if (stackIndex == 0) return false;
+		int stackIndex = getStackIndexArg();								// get the Stack pointer
+		if (stackIndex < 0) return false;
 		if (!isNext(',')) return false;										// move to the value
 
-		Stack thisStack = theStacks.get(stackIndex);						// Get the stack
+		Stack thisStack = theStacks.get(stackIndex);						// get the stack
 		switch (theStacksType.get(stackIndex))
 		{
 		case stack_is_string:												// String type stack
@@ -13573,7 +13574,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_STACK_POP() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
-		if (stackIndex == 0) return false;
+		if (stackIndex < 0) return false;
 		if (!isNext(',')) return false;										// move to the value
 
 		Stack thisStack = theStacks.get(stackIndex);		 				// Get the Stack
@@ -13609,7 +13610,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_STACK_PEEK() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
-		if (stackIndex == 0) return false;
+		if (stackIndex < 0) return false;
 		if (!isNext(',')) return false;										// move to the value
 
 		Stack thisStack = theStacks.get(stackIndex);						// Get the Stack
@@ -13645,7 +13646,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_STACK_TYPE() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
-		if (stackIndex == 0) return false;
+		if (stackIndex < 0) return false;
 		if (!isNext(',')) return false;										// move to the value
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
@@ -13668,7 +13669,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_STACK_ISEMPTY() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
-		if (stackIndex == 0) return false;
+		if (stackIndex < 0) return false;
 		if (!isNext(',')) return false;
 		if (!getNVar()) return false;
 		if (!checkEOL()) return false;
@@ -13682,7 +13683,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean execute_STACK_CLEAR() {
 		int stackIndex = getStackIndexArg();								// Get the Stack pointer
-		if (stackIndex == 0) return false;
+		if (stackIndex < 0) return false;
 		if (!checkEOL()) return false;
 
 		Stack thisStack = theStacks.get(stackIndex);						// Get the Stack
@@ -15902,7 +15903,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executePHONE_INFO() {		// This is dynamic info. Some static
 												// phone info is available from executeDEVICE().
 		int bundleIndex = getBundleArg();						// get the Bundle pointer
-		if (bundleIndex == 0) return false;
+		if (bundleIndex < 0) return false;
 		if (!checkEOL()) return false;
 
 		Bundle b = theBundles.get(bundleIndex);
@@ -15910,8 +15911,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
 		String phoneType = getPhoneType(tm);
 		String networkType = getNetworkType(tm);
-		bundlePut(b, "PhoneType", phoneType);
-		bundlePut(b, "NetworkType", networkType);
+		b.putString("PhoneType", phoneType);
+		b.putString("NetworkType", networkType);
 
 		CellLocation loc = (tm != null) ? tm.getCellLocation() : null;
 		if (loc == null) {
@@ -15919,20 +15920,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} else if (phoneType.equals("GSM")) {
 			double cid = ((GsmCellLocation)loc).getCid();
 			double lac = ((GsmCellLocation)loc).getLac();
-			bundlePut(b, "CID", cid);
-			bundlePut(b, "LAC", lac);
+			b.putDouble("CID", cid);
+			b.putDouble("LAC", lac);
 
 			String mcc_mnc = tm.getNetworkOperator();
 			String operator = tm.getNetworkOperatorName();
-			bundlePut(b, "MCC/MNC", mcc_mnc);
-			bundlePut(b, "Operator", operator);
+			b.putString("MCC/MNC", mcc_mnc);
+			b.putString("Operator", operator);
 		} else if (phoneType.equals("CDMA")) {
 			double baseID = ((CdmaCellLocation)loc).getBaseStationId();
 			double networkID = ((CdmaCellLocation)loc).getNetworkId();
 			double systemID = ((CdmaCellLocation)loc).getSystemId();
-			bundlePut(b,  "BaseID", baseID);
-			bundlePut(b,  "NetworkID", networkID);
-			bundlePut(b,  "SystemID", systemID);
+			b.putDouble("BaseID", baseID);
+			b.putDouble("NetworkID", networkID);
+			b.putDouble("SystemID", systemID);
 		}
 		if (mSignalStrength != null) {
 			// The PhoneStateListener is listening and caught a signal strength change.
@@ -15941,19 +15942,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				Class<?> c = Class.forName("android.telephony.SignalStrength");
 				java.lang.reflect.Method m = c.getMethod("getLevel");
 				Integer level = (Integer)m.invoke(mSignalStrength, (Object[])null);
-				bundlePut(b,  "SignalLevel", level.doubleValue());
+				b.putDouble("SignalLevel", level.doubleValue());
 			} catch (NoSuchMethodException nsm) {				// fall back on less flexible methods
 				if (phoneType.equals("GSM")) {
-					bundlePut(b, "GsmSignal", (double)mSignalStrength.getGsmSignalStrength());
+					b.putDouble("GsmSignal", (double)mSignalStrength.getGsmSignalStrength());
 				} else if (phoneType.equals("CDMA")) {
-					bundlePut(b, "CdmaDbm", (double)mSignalStrength.getCdmaDbm());
+					b.putDouble("CdmaDbm", (double)mSignalStrength.getCdmaDbm());
 				}
 			} catch (Exception e) {}
 			try {
 				Class<?> c = Class.forName("android.telephony.SignalStrength");
 				java.lang.reflect.Method m = c.getMethod("getAsuLevel");
 				Integer level = (Integer)m.invoke(mSignalStrength, (Object[])null);
-				bundlePut(b,  "SignalASU", level.doubleValue());
+				b.putDouble("SignalASU", level.doubleValue());
 			} catch (Exception e) {}
 		}
 		return true;
