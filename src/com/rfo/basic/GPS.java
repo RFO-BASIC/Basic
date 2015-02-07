@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -26,6 +26,8 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
+import java.util.HashMap;
+
 import android.content.Context;
 import android.location.GpsSatellite;
 import android.location.GpsStatus;
@@ -42,6 +44,17 @@ import android.util.Log;
 public class GPS implements GpsStatus.Listener, LocationListener {
 
 	private static final String LOGTAG = "GPS";
+
+	private static final String STR_EVENT_STARTED = "Started";
+	private static final String STR_EVENT_STOPPED = "Stopped";
+	private static final String STR_EVENT_FIRST_FIX = "First Fix";
+	private static final String STR_EVENT_STATUS_UPDATE = "Updated";
+
+	public static final String KEY_PRN = "prn";
+	private static final String KEY_AZIMUTH = "azimuth";
+	private static final String KEY_ELEVATION = "elevation";
+	private static final String KEY_SNR = "snr";
+	private static final String KEY_INFIX = "infix";
 
 	private double Altitude;
 	private double Latitude;
@@ -199,10 +212,10 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 			case PROVIDER:		result = Provider;				break;
 			case STATUS:
 				switch (LastStatusEvent) {
-					case GpsStatus.GPS_EVENT_STARTED:			return "Started";
-					case GpsStatus.GPS_EVENT_STOPPED:			return "Stopped";
-					case GpsStatus.GPS_EVENT_FIRST_FIX:			return "First Fix";
-					case GpsStatus.GPS_EVENT_SATELLITE_STATUS:	return "Updated";
+					case GpsStatus.GPS_EVENT_STARTED:			return STR_EVENT_STARTED;
+					case GpsStatus.GPS_EVENT_STOPPED:			return STR_EVENT_STOPPED;
+					case GpsStatus.GPS_EVENT_FIRST_FIX:			return STR_EVENT_FIRST_FIX;
+					case GpsStatus.GPS_EVENT_SATELLITE_STATUS:	return STR_EVENT_STATUS_UPDATE;
 					default:	break;
 				}
 			break;
@@ -211,18 +224,19 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 		return (result != null) ? result : "";
 	}
 
-	public Bundle getSatellites() {
-		Bundle sats = new Bundle();
+	public HashMap<Double, Bundle> getSatellites() {
+		HashMap<Double, Bundle> sats = new HashMap<Double, Bundle>();
 		synchronized (this) {
 			if (Satellites != null) {
 				for (GpsSatellite s : Satellites) {
 					Bundle b = new Bundle();
-					b.putDouble("azimuth", s.getAzimuth());
-					b.putDouble("elevation", s.getElevation());
-					b.putDouble("snr", s.getSnr());
-					b.putDouble("infix", s.usedInFix() ? 1.0 : 0.0);
-					String number = String.format("%02x", s.getPrn());
-					sats.putBundle(number, b);
+					double prn = (double)s.getPrn();
+					b.putDouble(KEY_PRN, prn);
+					b.putDouble(KEY_AZIMUTH, s.getAzimuth());
+					b.putDouble(KEY_ELEVATION, s.getElevation());
+					b.putDouble(KEY_SNR, s.getSnr());
+					b.putDouble(KEY_INFIX, s.usedInFix() ? 1.0 : 0.0);
+					sats.put(prn, b);						// put the satellite in the bundle by PRN
 				}
 			}
 		}

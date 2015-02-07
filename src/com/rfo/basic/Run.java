@@ -6700,7 +6700,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		ArrayList<String> list = theLists.get(listIndex);		// the list of commands
+		ArrayList<String> list = new ArrayList<String>();		// the list of commands
+		theLists.set(listIndex, list);							// put new list in theLists
 		HashMap<String, String[]> groups = getKeywordLists();	// command groups
 
 		int kwCount = 0;
@@ -8968,7 +8969,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (listIndex < 0) return false;					// failed to get or create a list
 		if (!checkEOL()) return false;
 
-		ArrayList<String> theList = theLists.get(listIndex);
+		ArrayList<String> theList = new ArrayList<String>();
+		theLists.set(listIndex, theList);
 		for (String zone : TimeZone.getAvailableIDs()) {	// get all the zones the system knows
 			theList.add(zone);								// put them in the list
 		}
@@ -12401,7 +12403,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (isEOL()) return true;							// user asked for no fields
 
 		int satCountVarIndex = -1;
-		Bundle bSats = null;								// bundle in BASIC! format
+		ArrayList<Object> sats = null;						// list of satellite bundles
 
 		boolean isComma = isNext(',');
 		if (!isComma) {
@@ -12410,9 +12412,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			isComma = isNext(',');
 		}
 		if (isComma) {
-			int bundleIndex = getBundleArg();
-			if (bundleIndex == 0) return false;
-			bSats = theBundles.get(bundleIndex);
+			int listIndex = getListArg(list_is_numeric);	// reuse old list or create new one
+			if (listIndex < 0) return false;
+			sats = theLists.get(listIndex);
 		}
 		if (!checkEOL()) return false;
 
@@ -12420,7 +12422,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			double value = theGPS.getNumericValue(GpsData.SATELLITES);
 			NumericVarValues.set(satCountVarIndex, value);	// set satellite count into variable
 		}
-		return updateGPSSatelliteBundle(bSats);				// update bundle if user reqeuested it
+		return updateGPSSatelliteList(sats);				// update list if user requested it
 	}
 
 	private boolean execute_gps_location() {
@@ -12458,12 +12460,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (isEOL()) return true;							// user asked for no fields
 
 		// returns status, count of satellites in fix, count of satellites in view,
-		// and bundle of satellites
+		// and list of satellite bundles
 		int statusVarIndex = -1;
 		boolean statusIsNumeric = true;
 		int inFixVarIndex  = -1;
 		int inViewVarIndex = -1;
-		Bundle bSats = null;								// bundle in BASIC! format
+		ArrayList<Object> sats = null;								// list of satellite bundles
 
 		boolean isComma = isNext(',');
 		if (!isComma) {
@@ -12489,9 +12491,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		}
 		if (isComma) {
-			int bundleIndex = getBundleArg();
-			if (bundleIndex == 0) return false;
-			bSats = theBundles.get(bundleIndex);
+			int listIndex = getListArg(list_is_numeric);	// reuse old list or create new one
+			if (listIndex < 0) return false;
+			sats = theLists.get(listIndex);
 		}
 		if (!checkEOL()) return false;
 
@@ -12512,47 +12514,88 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			double value = theGPS.getNumericValue(GpsData.SATS_IN_VIEW);
 			NumericVarValues.set(inViewVarIndex, value);
 		}
-		return updateGPSSatelliteBundle(bSats);				// update bundle if user reqeuested it
+		return updateGPSSatelliteList(sats);				// update list if user requested it
 	} // execute_gps_status
 
-	private boolean updateGPSSatelliteBundle(Bundle bSats) {
-		if (bSats == null) return true;						// No bundle, nothing to update
+	private boolean updateGPSSatelliteList(ArrayList<Object> satList) {
+		if (satList == null) return true;					// No list, nothing to update
 
-		// jSats is a bundle in Java format and bSats is a bundle in BASIC! format.
-		// The bundle keys are GPS satellite PRNs.
-		// The jSats values are Java bundles of satellite data.
-		// The bSats values are indices of BASIC! bundles.
-		// Each jSats satellite bundle is copied to a BASIC! bundle whose index is in bSats.
-		// If a BASIC! bundle already exists for a satellite PRN, it is reused.
+		// satList is a List of zero or more Bundle pointers (indices into theBundles).
+		// Any Bundles present must contain satellite data.
+		// We clear the stale data, but keep a history list of bundle pointers,
+		// indexed by satellite PRN. When get new satellite bundles from GPS,
+		// we match them by PRN to existing bundles, putting the new bundle in theBundles
+		// where the old bundle was. New satellites add new bundles to theBundles.
+		// Anything left in the history list is copied to the end of the user list.
+		// That way we don't create a new bundle next time the same satellite reappears.
 
-		for (String sat : bSats.keySet()) {					// clear data from existing satellite bundles
-			// TODO: verify that this is a valid satellite bundle
-			int bSatIndex = (int)(bSats.getDouble(sat));	// index of BASIC! bundle for one satellite
-			if ((bSatIndex < 1) || (bSatIndex >= theBundles.size())) {
-				return RunTimeError("Satellite " + sat + ": Invalid Bundle Pointer");
-			}
-			theBundles.get(bSatIndex).clear();
-		}
+		// This is pretty convoluted, but it's all about re-using the satellite bundles,
+		// or more accurately, reusing slots in theBundles list.
+		// We use the user's list to keep pointers to every satellite ever seen.
 
-		Bundle jSats = theGPS.getSatellites();				// bundle of bundles of satellite data in Java format
-		for (String sat : jSats.keySet()) {					// copy satellite data into bundles
-			Bundle jSat = jSats.getBundle(sat);				// get satellite's Java bundle
-			int bSatIndex = (int)(bSats.getDouble(sat));	// get corresponding the BASIC! bundle index
-			if (bSatIndex == 0) {							// if no BASIC! bundle, create a new one
-				bSatIndex = theBundles.size();
-				theBundles.add(new Bundle());
-			}
-			Bundle bSat = theBundles.get(bSatIndex);		// get the BASIC! bundle for this satellite's data
-			for (String key : jSat.keySet()) {				// copy Java bundle data to BASIC! bundle
-				Double value = jSat.getDouble(key);
-				bSat.putDouble(key, value);
-			}
-			if (!bSats.containsKey(sat)) {					// put the satellite bundle index into the BASIC! bundle
-				bSats.putDouble(sat, (double)bSatIndex);
-			}
+		HashMap<Double, Double> oldList = validateSatelliteList(satList);
+		if (oldList == null) return false;					// list not valid
+		satList.clear();									// erase the user's list
+
+		getSatelliteBundles(oldList, satList);				// get latest satellite data from GPS
+															// builds satList, removes items from oldList
+		for (Double prn : oldList.keySet()) {				// if any satellite remain in the history list
+			satList.add(oldList.get(prn));					// copy each index to the end of the user's list
 		}
 		return true;
-	}
+	} // updateGPSSatelliteList
+
+	// Validate user's satellite list: it must contain valid satellite bundles.
+	// Build a history list that maps each satellite PRN to a bundle pointer (theBundles index).
+	// Clear the user's list and return the history list. If error, return null.
+	private HashMap<Double, Double> validateSatelliteList(ArrayList<Object> satList) {
+		if (satList == null) return null;
+		if (!satList.isEmpty() && !(satList.get(0) instanceof Double)) {
+			RunTimeError("Invalid Satellite List");
+			return null;
+		}
+		HashMap<Double, Double> history = new HashMap<Double, Double>();
+		for (Object o : satList) {							// for each satellite in the user's list
+			Double sat = (Double)o;							// index of BASIC! bundle for one satellite
+			int bSatIdx = sat.intValue();					// same thing as int
+			if ((bSatIdx > 0) && (bSatIdx < theBundles.size())) {
+				Bundle bSat = theBundles.get(bSatIdx);		// get the satellite bundle
+				if (bSat.containsKey(GPS.KEY_PRN)) {
+					Double prn = (Double)bSat.get(GPS.KEY_PRN);	// get the satellite's PRN
+					history.put(prn, sat);						// map PRN to bundle index
+					bSat.clear();								// clear stale data
+					bSat.putDouble(GPS.KEY_PRN, prn);			// put the PRN back in
+					continue;								// all conditions met; next satellite
+				} // else no PRN
+			} // else bad bundle index
+			RunTimeError("Invalid Satellite Bundle");		// one of the conditions was not met
+			history = null;
+		}
+		return history;
+	} // validateSatelliteList
+
+	// Get the GPS satellite data bundles.
+	// Try to match them up by PRN to the pool of existing satellite bundles.
+	// If match found, put the new bundle in theBundles at the old index and
+	// remove the history item. If no bundle exists for a PRN, create a new one.
+	// This is intended to allow a user to poll GPS without proliferating bundles!
+	private void getSatelliteBundles(HashMap<Double, Double> pool, List<Object> list) {
+		HashMap<Double, Bundle> satMap = theGPS.getSatellites();// map of new bundles of satellite data in Java format
+		for (Double prn : satMap.keySet()) {
+			Bundle jSat = satMap.get(prn);					// get each satellite's bundle
+			Double sat = pool.get(prn);						// look for a corresponding bundle index
+			if (sat != null) {								// existing satellite bundle
+				int bSatIdx = sat.intValue();
+				theBundles.set(bSatIdx, jSat);				// put the new bundle at the known index
+			} else {										// no BASIC! bundle, create a new one
+				int bSatIdx = theBundles.size();
+				theBundles.add(jSat);
+				sat = (double)bSatIdx;
+			}
+			list.add(sat);									// put the bundle index into the list
+			pool.remove(prn);								// remove it from the history list
+		}
+	} // getSatelliteBundles
 
 	// ************************************* Array Package ****************************************
 
