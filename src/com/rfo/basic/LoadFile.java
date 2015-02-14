@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -114,7 +114,7 @@ private void updateList(){
 		if (test.isDirectory()) {								// If file is a directory, add "(d)"
 			dirs.add(s + "(d)");								// and add to display list
 		} else {
-			if (s.endsWith(".bas")) {							// 	Only put files ending in
+			if (s.toLowerCase().endsWith(".bas")) {				// 	Only put files ending in
 				files.add(s);									// .bas into the display list
 			}
 		}
