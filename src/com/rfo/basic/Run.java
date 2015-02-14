@@ -286,6 +286,7 @@ public class Run extends ListActivity {
 
 	// First, an alphabetical list of all of the top-level keywords.
 	// Every constant in this list must appear in both BasicKeyWords[] and BASIC_cmd[].
+	private static final String BKW_AM_GROUP = "am.";
 	private static final String BKW_ARRAY_GROUP = "array.";
 	private static final String BKW_AUDIO_GROUP = "audio.";
 	private static final String BKW_BACK_RESUME = "back.resume";
@@ -446,6 +447,7 @@ public class Run extends ListActivity {
 		BKW_INCLUDE, BKW_PAUSE, BKW_REM,
 		BKW_WIFI_INFO, BKW_HEADSET, BKW_MYPHONENUMBER,
 		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
+		BKW_AM_GROUP,
 		BKW_BACK_RESUME, BKW_BACKGROUND_RESUME,
 		BKW_CONSOLETOUCH_RESUME,
 		BKW_KEY_RESUME, BKW_MENUKEY_RESUME,
@@ -574,6 +576,7 @@ public class Run extends ListActivity {
 		new Command(BKW_EMAIL_SEND)             { public boolean run() { return executeEMAIL_SEND(); } },
 		new Command(BKW_PHONE_GROUP, CID_GROUP) { public boolean run() { return executePHONE(); } },
 		new Command(BKW_SMS_GROUP, CID_GROUP)   { public boolean run() { return executeSMS(); } },
+		new Command(BKW_AM_GROUP,CID_GROUP) 	{ public boolean run() { return executeAM(); } },
 
 		new Command(BKW_BACK_RESUME)            { public boolean run() { return executeBACK_RESUME(); } },
 		new Command(BKW_BACKGROUND_RESUME)      { public boolean run() { return executeBACKGROUND_RESUME(); } },
@@ -600,6 +603,7 @@ public class Run extends ListActivity {
 		if (keywordLists == null) {
 			keywordLists = new HashMap<String, String[]>();		// If you add a new keyword group, add it to this list!
 
+			keywordLists.put(BKW_AM_GROUP,        am_KW);
 			keywordLists.put(BKW_ARRAY_GROUP,     Array_KW);
 			keywordLists.put(BKW_AUDIO_GROUP,     Audio_KW);
 			keywordLists.put(BKW_BT_GROUP,        bt_KW);
@@ -2429,6 +2433,20 @@ public class Run extends ListActivity {
 	public TelephonyManager mTM;
 	public SignalStrength mSignalStrength = null;
 
+	//************************ am variables ******************************
+
+	private static final String BKW_AM_BROADCAST = "broadcast";
+	private static final String BKW_AM_START = "start";
+
+	private static final String am_KW[] = {				// Command list for Format
+		BKW_AM_BROADCAST, BKW_AM_START
+	};
+
+	private final Command[] am_cmd = new Command[] {	// Map am command keywords to their execution functions
+		new Command(BKW_AM_BROADCAST)           { public boolean run() { return executeAM_BROADCAST(); } },
+		new Command(BKW_AM_START)               { public boolean run() { return executeAM_START(); } },
+	};
+
 	// ****************** Headset Broadcast Receiver ***********************
 
 	public class BroadcastsHandler extends BroadcastReceiver {
@@ -3738,25 +3756,59 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// types: 1 numeric, 2 string, 3 either
 	// Type 3 coming in is overwritten to type of variable found on command line.
 	private boolean getOptVars(byte[] type, int[] index) {
-		int nFlds = type.length;
-		if (nFlds != index.length) return false;			// array lengths must match
+		int nArgs = type.length;
+		if (nArgs != index.length) return false;			// array lengths must match
 
 		boolean isComma = true;
-		for (int fld = 0; fld < nFlds; ++fld) {
+		for (int arg = 0; arg < nArgs; ++arg) {
 			if (isComma) {
 				isComma = isNext(',');
 				if (!isComma) {
 					if (!getVar()) return false;
 					byte vType = (byte)(VarIsNumeric ? 1 : 2);
-					if ((vType & type[fld]) == 0) return false;	// type mismatch
-					type[fld] = vType;
-					index[fld] = theValueIndex;
+					if ((vType & type[arg]) == 0) return false;	// type mismatch
+					type[arg] = vType;
+					index[arg] = theValueIndex;
 					isComma = isNext(',');
 				}
 			}
 		}
 		return (!isComma && checkEOL());
-	}
+	} // getOptVars
+
+	// Get optional arguments, where all are expressions, not variables.
+	// types: 1 numeric, 2 string, 3 either
+	// Type 3 coming in is overwritten to type of expression found on command line.
+	private boolean getOptExprs(byte[] type, Double[] nVal, String[] sVal) {
+		int nArgs = type.length;
+		if (nArgs != nVal.length) return false;				// array lengths must match
+		if (nArgs != sVal.length) return false;				// array lengths must match
+
+		boolean isComma = true;
+		for (int arg = 0; arg < nArgs; ++arg) {
+			int typ = type[arg];
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (typ != 2) {							// try numeric expression
+						if (!evalNumericExpression()) {
+							if (typ == 1) return false;		// required numeric
+							typ = 2;						// actual type is string
+						} else {
+							if (typ == 3) { typ = 1; }		// actual type is numeric
+							nVal[arg] = EvalNumericExpressionValue;
+						} 
+					}
+					if (typ == 2) {							// try string expression
+						if (!getStringArg()) return false;
+						sVal[arg] = StringConstant;
+					}
+					isComma = isNext(',');
+				}
+			}
+		}
+		return (!isComma && checkEOL());
+	} // getOptExprs
 
 	// ************************* start of getVar() and its derivatives ****************************
 
@@ -6313,7 +6365,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		waitForLOCK();										// wait for the user to exit the Dialog
 
-		if (canceledIndex != -1) {							// use cancel var to report if canceled
+		if (canceledIndex >= 0) {							// use cancel var to report if canceled
 			NumericVarValues.set(canceledIndex, mInputCancelled ? 1.0 : 0.0);
 		}
 		if (mInputCancelled) {
@@ -6672,56 +6724,54 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeDEBUG_COMMANDS() {
 		if (!Debug) return true;
+		if (isEOL()) return true;							// user asked for no data
 
-		int listIndex = getListArg(list_is_string);			// get a reusable List pointer - may create new list
-		if (listIndex < 0) return false;					// failed to get or create a list
+		int listIndex = -1;
+		ArrayList<String> list = null;
+		if (!isNext(',')) {
+			listIndex = getListArg(list_is_string);			// get a reusable List pointer - may create new list
+			if (listIndex < 0) return false;				// failed to get or create a list
+			isNext(',');									// consume comma, if there is one
+		}
 
-		boolean isComma = isNext(',');
-		if (isComma) {
-			isComma = isNext(',');
-			if (!isComma) {
-				if (!getNVar()) return false;				// var for count of math functions
-				NumericVarValues.set(theValueIndex, (double)MathFunctions.length);
-				isComma = isNext(',');
-			}
-		}
-		if (isComma) {
-			isComma = isNext(',');
-			if (!isComma) {
-				if (!getNVar()) return false;				// var for count of string functions
-				NumericVarValues.set(theValueIndex, (double)StringFunctions.length);
-				isComma = isNext(',');
-			}
-		}
-		int countVarIndex = -1;
-		if (isComma) {
-			if (!getNVar()) return false;					// var for count of command keywords
-			countVarIndex = theValueIndex;					// don't have the count yet
-		}
-		if (!checkEOL()) return false;
-
-		ArrayList<String> list = new ArrayList<String>();		// the list of commands
-		theLists.set(listIndex, list);							// put new list in theLists
-		HashMap<String, String[]> groups = getKeywordLists();	// command groups
+		// Three optional numeric variables for counts of math functions, string functions, and command keywords.
+		byte[] type = { 1, 1, 1 };							// type of each variable
+		int[] index = { -1, -1, -1 };						// index (theValueIndex) of each variable
+		int nArgs = index.length;
+		if (!getOptVars(type, index)) return false;
+		int countVarIndex = index[nArgs - 1];				// keyword count var is last in array
 
 		int kwCount = 0;
-		for (String kw : MathFunctions)   { list.add(kw + ')'); }
-		for (String kw : StringFunctions) { list.add(kw + ')'); }
-		for (String kw : BasicKeyWords) {
-			if (!kw.endsWith(".")) {
-				list.add(kw);
-				++kwCount;
-			} else {
-				String[] group = groups.get(kw);
-				for (String sub : group) {
-					list.add(kw + sub);
+		if (listIndex >= 0) {
+			list = new ArrayList<String>();					// the list of commands
+			theLists.set(listIndex, list);					// put new list in theLists
+		}
+		if ((listIndex >= 0) || (countVarIndex >= 0)) {		// if need list or command keyword count
+			HashMap<String, String[]> groups = getKeywordLists();	// command groups
+
+			if (list != null) {
+				for (String kw : MathFunctions)   { list.add(kw + ')'); }
+				for (String kw : StringFunctions) { list.add(kw + ')'); }
+			}
+			for (String kw : BasicKeyWords) {				// build list and/or count keywords
+				if (!kw.endsWith(".")) {
+					if (list != null) { list.add(kw); }
 					++kwCount;
+				} else {
+					String[] group = groups.get(kw);
+					for (String sub : group) {
+						if (list != null) { list.add(kw + sub); }
+						++kwCount;
+					}
 				}
 			}
 		}
-		if (countVarIndex != -1) { NumericVarValues.set(countVarIndex, (double)kwCount); }
+		int[] vals = { MathFunctions.length, StringFunctions.length, kwCount };
+		for (int arg = 0; arg < nArgs; ++arg) {
+			if (index[arg] >= 0) { NumericVarValues.set(index[arg], (double)vals[arg]); }
+		}
 		return true;
-	}
+	} // executeDEBUG_COMMANDS
 
 	private String plusBase(int val) {
 		return (val == 0) ? "0" : "1 + " + (val - 1);
@@ -9303,13 +9353,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeWIFI_INFO() {
-		if (isEOL()) return true;							// user asked for no fields
+		if (isEOL()) return true;							// user asked for no data
 
 		// First three return variables are strings. The IP address may be either string or numeric.
 		// The last variable is numeric.
-		byte[] type = { 2, 2, 2, 3, 1 };
-		int[] index = { -1, -1, -1, -1, -1 };
-		int nFlds = index.length;
+		byte[] type = { 2, 2, 2, 3, 1 };					// type of each variable
+		int[] index = { -1, -1, -1, -1, -1 };				// index (theValueIndex) of each variable
+		int nArgs = index.length;
 		WifiInfo wi = null;
 		if (!getOptVars(type, index)) return false;
 
@@ -9321,32 +9371,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Cannot get WifiInfo: " + e.getMessage());
 		}
 
-		int fld = 0;
-		if (index[fld] != -1) {
-			StringVarValues.set(index[fld], wi.getSSID());
-		}
-		if (index[++fld] != -1) {
-			StringVarValues.set(index[fld], wi.getBSSID());
-		}
-		if (index[++fld] != -1) {
-			StringVarValues.set(index[fld], wi.getMacAddress());
-		}
-		if (index[++fld] != -1) {
+		int arg = 0;
+		if (index[arg] >= 0)   { StringVarValues.set(index[arg], wi.getSSID()); }
+		if (index[++arg] >= 0) { StringVarValues.set(index[arg], wi.getBSSID()); }
+		if (index[++arg] >= 0) { StringVarValues.set(index[arg], wi.getMacAddress()); }
+		if (index[++arg] >= 0) {
 			int ip = wi.getIpAddress();
-			if (type[fld] == 1) {							// IP address variable is numeric
-				NumericVarValues.set(index[fld], (double)ip);
+			if (type[arg] == 1) {							// IP address variable is numeric
+				NumericVarValues.set(index[arg], (double)ip);
 			} else {										// convert to string
 				String ipString = "";
 				byte[] ipbytes = { (byte)(ip), (byte)(ip>>>8), (byte)(ip>>>16), (byte)(ip>>>24) };
 				try { ipString = InetAddress.getByAddress(ipbytes).getHostAddress(); }
 				catch (Exception e) { /* can't happen */ }
-				StringVarValues.set(index[fld], ipString);
+				StringVarValues.set(index[arg], ipString);
 			}
 		}
-		if (index[++fld] != -1) {
-			NumericVarValues.set(index[fld], (double)wi.getLinkSpeed());
-		}
-		return (++fld == nFlds);							// sanity-check field count
+		if (index[++arg] >= 0) { NumericVarValues.set(index[arg], (double)wi.getLinkSpeed()); }
+		return (++arg == nArgs);							// sanity-check arg count
 	}
 
 	@SuppressLint("InlinedApi")										// Uses a value from API 12
@@ -10955,35 +10997,23 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_text_height() {
-		int hvi = -1, uvi = -1, dvi = -1;
-		boolean isComma = isNext(',');
-		if (!isComma) {
-			if (!getNVar()) return false;							// height return variable
-			hvi = theValueIndex;
-			isComma = isNext(',');
-		}
-		if (isComma) {
-			isComma = isNext(',');
-			if (!isComma) {
-				if (!getNVar()) return false;						// up return variable
-				uvi = theValueIndex;
-				isComma = isNext(',');
-			}
-		}
-		if (isComma) {
-			if (!getNVar()) return false;							// down return variable
-			dvi = theValueIndex;
-		}
-		if (!checkEOL()) return false;
+		if (isEOL()) return true;									// user asked for no data
+
+		// Three optional numeric variables for height, up, and down values
+		byte[] type = { 1, 1, 1 };
+		int[] index = { -1, -1, -1 };
+		int nArgs = index.length;
+		if (!getOptVars(type, index)) return false;
 
 		Paint.FontMetrics fm = aPaint.getFontMetrics();
+		float height = aPaint.getTextSize();
+		float ascent = fm.ascent;
+		float descent = fm.descent;
 
-		double height = aPaint.getTextSize();
-		double ascent = fm.ascent;
-		double descent = fm.descent;
-		if (hvi >= 0) { NumericVarValues.set(hvi, height); }		// save the total height value into the var
-		if (uvi >= 0) { NumericVarValues.set(uvi, ascent); }		// save the top/up value into the var
-		if (dvi >= 0) { NumericVarValues.set(dvi, descent); }		// save the bottom/down value into the var
+		float[] vals = { height, ascent, descent };
+		for (int arg = 0; arg < nArgs; ++arg) {
+			if (index[arg] >= 0) { NumericVarValues.set(index[arg], (double)vals[arg]); }
+		}
 		return true;
 	}
 
@@ -11287,7 +11317,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		NumericVarValues.set(widthIndex, (double)size.x);
 		NumericVarValues.set(heightIndex, (double)size.y);
-		if (densityIndex != -1) {
+		if (densityIndex >= 0) {
 			NumericVarValues.set(densityIndex, (double)densityDpi);
 		}
 		return true;
@@ -11308,7 +11338,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		if (heightIndex != -1) {
+		if (heightIndex >= 0) {
 			double height = 0.0;
 			Resources res = getResources();
 			int resID = res.getIdentifier("status_bar_height", "dimen", "android");
@@ -11317,7 +11347,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			NumericVarValues.set(heightIndex, height);
 		}
-		if (showingIndex != -1) {
+		if (showingIndex >= 0) {
 			NumericVarValues.set(showingIndex, mShowStatusBar ? 1.0 : 0.0);
 		}
 		return true;
@@ -12339,7 +12369,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		float minDistance = 0.0f;
 
 		boolean isComma = isNext(',');
-		if (!isComma && !isEOL()) {
+		if (!isComma && !isEOL()) {							// there is a status var
 			if (!getNVar()) return false;
 			statusVarIndex = theValueIndex;
 			isComma = isNext(',');
@@ -12347,14 +12377,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				if (!evalNumericExpression()) return false;
+				if (!evalNumericExpression()) return false;	// get the minTime arg
 				minTime = EvalNumericExpressionIntValue.longValue();
 				if (minTime < 0) { return RunTimeError("Time less than zero"); }
 				isComma = isNext(',');
 			}
 		}
 		if (isComma) {
-			if (!evalNumericExpression()) return false;
+			if (!evalNumericExpression()) return false;		// get the minDistance arg
 			minDistance = EvalNumericExpressionIntValue.longValue();
 			if (minDistance < 0) { return RunTimeError("Distance less than zero"); }
 		}
@@ -12367,11 +12397,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			writeErrorMsg(e.getMessage());
 			errorCode = 0.0;
 		}
-		if (statusVarIndex != -1) {
+		if (statusVarIndex >= 0) {
 			NumericVarValues.set(statusVarIndex, errorCode);
 		}
 		return true;
-	}
+	} // execute_gps_open
 
 	public boolean execute_gps_close() {
 		if (!checkEOL()) return false;
@@ -12400,7 +12430,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gps_satellites() {
-		if (isEOL()) return true;							// user asked for no fields
+		if (isEOL()) return true;							// user asked for no data
 
 		int satCountVarIndex = -1;
 		ArrayList<Object> sats = null;						// list of satellite bundles
@@ -12418,15 +12448,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		if (satCountVarIndex != -1) {
+		if (satCountVarIndex >= 0) {
 			double value = theGPS.getNumericValue(GpsData.SATELLITES);
 			NumericVarValues.set(satCountVarIndex, value);	// set satellite count into variable
 		}
 		return updateGPSSatelliteList(sats);				// update list if user requested it
-	}
+	} // execute_gps_satellites
 
 	private boolean execute_gps_location() {
-		if (isEOL()) return true;							// user asked for no fields
+		if (isEOL()) return true;							// user asked for no data
 
 		// returns time, provider, satellites, accuracy, latitude, longitude, altitude, bearing, and speed
 		GpsData[] data = {
@@ -12435,29 +12465,29 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			GpsData.BEARING, GpsData.SPEED
 		};
 		// PROVIDER is string, the rest are numeric
-		byte[] type = {  1,  2,  1,  1,  1,  1,  1,  1,  1  };
-		int[] index = { -1, -1, -1, -1, -1, -1, -1, -1, -1  };
-		int nFlds = data.length;
+		byte[] type = {  1,  2,  1,  1,  1,  1,  1,  1,  1  };	// type of each variable
+		int[] index = { -1, -1, -1, -1, -1, -1, -1, -1, -1  };	// index (theValueIndex) of each variable
+		int nArgs = data.length;
 
 		if (!getOptVars(type, index)) return false;
 
-		for (int fld = 0; fld < nFlds; ++fld) {
-			int varIndex = index[fld];
-			if (varIndex != -1) {
-				if (type[fld] == 1) {
-					double value = theGPS.getNumericValue(data[fld]);
-					NumericVarValues.set(index[fld], value);
+		for (int arg = 0; arg < nArgs; ++arg) {
+			int varIndex = index[arg];
+			if (varIndex >= 0) {
+				if (type[arg] == 1) {
+					double value = theGPS.getNumericValue(data[arg]);
+					NumericVarValues.set(index[arg], value);
 				} else {
-					String value = theGPS.getStringValue(data[fld]);
-					StringVarValues.set(index[fld], value);
+					String value = theGPS.getStringValue(data[arg]);
+					StringVarValues.set(index[arg], value);
 				}
 			}
 		}
 		return true;
-	}
+	} // execute_gps_location
 
 	private boolean execute_gps_status() {
-		if (isEOL()) return true;							// user asked for no fields
+		if (isEOL()) return true;							// user asked for no data
 
 		// returns status, count of satellites in fix, count of satellites in view,
 		// and list of satellite bundles
@@ -12497,7 +12527,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		if (statusVarIndex != -1) {
+		if (statusVarIndex >= 0) {
 			if (statusIsNumeric) {
 				double value = theGPS.getNumericValue(GpsData.STATUS);
 				NumericVarValues.set(statusVarIndex, value);
@@ -12506,11 +12536,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				StringVarValues.set(statusVarIndex, value);
 			}
 		}
-		if (inFixVarIndex != -1) {
+		if (inFixVarIndex >= 0) {
 			double value = theGPS.getNumericValue(GpsData.SATS_IN_FIX);
 			NumericVarValues.set(inFixVarIndex, value);
 		}
-		if (inViewVarIndex != -1) {
+		if (inViewVarIndex >= 0) {
 			double value = theGPS.getNumericValue(GpsData.SATS_IN_VIEW);
 			NumericVarValues.set(inViewVarIndex, value);
 		}
@@ -14860,19 +14890,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private synchronized boolean execute_BT_status() {
-		if (isEOL()) return true;							// user asked for no fields
+		if (isEOL()) return true;							// user asked for no data
 
 		// status variable may be either numeric or string; the other two are numeric
-		byte[] type = { 3, 2, 2 };
-		int[] index = { -1, -1, -1 };
-		int nFlds = index.length;
+		byte[] type = { 3, 2, 2 };							// type of each variable
+		int[] index = { -1, -1, -1 };						// index (theValueIndex) of each variable
+		int nArgs = index.length;
 		if (!getOptVars(type, index)) return false;
 
-		int fld = 0;
-		if (index[fld] != -1) {
+		int arg = 0;
+		if (index[arg] >= 0) {
 			int state = (mBluetoothAdapter == null) ? STATE_NOT_ENABLED :
 						(mChatService == null)      ? STATE_NONE        : bt_state;
-			if (type[fld] == 1) {							// status variable is numeric
+			if (type[arg] == 1) {							// status variable is numeric
 				NumericVarValues.set(index[0], (double)state);
 			} else {
 				String st = "";								// string representation of state
@@ -14886,19 +14916,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					case STATE_WRITING:		st = "Writing";		break;
 					default:									break;
 				}
-				StringVarValues.set(index[fld], st);
+				StringVarValues.set(index[arg], st);
 			}
 		}
-		if (index[++fld] != -1) {
+		if (index[++arg] >= 0) {
 			String name = (mBluetoothAdapter == null) ? "" : mBluetoothAdapter.getName();
-			StringVarValues.set(index[fld], name);
+			StringVarValues.set(index[arg], name);
 		}
-		if (index[++fld] != -1) {
+		if (index[++arg] >= 0) {
 			String address = (mBluetoothAdapter == null) ? "" : mBluetoothAdapter.getAddress();
-			StringVarValues.set(index[fld], address);
+			StringVarValues.set(index[arg], address);
 		}
-		return (++fld == nFlds);							// sanity-check field count
-	}
+		return (++arg == nArgs);							// sanity-check arg count
+	} // execute_BT_status
 
 	private synchronized boolean execute_BT_open() {
 
@@ -15375,7 +15405,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) return false;
 
 		NumericVarValues.set(lineVarIndex, (double)TouchedConsoleLine);
-		if (longTouchVarIndex != -1) {
+		if (longTouchVarIndex >= 0) {
 			double isLongTouch = ConsoleLongTouch ? 1 : 0;
 			NumericVarValues.set(longTouchVarIndex, isLongTouch);
 		}
@@ -15497,7 +15527,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int vol = am.getStreamVolume(AudioManager.STREAM_RING);
 
 		NumericVarValues.set(volIndex, (double)vol);
-		if (maxIndex != -1) {
+		if (maxIndex >= 0) {
 			NumericVarValues.set(maxIndex, (double)max);
 		}
 		return true;
@@ -15631,7 +15661,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		float rate = fltVal[5];
 
 		int streamID = theSoundPool.play(soundID, leftVolume, rightVolume, priority, loop, rate);
-		if (streamVarIndex != -1) {
+		if (streamVarIndex >= 0) {
 			NumericVarValues.set(streamVarIndex, (double)streamID);
 		}
 		return true;
@@ -16567,6 +16597,58 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeBACKGROUND_RESUME() {
 		return doResume("No background state change");
+	}
+
+	// ***************************** Android Application Manager (AM) *****************************
+
+	private boolean executeAM() {								// Get Intent command keyword if it is there
+		return executeCommand(am_cmd, "AM");
+	}
+
+	private Intent buildIntentForAM() {
+		// Four optional string expressions:
+		// the action, the data, the package, and the component.
+		byte[] type = { 2, 2, 2, 2, 2 };
+		Double[] nVal = { null, null, null, null, null };		// not used
+		String[] sVal = { null, null, null, null, null };
+
+		if (!getOptExprs(type, nVal, sVal)) return null;
+
+		Intent intent = new Intent();
+		if (sVal[0] != null) { intent.setAction(sVal[0]); }
+		if (sVal[1] != null) { intent.setData(Uri.parse(StringConstant)); }
+		if (sVal[3] != null) {									// component name
+			if (sVal[2] != null) {
+				intent.setClassName(sVal[2], sVal[3]);			// package name given
+			} else {
+				intent.setClassName(Run.this, sVal[3]);			// no package given
+			}
+		}
+		return intent;
+	}
+
+	private boolean executeAM_BROADCAST() {						// Broadcast an Intent
+		if (isEOL()) return true;								// nothing to do
+
+		Intent intent = buildIntentForAM();
+		if (intent != null) {
+			try { Run.this.sendBroadcast(intent); }
+			catch (Exception e) { return RunTimeError(e); }
+			return true;
+		}
+		return false;
+	}
+
+	private boolean executeAM_START() {							// Start an Activity via Intent
+		if (isEOL()) return true;								// nothing to do
+
+		Intent intent = buildIntentForAM();
+		if (intent != null) {
+			try { Run.this.startActivity(intent); }
+			catch (Exception e) { return RunTimeError(e); }
+			return true;
+		}
+		return false;
 	}
 
 } // End of Run
