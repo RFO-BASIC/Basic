@@ -3,7 +3,7 @@
  BASIC! is an implementation of the Basic programming language for
  Android devices.
 
- Copyright (C) 2010 - 2014 Paul Laughton
+ Copyright (C) 2010 - 2015 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -48,7 +48,7 @@ public class AddProgramLine {
 		charCount = 0;									// Character count = 0
 		lineCharCounts = new ArrayList<Integer>();		// create a new list of line char counts
 		lineCharCounts.add(0);							// First line starts with a zero char count
-		Basic.lines = new ArrayList<String>();
+		Basic.lines = new ArrayList<Run.ProgramLine>();
 	}
 	
 	public void AddLine(String line) {
@@ -118,7 +118,7 @@ public class AddProgramLine {
 			stemp = "";								// clear the collection
 		}
 		Temp += "\n";								// end the line with New Line
-		Basic.lines.add(Temp);						// add to Basic.lines
+		Basic.lines.add(new Run.ProgramLine(Temp));	// add to Basic.lines
 	}
 
 	private int doQuotedString(String line, int index, int linelen, StringBuilder s) {

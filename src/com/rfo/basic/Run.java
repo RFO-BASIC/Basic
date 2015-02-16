@@ -213,7 +213,7 @@ public class Run extends ListActivity {
 	public static boolean isOld = false;
 	private static final String LOGTAG = "Run";
 	private static final String CLASSTAG = Run.class.getSimpleName();
-//	Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
+//	Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer.line());
 
 	public static Object LOCK = new Object();
 
@@ -243,6 +243,37 @@ public class Run extends ListActivity {
 	private static final int MESSAGE_TOAST             = MESSAGE_DIALOG_GROUP + 0;	// for POPUP command
 	private static final int MESSAGE_INPUT_DIALOG      = MESSAGE_DIALOG_GROUP + 1;	// for INPUT command
 	private static final int MESSAGE_ALERT_DIALOG      = MESSAGE_DIALOG_GROUP + 2;	// for DIALOG.* commands
+
+	// *************************** ProgramLine class ***************************
+
+	public static class ProgramLine {
+		private String mLine;							// full text, after preprocessing
+		private int mLineLength;						// length of mLine
+		private Command mCommand;						// Command object, once known
+		private int mKeywordLength;						// skip past command keyword after Command is known
+
+		public ProgramLine() {
+			this(null);
+		}
+		public ProgramLine(String line) {
+			mLine = line;
+			mLineLength = (mLine == null) ? 0 : mLine.length();
+			mCommand = null;
+			mKeywordLength = 0;
+		}
+
+		public String line() { return mLine; }
+		public int length() { return mLineLength; }
+		public Command cmd() { return mCommand; }
+		public int offset() { return mKeywordLength; }
+		public void cmd(Command command, int length) {
+			mCommand = command;
+			mKeywordLength = length;
+		}
+
+		public boolean startsWith(String prefix) { return mLine.startsWith(prefix); }
+		public boolean startsWith(String prefix, int start) { return mLine.startsWith(prefix, start); }
+	} // class ProgramLine
 
 	// ***************************** Command class *****************************
 
@@ -468,12 +499,18 @@ public class Run extends ListActivity {
 	private final int CID_DATALINK = 7;
 
 	/* Special case: what to do if no command keyword at the beginning of the line */
-	private final Command CMD_IMPLICIT = new Command("") { public boolean run() { return executeImplicitCommand(); } };
+	private final Command CMD_IMPLICIT = new Command("")         { public boolean run() { return executeImplicitCommand(); } };
+	private final Command CMD_IMPL_LET = new Command("")         { public boolean run() { return executeLET(0.0); } };
+	/* Similar special cases where we need a named Command. */
+	private final Command CMD_CALL     = new Command(BKW_CALL)   { public boolean run() { return executeCALL(); } };
+	private final Command CMD_LET      = new Command(BKW_LET)    { public boolean run() { return executeLET(); } };
+	private final Command CMD_PREINC   = new Command(BKW_PREINC) { public boolean run() { return executeLET(1.0); } };
+	private final Command CMD_PREDEC   = new Command(BKW_PREDEC) { public boolean run() { return executeLET(-1.0); } };
 
 	// Map BASIC! command keywords to their execution functions.
 	// The order of this list determines the order of the linear keyword search, which affects performance.
 	private final Command[] BASIC_cmd = new Command[] {
-		new Command(BKW_LET)                    { public boolean run() { return executeLET(0.0); } },
+		CMD_LET,
 		new Command(BKW_IF,     CID_SKIP_TO_ENDIF) { public boolean run() { return executeIF(); } },
 		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
 		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
@@ -493,7 +530,7 @@ public class Run extends ListActivity {
 		new Command(BKW_D_U_CONTINUE)           { public boolean run() { return executeD_U_CONTINUE(); } },
 		new Command(BKW_SW_GROUP, CID_GROUP)    { public boolean run() { return executeSW(); } },
 		new Command(BKW_FN_GROUP, CID_GROUP)    { public boolean run() { return executeFN(); } },
-		new Command(BKW_CALL)                   { public boolean run() { return executeCALL(); } },
+		CMD_CALL,
 		new Command(BKW_GOTO)                   { public boolean run() { return executeGOTO(); } },
 		new Command(BKW_GOSUB)                  { public boolean run() { return executeGOSUB(); } },
 		new Command(BKW_RETURN)                 { public boolean run() { return executeRETURN(); } },
@@ -504,8 +541,8 @@ public class Run extends ListActivity {
 		new Command(BKW_BUNDLE_GROUP,CID_GROUP) { public boolean run() { return executeBUNDLE(); } },
 		new Command(BKW_LIST_GROUP,  CID_GROUP) { public boolean run() { return executeLIST(); } },
 		new Command(BKW_STACK_GROUP, CID_GROUP) { public boolean run() { return executeSTACK(); } },
-		new Command(BKW_PREDEC)                 { public boolean run() { return executeLET(-1.0); } },
-		new Command(BKW_PREINC)                 { public boolean run() { return executeLET(1.0); } },
+		CMD_PREINC,
+		CMD_PREDEC,
 		new Command(BKW_INKEY)                  { public boolean run() { return executeINKEY(); } },
 		new Command(BKW_INPUT)                  { public boolean run() { return executeINPUT(); } },
 		new Command(BKW_DIALOG_GROUP,CID_GROUP) { public boolean run() { return executeDIALOG(); } },
@@ -782,6 +819,9 @@ public class Run extends ListActivity {
 
 	//*********************** The variables for the Operators  ************************
 
+	private static final String OP_INC = "++";
+	private static final String OP_DEC = "--";
+
 	public static final String OperatorString[]={
 		"<=", "<>", ">=", ">", "<",
 		"=", "^", "*", "+", "-",
@@ -921,8 +961,8 @@ public class Run extends ListActivity {
     private int TouchedConsoleLine = 0;					// first valid line number is 1
     private int interruptResume = -1;
 
-    private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer
-    private String ExecutingLineBuffer ="";				// Holds the current line being executed
+    private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer's line
+    private ProgramLine ExecutingLineBuffer = null;		// Holds the current line being executed
     private int ExecutingLineIndex = 0;					// Points to the current line in Basic.lines
     private boolean SEisLE = false;						// If a String expression result is a logical expression
 
@@ -2509,7 +2549,7 @@ public class Run extends ListActivity {
 
 				private void finishRun(String err) {
 					publishProgress(err + ", near line:");
-					publishProgress(ExecutingLineBuffer);
+					publishProgress(ExecutingLineBuffer.line());
 					SyntaxError = true;		// This blocks "Program ended" checks in finishUp()
 					OnErrorLine = 0;		// Don't allow OnError: to catch OOM, it's fatal
 					finishUp();
@@ -2575,13 +2615,13 @@ public class Run extends ListActivity {
 
 		public  boolean RunLoop() {
 			boolean flag = true;
-        	do {
-        		if (ExecutingLineIndex >= Basic.lines.size())break;
-        		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
-//        		Log.v(LOGTAG, "Background.RunLoop: " + ExecutingLineBuffer);
-        		LineIndex = 0 ;
-        		sTime = SystemClock.uptimeMillis();
- 
+			do {
+				if (ExecutingLineIndex >= Basic.lines.size()) break;
+				ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
+//				Log.v(LOGTAG, "Background.RunLoop: " + ExecutingLineBuffer.line());
+				LineIndex = 0 ;
+				sTime = SystemClock.uptimeMillis();
+
         		flag = StatementExecuter();							// execute the next statement
         															// returns true if no problems executing statement
         		if (Exit) return flag;								// if Exit skip all other processing
@@ -2806,9 +2846,9 @@ public class Run extends ListActivity {
 	public void onCreate(Bundle savedInstanceState) {
 
 		super.onCreate(savedInstanceState);
-		Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex );
+		Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex);
 
-		if (Basic.lines == null){
+		if (Basic.lines == null) {
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
 			Intent intent = new Intent(getApplicationContext(), Basic.class);
 			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -2910,11 +2950,11 @@ public class Run extends ListActivity {
     InChar = new ArrayList<String>();
     KeyPressed = false;
     OnKeyLine = 0;
-	
-    LineIndex = 0;				// Current displacement into ExecutingLineBuffer
-    ExecutingLineBuffer ="\n";		// Holds the current line being executed
-    ExecutingLineIndex = 0;		// Points to the current line in Basic.lines
-    SEisLE = false;				// If a String expression result is a logical expression
+
+    LineIndex = 0;									// Current displacement into ExecutingLineBuffer's line
+    ExecutingLineBuffer = new ProgramLine("\n");	// Holds the current line being executed
+    ExecutingLineIndex = 0;							// Points to the current line in Basic.lines
+    SEisLE = false;									// If a String expression result is a logical expression
 
     GosubStack = new Stack<Integer>();			// Stack used for Gosub/Return
     ForNextStack = new	Stack<Bundle>();		// Stack used for For/Next
@@ -3589,16 +3629,17 @@ private void getInterruptLabels() {								// check for interrupt labels
 }
 
 // Scan the entire program. Find all the labels and read.data statements.
-// Note: at present it seems nobody downstream needs to have ExecutingLineIndex set.
+// Must set ExecutingLineBuffer for use by called functions, but it will be reloaded when
+// RunLoop() starts. At present nobody downstream needs to have ExecutingLineIndex set.
 private boolean PreScan() {
 	for (int LineNumber = 0; LineNumber < Basic.lines.size(); ++LineNumber) {
-		String line = Basic.lines.get(LineNumber);					// One line at a time
-		
+		ExecutingLineBuffer = Basic.lines.get(LineNumber);			// scan one line at a time
+		// ExecutingLineIndex = LineNumber;
+		String line = ExecutingLineBuffer.line();
+
 		int li = line.indexOf(":");									// fast check
 		if ((li <= 0) && (line.charAt(0) != 'r')) { continue; }		// not label or READ.DATA, next line
 
-		ExecutingLineBuffer = line;									// set global for called functions
-		// ExecutingLineIndex = LineNumber;
 		String word = getWord(line, 0, false);
 		LineIndex = word.length();
 
@@ -3636,9 +3677,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 
 	private boolean StatementExecuter() {				// Execute one basic line (statement)
-
-		Command c = findCommand(BASIC_cmd);				// get the keyword that may start the line
-		if (c == null) { c = CMD_IMPLICIT; }			// if no keyword, then assume pseudo LET or CALL
+		Command c = ExecutingLineBuffer.cmd();			// use remembered command if possible
+		if (c != null) {
+			LineIndex += ExecutingLineBuffer.offset();
+		} else {
+			c = findCommand(BASIC_cmd);					// get the keyword that may start the line
+			if (c == null) { c = CMD_IMPLICIT; }		// no keyword, assume pseudo LET or CALL
+			ExecutingLineBuffer.cmd(c, c.name.length());// remember the command to bypass future searches
+		}
 
 		if (!IfElseStack.empty()) {						// if inside IF-ELSE-ENDIF
 			Integer q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
@@ -3651,7 +3697,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 
 		if (Echo) {
-			PrintShow(ExecutingLineBuffer.substring(0, ExecutingLineBuffer.length() - 1));
+			String line = ExecutingLineBuffer.line();
+			PrintShow(line.substring(0, line.length() - 1));
 		}
 
 		if (!c.run()) { SyntaxError(); return false; }
@@ -3682,7 +3729,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean RunTimeError(String... msgs) {
 		Show(msgs[0]);								// Display error message
-		Show(ExecutingLineBuffer);					// Display offending line
+		Show(ExecutingLineBuffer.line());			// Display offending line
 		for (int i = 1; i < msgs.length; ++i) {		// Display any supplemental text
 			Show(msgs[i]);
 		}
@@ -3697,7 +3744,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private void writeErrorMsg(String msg) {		// Write errorMsg, do NOT set SyntaxError
-		errorMsg = msg + "\nLine: " + ExecutingLineBuffer;
+		errorMsg = msg + "\nLine: " + ExecutingLineBuffer.line();
 		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
 	}
 
@@ -3705,31 +3752,31 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		writeErrorMsg("Error: " + e);
 	}
 
-   private boolean nextLine() {				// Move to beginning of next line
-	   if (++ExecutingLineIndex < Basic.lines.size()) {	// if not at end of program
-		   ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
-		   LineIndex = 0;
-		   return true;
-	   }
-	   --ExecutingLineIndex;				// No next line
-	   return false;
-   }
+	private boolean nextLine() {				// Move to beginning of next line
+		if (++ExecutingLineIndex < Basic.lines.size()) {	// if not at end of program
+			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
+			LineIndex = 0;
+			return true;
+		}
+		--ExecutingLineIndex;				// No next line
+		return false;
+	}
 
-   private boolean isEOL(){
-	   return (LineIndex >= ExecutingLineBuffer.length()) ||
-			  (ExecutingLineBuffer.charAt(LineIndex) == '\n');
-   }
+	private boolean isEOL(){
+		return (LineIndex >= ExecutingLineBuffer.length()) ||
+				(ExecutingLineBuffer.line().charAt(LineIndex) == '\n');
+	}
 
-   private boolean checkEOL(){
-	   if (isEOL()) return true;
-	   String ec = ExecutingLineBuffer.substring(LineIndex);
-	   RunTimeError("Extraneous characters in line: " + ec);
-	   return false;
-   }
+	private boolean checkEOL(){
+		if (isEOL()) return true;
+		String ec = ExecutingLineBuffer.line().substring(LineIndex);
+		RunTimeError("Extraneous characters in line: " + ec);
+		return false;
+	}
 
 	private boolean isNext(char c) {		// Check the current character
 		if ((LineIndex < ExecutingLineBuffer.length()) &&	// if it is as expected...
-			(ExecutingLineBuffer.charAt(LineIndex) == c)) {
+			(ExecutingLineBuffer.line().charAt(LineIndex) == c)) {
 			++LineIndex;									// ... increment the character pointer
 			return true;
 		}
@@ -3955,21 +4002,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// Does not advance LineIndex unless it finds a valid variable name.
 	private String parseVar(boolean isUserFnAllowed) {
 		int LI = LineIndex;
-		int max = ExecutingLineBuffer.length();
+		String line = ExecutingLineBuffer.line();
+		int max = line.length();
 
 		// For the special cases where a var could be followed by keyword THEN, TO or STEP
 		boolean stopOnPossibleKeyWord = !PossibleKeyWord.equals("");
 																// Isolate the var characters
-		String var = getWord(ExecutingLineBuffer, LI, stopOnPossibleKeyWord);
+		String var = getWord(line, LI, stopOnPossibleKeyWord);
 		if (var.length() == 0) { return null; }					// length is 0, no var
 		LI += var.length();
 		if (LI < max) {
-			char c = ExecutingLineBuffer.charAt(LI);
+			char c = line.charAt(LI);
 			VarIsInt = false;									// Never an integer
 			VarIsNumeric = (c != '$');							// Is this a string var?
 			if (!VarIsNumeric && (++LI < max)) {
 				var += c;
-				c = ExecutingLineBuffer.charAt(LI);
+				c = line.charAt(LI);
 			}
 			VarIsArray = (c == '[');							// Is this an array?
 			VarIsFunction = (c == '(');							// Is this a function?
@@ -4045,10 +4093,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean getNumber() {						// Get a number if there is one
 		char c = 0;
-		int max = ExecutingLineBuffer.length();
+		String line = ExecutingLineBuffer.line();
+		int max = line.length();
 		int i = LineIndex;
 		while (i < max) {								// Must start with one or more digits
-			c = ExecutingLineBuffer.charAt(i);
+			c = line.charAt(i);
 			if (c > '9' || c < '0') { break; }			// If not a digit, done with whole part
 			++i;
 		}
@@ -4056,68 +4105,69 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (c == '.') {									// May have a decimal point
 			while (++i < max) {							// Followed by more digits
-				c = ExecutingLineBuffer.charAt(i);
+				c = line.charAt(i);
 				if (c > '9' || c < '0') { break; }		// If not a digit, done with fractional part
 			}
 		}
 		if (c == 'e' || c == 'E') {						// Is there an exponent
 			if (++i < max) {
-				c = ExecutingLineBuffer.charAt(i);
+				c = line.charAt(i);
 				if (c == '+' || c == '-') { ++i; }		// Is there a sign on the exponent
 			}
 			while (i < max) {							// Get the exponent
-				c = ExecutingLineBuffer.charAt(i);
+				c = line.charAt(i);
 				if (c > '9' || c < '0') { break; }		// If not a digit, done with exponent
 				++i;
 			}
 		}
-		String num = ExecutingLineBuffer.substring(LineIndex,i);			// isolate the numeric characters
+		String num = line.substring(LineIndex, i);		// isolate the numeric characters
 		LineIndex = i;
-		double d = 0;
-		try { d = Double.parseDouble(num);}									// have java parse it into a double
-		catch (Exception e) {
-			return RunTimeError(e);
-		}
-		GetNumberValue = d;													// Report the value 
-		return true;														// Say we found a number
+		double d = 0.0;
+		try { d = Double.parseDouble(num); }			// have java parse it into a double
+		catch (Exception e) { return RunTimeError(e); }
+
+		GetNumberValue = d;								// Report the value 
+		return true;									// Say we found a number
 	}
 
 	private boolean GetStringConstant() {				// Get a string constant if there is one
-		int max = ExecutingLineBuffer.length();
-		if (LineIndex >= max || LineIndex < 0) return false;
+		String line = ExecutingLineBuffer.line();
+		int max = line.length();
+		if (LineIndex >= max || LineIndex < 0) { return false; }
 
 		int i = LineIndex;
 		StringConstant = "";
-		char c = ExecutingLineBuffer.charAt(i);
-		if (c != '"') { return false; }									// first char not "", not String Constant
-		while (true) {													// Get the rest of the String
-			++i;														// copy character until " or EOL
-			if (i >= max) return false;
-			c = ExecutingLineBuffer.charAt(i);
-			if (c == '"') break;										// if " we're done
+		char c = line.charAt(i);
+		if (c != '"')     { return false; }				// first char not "", not String Constant
+		while (true) {									// Get the rest of the String
+			++i;										// copy character until " or EOL
+			if (i >= max) { return false; }
+			c = line.charAt(i);
+			if (c == '"') { break; }					// if " we're done
 
 			if (c == '\r') {			// AddProgramLine hides embedded newline as carriage return
 				c = '\n';
 			} else if (c == '\\') {		// AddProgramLine allows only quote or backslash after backslash
-				c = ExecutingLineBuffer.charAt(++i);
+				c = line.charAt(++i);
 			}
-			StringConstant += c;										// add to String Constant
+			StringConstant += c;						// add to String Constant
 		}
 		
 		if (i< max-1){ ++i;}							// do not let index be >= line length
 		LineIndex = i;
-		return true;															// Say we have a string constant
+		return true;									// Say we have a string constant
 	}
 
-	private Command getFunction(Map<String, Command> map) {			// get a Math or String Function if there is one
+	private Command getFunction(Map<String, Command> map) {	// get a Math or String Function if there is one
 		Command fn = null;
-		int i = ExecutingLineBuffer.indexOf('(', LineIndex);
+		String line = ExecutingLineBuffer.line();
+		int i = line.indexOf('(', LineIndex);
 		if (i >= 0) {
-			String token = ExecutingLineBuffer.substring(LineIndex, ++i);	// token could be a function name
+			String token = line.substring(LineIndex, ++i);	// token could be a function name
 			fn = map.get(token);
-			if (fn != null) {												// null if not a function
-				if (i >= ExecutingLineBuffer.length()) { fn = null; }		// nothing after the '('
-				else { LineIndex = i; }										// set line index past end of function name
+			if (fn != null) {								// null if not a function
+				if (i >= line.length()) { fn = null; }		// nothing after the '('
+				else { LineIndex = i; }						// set line index past end of function name
 			}
 		}
 		return fn;
@@ -4129,31 +4179,42 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (var == null) return false;
 
 		LineIndex = LI;										// rewind the LineIndex for re-parse
-		return VarIsFunction ? executeCALL() : executeLET(0.0);
+		Command cmd = VarIsFunction ? CMD_CALL : CMD_IMPL_LET; // implicit CALL or LET (no preinc/dec)
+		ExecutingLineBuffer.cmd(cmd, 0);					// remember for next time the line is executed
+		return cmd.run();
 	}
 
 	private double incdec() {
 		double result = 0.0;
-		if (ExecutingLineBuffer.startsWith("++", LineIndex)) { result = 1.0; }
-		if (ExecutingLineBuffer.startsWith("--", LineIndex)) { result = -1.0; }
-		if (result != 0.0) { LineIndex += 2; }				// found increment or decrement
+		if      (ExecutingLineBuffer.startsWith(OP_INC, LineIndex)) { LineIndex += 2; result = 1.0; }
+		else if (ExecutingLineBuffer.startsWith(OP_DEC, LineIndex)) { LineIndex += 2; result = -1.0; }
 		return result;
 	}
 
-	private boolean executeLET(double preVal) {			// Execute LET (an assignment statement)
+	private boolean executeLET() {						// Execute LET (an assignment statement)
+		/*
+		 * This is the entry point for use when the command keyword "LET" is present.
+		 */
+		double preVal = incdec();							// check for pre-increment/decrement
+		// Remember the result so, if the line is executed again,
+		// it will go directly to the executeLET(double) with the right pre-inc/dec val.
+		Command cmd = (preVal == 0) ? CMD_IMPL_LET : ((preVal > 0.0) ? CMD_PREINC : CMD_PREDEC);
+		int length = CMD_LET.name.length() + cmd.name.length();
+		ExecutingLineBuffer.cmd(cmd, length);
+		return executeLET(preVal);
+	}
+
+	private boolean executeLET(double nval) {			// Execute LET (an assignment statement)
 		/*
 		 * This is the execution function for commands BKW_LET, BKW_PREDEC, and BKW_PREINC,
 		 * and it is also called from executeImplicitCommand() for implied LET commands.
 		 * A bare variable is an implied LET case, but pre-decrement and pre-increment with
-		 * not LET are treated as explicit BKW_PREDEC and BKW_PREINC commands.
-		 * The input argument identifies the caller and the case the caller wants handled.
-		 * The method itself also handles pre-ops in explict LET commands.
+		 * no LET are treated as explicit BKW_PREDEC and BKW_PREINC commands.
 		 */
-		String sval = "";
-		double nval = (preVal != 0.0) ? preVal : incdec();	// check for pre-increment/decrement
 		boolean islval = (nval == 0.0);						// assignable only if no inc/dec
 
 		if (!getVar()) return false;						// get or create the variable to assign a value to
+		int varNumber = theValueIndex;						// variable to assign to
 
 		if (VarIsNumeric) {
 			double postincdec = incdec();					// check for post-increment/decrement
@@ -4162,8 +4223,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (isEOL()) {										// no more to do, may have created variable
 			if (VarIsNumeric && (nval != 0.0)) {			// pre/post inc/dec of numeric variable
-				double value = nval + NumericVarValues.get(theValueIndex);
-				NumericVarValues.set(theValueIndex, value);
+				double value = nval + NumericVarValues.get(varNumber);
+				NumericVarValues.set(varNumber, value);
 			}
 			return true;
 		}
@@ -4171,13 +4232,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		else if (isNext(':')) return checkEOL();			// if label, must end line
 
 		// Implementation note: this should probably be put in a Java enum type. (TODO)
-		int varNumber = theValueIndex;						// variable to assign to
 		int op = ASSIGN;
+		String sval = "";
 		if (!isNext('=')) {									// require some kind of assignment operator
 			// NOTE: The lvalue before assignment is the ORIGINAL value of the variable,
 			// not the value as modified by and '++' or '--' in the rvalue expression.
-			if (VarIsNumeric) { nval += NumericVarValues.get(theValueIndex); }
-			else              { sval  = StringVarValues.get(theValueIndex); }
+			if (VarIsNumeric) { nval += NumericVarValues.get(varNumber); }
+			else              { sval  = StringVarValues.get(varNumber); }
 			if (ExecutingLineBuffer.startsWith("+=", LineIndex))			{ op = PLUS; }
 			else if (VarIsNumeric) {
 				if (ExecutingLineBuffer.startsWith("-=", LineIndex)) 		{ op = MINUS; }
@@ -4227,7 +4288,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean evalNumericExpression() {			// Evaluate a numeric expression
 
 		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
-		char c = ExecutingLineBuffer.charAt(LineIndex);
+		char c = ExecutingLineBuffer.line().charAt(LineIndex);
 		if (c == '\n' || c == ')') { return false; }		// If eol or starts with ')', there is not an expression
 
 		Stack<Double> ValueStack = new Stack<Double>();     // Each call to eval gets its own stack
@@ -4252,7 +4313,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Command cmd;
 		double incdec = 0.0;									// for recording pre-inc/dec
 
-		char c = ExecutingLineBuffer.charAt(LineIndex);			// First character
+		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// First character
  
 		if (c == '+') {											// Check for unary operators or pre-inc/dec
 			++LineIndex;										// move to the next character
@@ -4275,11 +4336,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				value += incdec;								// pre-inc or dec
 				NumericVarValues.set(theValueIndex, value);
 			}
-			if (ExecutingLineBuffer.startsWith("++", LineIndex)) {
+			if (ExecutingLineBuffer.startsWith(OP_INC, LineIndex)) {
 				NumericVarValues.set(theValueIndex, value + 1);	// post-increment
 				LineIndex += 2;
 			}
-			else if (ExecutingLineBuffer.startsWith("--", LineIndex)) {
+			else if (ExecutingLineBuffer.startsWith(OP_DEC, LineIndex)) {
 				NumericVarValues.set(theValueIndex, value - 1);	// post-decrement
 				LineIndex += 2;
 			}
@@ -4313,7 +4374,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		else { return false; }									// nothing left, fail
 
 		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
-		c = ExecutingLineBuffer.charAt(LineIndex);
+		c = ExecutingLineBuffer.line().charAt(LineIndex);
 
 		if (!PossibleKeyWord.equals("")) {
 			if (ExecutingLineBuffer.startsWith(PossibleKeyWord, LineIndex)) {
@@ -4540,7 +4601,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int max = ExecutingLineBuffer.length();
 		if (LineIndex >= max) { return false; }
 
-		char c = ExecutingLineBuffer.charAt(LineIndex);
+		char c = ExecutingLineBuffer.line().charAt(LineIndex);
 		if (c == '\n' || c == ')') { return false; }			// If eol or starts with ')', there is not an expression
 
 		SEisLE = false;											// Assume not Logical Expression
@@ -4560,7 +4621,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		EvalNumericExpressionValue = 0.0;						// Set Logical Compare Result to false
 		if (LineIndex >= max) { return false; }
-		c = ExecutingLineBuffer.charAt(LineIndex);
+		c = ExecutingLineBuffer.line().charAt(LineIndex);
 		if ((c == '\n') ||		// end of line
 			(c == ')')  ||		// end of parenthesized expression
 			(c == ',')  ||		// parameter separator
@@ -5116,9 +5177,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeMF_TIME() {
-		if (ExecutingLineBuffer.charAt(LineIndex)== ')') {	// If no args, use current time
+		if (ExecutingLineBuffer.line().charAt(LineIndex)== ')') {	// If no args, use current time
 			EvalNumericExpressionIntValue = System.currentTimeMillis();
-		} else {											// Otherwise, get user-supplied time
+		} else {													// Otherwise, get user-supplied time
 			Time time = theTimeZone.equals("") ? new Time() : new Time(theTimeZone);
 			if (!parseTimeArgs(time)) { return false; }
 			EvalNumericExpressionIntValue = time.toMillis(true);
@@ -5883,7 +5944,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		StringBuilder printLine = new StringBuilder((line == null) ? "" : line);
 		char sep = ' ';
 		do {										// do each field in the print statement
-			char c = ExecutingLineBuffer.charAt(LineIndex);
+			char c = ExecutingLineBuffer.line().charAt(LineIndex);
 			if (c == '\n') {
 				break;								// done processing the line
 			}
@@ -5899,7 +5960,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			if (SyntaxError) { return false; }
 
-			sep = ExecutingLineBuffer.charAt(LineIndex);		// get possible separator
+			sep = ExecutingLineBuffer.line().charAt(LineIndex);	// get possible separator
 			if (sep == ',') {						// if the separator is a comma
 				printLine.append(sep).append(' ');	// add comma + blank to the line
 				++LineIndex;
@@ -5931,18 +5992,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		Stop = true;								// ALWAYS stop
 		return ok;
-
 	}
 
 	private boolean getLabelLineNum() {
 		int li = LineIndex;
-		String label = getWord(ExecutingLineBuffer, LineIndex, false);	// get label name
+		String label = getWord(ExecutingLineBuffer.line(), LineIndex, false);	// get label name
 		int len = label.length();
 		LineIndex += len;												// move LineIndex for isEOL()
 		if (isEOL()) {					// If EOL, this is a simple "GOTO/GOSUB label" statement.
 			if (len == 0) return false;									// no label and no expression: error
 		} else {						// Otherwise it is a "GOTO/GOSUB index, label_list..." statement.
-			int comma = ExecutingLineBuffer.indexOf(',', LineIndex);
+			int comma = ExecutingLineBuffer.line().indexOf(',', LineIndex);
 			if (comma < 0) return false;	// if no comma, there is no expression list, so syntax error
 
 			LineIndex = li;
@@ -5952,7 +6012,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			ArrayList<String> labels = new ArrayList<String>();			// build label list
 			do {
 				if (isEOL()) return false;								// don't end with comma
-				label = getWord(ExecutingLineBuffer, LineIndex, false);
+				label = getWord(ExecutingLineBuffer.line(), LineIndex, false);
 				labels.add(label);
 				LineIndex += label.length();
 			} while(isNext(','));
@@ -5999,11 +6059,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeIF() {
-		
+	
 		if (!IfElseStack.empty()){			 								// if inside of an IF block		
 			Integer q = IfElseStack.peek();
 			if ((q != IEexec) && (q != IEinterrupt)) {						// and not executing
-				int index = ExecutingLineBuffer.indexOf("then");
+				int index = ExecutingLineBuffer.line().indexOf("then");
 				if (index < 0) {											// if there is no THEN
 					IfElseStack.push(IEskip2);								// need to skip to this if's end
 				} else {
@@ -6021,7 +6081,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!evalToPossibleKeyword(kw)) { return false; }		// tell getVar that THEN is expected
 		boolean condition = (EvalNumericExpressionValue != 0);
 
-		if (ExecutingLineBuffer.charAt(LineIndex) != '\n') {
+		if (ExecutingLineBuffer.line().charAt(LineIndex) != '\n') {
 			if (!ExecutingLineBuffer.startsWith(kw, LineIndex)) { checkEOL(); return false; }
 			LineIndex += 4;
 
@@ -6036,24 +6096,29 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean SingleLineIf(boolean condition) {
-		int index = ExecutingLineBuffer.lastIndexOf("else");
-		
+		int index = ExecutingLineBuffer.line().lastIndexOf("else");
+
+		// At present, can't use the same ProgramLine when calling StatementExecuter recursively.
+		// We create a new, temporary ProgramLine, with its mCommand null, every time.
 		if (condition) {
-			if (index > 0 ) {
-				ExecutingLineBuffer = ExecutingLineBuffer.substring(0, index) + "\n";
+			String line = ExecutingLineBuffer.line();
+			if (index > 0) {
+				line = line.substring(0, index) + "\n";		// clip off the "else" clause
 			}
+			ExecutingLineBuffer = new ProgramLine(line);
 			return StatementExecuter();
 		}
 
 		if (index > 0) {
 			LineIndex = index + 4;
+			ExecutingLineBuffer = new ProgramLine(ExecutingLineBuffer.line());
 			return StatementExecuter();
 		}
 		return true;
 	}
-	
+
 	private boolean executeELSE() {
-		
+
 		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
 			RunTimeError("Misplaced ELSE");
 			return false;
@@ -6065,14 +6130,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		return true;
 	}
-	
+
 	private boolean executeELSEIF() {
-		
+
 		if (IfElseStack.empty()) {			// prior IF or ELSEIF should have put something on the stack
 			RunTimeError("Misplaced ELSEIF");
 			return false;
 		}
-		
+
 		Integer q = IfElseStack.pop();
 
 		if (q == IEexec) {
@@ -6105,10 +6170,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int lineNum;
 		int limit = Basic.lines.size();
 		for (lineNum = ExecutingLineIndex + 1; lineNum < limit; ++lineNum) {
-			String line = Basic.lines.get(lineNum);
+			String line = Basic.lines.get(lineNum).line();
 			if (line.startsWith(target)) {
 				ExecutingLineIndex = lineNum;					// found the target
-				ExecutingLineBuffer = line;
+				ExecutingLineBuffer = Basic.lines.get(lineNum);
 				LineIndex = target.length();
 				return true;
 			}
@@ -6892,16 +6957,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeDEBUG_WATCH(){				// separate the names and store them
 		if (!Debug) return true;
 
-		int max = ExecutingLineBuffer.length() - 1;
+		String line = ExecutingLineBuffer.line();
+		int max = line.length() - 1;
 		int ni = LineIndex;								// start of name string
 		do {
-			int i = ExecutingLineBuffer.indexOf(',', ni);
+			int i = line.indexOf(',', ni);
 			if (i < 0) { i = max; }
-			String name = ExecutingLineBuffer.substring(ni, i);
+			String name = line.substring(ni, i);
 			getVar();
 			boolean add = true;
 			for (int j = 0; j < WatchVarIndex.size(); ++j) {
-				if (WatchVarIndex.get(j)==VarNumber) { add = false; }
+				if (WatchVarIndex.get(j) == VarNumber) { add = false; }
 			}
 			if (add) {
 				Watch_VarNames.add(name);
@@ -7047,7 +7113,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!dbDialogProgram) {
 			msg = dbDoFunc();
 			msg.add("Executable Line #:    " + Integer.toString(ExecutingLineIndex + 1)
-					+ '\n' + chomp(ExecutingLineBuffer));
+					+ '\n' + chomp(ExecutingLineBuffer.line()));
 		}
 
 		if (dbDialogScalars) msg.addAll(dbDoScalars("  "));
@@ -7061,7 +7127,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			for (int i = 0; i < Basic.lines.size(); ++i) {
 				msg.add(((i == ExecutingLineIndex) ? " >>" : "   ")	// mark current line
 						+ (i + 1) + ": "							// one-based line index
-						+ chomp(Basic.lines.get(i)));				// remove newline
+						+ chomp(Basic.lines.get(i).line()));		// remove newline
 			}
 		}
 
@@ -7649,14 +7715,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(sw_cmd, "SW");
 	}
 
-	private boolean executeSW_BEGIN(){
+	private boolean executeSW_BEGIN() {
 		boolean isNumeric;
 		double nexp = 0;
 		String sexp = "";
 		if (evalNumericExpression()){
 			isNumeric = true;
 			nexp = EvalNumericExpressionValue;
-		}else if (evalStringExpression()){
+		}else if (evalStringExpression()) {
 			isNumeric = false;
 			sexp = StringConstant;
 		}else return false;
@@ -7668,11 +7734,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				LineIndex = 6;
 				return (checkEOL());
 			}
-			if (ExecutingLineBuffer.startsWith("sw.default")){
+			if (ExecutingLineBuffer.startsWith("sw.default")) {
 				LineIndex = 10;
 				return (checkEOL());
 			}
-			if (ExecutingLineBuffer.startsWith("sw.case")){
+			if (ExecutingLineBuffer.startsWith("sw.case")) {
 				LineIndex = 7;
 				if (isNumeric){
 					if (!evalNumericExpression()) return false;
@@ -7689,13 +7755,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;
 	}
 	
-	private boolean executeSW_CASE(){
+	private boolean executeSW_CASE() {
 		return true;
 	}
 	
-	private boolean executeSW_BREAK(){
+	private boolean executeSW_BREAK() {
 		if (!checkEOL()) { return false; }
-		while (++ExecutingLineIndex < Basic.lines.size()){
+		while (++ExecutingLineIndex < Basic.lines.size()) {
 			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
 			if (ExecutingLineBuffer.startsWith("sw.end")) {
 				LineIndex = 6;
@@ -7808,7 +7874,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeTEXT_OPEN() {							// Open a file
 		boolean append = false;										// Assume not append
 		int FileMode = 0;											// Default to FMR
-		switch (ExecutingLineBuffer.charAt(LineIndex)) {			// First parm is a, w or r
+		switch (ExecutingLineBuffer.line().charAt(LineIndex)) {		// First parm is a, w or r
 		case 'a':
 			append = true;					// append is a special case of write
 		case 'w':							// write
@@ -8144,7 +8210,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeBYTE_OPEN() {							// Open a file
 		boolean append = false;										// Assume not append
 		int FileMode = 0;											// Default to FMR
-		switch (ExecutingLineBuffer.charAt(LineIndex)) {			// First parm is a, w or r
+		switch (ExecutingLineBuffer.line().charAt(LineIndex)) {		// First parm is a, w or r
 		case 'a':
 			append = true;					// append is a special case of write
 		case 'w':							// write
@@ -12633,7 +12699,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(array_cmd, "Array");				// and execute the command
 	}
 
-	private boolean execute_array_length(){
+	private boolean execute_array_length() {
 
 		if (!getNVar()) { return false; }							// Length Variable
 		int SaveValueIndex = theValueIndex;
@@ -12654,7 +12720,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_array_load(){
+	private boolean execute_array_load() {
 		String var = getArrayVarForWrite();							// get the result array variable
 		if (var == null) { return false; }							// must name a new array variable
 		if (!isNext(',')) { return false; }							// Comma before the list
@@ -12672,13 +12738,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 	}
 	
-	private boolean LoadNumericList(ArrayList <Double> Values){
+	private boolean LoadNumericList(ArrayList <Double> Values) {
 		while (true) {											// loop through the list
 			if (!evalNumericExpression()) return false;			// values may be expressions
 			Values.add(EvalNumericExpressionValue);
 
-			if (LineIndex >= ExecutingLineBuffer.length()) return false;
-			char c = ExecutingLineBuffer.charAt(LineIndex);		// get the next character
+			String line = ExecutingLineBuffer.line();
+			if (LineIndex >= line.length()) return false;
+			char c = line.charAt(LineIndex);					// get the next character
 			if (c == ',') {										// if it is a comma
 				++LineIndex;									// skip it and continue looping
 			} else if (c == '~') {								// if it is a line continue character
@@ -12688,13 +12755,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean LoadStringList(ArrayList <String> Values){
+	private boolean LoadStringList(ArrayList <String> Values) {
 		while (true) {											// loop through the list
 			if (!getStringArg()) return false;					// values may be expressions
 			Values.add(StringConstant);
 
-			if (LineIndex >= ExecutingLineBuffer.length()) return false;
-			char c = ExecutingLineBuffer.charAt(LineIndex);		// get the next character
+			String line = ExecutingLineBuffer.line();
+			if (LineIndex >= line.length()) return false;
+			char c = line.charAt(LineIndex);					// get the next character
 			if (c == ',') {										// if it is a comma
 				++LineIndex;									// skip it and continue looping
 			} else if (c == '~') {								// if it is a line continue character
@@ -12962,7 +13030,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_LIST_NEW() {
-		char c = ExecutingLineBuffer.charAt(LineIndex);					// Get the type, s or n
+		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// Get the type, s or n
 		++LineIndex;
 		int type = 0;
 
@@ -12971,11 +13039,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		else return false;
 
 		if (!isNext(',')) return false;
-		if (!getNVar()) return false;									// List pointer variable
+		if (!getNVar()) return false;							// List pointer variable
 		if (!checkEOL()) return false;
 
-		int theIndex = createNewList(type, theValueIndex);				// Try to create list
-		if (theIndex < 0) return false;									// Create failed
+		int theIndex = createNewList(type, theValueIndex);		// Try to create list
+		if (theIndex < 0) return false;							// Create failed
 		return true;
 	}
 
@@ -12983,23 +13051,23 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 																// Put its type in global theListsType 
 																// Write its index to user variable at varValueIndex
 		int listIndex = theLists.size();
-		if (type == list_is_string) {									// Create a string list
+		if (type == list_is_string) {							// Create a string list
 			theLists.add(new ArrayList <String>());
-		} else if (type == list_is_numeric) {							// Create a numeric list
+		} else if (type == list_is_numeric) {					// Create a numeric list
 			theLists.add(new ArrayList <Double>());
 		} else {
-			return -1;													// Unknown type, don't create anything
+			return -1;											// Unknown type, don't create anything
 		}
-		theListsType.add(type);											// Add the type
-		NumericVarValues.set(varValueIndex, (double)listIndex);			// tell the user where it is
+		theListsType.add(type);									// Add the type
+		NumericVarValues.set(varValueIndex, (double)listIndex);	// tell the user where it is
 		return listIndex;
 	}
 
-	private int getListArg() {											// Get the List pointer
+	private int getListArg() {									// Get the List pointer
 		return getListArg("Invalid List Pointer");
 	}
 
-	private int getListArg(String errorMsg) {							// Get the List pointer
+	private int getListArg(String errorMsg) {					// Get the List pointer
 		if (evalNumericExpression()) {
 			int listIndex = EvalNumericExpressionValue.intValue();
 			if ((listIndex > 0) && (listIndex < theLists.size())) {
@@ -13576,7 +13644,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_STACK_CREATE() {
-		char c = ExecutingLineBuffer.charAt(LineIndex);					// Get the type, s or n
+		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// Get the type, s or n
 		++LineIndex;
 		int type = 0;
 
@@ -13589,22 +13657,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) return false;
 
-		if (!getNVar()) return false;									// stack pointer variable
+		if (!getNVar()) return false;							// stack pointer variable
 		int SaveValueIndex = theValueIndex;
 
 		if (!checkEOL()) return false;
 
-	 Stack theStack = new Stack();
-	 int theIndex = theStacks.size();
-	 theStacks.add(theStack);
+		Stack theStack = new Stack();
+		int theIndex = theStacks.size();
+		theStacks.add(theStack);
 
-	   theStacksType.add(type);											// add the type
-	   NumericVarValues.set(SaveValueIndex, (double) theIndex);			// return the stack pointer    
+		theStacksType.add(type);								// add the type
+		NumericVarValues.set(SaveValueIndex, (double) theIndex);// return the stack pointer    
 
 		return true;
 	}
 
-	private int getStackIndexArg() {									// get the Stack pointer
+	private int getStackIndexArg() {							// get the Stack pointer
 		if (evalNumericExpression()) {
 			int stackIndex = EvalNumericExpressionValue.intValue();
 			if ((stackIndex > 0) && (stackIndex < theStacks.size())) {
@@ -13616,19 +13684,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_STACK_PUSH() {
-		int stackIndex = getStackIndexArg();								// get the Stack pointer
+		int stackIndex = getStackIndexArg();					// get the Stack pointer
 		if (stackIndex < 0) return false;
-		if (!isNext(',')) return false;										// move to the value
+		if (!isNext(',')) return false;							// move to the value
 
-		Stack thisStack = theStacks.get(stackIndex);						// get the stack
+		Stack thisStack = theStacks.get(stackIndex);			// get the stack
 		switch (theStacksType.get(stackIndex))
 		{
-		case stack_is_string:												// String type stack
+		case stack_is_string:									// String type stack
 			if (!getStringArg()) {
 				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
-			thisStack.push(StringConstant);									// Add the string to the stack
+			thisStack.push(StringConstant);						// Add the string to the stack
 			break;
 
 		case stack_is_numeric:
@@ -13636,7 +13704,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
-			thisStack.push(EvalNumericExpressionValue);						// Add the value to the stack
+			thisStack.push(EvalNumericExpressionValue);			// Add the value to the stack
 			break;
 
 		default:
@@ -13646,18 +13714,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_STACK_POP() {
-		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		int stackIndex = getStackIndexArg();					// Get the Stack pointer
 		if (stackIndex < 0) return false;
-		if (!isNext(',')) return false;										// move to the value
+		if (!isNext(',')) return false;							// move to the value
 
-		Stack thisStack = theStacks.get(stackIndex);		 				// Get the Stack
+		Stack thisStack = theStacks.get(stackIndex);		 	// Get the Stack
 		if (thisStack.isEmpty()) {
 			return RunTimeError("Stack is empty");
 		}
 
 		switch (theStacksType.get(stackIndex))
 		{
-		case stack_is_string:												// String type stack
+		case stack_is_string:									// String type stack
 			if (!getSVar()) {
 				return RunTimeError("Type mismatch");
 			}
@@ -13682,18 +13750,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_STACK_PEEK() {
-		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		int stackIndex = getStackIndexArg();					// Get the Stack pointer
 		if (stackIndex < 0) return false;
-		if (!isNext(',')) return false;										// move to the value
+		if (!isNext(',')) return false;							// move to the value
 
-		Stack thisStack = theStacks.get(stackIndex);						// Get the Stack
+		Stack thisStack = theStacks.get(stackIndex);			// Get the Stack
 		if (thisStack.isEmpty()){
 			return RunTimeError("Stack is empty");
 		}
 
 		switch (theStacksType.get(stackIndex))
 		{
-		case stack_is_string:												// String type stack
+		case stack_is_string:									// String type stack
 			if (!getSVar()) {
 				return RunTimeError("Type mismatch");
 			}
@@ -13718,19 +13786,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_STACK_TYPE() {
-		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		int stackIndex = getStackIndexArg();					// Get the Stack pointer
 		if (stackIndex < 0) return false;
-		if (!isNext(',')) return false;										// move to the value
+		if (!isNext(',')) return false;							// move to the value
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
 
-		switch (theStacksType.get(stackIndex))						// Get this Stack type
+		switch (theStacksType.get(stackIndex))					// Get this Stack type
 		{
-		case stack_is_string:										// String
+		case stack_is_string:									// String
 			StringVarValues.set(theValueIndex, "S");
 			break;
 
-		case stack_is_numeric:												// Number
+		case stack_is_numeric:									// Number
 			StringVarValues.set(theValueIndex, "N");
 			break;
 
@@ -13741,13 +13809,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_STACK_ISEMPTY() {
-		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		int stackIndex = getStackIndexArg();					// Get the Stack pointer
 		if (stackIndex < 0) return false;
 		if (!isNext(',')) return false;
 		if (!getNVar()) return false;
 		if (!checkEOL()) return false;
 
-		Stack thisStack = theStacks.get(stackIndex);						// Get the Stack
+		Stack thisStack = theStacks.get(stackIndex);			// Get the Stack
 		double empty = thisStack.isEmpty() ? 1 : 0;
 		NumericVarValues.set(theValueIndex, empty);
 
@@ -13755,16 +13823,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_STACK_CLEAR() {
-		int stackIndex = getStackIndexArg();								// Get the Stack pointer
+		int stackIndex = getStackIndexArg();					// Get the Stack pointer
 		if (stackIndex < 0) return false;
 		if (!checkEOL()) return false;
 
-		Stack thisStack = theStacks.get(stackIndex);						// Get the Stack
+		Stack thisStack = theStacks.get(stackIndex);			// Get the Stack
 		while (!thisStack.isEmpty()) { thisStack.pop(); }
 
 		return true;
 	}
-
 
 	// ************************************ Clipboard Commands ************************************
 

@@ -5,7 +5,7 @@ Android devices.
 
 This file is part of BASIC! for Android
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
     BASIC! is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,7 +41,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -89,7 +88,7 @@ public class Basic extends Activity  {
 	private static String filePath = "";
 	private static String basePath = "";
 
-	public static ArrayList<String> lines;					//Program lines for execution
+	public static ArrayList<Run.ProgramLine> lines;			// Program lines for execution
 
 	public static String ProgramFileName;					// Set when program loaded or saved
 
@@ -318,8 +317,8 @@ public class Basic extends Activity  {
 
 	public static void clearProgram() {
 
-		lines = new ArrayList<String>();					// The lines array list is the program
-		lines.add("");										// add an empty string to lines
+		lines = new ArrayList<Run.ProgramLine>();			// The lines array list is the program
+		lines.add(new Run.ProgramLine(""));					// add an empty string to lines
 		Editor.DisplayText="REM Start of BASIC! Program\n";	// Display text is the editors program storage for display
 	}
 
@@ -624,7 +623,7 @@ public class Basic extends Activity  {
 			InitDirs();											// Initialize Basic directories every time
 			LoadGraphicsForAPK();								// Load the sound and graphics files
 
-			lines = new ArrayList <String>();					// Program will be loaded into this array list
+			lines = new ArrayList<Run.ProgramLine>();			// Program will be loaded into this array list
 			LoadTheProgram();									// Load the basic program into memory
 
 			theProgramRunner = new Intent(BasicContext, Run.class);	// now go run the program

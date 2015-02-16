@@ -3,7 +3,7 @@
  BASIC! is an implementation of the Basic programming language for
  Android devices.
 
- Copyright (C) 2010 - 2014 Paul Laughton
+ Copyright (C) 2010 - 2015 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -90,7 +90,7 @@ public class AutoRun extends Activity {
 			Basic.loadProgramFromString(Editor.DisplayText, APL);	// build program in Basic.lines
 
 			if (Basic.lines.size() == 0) {							// If the program is empty
-				Basic.lines.add("rem\n");							// add a single REM line
+				Basic.lines.add(new Run.ProgramLine("rem\n"));		// add a single REM line
 			}														// to keep Run happy
 			Basic.theProgramRunner = new Intent(this, Run.class);	// now go run the program
 			Basic.theRunContext = null;

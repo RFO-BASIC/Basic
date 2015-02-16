@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010 - 2014 Paul Laughton
+ Copyright (C) 2010 - 2015 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -590,7 +590,7 @@ public class Editor extends Activity {
 		Basic.loadProgramFromString(DisplayText, null);			// build program in Basic.lines
 
 		if (Basic.lines.size() == 0) {							// If the program is empty
-			Basic.lines.add("@@@");								// add Nothing to run command
+			Basic.lines.add(new Run.ProgramLine("@@@"));		// add Nothing to run command
 		}
 
 		Basic.theProgramRunner = new Intent(this, Run.class);	// now go run the program
@@ -634,7 +634,7 @@ public class Editor extends Activity {
 				}
 			});
 
-		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  //Have a filename        	        	
+		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  //Have a filename
 				public void onClick(DialogInterface dialog, int whichButton) {
 					String theFilename = input.getText().toString().trim();
 
@@ -643,18 +643,18 @@ public class Editor extends Activity {
 					DisplayText = mText.getText().toString();				// get the text being displayed
 					String Temp1 = "";
 					boolean LineAdded = false;
-					for (int k=0; k < DisplayText.length(); ++k) {			    // Move the display text to Basic.lines
+					for (int k = 0; k < DisplayText.length(); ++k) {		// Move the display text to Basic.lines
 						if (DisplayText.charAt(k) == '\n') {
-							Basic.lines.add(Temp1);
+							Basic.lines.add(new Run.ProgramLine(Temp1));
 							Temp1 = "";
 							LineAdded = true;
 						} else {
-							Temp1 = Temp1 + DisplayText.charAt(k);
+							Temp1 += DisplayText.charAt(k);
 							LineAdded = false;
 						}
 					}
-					if (!LineAdded) {											// Special case for line
-						Basic.lines.add(Temp1);								// without \n
+					if (!LineAdded) {										// Special case for line
+						Basic.lines.add(new Run.ProgramLine(Temp1));		// without \n
 					}
 
 					writeTheFile(theFilename);								// Now go write the file
@@ -731,8 +731,8 @@ public class Editor extends Activity {
 
 							try {
 								writer = new FileWriter(file);						// write the program
-								for (int i=0; i < Basic.lines.size(); i++) {
-									writer.write(Basic.lines.get(i));
+								for (int i = 0; i < Basic.lines.size(); i++) {
+									writer.write(Basic.lines.get(i).line());
 									writer.write("\n");
 								}
 							} catch (Exception e) {
