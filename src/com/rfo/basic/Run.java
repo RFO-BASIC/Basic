@@ -84,6 +84,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 
+import java.security.InvalidParameterException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.KeySpec;
 
@@ -312,6 +313,151 @@ public class Run extends ListActivity {
 		return null;												// no keyword found
 	}
 
+	// ************************* ArrayDescriptor class *************************
+
+	public static class ArrayDescriptor {
+		private ArrayList<Integer> mDimList;
+		private ArrayList<Integer> mArraySizes;
+		private int mLength;
+		private int mBase;
+		// Implementation note: does not currently hold type; could add later.
+
+		public ArrayDescriptor(ArrayList<Integer> dimList) {
+			// Record the dimensions of a basic array and calculate the total length.
+			// Caller must call setArray(int, boolean) to attach a real array.
+
+			// This list of sizes is used to quickly calculate the array element offset
+			// when the array is referenced.
+			ArrayList<Integer> arraySizes = new ArrayList<Integer>();
+			int length = 1;
+			for (int d = dimList.size() - 1; d >= 0; --d) {	// for each Dim from last to first
+				int dim = dimList.get(d);				// get the Dim
+				if (dim < 1) { throw new InvalidParameterException(); }
+				arraySizes.add(0, length);				// insert the previous total in the ArraySizes List
+				length *= dim;							// multiply this dimension by the previous size
+			}
+			mDimList = dimList;
+			mArraySizes = arraySizes;
+			mLength = length;
+		}
+
+		public void setArray(int base) {				// record starting index in variable space
+			mBase = base;
+		}
+
+		public int length() { return mLength; }
+		public int base() { return mBase; }
+		public ArrayList<Integer> dimList() { return mDimList; }
+		public ArrayList<Integer> arraySizes() { return mArraySizes; }
+	} // class ArrayDescriptor
+
+	// ***************************** ForNext class *****************************
+	// Records information about a For/Next loop. Objects go on the ForNextStack.
+
+	public static class ForNext {
+		private int mLine;								// loop return location
+		private int mVarIndex;							// pointer to loop index value
+		private double mStep;							// step value
+		private double mLimit;							// limit value
+
+		public ForNext(int line, int varIndex, double step, double limit) {
+			mLine = line;
+			mVarIndex = varIndex;
+			mStep = step;
+			mLimit = limit;
+		}
+
+		public int line() { return mLine; }
+		public double limit() { return mLimit; }
+		public boolean doStep() {
+			double var = NumericVarValues.get(mVarIndex);	// get the loop index
+			var += mStep;									// do the STEP
+			NumericVarValues.set(mVarIndex, var);			// update the loop index
+			return (((mStep > 0) && (var > mLimit)) ||		// test limit
+					((mStep <= 0) && (var < mLimit)));		// return true if stepped past limit
+		}
+	} // class ForNext
+
+	// ***************************** VarType enum *****************************
+
+	private enum VarType {									// a variable can be a string or a number
+		NOVAR("X", "none", false, false),
+		NUM("N", "numeric", true, false),
+		STR("S", "string", false, true);
+
+		private final String mCh;
+		private final String mStr;
+		private final boolean mIsNumeric;
+		private final boolean mIsString;
+		private VarType(String shortForm, String longForm, boolean isNumeric, boolean isString) {
+			mCh = shortForm; mStr = longForm;
+			mIsNumeric = isNumeric; mIsString = isString;
+		}
+
+		public static VarType typeOf(char c) {
+			switch (c) {
+				case 'n': return NUM;
+				case 's': return STR;
+				default:  return NOVAR;
+			}
+		}
+
+		// Use this to get standardized error message.
+		public VarType isNS() {								// allows only NUM or STR
+			if (this == NOVAR) { throw new InvalidParameterException("Internal problem. Notify developer."); }
+			return this;
+		}
+
+		public String typeNS() {							// allows only NUM or STR
+			isNS();
+			return mCh;
+		}
+
+		public boolean isNumeric() { return mIsNumeric; }
+		public boolean isString() { return mIsString; }
+		public String toString() { return mStr; }
+	}
+
+	// **************************** Variable class ****************************
+	// So far the use is very limited, but who knows what the future holds?
+
+	private class Var {
+		private VarType mType;
+		private double mNumVal;
+		private String mStrVal;
+
+		public Var(double val) {
+			mType = VarType.NUM;
+			mStrVal = null;
+			mNumVal = val;
+		}
+
+		public Var(String val) {
+			mType = VarType.NUM;
+			mStrVal = val;
+			mNumVal = 0.0;
+		}
+
+		public void val(double val) {
+			if (mType != VarType.NUM) { throw new InvalidParameterException(); }
+			mNumVal = val;
+		}
+
+		public void val(String val) {
+			if (mType != VarType.STR) { throw new InvalidParameterException(); }
+			mStrVal = val;
+		}
+
+		public double nval() {
+			if (mType != VarType.STR) { throw new InvalidParameterException(); }
+			return mNumVal;
+		}
+
+		public String sval() {
+			if (mType != VarType.STR) { throw new InvalidParameterException(); }
+			return mStrVal;
+		}
+	}
 
 	// **********  The variables for the Basic Keywords ****************************
 
@@ -967,7 +1113,7 @@ public class Run extends ListActivity {
     private boolean SEisLE = false;						// If a String expression result is a logical expression
 
     private Stack<Integer> GosubStack;					// Stack used for Gosub/Return
-    private Stack<Bundle> ForNextStack;					// Stack used for For/Next
+    private Stack<ForNext> ForNextStack;				// Stack used for For/Next
     private Stack<Integer> WhileStack;					// Stack used for While/Repeat
     private Stack<Integer> DoStack;						// Stack used for Do/Until
 
@@ -1053,7 +1199,7 @@ public class Run extends ListActivity {
 	private ArrayList<String> StringVarValues;			// if a var is a string, the VarIndex is an
 														// index into this list. The values of string
 														// array elements are also kept here
-	private ArrayList<Bundle> ArrayTable;				// Each DIMed array has an entry in this table
+	private ArrayList<ArrayDescriptor> ArrayTable;		// Each DIMed array has an entry in this table
 	private String StringConstant = "";					// Storage for a string constant
 	private int theValueIndex;							// The index into the value table for the current var
 	private int ArrayValueStart = 0;					// Value index for newly created array
@@ -1253,7 +1399,7 @@ public class Run extends ListActivity {
 	};
 
 	private int readNext = 0;
-	private ArrayList <Bundle> readData;
+	private ArrayList<Bundle> readData;
 
 	// ********************** Font Command variables *********************************
 
@@ -1839,11 +1985,8 @@ public class Run extends ListActivity {
 		new Command(BKW_LIST_SEARCH)            { public boolean run() { return execute_LIST_SEARCH(); } },
 	};
 
-	private static final int list_is_numeric = 1;
-	private static final int list_is_string = 0;
-
-	public static ArrayList <ArrayList> theLists;
-	public static ArrayList <Integer> theListsType;
+	public static ArrayList<ArrayList> theLists;
+	public static ArrayList<VarType> theListsType;
 
 	// ************************************ Bundle Variables ****************************************
 
@@ -1906,10 +2049,7 @@ public class Run extends ListActivity {
 	};
 
 	private static ArrayList<Stack> theStacks;
-	private static ArrayList <Integer> theStacksType; 
-
-	private static final int stack_is_numeric = 1;
-	private static final int stack_is_string = 0;
+	private static ArrayList<VarType> theStacksType; 
 
 //  ******************************* Socket Variables **************************************************
 
@@ -2957,7 +3097,7 @@ public class Run extends ListActivity {
     SEisLE = false;									// If a String expression result is a logical expression
 
     GosubStack = new Stack<Integer>();			// Stack used for Gosub/Return
-    ForNextStack = new	Stack<Bundle>();		// Stack used for For/Next
+    ForNextStack = new Stack<ForNext>();		// Stack used for For/Next
     WhileStack = new Stack<Integer>() ;			// Stack used for While/Repeat
     DoStack = new Stack<Integer>();				// Stack used for Do/Until
     
@@ -3021,7 +3161,7 @@ public class Run extends ListActivity {
 	VarNumber = 0;										// An index for both VarNames and NVarValue
 	NumericVarValues = new ArrayList<Double>();			// if a var is a number, the VarIndex is an [...]
 	StringVarValues  = new ArrayList<String>();			// if a var is a string, the VarIndex is an [...]
-	ArrayTable = new ArrayList<Bundle>();				// Each DIMed array has an entry in this table
+	ArrayTable = new ArrayList<ArrayDescriptor>();		// Each DIMed array has an entry in this table
 	StringConstant = "";								// Storage for a string constant
 	theValueIndex = 0;									// The index into the value table for the current var
 	ArrayValueStart = 0;								// Value index for newly created array 
@@ -3118,8 +3258,8 @@ public class Run extends ListActivity {
 	ArrayList<ArrayList> aList = new ArrayList <ArrayList>();
 	theLists.add(aList);
 	
-	theListsType = new ArrayList <Integer>();
-	theListsType.add(0);
+	theListsType = new ArrayList<VarType>();
+	theListsType.add(VarType.NOVAR);
 	
 	theBundles = new ArrayList<Bundle>();
 	Bundle aBundle = new Bundle();
@@ -3129,8 +3269,8 @@ public class Run extends ListActivity {
 	Stack aStack = new Stack();
 	theStacks.add(aStack);
 	
-	theStacksType = new ArrayList<Integer>();
-	theStacksType.add(0);
+	theStacksType = new ArrayList<VarType>();
+	theStacksType.add(VarType.NOVAR);
 	
 	theClientSocket = null ;
 	clientSocketConnectThread = null;
@@ -5754,27 +5894,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean BuildBasicArray(String var, boolean IsNumeric, ArrayList<Integer> DimList){
 
 		// Build a basic array attached to a new variable.
-		// Makes a bundle with information about the array and put the bundle into the array table.
+		// Makes a descriptor with information about the array and puts it into the array table.
 		// The index into the array table is put into the variable table as the the var value.
 		// In addition, a value element is created for each element in the array.
 
-		// This list of sizes is used to quickly calculate the array element offset
-		// when the array is referenced.
-		ArrayList<Integer> ArraySizes = new ArrayList<Integer>();
-
-		int TotalElements = 1;
-		for (int d = DimList.size() - 1; d >= 0; --d) {		// for each Dim from last to first
-			int dim = DimList.get(d);						// get the Dim
-			if (dim < 1) { return RunTimeError("DIMs must be >= 1 at"); }
-
-			ArraySizes.add(0, TotalElements);				// insert the previous total in the ArraySizes List
-			TotalElements= TotalElements * dim;				// multiply this dimension by the previous size
-		}
+		ArrayDescriptor array;
+		try { array = new ArrayDescriptor(DimList); }
+		catch (InvalidParameterException ex) { return RunTimeError("DIMs must be >= 1 at"); }
+		int TotalElements = array.length();
 
 		if (IsNumeric) {									// Initialize Numeric Array Values
 			ArrayValueStart = NumericVarValues.size();		// All numeric var values kept in NumericVarValues
-			for (int i = 0; i < TotalElements; ++i) {		// Number inited to 0.0
-				NumericVarValues.add(0.0);
+			for (int i = 0; i < TotalElements; ++i) {
+				NumericVarValues.add(0.0);					// Numbers inited to 0.0
 			}
 		} else {											// Initialize String Array Values
 			ArrayValueStart = StringVarValues.size();		// All string var values kept in StringVarValues
@@ -5782,16 +5914,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				StringVarValues.add("");					// Strings inited to empty
 			}
 		}
-
-		Bundle ArrayEntry = new Bundle();						// Build the array table entry bundle
-		ArrayEntry.putIntegerArrayList("dims", DimList);		// The array index values
-		ArrayEntry.putIntegerArrayList("sizes", ArraySizes);	// The array sizes
-		ArrayEntry.putInt("length", TotalElements);
-		ArrayEntry.putInt("base", ArrayValueStart);				// The pointer the first array element value
+		array.setArray(ArrayValueStart);
 
 		int varNum = createNewVar(var);
-		VarIndex.set(varNum, ArrayTable.size());				// The VarIndex value is the ArrayTable index
-		ArrayTable.add(ArrayEntry);								// Put the element bundle into the array table
+		VarIndex.set(varNum, ArrayTable.size());			// The VarIndex value is the ArrayTable index
+		ArrayTable.add(array);								// Put the array descriptor into the array table
 
 		return true;
 	} // end BuildBasicArray
@@ -5821,39 +5948,39 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean GetArrayValue() {				// Get the value of an array element using its index values
-		ArrayList<Integer> indicies = new ArrayList<Integer>();
-		if (!isNext(']')) {							// Parse out the index values for this call
-			int avn = VarNumber;					// preserve the array's VarNumber
-			boolean avt = VarIsNumeric;				// and type
+		ArrayList<Integer> indices = new ArrayList<Integer>();
+		if (!isNext(']')) {								// Parse out the index values for this call
+			int avn = VarNumber;						// preserve the array's VarNumber
+			boolean avt = VarIsNumeric;					// and type
 			do {
-				if (!evalNumericExpression())	{ SyntaxError(); return false; }
-				indicies.add(EvalNumericExpressionValue.intValue());
+				if (!evalNumericExpression()) return false;
+				indices.add(EvalNumericExpressionValue.intValue());
 			} while (isNext(','));
-			if (!isNext(']'))					{ SyntaxError(); return false; }
-			VarNumber = avn;						// restore the array's varNumber
-			VarIsNumeric = avt;						// and type
+			if (!isNext(']')) return false;
+			VarNumber = avn;							// restore the array's varNumber
+			VarIsNumeric = avt;							// and type
 		}
 
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
-		ArrayList<Integer> dims = ArrayEntry.getIntegerArrayList("dims");
-		ArrayList<Integer> sizes = ArrayEntry.getIntegerArrayList("sizes");
+		ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber)); // Get the descriptor for this array
+		ArrayList<Integer> dims = array.dimList();
+		ArrayList<Integer> sizes = array.arraySizes();
 
-		if (dims.size() != indicies.size()) {		// insure index count = dim count
+		if (dims.size() != indices.size()) {			// insure index count = dim count
 			RunTimeError(
 					"Indices count(" +
-					indicies.size()+
+					indices.size()+
 					") not same as dimension count ("+
 					dims.size()+
 					") at:");
 			return false;
 		}
-		
+
 		int offset = 0;
-		
-		for (int i=0; i<indicies.size(); ++i){					
-			int p = indicies.get(i);						// p = index for this call
-			int q = dims.get(i);							// q = DIMed value for this index
-			int r = sizes.get(i);							// r = size for this index
+
+		for (int i = 0; i < indices.size(); ++i) {
+			int p = indices.get(i);						// p = index for this call
+			int q = dims.get(i);						// q = DIMed value for this index
+			int r = sizes.get(i);						// r = size for this index
 			if (p>q){
 				RunTimeError("Index #"+
 						(i+1) +
@@ -5861,19 +5988,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						p +
 						") exceeds dimension (" +
 						q +
-						") at:");		// insure Index <= DIMed index
+						") at:");						// insure Index <= DIMed index
 				return false;
 			}
-			if (p<=0){											// insure index >= 1
+			if (p<=0){									// insure index >= 1
 				RunTimeError("Index must be >=1 at:");
 				return false;
 			}
-			offset = offset + (p-1)*r;							// calculate offset
+			offset = offset + (p-1)*r;					// calculate offset
 		}
 		
-		int base = ArrayEntry.getInt("base");            // base + offset gives
-		theValueIndex = base + offset;					 // displacement into value table for
-		return true;									 // index combination
+		int base = array.base();						// base + offset gives
+		theValueIndex = base + offset;					// displacement into value table for
+		return true;									// index combination
 		
 	}
 
@@ -5899,10 +6026,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean getArraySegment(int arrayTableIndex, Integer[] pair) { // get var base and length of array segment
 																	// pair in is [start, length], out is [base, length]
-		Bundle b = ArrayTable.get(arrayTableIndex);					// get the array table bundle for this array
-		if (b == null) { return RunTimeError("Array does not exist"); }
-		int length = b.getInt("length");							// get the array length
-		int base = b.getInt("base");								// and the start of the array in the variable space
+		ArrayDescriptor array = ArrayTable.get(arrayTableIndex);	// get the descriptor for this array
+		if (array == null) { return RunTimeError("Array does not exist"); }
+		int length = array.length();								// get the array length
+		int base = array.base();									// and the start of the array in the variable space
 		int max = base + length;
 
 		if (pair[0] != null) {
@@ -6186,48 +6313,44 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return RunTimeError(errMsg);							// end of program, target not found
 	}
 
-	private boolean executeFOR(){
+	private boolean executeFOR() {
 
-		Bundle b = new Bundle();								// A bundle to hold value for stack
+		int fline = ExecutingLineIndex;						// Loop return location
+		if (!getNVar()) return false;
+		int IndexValueIndex = theValueIndex;				// For Var
 
-		b.putInt("line",ExecutingLineIndex);					// Loop return location
-
-		if (!getNVar()) { return false; }
-		b.putInt("var", theValueIndex);										// For Var
-		int IndexValueIndex = theValueIndex;
-
-		if (!isNext('=')) { return false; }									// For Var =
+		if (!isNext('=')) return false;						// For Var =
 
 		String kw = "to";
-		if (!evalToPossibleKeyword(kw)) { return false; }		// tell getVar that TO is expected
+		if (!evalToPossibleKeyword(kw)) return false;		// tell getVar that TO is expected
 		double fstart = EvalNumericExpressionValue;
-		NumericVarValues.set(IndexValueIndex, fstart);			// assign <exp> to Var
+		NumericVarValues.set(IndexValueIndex, fstart);		// assign <exp> to Var
 
 		if (!ExecutingLineBuffer.startsWith(kw, LineIndex)) return false;
 		LineIndex += 2;
 
 		kw = "step";
-		if (!evalToPossibleKeyword(kw)) { return false; }					// For Var = <exp> to <exp>
-		b.putDouble("limit", EvalNumericExpressionValue);
+		if (!evalToPossibleKeyword(kw)) { return false; }	// For Var = <exp> to <exp>
 		double flimit = EvalNumericExpressionValue;
 
-		double step = 1.0;													// For Var = <exp> to <exp> <default step> 
-		if (ExecutingLineBuffer.startsWith(kw, LineIndex)){
+		double fstep = 1.0;									// For Var = <exp> to <exp> <default step> 
+		if (ExecutingLineBuffer.startsWith(kw, LineIndex)) {
 			LineIndex += 4;
-			if (!evalNumericExpression()) { return false; }					// For Var = <exp> to <exp> step <exp>
-			step = EvalNumericExpressionValue;
+			if (!evalNumericExpression()) { return false; }	// For Var = <exp> to <exp> step <exp>
+			fstep = EvalNumericExpressionValue;
 		}
 
 		if (!checkEOL()) return false;
 
-		b.putDouble("step", step);
+		ForNext desc =										// An object to hold values for stack
+				new ForNext(fline, IndexValueIndex, fstep, flimit);
 
-		if (step > 0) {											// Test the initial condition
-			if (fstart > flimit) { return SkipToNext(); }		// If exceeds limit then skip to NEXT
+		if (fstep > 0) {									// Test the initial condition
+			if (fstart > flimit) { return SkipToNext(); }	// If exceeds limit then skip to NEXT
 		} else {
 			if (fstart < flimit) { return SkipToNext(); }
 		}
-		ForNextStack.push(b);
+		ForNextStack.push(desc);
 
 		return true;
 	}
@@ -6266,20 +6389,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean doNext() {
-		Bundle b = ForNextStack.peek();							// Peek at the TOS Bundle
-		int line = b.getInt("line");
-		int varindex = b.getInt("var");							// We did not store the index value, we stored a pointer to it
-		double var = NumericVarValues.get(varindex);
-		double limit = b.getDouble("limit");
-		double step = b.getDouble("step");
-		
-		var += step;											// Do the STEP
-		NumericVarValues.set(varindex, var);					// Assign the result to the index
-		
-		if (((step > 0) && (var <= limit)) || ((step <= 0) && (var >= limit))) { // Test limit
-			ExecutingLineIndex = line;
+		ForNext desc = ForNextStack.peek();						// peek at the descriptor
+		if (desc.doStep()) {									// update the loop index
+			ForNextStack.pop();									// done: pop the stack
 		} else {
-			ForNextStack.pop();									// If done, pop the stack
+			ExecutingLineIndex = desc.line();					// not done: repeat the loop
 		}
 		return true;
 	}
@@ -6794,7 +6908,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int listIndex = -1;
 		ArrayList<String> list = null;
 		if (!isNext(',')) {
-			listIndex = getListArg(list_is_string);			// get a reusable List pointer - may create new list
+			listIndex = getListArg(VarType.STR);			// get a reusable List pointer - may create new list
 			if (listIndex < 0) return false;				// failed to get or create a list
 			isNext(',');									// consume comma, if there is one
 		}
@@ -7336,14 +7450,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		String var = VarNames.get(WatchedArray);
 		msg.add("Dumping Array " + var + "]");
 
-		Bundle ArrayEntry = ArrayTable.get(VarIndex.get(WatchedArray));	// Get the array table bundle for this array
-		if (ArrayEntry == null) {
+		ArrayDescriptor array = ArrayTable.get(VarIndex.get(WatchedArray));	// Get the descriptor for this array
+		if (array == null) {
 			msg.add(prefix + "Warning: null array table entry");
 		} else {
-			int length = ArrayEntry.getInt("length");			// get the array length
-			int base = ArrayEntry.getInt("base");				// and the start of the array in the variable space
-			// ArrayList<Integer> dims = ArrayEntry.getIntegerArrayList("dims");
-			// ArrayList<Integer> sizes = ArrayEntry.getIntegerArrayList("sizes");
+			int length = array.length();						// get the array length
+			int base = array.base();							// and the start of the array in the variable space
+			// ArrayList<Integer> dims = array.dimList();
+			// ArrayList<Integer> sizes = array.arraySizes();
 			// msg.add("dims: " + dims.toString());
 			// msg.add("sizes: " + sizes.toString());
 			boolean isString = var.endsWith("$[");
@@ -7375,7 +7489,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (length == 0) {
 			msg.add(prefix + "Empty List");
 		} else {
-			boolean isString = (theListsType.get(WatchedList) == list_is_string);
+			boolean isString = (theListsType.get(WatchedList) == VarType.STR);
 			for (Object item : list) {							// get each item
 				String line;
 				if (item == null) {
@@ -7406,7 +7520,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			msg.add(prefix + "Empty Stack");
 		} else {
 			Stack tempStack = (Stack)stack.clone();
-			boolean isString = (theStacksType.get(WatchedStack) == list_is_string);
+			boolean isString = (theStacksType.get(WatchedStack) == VarType.STR);
 			do {
 				String line;
 				Object item = tempStack.pop();					// get each item
@@ -9081,7 +9195,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean executeTIMEZONE_LIST() {								// Get a list of all valid time zone strings
-		int listIndex = getListArg(list_is_string);			// get a reusable List pointer - may create new list
+		int listIndex = getListArg(VarType.STR);			// get a reusable List pointer - may create new list
 		if (listIndex < 0) return false;					// failed to get or create a list
 		if (!checkEOL()) return false;
 
@@ -9209,9 +9323,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (VarIsNumeric)	{ return RunTimeError(EXPECT_STRING_ARRAY); }
 			if (VarIsNew)		{ return RunTimeError(EXPECT_DIM_ARRAY); }
 
-			Bundle ArrayEntry = ArrayTable.get(VarIndex.get(VarNumber)); // Get the array table bundle for this array
-			int length = ArrayEntry.getInt("length");				// get the array length
-			int base = ArrayEntry.getInt("base");					// and the start of values in the value space
+			ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber)); // Get the descriptor for this array
+			int length = array.length();							// get the array length
+			int base = array.base();								// and the start of values in the value space
 
 			for (int i = 0; i < length; ++i) {						// Copy the array values into the list
 				selectList.add(StringVarValues.get(base+i));
@@ -9224,7 +9338,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if ((listIndex < 1) || (listIndex >= theLists.size())) {
 				return RunTimeError("Invalid List Pointer");
 			}
-			if (theListsType.get(listIndex) != list_is_string) {
+			if (theListsType.get(listIndex) != VarType.STR) {
 				return RunTimeError("Not a string list");
 			}
 			selectList.addAll(theLists.get(listIndex));
@@ -9677,13 +9791,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (theListIndex < 1 || theListIndex>= theLists.size()) {
 			return RunTimeError("Invalid list pointer");
 		}
-		if (theListsType.get(theListIndex) == list_is_numeric) {
+		if (theListsType.get(theListIndex) != VarType.STR) {
 			return RunTimeError("List must be of string type.");
 		}
 	
 		List<String> thisList = theLists.get(theListIndex);
 		int r = thisList.size() % 2;
-		if (r !=0 ) {
+		if (r != 0) {
 			return RunTimeError("List must have even number of elements");
 		}
 	
@@ -11694,7 +11808,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (theListIndex < 1 || theListIndex >= theLists.size()) {
 			return RunTimeError("Invalid list pointer");
 		}
-		if (theListsType.get(theListIndex) != list_is_numeric){
+		if (theListsType.get(theListIndex) != VarType.NUM) {
 			return RunTimeError("List must be numeric");
 		}
 
@@ -12508,7 +12622,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			isComma = isNext(',');
 		}
 		if (isComma) {
-			int listIndex = getListArg(list_is_numeric);	// reuse old list or create new one
+			int listIndex = getListArg(VarType.NUM);		// reuse old list or create new one
 			if (listIndex < 0) return false;
 			sats = theLists.get(listIndex);
 		}
@@ -12587,7 +12701,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		}
 		if (isComma) {
-			int listIndex = getListArg(list_is_numeric);	// reuse old list or create new one
+			int listIndex = getListArg(VarType.NUM);		// reuse old list or create new one
 			if (listIndex < 0) return false;
 			sats = theLists.get(listIndex);
 		}
@@ -12878,7 +12992,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_array_copy(){
+	private boolean execute_array_copy() {
 															// **** Source Array ****
 
 		if (getVarAndType() == null)			{ return false; }	// get the array variable
@@ -12927,9 +13041,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} else {													// copy over old array, optional extras arg is start index
 			if (SourceLength < 1)				{ return true; }	// nothing to do
 
-			Bundle ArrayEntry = ArrayTable.get(VarIndex.get(destVarNumber)); // Get the array table bundle for this array
-			int destBase = ArrayEntry.getInt("base");				// and the start of the array in the variable space
-			int destLength = ArrayEntry.getInt("length");			// get the destination array length
+			ArrayDescriptor array = ArrayTable.get(VarIndex.get(destVarNumber)); // Get the descriptor for this array
+			int destLength = array.length();						// get the destination array length
+			int destBase = array.base();							// and the start of the array in the variable space
 			if (extras > destLength)			{ return true; }	// dest start is past end of array, nothing to do
 
 			if (--extras < 0) { extras = 0; }						// convert to 0-based index, ignore if less than 1
@@ -12955,7 +13069,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_array_search(){
+	private boolean execute_array_search() {
 		if (getArrayVarForRead() == null) { return false; }			// Get the array variable
 		boolean isNumeric = VarIsNumeric;
 		int arrayTableIndex = VarIndex.get(VarNumber);
@@ -13032,11 +13146,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_LIST_NEW() {
 		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// Get the type, s or n
 		++LineIndex;
-		int type = 0;
 
-		if      (c == 'n') { type = list_is_numeric; }
-		else if (c == 's') { type = list_is_string; }
-		else return false;
+		VarType type = VarType.typeOf(c);
+		if (type == VarType.NOVAR) return false;				// Unknown type, don't create anything
 
 		if (!isNext(',')) return false;
 		if (!getNVar()) return false;							// List pointer variable
@@ -13047,16 +13159,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private int createNewList(int type, int varValueIndex) {	// Put a new ArrayList in global theLists
+	private int createNewList(VarType type, int varValueIndex) {// Put a new ArrayList in global theLists
 																// Put its type in global theListsType 
 																// Write its index to user variable at varValueIndex
 		int listIndex = theLists.size();
-		if (type == list_is_string) {							// Create a string list
-			theLists.add(new ArrayList <String>());
-		} else if (type == list_is_numeric) {					// Create a numeric list
-			theLists.add(new ArrayList <Double>());
-		} else {
-			return -1;											// Unknown type, don't create anything
+		switch (type) {
+			case NUM:	theLists.add(new ArrayList<Double>());	break;	// Create a numeric list
+			case STR:	theLists.add(new ArrayList<String>());	break;	// Create a string list
+			default:	return -1;										// Unknown type, don't create anything
 		}
 		theListsType.add(type);									// Add the type
 		NumericVarValues.set(varValueIndex, (double)listIndex);	// tell the user where it is
@@ -13078,7 +13188,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return -1;
 	}
 
-	private int getListArg(int type) {
+	private int getListArg(VarType type) {
 		// Type-restricted auto-create: if the command argument is a valid list pointer (index)
 		// of the correct type, return the list pointer for re-use. If it is not (i.e., it is
 		// out of range or the wrong type), and the command line argument is a simple numeric
@@ -13098,14 +13208,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				return createNewList(type, theValueIndex);	// try to create list, -1 if fail
 			}												// create writes index to user variable
 			LineIndex = endLI;
-			RunTimeError("Invalid " +
-				((type == list_is_numeric) ? "Numeric" : "String") +
-				" List Pointer");
+			RunTimeError("Invalid " + type.toString() + " List Pointer");
 		}
 		return -1;
 	}
 
-	private boolean execute_LIST_ADDARRAY(){
+	private boolean execute_LIST_ADDARRAY() {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
 
@@ -13117,7 +13225,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getIndexPair(p)) return false;							// Get values inside [], if any
 		if (!checkEOL()) return false;
 
-		boolean isListNumeric = (theListsType.get(listIndex) == list_is_numeric);
+		boolean isListNumeric = (theListsType.get(listIndex) == VarType.NUM);
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
 
 		if (!getArraySegment(arrayTableIndex, p)) { return false; }	// Get array base and length
@@ -13132,7 +13240,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_LIST_ADDLIST(){
+	private boolean execute_LIST_ADDLIST() {
 		int destListIndex = getListArg("Invalid Destination List Pointer");	// Get the destination list pointer
 		if (destListIndex < 0) return false;
 		if (!isNext(',')) return false;
@@ -13141,90 +13249,88 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (sourceListIndex < 0) return false;
 		if (!checkEOL()) return false;
 
-		boolean isDestNumeric = (theListsType.get(destListIndex) == list_is_numeric);
-		boolean isSourceNumeric = (theListsType.get(sourceListIndex) == list_is_numeric);
-		if (isDestNumeric != isSourceNumeric) { return RunTimeError("Type mismatch"); }
+		VarType destType = theListsType.get(destListIndex);
+		VarType sourceType = theListsType.get(sourceListIndex);
+		if (destType != sourceType) { return RunTimeError("Type mismatch"); }
 
 		theLists.get(destListIndex).addAll(theLists.get(sourceListIndex));
 		return true;
 	}
 
-	private boolean execute_LIST_SEARCH(){
-		int listIndex = getListArg();									// Get the list pointer
+	private boolean execute_LIST_SEARCH() {
+		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
-		if (!isNext(',')) return false;									// move to the value
+		if (!isNext(',')) return false;								// move to the value
 
 		int found = -1;
 		int savedVarIndex = 0;
 		int start = 0;
 
-		switch (theListsType.get(listIndex))
-		{
-		case list_is_string:											 // String type list
-			ArrayList<String> SValues = theLists.get(listIndex);		 // Get the string list
-			if (!getStringArg()) return false;							 // values may be expressions
+		VarType type;
+		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+
+		if (type == VarType.STR) {									// String type list
+			ArrayList<String> SValues = theLists.get(listIndex);	// Get the string list
+			if (!getStringArg()) return false;						// values may be expressions
 			String sfind = StringConstant;
 
-			if (!isNext(',')) return false;								 // move to the result var
+			if (!isNext(',')) return false;							// move to the result var
 			if (!getNVar()) return false;
 			savedVarIndex = theValueIndex;
 
-			if (isNext(',')) {											// move to the start index
+			if (isNext(',')) {										// move to the start index
 				if (!evalNumericExpression()) return false;
 				start = EvalNumericExpressionValue.intValue();
 				if (--start < 0) { start = 0; }						// convert to zero-based index
 			}
 			if (!checkEOL()) return false;
 
-			for (int i = start; i < SValues.size(); ++i){			// Search the list for a match
-				if (sfind.equals(SValues.get(i))){
+			for (int i = start; i < SValues.size(); ++i) {			// search the list for a match
+				if (sfind.equals(SValues.get(i))) {
 					found = i;
 					break;
 				}
 			}
-			break;
-
-		case list_is_numeric:
+		} else {													// Numeric type list
 			ArrayList<Double> NValues = theLists.get(listIndex);	// Get the numeric list
-			if (!evalNumericExpression()) return false;             // values may be expressions
+			if (!evalNumericExpression()) return false;				// values may be expressions
 			double nfind = EvalNumericExpressionValue;
 
-			if (!isNext(',')) return false;								// move to the result var
+			if (!isNext(',')) return false;							// move to the result var
 			if (!getNVar()) return false;
 			savedVarIndex = theValueIndex;
 
-			if (isNext(',')) {											// move to the start index
+			if (isNext(',')) {										// move to the start index
 				if (!evalNumericExpression()) return false;
 				start = EvalNumericExpressionValue.intValue();
 				if (--start < 0) { start = 0; }						// convert to zero-based index
 			}
 			if (!checkEOL()) return false;
 
-			for (int i = start; i < NValues.size(); ++i){           // Search the list for a match
-				if (nfind == (NValues.get(i))){
+			for (int i = start; i < NValues.size(); ++i) {			// search the list for a match
+				if (nfind == (NValues.get(i))) {
 					found = i;
 					break;
 				}
 			}
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
 		}
 
-		++found;// Found is ones based
-
-		NumericVarValues.set(savedVarIndex, (double) found);
+		++found;													// Found is ones based
+		NumericVarValues.set(savedVarIndex, (double)found);
 		return true;
 	}
 
-	private boolean execute_LIST_ADD(){
+	private boolean execute_LIST_ADD() {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;								// move to the result value
 
-		boolean isListNumeric = (theListsType.get(listIndex) == list_is_numeric);
-		if (isListNumeric) {
+		VarType type;
+		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+
+		if (type == VarType.NUM) {
 			ArrayList<Double> Values = theLists.get(listIndex);		// Get the numeric list
 			if (!LoadNumericList(Values)) return false;				// load numeric list
 		} else {
@@ -13234,7 +13340,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return checkEOL();
 	}
 
-	private boolean execute_LIST_SET(){
+	private boolean execute_LIST_SET() {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
@@ -13245,40 +13351,36 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) return false;
 
-		switch (theListsType.get(listIndex))						// Get this lists type
-		{
-		case list_is_string:										// String
+		VarType type;
+		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+
+		if (type == VarType.STR) {									// String type list
 			if (!evalStringExpression()) {
 				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
-			ArrayList<String> thisStringList = theLists.get(listIndex);  // Get the string list
-			if (getIndex < 0 || getIndex >= thisStringList.size()){		
+			ArrayList<String> thisStringList = theLists.get(listIndex);	// Get the string list
+			if (getIndex < 0 || getIndex >= thisStringList.size()) {
 				return RunTimeError("Index out of bounds");
 			}
 			thisStringList.set(getIndex, StringConstant);
-			break;
-
-		case list_is_numeric:												// Number
-			if (!evalNumericExpression()){
+		} else {													// Numeric type list
+			if (!evalNumericExpression()) {
 				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	//Get the numeric list
-			if (getIndex < 0 || getIndex >= thisNumericList.size()){
+			ArrayList<Double> thisNumericList = theLists.get(listIndex);// Get the numeric list
+			if (getIndex < 0 || getIndex >= thisNumericList.size()) {
 				return RunTimeError("Index out of bounds");
 			}
 			thisNumericList.set(getIndex, EvalNumericExpressionValue);
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
 		}
 
 		return true;
 	}
 
-	private boolean execute_LIST_GET(){
+	private boolean execute_LIST_GET() {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
@@ -13291,62 +13393,46 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getVar()) return false;								// Get the return value variable
 		if (!checkEOL()) return false;
 
-		int listType = theListsType.get(listIndex);					// Get this lists type
-		boolean isListNumeric = (listType == list_is_numeric);
+		VarType listType;											// Get this list's type
+		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+
+		boolean isListNumeric = listType.isNumeric();
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
 
-		switch (listType)
-		{
-		case list_is_string:										// String
-			ArrayList<String> thisStringList = theLists.get(listIndex);		// Get the string list
+		if (!isListNumeric) {										// String type list
+			ArrayList<String> thisStringList = theLists.get(listIndex);	// Get the string list
 			if (getIndex < 0 || getIndex >= thisStringList.size()){
 				return RunTimeError("Index out of bounds");
 			}
-			String thisString = thisStringList.get(getIndex);				// Get the requested string
+			String thisString = thisStringList.get(getIndex);		// Get the requested string
 			StringVarValues.set(theValueIndex, thisString);
-			break;
-
-		case list_is_numeric:										// Number
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	// Get the numeric list
+		} else {													// Numeric type list
+			ArrayList<Double> thisNumericList = theLists.get(listIndex);// Get the numeric list
 			if (getIndex < 0 || getIndex >= thisNumericList.size()){
 				return RunTimeError("Index out of bounds");
 			}
-			Double thisNumber = thisNumericList.get(getIndex);				// Get the requested number
+			Double thisNumber = thisNumericList.get(getIndex);		// Get the requested number
 			NumericVarValues.set(theValueIndex, thisNumber);
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
 		}
-		
+
 		return true;
 	}
 
-	private boolean execute_LIST_GETTYPE(){
+	private boolean execute_LIST_GETTYPE() {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
 
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
-		
-		switch (theListsType.get(listIndex))						// Get this lists type
-		{
-		case list_is_string:										// String
-			StringVarValues.set(theValueIndex, "S");
-			break;
 
-		case list_is_numeric:										// Number
-			StringVarValues.set(theValueIndex, "N");
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
-		}
+		try { StringVarValues.set(theValueIndex, theListsType.get(listIndex).typeNS()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
 		return true;
 	}
 
-	private boolean execute_LIST_CLEAR(){
+	private boolean execute_LIST_CLEAR() {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
 		if (!checkEOL()) return false;
@@ -13354,7 +13440,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_LIST_REMOVE(){
+	private boolean execute_LIST_REMOVE() {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
@@ -13373,7 +13459,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_LIST_INSERT(){
+	private boolean execute_LIST_INSERT() {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
 		if (!isNext(',')) return false;
@@ -13384,9 +13470,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (!isNext(',')) return false;
 
-		switch (theListsType.get(listIndex))						// Get this lists type
-		{
-		case list_is_string:											 // String
+		VarType listType;											// Get this list's type
+		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+
+		if (listType == VarType.STR) {								// String type list
 			if (!getStringArg()) {
 				return RunTimeError("Type mismatch");
 			}
@@ -13397,32 +13485,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				return RunTimeError("Index out of bounds");
 			}
 			thisStringList.add(getIndex, StringConstant);
-			break;
-
-		case list_is_numeric:											// Number
+		} else {													// Numeric type list
 			if (!evalNumericExpression()){
 				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
 
-			ArrayList<Double> thisNumericList = theLists.get(listIndex);	// Get the numeric list
+			ArrayList<Double> thisNumericList = theLists.get(listIndex);// Get the numeric list
 			if (getIndex < 0 || getIndex > thisNumericList.size()) {	// if index == size element goes at end of list
 				return RunTimeError("Index out of bounds");
 			}
 			thisNumericList.add(getIndex, EvalNumericExpressionValue);
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
 		}
 
 		return true;
 	}
 
-	private boolean execute_LIST_SIZE(){
-		int listIndex = getListArg();									// Get the list pointer
+	private boolean execute_LIST_SIZE() {
+		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
-		if (!isNext(',')) return false;									// move to the return var
+		if (!isNext(',')) return false;								// move to the return var
 
 		if (!getNVar()) return false;
 		if (!checkEOL()) return false;
@@ -13433,17 +13515,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_LIST_TOARRAY(){
-		int listIndex = getListArg();									// Get the list pointer
+	private boolean execute_LIST_TOARRAY() {
+		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0) return false;
-		if (!isNext(',')) return false;									// move to the array var
+		if (!isNext(',')) return false;								// move to the array var
 
-		String var = getArrayVarForWrite();								// get the result array variable
-		if (var == null) return false;									// must name a new array variable
-		if (!checkEOL()) return false;									// line must end with ']'
+		String var = getArrayVarForWrite();							// get the result array variable
+		if (var == null) return false;								// must name a new array variable
+		if (!checkEOL()) return false;								// line must end with ']'
 
-		int listType = theListsType.get(listIndex);						// Get this lists type
-		boolean isListNumeric = (listType == list_is_numeric);
+		VarType listType;											// Get this list's type
+		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+
+		boolean isListNumeric = listType.isNumeric();
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
 
 		if (isListNumeric) {
@@ -13569,8 +13654,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Bundle b = theBundles.get(bundleIndex);
 		if (!b.containsKey(tag)) { return RunTimeError(tag + " not in bundle"); }
 
-		String type = (b.get(tag) instanceof Double) ? "N" : "S";
-		StringVarValues.set(theValueIndex, type);
+		VarType type = (b.get(tag) instanceof Double) ? VarType.NUM : VarType.STR;
+		StringVarValues.set(theValueIndex, type.typeNS());
 		return true;
 	}
 
@@ -13579,7 +13664,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (bundleIndex < 0) return false;
 
 		if (!isNext(',')) return false;						// move to the list var
-		int listIndex = getListArg(list_is_string);			// get a reusable List pointer - may create new list
+		int listIndex = getListArg(VarType.STR);			// get a reusable List pointer - may create new list
 		if (listIndex < 0) return false;					// failed to get or create a list
 		if (!checkEOL()) return false;
 
@@ -13646,20 +13731,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_STACK_CREATE() {
 		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// Get the type, s or n
 		++LineIndex;
-		int type = 0;
 
-		if (c == 'n') {
-			type = stack_is_numeric;
-		} 
-		else if (c == 's') {
-			type = stack_is_string;
-		} else return false;
+		VarType type = VarType.typeOf(c);
+		if (type == VarType.NOVAR) return false;				// Unknown type, don't create anything
 
 		if (!isNext(',')) return false;
-
 		if (!getNVar()) return false;							// stack pointer variable
-		int SaveValueIndex = theValueIndex;
-
 		if (!checkEOL()) return false;
 
 		Stack theStack = new Stack();
@@ -13667,8 +13744,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		theStacks.add(theStack);
 
 		theStacksType.add(type);								// add the type
-		NumericVarValues.set(SaveValueIndex, (double) theIndex);// return the stack pointer    
-
+		NumericVarValues.set(theValueIndex, (double) theIndex);	// return the stack pointer    
 		return true;
 	}
 
@@ -13689,26 +13765,23 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!isNext(',')) return false;							// move to the value
 
 		Stack thisStack = theStacks.get(stackIndex);			// get the stack
-		switch (theStacksType.get(stackIndex))
-		{
-		case stack_is_string:									// String type stack
+
+		VarType type;
+		try { type = theStacksType.get(stackIndex).isNS(); }	// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+
+		if (type == VarType.STR) {								// string stack
 			if (!getStringArg()) {
 				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
 			thisStack.push(StringConstant);						// Add the string to the stack
-			break;
-
-		case stack_is_numeric:
+		} else {												// numeric stack
 			if (!evalNumericExpression()) {
 				return RunTimeError("Type mismatch");
 			}
 			if (!checkEOL()) return false;
 			thisStack.push(EvalNumericExpressionValue);			// Add the value to the stack
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
 		}
 		return true;
 	}
@@ -13723,28 +13796,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Stack is empty");
 		}
 
-		switch (theStacksType.get(stackIndex))
-		{
-		case stack_is_string:									// String type stack
-			if (!getSVar()) {
-				return RunTimeError("Type mismatch");
-			}
-			if (!checkEOL()) return false;
+		VarType stackType;
+		try { stackType = theStacksType.get(stackIndex).isNS(); }// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		boolean isStackNumeric = stackType.isNumeric();
+
+		if (!getVar()) return false;
+		if (isStackNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
+		if (!checkEOL()) return false;
+
+		if (!isStackNumeric) {									// string stack
 			String thisString = (String) thisStack.pop();
 			StringVarValues.set(theValueIndex, thisString);
-			break;
-
-		case stack_is_numeric:
-			if (!getNVar()) {
-				return RunTimeError("Type mismatch");
-			}
-			if (!checkEOL()) return false;
+		} else {												// numeric stack
 			Double thisNumber = (Double) thisStack.pop();
 			NumericVarValues.set(theValueIndex, thisNumber);
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
 		}
 		return true;
 	}
@@ -13755,32 +13821,25 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!isNext(',')) return false;							// move to the value
 
 		Stack thisStack = theStacks.get(stackIndex);			// Get the Stack
-		if (thisStack.isEmpty()){
+		if (thisStack.isEmpty()) {
 			return RunTimeError("Stack is empty");
 		}
 
-		switch (theStacksType.get(stackIndex))
-		{
-		case stack_is_string:									// String type stack
-			if (!getSVar()) {
-				return RunTimeError("Type mismatch");
-			}
-			if (!checkEOL()) return false;
+		VarType stackType;
+		try { stackType = theStacksType.get(stackIndex).isNS(); }// ensure either numeric or sring
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		boolean isStackNumeric = stackType.isNumeric();
+
+		if (!getVar()) return false;
+		if (isStackNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
+		if (!checkEOL()) return false;
+
+		if (!isStackNumeric) {									// string stack
 			String thisString = (String) thisStack.peek();
 			StringVarValues.set(theValueIndex, thisString);
-			break;
-
-		case stack_is_numeric:
-			if (!getNVar()) {
-				return RunTimeError("Type mismatch");
-			}
-			if (!checkEOL()) return false;
+		} else {												// numeric stack
 			Double thisNumber = (Double) thisStack.peek();
 			NumericVarValues.set(theValueIndex, thisNumber);
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
 		}
 		return true;
 	}
@@ -13792,19 +13851,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
 
-		switch (theStacksType.get(stackIndex))					// Get this Stack type
-		{
-		case stack_is_string:									// String
-			StringVarValues.set(theValueIndex, "S");
-			break;
-
-		case stack_is_numeric:									// Number
-			StringVarValues.set(theValueIndex, "N");
-			break;
-
-		default:
-			return RunTimeError("Internal problem. Notify developer");
-		}
+		try { StringVarValues.set(theValueIndex, theStacksType.get(stackIndex).typeNS()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
 		return true;
 	}
 
@@ -14643,7 +14691,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// ******************************************* FTP ********************************************
 
-	private boolean executeFTP(){								// Get FTP command keyword if it is there
+	private boolean executeFTP() {								// Get FTP command keyword if it is there
 		return executeCommand(ftp_cmd, "FTP");					// and execute the command
 	}
 
@@ -14672,9 +14720,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-		public boolean ftpConnect(String host, String username,
-	            String password, int port)
-		{
+	public boolean ftpConnect(String host, String username, String password, int port) {
 			try {
 				mFTPClient = new FTPClient();
 				// connecting to the host
@@ -14703,9 +14749,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 			return false;
 	}
-		
-		public String ftpGetCurrentWorkingDirectory()
-		{
+
+	public String ftpGetCurrentWorkingDirectory() {
 		    try {
 		        String workingDir = mFTPClient.printWorkingDirectory();
 		        return workingDir;
@@ -14713,9 +14758,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		        RunTimeError(e);
 		    }
 		    return null;
-		}
-		
-		private boolean executeFTP_CLOSE(){
+	}
+
+	private boolean executeFTP_CLOSE() {
 			if (!checkEOL()) return false;
 			if (FTPdir == null) return true;
 			
@@ -14727,9 +14772,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			    } catch (Exception e) {
 			        return RunTimeError(e);
 			    }
-		}
+	}
 
-		private boolean executeFTP_DIR(){
+	private boolean executeFTP_DIR() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getNVar()) return false;								// get the list VAR
@@ -14744,7 +14789,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			int theIndex = theLists.size();
 			theLists.add(theStringList);
 
-			theListsType.add(list_is_string);							// add the type
+			theListsType.add(VarType.STR);								// add the type
 			NumericVarValues.set(theValueIndex, (double) theIndex);		// return the list pointer
 
 			FTPFile[] ftpFiles;
@@ -14758,9 +14803,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 
 			return true;
-		}
+	}
 
-		private boolean executeFTP_CD(){
+	private boolean executeFTP_CD() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getStringArg()) return false;							// new directory name
@@ -14779,9 +14824,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			FTPdir = directory_path;
 
 			return true;
-		}
-		
-		private boolean executeFTP_GET(){
+	}
+
+	private boolean executeFTP_GET() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getStringArg()) return false;							// Source file name
@@ -14795,10 +14840,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			destFile = Basic.getDataPath(destFile);
 
 			return ftpDownload(srcFile, destFile);
-		}
+	}
 
-		public boolean ftpDownload(String srcFilePath, String desFilePath)
-		{
+	public boolean ftpDownload(String srcFilePath, String desFilePath) {
 			FileOutputStream desFileStream = null;
 			boolean status = false;
 			try {
@@ -14811,9 +14855,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			if (!status) { RunTimeError("Download error"); }
 			return status;
-		}
+	}
 
-		private boolean executeFTP_PUT(){
+	private boolean executeFTP_PUT() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getStringArg()) return false;							// Source file name
@@ -14827,10 +14871,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			srcFile = Basic.getDataPath(srcFile);
 
 			return ftpUpload(srcFile, destFile);
-		}
+	}
 
-		public boolean ftpUpload(String srcFilePath, String desFilePath)
-		{
+	public boolean ftpUpload(String srcFilePath, String desFilePath) {
 			FileInputStream srcFileStream = null;
 			boolean status = false;
 			try {
@@ -14843,9 +14886,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			if (!status) { RunTimeError("Upload problem"); }
 			return status;
-		}	
-		
-		public boolean executeFTP_CMD(){
+	}	
+
+	public boolean executeFTP_CMD() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getStringArg()) return false;							// Command
@@ -14869,9 +14912,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				PrintShow(r);
 			}
 			return true;
-		}
-		
-		private boolean executeFTP_DELETE(){
+	}
+
+	private boolean executeFTP_DELETE() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getStringArg()) return false;							// get the file name
@@ -14886,9 +14929,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			if (!status) { RunTimeError("File not deleted"); }
 			return status;
-		}
-		
-		private boolean executeFTP_RMDIR(){
+	}
+
+	private boolean executeFTP_RMDIR() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getStringArg()) return false;							// get the directory name
@@ -14903,9 +14946,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			if (!status) { RunTimeError("Directory not deleted"); }
 			return status;
-		}
+	}
 
-		private boolean executeFTP_MKDIR(){
+	private boolean executeFTP_MKDIR() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getStringArg()) return false;							// get the directory name
@@ -14920,9 +14963,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			if (!status) { RunTimeError("Directory not created"); }
 			return status;
-		}
-		
-		private boolean executeFTP_RENAME(){
+	}
+
+	private boolean executeFTP_RENAME() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
 			if (!getStringArg()) return false;							// old file name
@@ -14941,7 +14984,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			if (!status) { RunTimeError("File not renamed"); }
 			return false;
-		}
+	}
 
 	// **************************************** Bluetooth *****************************************
 
@@ -16375,7 +16418,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (theListIndex < 1 || theListIndex >= theLists.size()) {
 			return RunTimeError("Invalid list pointer");
 		}
-		if (theListsType.get(theListIndex) == list_is_numeric) {
+		if (theListsType.get(theListIndex) != VarType.STR) {
 			return RunTimeError("List must be of string type.");
 		}
 		List<String> thisList = theLists.get(theListIndex);
@@ -16578,9 +16621,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			sttResults.add("Recognition Cancelled");
 		}
 		theLists.add(sttResults);
-		theListsType.add(list_is_string);
+		theListsType.add(VarType.STR);
 
-		NumericVarValues.set(theValueIndex, (double) theIndex);		// Return the list pointer
+		NumericVarValues.set(theValueIndex, (double)theIndex);		// Return the list pointer
 		return true;
 	}
 
