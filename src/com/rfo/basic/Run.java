@@ -150,7 +150,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.SensorManager;
-import android.location.GpsStatus;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -378,6 +377,108 @@ public class Run extends ListActivity {
 		}
 	} // class ForNext
 
+	// ************************* FileDescriptor class *************************
+	// Records information about an open file. Objects go in the FileTable.
+	// TODO
+
+	public static class FileDescriptor {
+		private int mMode;
+		private boolean mIsText;
+		private boolean mEOF;
+		private boolean mClosed;
+		private long mPosition;
+		private long mMark;
+		private int mMarkLimit;
+		private int mStream;							// index into BRlist, FWlist, ...
+	}
+
+	// *********************** FunctionParameter class ************************
+
+	public static class FunctionParameter {
+		private String mName;
+		private VarType mType;
+		private boolean mIsArray;
+
+		public FunctionParameter(String name, VarType type, boolean isArray) {
+			mName = name; mType = type; mIsArray = isArray;
+		}
+
+		public String name() { return mName; }
+		public VarType type() { return mType; }
+		public boolean isArray() { return mIsArray; }
+	}
+
+	// *********************** FunctionDefinition class ***********************
+	// Function attributes defined by FN.DEF. Objects go in the FunctionTable.
+
+	public static class FunctionDefinition {
+		private int mLine;									// line number of fn.def
+		private String mName;								// name of this function
+		private VarType mType;								// type of this function
+		private ArrayList<FunctionParameter> mParms;		// list of function parameters
+
+		public FunctionDefinition(int line, String name, VarType type, ArrayList<FunctionParameter> parms) {
+			mLine = line; mName = name; mType = type; mParms = parms;
+		}
+
+		public int line() { return mLine; }
+		public String name() { return mName; }
+		public VarType type() { return mType; }
+		public int nParms() { return mParms.size(); }
+		public ArrayList<FunctionParameter> parms() { return mParms; }
+	}
+
+	// ************************* CallStackFrame class *************************
+	// System state saved across function calls. Objects go on the FunctionStack.
+
+	public class CallStackFrame {
+		private FunctionDefinition mFnDef;					// reference to called function
+		private int mELI;									// record line number of function call
+		private int mLI;									// record LinIndex after closing paren
+		private String mPKW;								// record PossibleKeyWord
+		private int mVSS;									// record VarSearchStart
+		private int mSVN;									// number of variable names
+		private int mVI;									// number of variable values
+		private int mNVV;									// number of numeric variables
+		private int mSVV;									// number of string variables
+		private int mAT;									// number of arrays
+
+		public FunctionDefinition fnDef() { return mFnDef; }
+
+		public void store(FunctionDefinition fn) {
+			mFnDef = fn;
+			mELI = ExecutingLineIndex;
+			mPKW = PossibleKeyWord;
+			mVSS = VarSearchStart;
+			mSVN = VarNames.size();
+			mVI = VarIndex.size();
+			mNVV = NumericVarValues.size();
+			mSVV = StringVarValues.size();
+			mAT = ArrayTable.size();
+		}
+		public void storeLI() {
+			mLI = LineIndex;
+		}
+
+		public void restore() {
+			ExecutingLineIndex = mELI;
+			LineIndex = mLI;
+			PossibleKeyWord = mPKW;
+			VarSearchStart = mVSS;
+			mSVN = VarNames.size();
+			mVI = VarIndex.size();
+			mNVV = NumericVarValues.size();
+			mSVV = StringVarValues.size();
+			mAT = ArrayTable.size();
+
+			trimArray(VarNames, mSVN);
+			trimArray(VarIndex, mVI);
+			trimArray(NumericVarValues, mNVV);
+			trimArray(StringVarValues, mSVV);
+			trimArray(ArrayTable, mAT);
+		}
+	}
+
 	// ***************************** VarType enum *****************************
 
 	private enum VarType {									// a variable can be a string or a number
@@ -433,10 +534,12 @@ public class Run extends ListActivity {
 		}
 
 		public Var(String val) {
-			mType = VarType.NUM;
+			mType = VarType.STR;
 			mStrVal = val;
 			mNumVal = 0.0;
 		}
+
+		public VarType type() { return mType; }
 
 		public void val(double val) {
 			if (mType != VarType.NUM) { throw new InvalidParameterException(); }
@@ -449,7 +552,7 @@ public class Run extends ListActivity {
 		}
 
 		public double nval() {
-			if (mType != VarType.STR) { throw new InvalidParameterException(); }
+			if (mType != VarType.NUM) { throw new InvalidParameterException(); }
 			return mNumVal;
 		}
 
@@ -1204,9 +1307,9 @@ public class Run extends ListActivity {
 	private int theValueIndex;							// The index into the value table for the current var
 	private int ArrayValueStart = 0;					// Value index for newly created array
 
-	private ArrayList<Bundle> FunctionTable;			// A bundle is created for each defined function
-	private Bundle ufBundle;							// Bundle set by isUserFunction and used by doUserFunction
-	private Stack<Bundle> FunctionStack;				// Stack contains the currently executing functions
+	private ArrayList<FunctionDefinition> FunctionTable;// Created for each defined function
+	private FunctionDefinition FnDef;					// Set by isUserFunction and used by doUserFunction
+	private Stack<CallStackFrame> FunctionStack;		// State saved through the currently executing functions
 	private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
 
 	private boolean VarIsNew = true;					// Signal from getVar() that this var is new
@@ -1399,7 +1502,7 @@ public class Run extends ListActivity {
 	};
 
 	private int readNext = 0;
-	private ArrayList<Bundle> readData;
+	private ArrayList<Var> readData;
 
 	// ********************** Font Command variables *********************************
 
@@ -3166,9 +3269,9 @@ public class Run extends ListActivity {
 	theValueIndex = 0;									// The index into the value table for the current var
 	ArrayValueStart = 0;								// Value index for newly created array 
 
-	FunctionTable = new ArrayList<Bundle>();			// A bundle is created for each defined function
-	ufBundle = null ;									// Bundle set by isUserFunction and used by doUserFunction
-	FunctionStack = new Stack<Bundle>() ;				// Stack contains the currently executing functions
+	FunctionTable = new ArrayList<FunctionDefinition>();// Created for each defined function
+	FnDef = null ;										// Set by isUserFunction and used by doUserFunction
+	FunctionStack = new Stack<CallStackFrame>() ;		// State saved through the currently executing functions
 	fnRTN = false;										// Set true by fn.rtn. Cause RunLoop() to return
 	Debug = false;
 
@@ -3197,7 +3300,7 @@ public class Run extends ListActivity {
 	// ******************** READ variables *******************************************
 
 	readNext = 0;
-	readData = new ArrayList <Bundle>();
+	readData = new ArrayList<Var>();
 
 	// ********************** Font Command variables *********************************
 
@@ -4449,7 +4552,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean ENE(Stack<Integer> theOpStack, Stack<Double> theValueStack) { // Part of evaluating a number expression
 
 																// The recursive part of Eval Expression
-		Bundle ufb = ufBundle;
+		FunctionDefinition savedFnDef = FnDef;
 		Command cmd;
 		double incdec = 0.0;									// for recording pre-inc/dec
 
@@ -4500,7 +4603,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		else if (isUserFunction(true, TYPE_NUMERIC)) {			// Try User Function
 			if (!doUserFunction()) return false;
-			ufBundle = ufb;
+			FnDef = savedFnDef;
 			theValueStack.push(EvalNumericExpressionValue);
 		}
 		else if (isNext('(')) {									// Handle possible (
@@ -4862,10 +4965,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		LineIndex = LI;
 
 		boolean flag = false;
-		Bundle ufb = ufBundle;
+		FunctionDefinition savedFnDef = FnDef;
 		if (isUserFunction(true, TYPE_STRING)) {				// Try User Function
 			flag = doUserFunction();
-			ufBundle = ufb;
+			FnDef = savedFnDef;
 		} else {
 			LineIndex = LI;										// Try String Functions
 			Command cmd = getFunction(SF_map);
@@ -6789,10 +6892,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// Called from PreScan() and NOT from statementExecuter().
 	private boolean executeREAD_DATA() {
 		do {													// Sweep up the data values
-			Bundle b = new Bundle();
+			Var v;
 			if (GetStringConstant()) {							// If it is a string
-				b.putBoolean("isNumber", false);				// Create a bundle for it
-				b.putString("string", StringConstant);
+				v = new Var(StringConstant);					// create a Var object for it
 			}
 			else {												// Should be a number
 				double signum = 1.0;							// Assume positive
@@ -6800,68 +6902,55 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				else if (isNext('+')) { ; }						// If not negative, eat optional '+'
 
 				if (getNumber()) {								// If it is a number
-					b.putBoolean("isNumber", true);				// Create a bundle for it
-					b.putDouble("number", signum * GetNumberValue);
+					v = new Var(signum * GetNumberValue);		// create a Var object for it
 				}
-				else {											// Else is a run time error
-					RunTimeError("Invalid Data Value");
-					return false;
+				else {											// else is a run time error
+					return RunTimeError("Invalid Data Value");
 				}
 			}
-			readData.add(b);									// Add the bundle to the list
+			readData.add(v);									// Add the bundle to the list
 		} while (isNext(','));									// and do again if more data
 
 		return checkEOL();										// Nothing allowed after scan stops
 	}
 
-	private boolean executeREAD_NEXT(){
-		
+	private boolean executeREAD_NEXT() {
 		do {
-		
 			if (readNext >= readData.size()) {					// Insure there is more data to read
-				RunTimeError("No more data to read");
-				return false;
+				return RunTimeError("No more data to read");
 			}
-		
-			Bundle b = readData.get(readNext);					// Get the data bundle
-			++readNext;											// And increment to next bundle
-			
+
+			Var v = readData.get(readNext);						// Get the data object
+			++readNext;											// And increment to next object
+
 			if (!getVar()) return false;						// Get the variable
-		
 			if (VarIsNumeric) {									// If var is numeric
-				if (!b.getBoolean("isNumber")) {				// Insure data is a number
-					RunTimeError("Data type (String) does match variable type (Number)");
-					return false;
+				try {
+					double d = v.nval();						// get the number
+					NumericVarValues.set(theValueIndex, d );	// and put it into the variable
+				} catch (InvalidParameterException ex) {		// data is not a number
+					return RunTimeError("Data type (String) does match variable type (Number)");
 				}
-				double d = b.getDouble("number");				// Get the number
-				NumericVarValues.set(theValueIndex, d );		// and put it into the variable
-				
-			}else {												// else var is string
-				if (b.getBoolean("isNumber")) {					// Insure data is a string
-					RunTimeError("Data type (Number) does match variable type (String)");
-					return false;
+			} else {											// else var is string
+				try {
+					String s = v.sval();						// get the string
+					StringVarValues.set(theValueIndex, s );		// and put it into the variable
+				} catch (InvalidParameterException ex) {		// data is not a string
+					return RunTimeError("Data type (Number) does match variable type (String)");
 				}
-				String s = b.getString("string");				// Get the string
-				StringVarValues.set(theValueIndex, s );			// and put it into the variable
 			}
-		
 		} while (isNext(','));									// loop while there are variables
-		
+
 		return checkEOL();
 	}
-	
-	
-	private boolean executeREAD_FROM(){
+
+	private boolean executeREAD_FROM() {
 		if (!evalNumericExpression()) return false;
-		int newIndex = EvalNumericExpressionValue.intValue();
-		--newIndex;
+		int newIndex = EvalNumericExpressionValue.intValue() - 1;
 		if (newIndex < 0 || newIndex >= readData.size()) {
-			RunTimeError("Index out of range");
-			return false;
+			return RunTimeError("Index out of range");
 		}
-		
 		readNext = newIndex;
-		
 		return checkEOL();
 	}
 
@@ -7583,45 +7672,32 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(fn_cmd, "FN");
 	}
 
-	private boolean  executeFN_DEF(){								// Define Function
+	private boolean  executeFN_DEF() {								// Define Function
 
 		String var = getNewFNVar();									// Get the function name
 		if (var == null) { return false; }
 		int fVarNumber = createNewVar(var);							// Save the VarNumber of the function name
-		boolean fType = VarIsNumeric;
+		VarType fType = VarIsNumeric ? VarType.NUM : VarType.STR;
 
-		ArrayList<String> fVarName = new ArrayList<String>();		// List of parameter names
-		ArrayList<Integer> fVarType = new ArrayList<Integer>();		// List of parameter types
-		ArrayList<Integer> fVarArray = new ArrayList<Integer>();	// A list of indicating if parm is array
-
+		ArrayList<FunctionParameter> fParms = new ArrayList<FunctionParameter>();
 		if (!isNext(')')) {
 			do {													// Get each of the parameter names
 				String name = parseVar(!USER_FN_OK);				// without creating any new vars
 				if (name == null) { return false; }
-				if (VarIsArray) {									// Process array
-					if (!isNext(']')) {								// Array must not have any indices
-						return RunTimeError(EXPECT_ARRAY_NO_INDEX);
-					}
-					fVarArray.add(1);								// 1 Indicates var is array
-				} else fVarArray.add(0);							// 0 Indicates var is not an array
-
-				fVarName.add(name);									// Save the name
-				fVarType.add(VarIsNumeric ? 1 : 0);					// Save the type
+				if (VarIsArray && !isNext(']')) {					// Process array
+					return RunTimeError(EXPECT_ARRAY_NO_INDEX);		// Array must not have any indices
+				}
+				VarType type = VarIsNumeric ? VarType.NUM : VarType.STR;
+				fParms.add(new FunctionParameter(name, type, VarIsArray));
 			} while (isNext(','));
 			if ( !(isNext(')') && checkEOL()) ) { return false; }
 		}
 
-		Bundle b = new Bundle();									// Build the bundle for the FunctionTable
-		b.putInt("line", ExecutingLineIndex);						// Line number of fn.def
-		b.putString("fname", VarNames.get(fVarNumber));				// Name of this function
-		b.putBoolean("isNumeric", fType);							// Type of function
-		b.putStringArrayList("pnames", fVarName);					// List of parameter names
-		b.putIntegerArrayList("ptype", fVarType);					// List of parameter types
-		b.putIntegerArrayList("array", fVarArray);					// List of parameter array flags
-		
-		int fn = FunctionTable.size();
-		FunctionTable.add(b);										// Add the Bundle to the function table
+		FunctionDefinition fnDef = new FunctionDefinition(
+			ExecutingLineIndex, VarNames.get(fVarNumber), fType, fParms);
 
+		int fn = FunctionTable.size();
+		FunctionTable.add(fnDef);									// Add the definition to the function table
 		VarIndex.set(fVarNumber, fn);								// Associate the function number with
 																	// the function name
 		int max = Basic.lines.size();
@@ -7637,37 +7713,31 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return RunTimeError("No fn.end for this function");			// end of program, fn.end not found
 	}
 
-	private boolean  executeFN_RTN(){
-		if (FunctionStack.empty()){							// Insure RTN actually called from executing function
-			RunTimeError("misplaced fn.rtn");
-			return false;
+	private boolean  executeFN_RTN() {
+		if (FunctionStack.empty()) {						// Insure RTN actually called from executing function
+			return RunTimeError("misplaced fn.rtn");
 		}
-		
-		Bundle fsb = new Bundle();							
-		fsb = FunctionStack.peek();							// Look at the Function Bundle on the stack
-		
-		if (fsb.getBoolean("isNum")){						// to determine if function is string or numeric
+
+		CallStackFrame frame = FunctionStack.peek();		// Look at the top frame of the stack
+		if (frame.fnDef().type().isNumeric()) {				// to determine if function is string or numeric
 			if (!evalNumericExpression()) return false;
-		}else{
+		} else {
 			if (!evalStringExpression()) return false;
 		}
-		
+
 		fnRTN = true;										// Signal RunLoop() to return
 		return checkEOL();
 	}
 
-	private boolean executeFN_END(){
-		if (FunctionStack.empty()){							// Insure END actually called from executing function
-			RunTimeError("misplaced fn.end");
-			return false;
+	private boolean executeFN_END() {
+		if (FunctionStack.empty()) {						// Insure END actually called from executing function
+			return RunTimeError("misplaced fn.end");
 		}
 
-		Bundle fsb = new Bundle();							
-		fsb = FunctionStack.peek();							// Look at the Function Bundle on the stack
-
-		if (fsb.getBoolean("isNum")){						// to determine if function is string or numeric
+		CallStackFrame frame = FunctionStack.peek();		// Look at the top frame of the stack
+		if (frame.fnDef().type().isNumeric()) {				// to determine if function is string or numeric
 			EvalNumericExpressionValue = 0.0;				// Set default value
-		}else{
+		} else {
 			StringConstant = "";							// Set default value
 		}
 
@@ -7688,11 +7758,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (FunctionTable.size() == 0) return false;					// If function table empty, return fail
 
-		for (Bundle b : FunctionTable) {								// for each Bundle in the Function Table
-			String name = b.getString("fname");							// get the function name
+		for (FunctionDefinition fnDef : FunctionTable) {				// for each function in the Function Table
+			String name = fnDef.name();									// get the function name
 			if (ExecutingLineBuffer.startsWith(name, LineIndex)) {		// if in list
-				if (checkType && (isNumeric != b.getBoolean("isNumeric"))) return false;
-				ufBundle = b;
+				if (checkType && (isNumeric != fnDef.type().isNumeric())) return false;
+				FnDef = fnDef;
 				LineIndex += name.length();
 				return true;											// report found
 			}
@@ -7702,31 +7772,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean doUserFunction() {
 
-	Bundle fsb = new Bundle();											// The Function Stack Bundle
+	CallStackFrame frame = new CallStackFrame();
+	frame.store(FnDef);													// build a stack fram
+	int sVarNames = VarNames.size();									// remember where the variable name list ends
 
-	int sVarNames = VarNames.size();									// Save a bunch of things that will need to be restored
-	int sVarIndex = VarIndex.size();
-	fsb.putBoolean("isNum", ufBundle.getBoolean("isNumeric"));
-	fsb.putInt("SVN", sVarNames);
-	fsb.putInt("VI", sVarIndex);
-	fsb.putInt("VSS", VarSearchStart);
-	fsb.putInt("NVV", NumericVarValues.size());
-	fsb.putInt("SVV", StringVarValues.size());
-	fsb.putInt("AT", ArrayTable.size());
-	fsb.putInt("ELI", ExecutingLineIndex);
-	fsb.putString("PKW", PossibleKeyWord);
-	fsb.putString("fname",ufBundle.getString("fname"));
-
-	ArrayList<String> fVarName;											// The list of Parm Var Names
-	ArrayList<Integer> fVarType;										// and the parm types
-	ArrayList<Integer> fVarArray;										// and the parm types
-	
-	fVarName = ufBundle.getStringArrayList("pnames"); 					// Get the Names and Types from the ufBundle                  
-	fVarType = ufBundle.getIntegerArrayList("ptype");					// ufBundle set by isUserFunction()
-	fVarArray = ufBundle.getIntegerArrayList("array");
-
-	int pCount = fVarName.size();										// The number of parameter
-
+	int pCount = FnDef.nParms();										// The number of parameters
 	int i = 0;
 	if (pCount != 0) {													// For each parameter
 		do {
@@ -7735,8 +7785,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 
 			boolean isGlobal = isNext('&');								// optional for scalars, ignored for arrays
-			boolean typeIsNumeric = (fVarType.get(i) != 0);
-			if (fVarArray.get(i) == 1){									// if this parm is an array
+			FunctionParameter parm = FnDef.parms().get(i);
+			String pName = parm.name();
+			boolean typeIsNumeric = parm.type().isNumeric();
+			if (parm.isArray()) {										// if this parm is an array
 				if (getArrayVarForRead() == null) { return false; }		// get the array name var
 				if (!isNext(']')) {										// must be no indices
 					return RunTimeError(EXPECT_ARRAY_NO_INDEX);
@@ -7744,7 +7796,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					return RunTimeError("Array parameter type mismatch at:");
 				}
 
-				VarNames.add(fVarName.get(i));							// and add the var name
+				VarNames.add(pName);									// and add the var name
 				VarIndex.add(VarIndex.get(VarNumber));					// copy array table pointer to the new array.
 			} // end array
 			else {
@@ -7757,7 +7809,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					}
 					if (!getVarValue(var))	{ return false; }			// bottom half of getVar()
 
-					VarNames.add(fVarName.get(i));						// add the called var name to the var name table
+					VarNames.add(pName);								// add the called var name to the var name table
 					VarIndex.add(theValueIndex);						// but give it the value index of the calling var
 				} // end global
 				else {
@@ -7765,9 +7817,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						if (!evalStringExpression()) {					// get the string value
 							return RunTimeError("Parameter type mismatch at:");
 						}else{
-							VarIndex.add(StringVarValues.size());				// Put the string value into the
-							StringVarValues.add(StringConstant);				// string var values table
-							VarNames.add(fVarName.get(i));						// and add the var name
+							VarIndex.add(StringVarValues.size());		// Put the string value into the
+							StringVarValues.add(StringConstant);		// string var values table
+							VarNames.add(pName);						// and add the var name
 						}
 					} else {
 						if (!evalNumericExpression()) {					// if parm is number get the numeric value
@@ -7775,7 +7827,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						} else {
 							VarIndex.add(NumericVarValues.size());				// Put the number values into the
 							NumericVarValues.add(EvalNumericExpressionValue);	// numeric var values table
-							VarNames.add(fVarName.get(i));						// and add the var name
+							VarNames.add(pName);								// and add the var name
 						}
 					}
 				}
@@ -7790,12 +7842,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	if (!isNext(')')) { return false; }					// Every function must have a closing right parenthesis.
 
-	fsb.putInt("LI", LineIndex);						// Save out index into the line buffer
+	frame.storeLI();									// Save out index into the line buffer
 
-	FunctionStack.push(fsb);							// Push the function bundle
+	FunctionStack.push(frame);							// Push the stack frame
 	VarSearchStart = sVarNames;							// Set the new start location for var name searches
 
-	ExecutingLineIndex = ufBundle.getInt("line") + 1;	// Set to execute first line after fn.def statement
+	ExecutingLineIndex = FnDef.line() + 1;				// Set to execute first line after fn.def statement
 
 	fnRTN = false;										// Will be set true by fn.rtn
 														// cause RunLoop() to return when true
@@ -7806,18 +7858,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return RunTimeError("System problem. Wait 10 seconds before rerunning.");
 	}
 
-	fsb = FunctionStack.pop();							// Function execution done. Restore stuff
-
-	trimArray(VarNames, fsb.getInt("SVN"));
-	trimArray(VarIndex, fsb.getInt("VI"));
-	VarSearchStart = fsb.getInt("VSS");
-	trimArray(NumericVarValues, fsb.getInt("NVV"));
-	trimArray(StringVarValues, fsb.getInt("SVV"));
-	trimArray(ArrayTable, fsb.getInt("AT"));
-	ExecutingLineIndex = fsb.getInt("ELI");
-	LineIndex = fsb.getInt("LI");
-	PossibleKeyWord = fsb.getString("PKW");
-
+	frame = FunctionStack.pop();						// Function execution done. Restore stuff.
+	frame.restore();
 	ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
 
 	return flag;										// Pass on the pass/fail state from the function
