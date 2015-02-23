@@ -141,7 +141,7 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 		mLocator.addGpsStatusListener(this);
 	}
 
-	public void onLocationChanged(Location location) {
+	public synchronized void onLocationChanged(Location location) {
 
 		// Called when one the GPS parameters has changed
 		// Stuff the GPS values into the parameters.

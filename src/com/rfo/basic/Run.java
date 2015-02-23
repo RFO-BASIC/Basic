@@ -319,6 +319,7 @@ public class Run extends ListActivity {
 		private ArrayList<Integer> mArraySizes;
 		private int mLength;
 		private int mBase;
+		private boolean mValid;
 		// Implementation note: does not currently hold type; could add later.
 
 		public ArrayDescriptor(ArrayList<Integer> dimList) {
@@ -338,12 +339,19 @@ public class Run extends ListActivity {
 			mDimList = dimList;
 			mArraySizes = arraySizes;
 			mLength = length;
+			mValid = false;
 		}
 
 		public void setArray(int base) {				// record starting index in variable space
 			mBase = base;
+			mValid = true;
 		}
 
+		public void invalidate() {						// deleted, as by UNDIM
+			mValid = false;
+		}
+
+		public boolean valid() { return mValid; }
 		public int length() { return mLength; }
 		public int base() { return mBase; }
 		public ArrayList<Integer> dimList() { return mDimList; }
@@ -4280,6 +4288,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int j = VarSearchStart;						// VarSearchStart is usually zero but will change when executing User Function
 		for ( ; j < VarNames.size(); ++j) {			// look up this var in the variable table
 			if (var.equals(VarNames.get(j))) {		// found it
+				if (VarIsArray) {
+					ArrayDescriptor array = ArrayTable.get(VarIndex.get(j));
+					if (!array.valid()) return false;
+				}
 				VarIsNew = false;
 				VarNumber = j;
 				theValueIndex = VarIndex.get(j);	// get the value index from the var table
@@ -5935,25 +5947,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
         	--FWI;
         }
 
-        String t1 = "";
+        if (VWI == -1) { Temp += Header; }							// add the header to the end of the whole number
 
-        if (VWI==-1){Temp = Temp + Header;}							// add the header to the end of the whole number
+        Temp = new StringBuilder(Temp).reverse().toString();		// now reverse the whole thing
 
-        for (i=Temp.length()-1; i>=0; --i){							// now reverse the whole thing
-        	t1 = t1+Character.toString(Temp.charAt(i));
-        	}
-        Temp = t1;
-
-        StringConstant="";
-        if (VWI>=0){												// If value decimal digits remain
-        	StringConstant = "**"  + Temp + VDstring;				// show the error in place of the header
-        	return true;											// and we are done
+        StringConstant = Temp + VDstring;
+        if (VWI >= 0) {												// If value decimal digits remain
+        	StringConstant = "**" + StringConstant;					// show the error in place of the header
         }
-        
-        
-        StringConstant = StringConstant + Temp + VDstring;			// Build the final result
-        return true;												// and we are done
 
+        return true;												// and we are done
 	}
 
 	// *********************************** end String Functions ***********************************
@@ -5980,12 +5983,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return checkEOL();												// then done
 	}
 
-	private boolean executeUNDIM(){
+	private boolean executeUNDIM() {
 		do {									// Multiple Arrays can be UNDIMed in one Statement separated by commas
 			if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
 			if (!isNext(']'))								{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
-			if (!VarIsNew) {
-				VarNames.set(VarNumber, " ");							// if DIMed, UNDIM it
+			if (!VarIsNew) {											// if DIMed, UNDIM it
+				ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber));
+				array.invalidate();
 			}
 		} while (isNext(','));											// continue while there are arrays to be UNDIMed
 
@@ -9650,20 +9654,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	  private boolean executeTONE(){
-		  
+	private boolean executeTONE() {
+
 		    double duration = 1; 				// seconds
 		    double freqOfTone = 1000; 			// hz
 		    int sampleRate = 8000;				// a number
 
 		  if (!evalNumericExpression()) return false;			// Get frequency
 		  freqOfTone =  EvalNumericExpressionValue;
-		  
+
 		  if (!isNext(',')) return false;
 
 		  if (!evalNumericExpression()) return false;			// Get duration
 		  duration= EvalNumericExpressionValue/1000 ;
-	
+
 	    	double dnumSamples = duration * sampleRate;
 	    	dnumSamples = Math.ceil(dnumSamples);
 	    	int numSamples = (int) dnumSamples;
@@ -9671,19 +9675,17 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	    	ByteBuffer generatedSnd = ByteBuffer.allocate(2 * numSamples);
 	    	generatedSnd.order(ByteOrder.LITTLE_ENDIAN);
 	    	ShortBuffer shortView = generatedSnd.asShortBuffer();
-	    	
+
 	    	boolean flagMinBuff = true;							// Optionally skip checking min buffer size
 	    	if (isNext(',')) {
 	    		if (!evalNumericExpression()) return false;
-	    		if (EvalNumericExpressionValue == 0 )
-	    			flagMinBuff = false;
+	    		if (EvalNumericExpressionValue == 0) { flagMinBuff = false; }
 	    	}
-	    	
+
 	    	if (flagMinBuff) {
-	    	
 	    		int minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
 	    				AudioFormat.ENCODING_PCM_16BIT);
-	    		if (2 * numSamples< minBuffer){
+	    		if (2 * numSamples < minBuffer) {
 	    			double minDuration = Math.ceil(1000 * (double)minBuffer/(2 * (double)sampleRate));
 	    			RunTimeError("Minimum tone duration for this device: " + (int) minDuration + " milliseconds");
 	    			return false;
@@ -9691,7 +9693,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	    	}
 
 	    	if (!checkEOL()) return false;				// No more parameters expected
-	    	
+
 	        for (int i = 0; i < numSamples; ++i) {		// Fill the sample array
 	        	sample[i] = Math.sin(freqOfTone * 2 * Math.PI * i / (sampleRate));
 	        }
@@ -9699,60 +9701,54 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	        // convert to 16 bit pcm sound array
 	        // assumes the sample buffer is normalised.
 	        int i = 0 ;
-	        
+
 	        int ramp = numSamples / 20 ;									// Amplitude ramp as a percent of sample count
-	       
-	        
+
 	        for (i = 0; i< ramp; ++i) {										// Ramp amplitude up to max (to avoid clicks)
 	            short val = (short) (sample[i] * 32767 * i/ramp);
 	            shortView.put(val);
 	        }
 
-	        
 	        for ( ; i< numSamples - ramp; ++i) {							// Max amplitude for most of the samples
 	            short val = (short) (sample[i] * 32767);					// scale to maximum amplitude
 	            shortView.put(val);
 	        }
-	        
+
 	        for ( ; i< numSamples; ++i) {									// Ramp amplitude down to 0
 	            short val = (short) (sample[i] * 32767 * (numSamples-i)/ramp);
 	            shortView.put(val);
 	        }
-	        
+
 	        AudioTrack audioTrack = null;									// Get audio track
 	        try {
 	        	audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
 	        			sampleRate, AudioFormat.CHANNEL_OUT_MONO,
 	        			AudioFormat.ENCODING_PCM_16BIT, numSamples*2,
 	        			AudioTrack.MODE_STATIC);
-	        	audioTrack.write(generatedSnd.array(), 0, numSamples*2);			// Load the track
+	        	audioTrack.write(generatedSnd.array(), 0, numSamples*2);	// Load the track
 	        	audioTrack.play();											// Play the track
 	        }
-	        catch (Exception e){
+	        catch (Exception e) {
 	        	return RunTimeError(e);
 	        }
-	        
-	        int x =0;
-	        do{														// Montior playback to find when done
-	        	 if (audioTrack != null) 
-	        		 x = audioTrack.getPlaybackHeadPosition(); 
-	        	 else 
-	        		 x = numSamples;	        
-	        }while (x<numSamples);
-	        
+
+	        int x = 0;
+	        do {													// Montior playback to find when done
+	        	x = (audioTrack != null) ? audioTrack.getPlaybackHeadPosition() : numSamples;
+	        } while (x < numSamples);
+
 	        if (audioTrack != null) audioTrack.release();			// Track play done. Release track.
-	        
+
 	        audioTrack = null;										// Release storage
 	        shortView = null;
 	        generatedSnd = null;
 	        sample = null;
 	        System.gc();
-	        
 
 	        return true;
-	  }
+	}
 
-	private boolean executeVIBRATE(){
+	private boolean executeVIBRATE() {
 
 		if (getArrayVarForRead() == null) return false;				// Get the array variable
 		if (!VarIsNumeric) { return RunTimeError(EXPECT_NUM_ARRAY); } // Insure that it is a numeric array
