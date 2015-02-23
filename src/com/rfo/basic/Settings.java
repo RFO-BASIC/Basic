@@ -213,6 +213,11 @@ public class Settings extends PreferenceActivity {
 				.getBoolean("lined_editor", true);
 	}
 
+	public static boolean getEditorLineWrap(Context context){
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("wrap_editor", true);
+	}
+
 	public static boolean getAutoIndent(Context context){
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean("autoindent", false);

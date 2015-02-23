@@ -77,6 +77,7 @@ public class Editor extends Activity {
         private Rect mRect;
         private Paint mPaint;
         private boolean mLinesSetting;						// Lines preference setting for onDraw
+        private boolean mLineWrapSetting;					// Line-wrap preference setting
 
         private Scroller mScroller;							// The scroller object
         private VelocityTracker mVelocityTracker;			// The velocity tracker
@@ -231,6 +232,7 @@ public class Editor extends Activity {
 			mPaint.setColor(style.mLineColor);
 			setTextSize(1, Settings.getFont(context));
 			mLinesSetting = Settings.getLinedEditor(context);
+			mLineWrapSetting = Settings.getEditorLineWrap(context);
 		}
     }
 
@@ -261,9 +263,8 @@ public class Editor extends Activity {
 		setContentView(R.layout.editor);
 		setTitle(Name + Basic.ProgramFileName);
 
-		mText = (LinedEditText) findViewById(R.id.basic_text);	// mText is the TextView Object
+		mText = (LinedEditText)findViewById(R.id.basic_text);	// mText is the TextView Object
 		mText.setTypeface(Typeface.MONOSPACE);
-		mText.setHorizontallyScrolling(true);
 
 		InputFilter[] filters = mText.getFilters();				// some devices (Samsung) have a filter that limits EditText size
 		if (filters.length != 0) {
@@ -362,6 +363,7 @@ public class Editor extends Activity {
 			mText.getPreferences(this);
 			int SO = Settings.getSreenOrientation(this);
 			setRequestedOrientation(SO);
+			mText.setHorizontallyScrolling(!mText.mLineWrapSetting);		// set scrolling per Preferences
 
         	if (SyntaxErrorDisplacement >= 0 &&
 				SyntaxErrorDisplacement < AddProgramLine.lineCharCounts.size()) {	// If run ended in error, select error line

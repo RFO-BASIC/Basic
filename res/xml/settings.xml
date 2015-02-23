@@ -125,6 +125,12 @@ This file is part of BASIC! for Android
         android:defaultValue="true" />
 
     <CheckBoxPreference
+        android:key="wrap_editor"
+        android:title="Editor Line Wrap"
+        android:summary="Wrap Long Editor Lines"
+        android:defaultValue="false" />
+
+    <CheckBoxPreference
         android:key="autoindent"
         android:title="Editor AutoIndent"
         android:summary="Enable Editor AutoIndent"
