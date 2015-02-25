@@ -336,9 +336,9 @@ public class Basic extends Activity  {
 			String f0 = FL1.get(0);					// The top of the list should be the
 			if (f0.length() > 11) {					// f00_vnn_nn_xxx file
 				String[] f = f0.substring(5).split("_");
-				if (f.length > 1) {
-					if (BasicContext.getString(R.string.version)	// Get the version string
-							.equals(f[0] + "." + f[1])) {			// Compare version numbers
+				if (f.length > 1) {					// keep "0x.xx" of version number
+					String version = BasicContext.getString(R.string.version).substring(0,5);
+					if (version.equals(f[0] + "." + f[1])) {	// Compare version numbers
 						return true;				// Versions match, correct files are loaded
 					}
 				}

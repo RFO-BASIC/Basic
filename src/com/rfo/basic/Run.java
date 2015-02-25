@@ -2792,6 +2792,7 @@ public class Run extends ListActivity {
 						finishRun("Out of memory");
 					} else if (ex instanceof NullPointerException) {
 						publishProgress("Internal error! Please notify developer.");
+						publishProgress(Log.getStackTraceString(ex));
 						finishRun("Null pointer exception");
 					} else {
 						mDefaultExceptionHandler.uncaughtException(thread, ex);

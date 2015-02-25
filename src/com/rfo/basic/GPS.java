@@ -173,6 +173,10 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 		int inFix = 0;
 		if (event != GpsStatus.GPS_EVENT_STOPPED) {
 			GpsStatus status = mLocator.getGpsStatus(null);
+			if (status == null) {
+				Log.e(LOGTAG, "onGpsStatusChanged: getGpsStatus returned null");
+				return;
+			}
 			synchronized (this) {
 				Satellites = status.getSatellites();
 				for (GpsSatellite s : Satellites) {
