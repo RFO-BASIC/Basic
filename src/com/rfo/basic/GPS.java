@@ -64,11 +64,11 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 	private float Speed;
 	private long Time;
 	private String Provider;
-	private int LastStatusEvent;	// 0 means no event received yet
-	private int SatelliteCount;		// satellite count from LocationListener
+	private int LastStatusEvent;		// 0 means no event received yet
+	private int SatelliteCount = -1;	// satellite count from LocationListener
 	private Iterable<GpsSatellite> Satellites;
-	private int SatellitesInView;	// satellite count from GpsStatusListener
-	private int SatellitesInFix;	// also from GpsStatusListener
+	private int SatellitesInView = -1;	// satellite count from GpsStatusListener
+	private int SatellitesInFix = -1;	// also from GpsStatusListener
 	public enum GpsData {
 		ALTITUDE, LATITUDE, LONGITUDE, BEARING,
 		ACCURACY, SPEED, TIME, PROVIDER, STATUS,
@@ -155,7 +155,8 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 			Speed = location.getSpeed();
 			Provider = location.getProvider();
 			Time = location.getTime();
-			SatelliteCount = location.getExtras().getInt("satellites");
+			Bundle extras = location.getExtras();
+			SatelliteCount = (extras != null) ? extras.getInt("satellites") : -1;
 		}
 	}
 
@@ -172,22 +173,20 @@ public class GPS implements GpsStatus.Listener, LocationListener {
 		int inView = 0;
 		int inFix = 0;
 		if (event != GpsStatus.GPS_EVENT_STOPPED) {
-			GpsStatus status = mLocator.getGpsStatus(null);
-			if (status == null) {
-				Log.e(LOGTAG, "onGpsStatusChanged: getGpsStatus returned null");
-				return;
-			}
 			synchronized (this) {
-				Satellites = status.getSatellites();
+				GpsStatus status = mLocator.getGpsStatus(null);
+				Satellites = (status == null) ? null : status.getSatellites();
+			}
+			if (Satellites == null) {
+				inFix = inView = -1;
+			} else {
 				for (GpsSatellite s : Satellites) {
 					++inView;
 					if (s.usedInFix()) { ++inFix; }
 				}
 			}
-		} else {
-			inFix = inView = 0;
 		}
-		LastStatusEvent  = event;
+		LastStatusEvent = event;
 		SatellitesInView = inView;
 		SatellitesInFix  = inFix;
 	}
