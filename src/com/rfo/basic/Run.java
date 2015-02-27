@@ -83,6 +83,7 @@ import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
+import java.nio.channels.FileChannel;
 
 import java.security.InvalidParameterException;
 import java.security.spec.AlgorithmParameterSpec;
@@ -390,14 +391,13 @@ public class Run extends ListActivity {
 	// Records information about an open file. Objects go in the FileTable.
 
 	public static class FileInfo {
-		private final int mMode;
-		private final boolean mIsText;
-		private boolean mIsEOF;
-		private boolean mIsClosed;
-		private long mPosition;
-		private long mMark;
+		protected final int mMode;
+		protected final boolean mIsText;
+		protected boolean mIsEOF;
+		protected boolean mIsClosed;
+		protected long mPosition;
+		protected long mMark;
 		private int mMarkLimit;
-		private int mStreamIndex;						// index into BRlist, FWlist, ...
 
 		public FileInfo(int mode, boolean isText) {
 			mMode = mode;
@@ -417,21 +417,136 @@ public class Run extends ListActivity {
 		}
 
 		public void eof() { mIsEOF = true; }
-		public void closed() { mIsClosed = true; }
+		protected void closed() { mIsClosed = true; }
 		public void position(long pos) { mPosition = pos; }
 		public void incPosition() { ++mPosition; }
 		public void incPosition(long delta) { mPosition += delta; }
-		public void stream(int index) { mStreamIndex = index; }
 
 		public int mode() { return mMode; }
 		public boolean isText() { return mIsText; }
 		public boolean isEOF() { return mIsEOF; }
 		public boolean isClosed() { return mIsClosed; }
-		public int stream() { return mStreamIndex; }
 		public long position() { return mPosition; }
 		public long mark() { return mMark; }
 		public int markLimit() { return mMarkLimit; }
+
+		// args: stream to flush, previous exception or null;
+		// return: previous exception if any, else new exception if any, else null
+		public static IOException flushStream(Flushable stream, IOException ex) {	// flush a stream
+			if (stream == null) { return ex; }
+			try { stream.flush(); return ex; }
+			catch ( IOException e ) { return (ex == null) ? e : ex; }
+		}
+
+		// args: stream to close, previous exception or null
+		// return: previous exception if any, else new exception if any, else null
+		public static IOException closeStream(Closeable stream, IOException ex) {	// close a stream
+			if (stream == null) { return ex; }
+			try { stream.close(); return ex; }
+			catch ( IOException e ) { return (ex == null) ? e : ex; }
+		}
 	} // class FileInfo
+
+	public static class TextWriterInfo extends FileInfo {
+		public FileWriter mTextWriter;
+		public TextWriterInfo(int mode) { super(mode, true); }	// true means it is text
+
+		public IOException flush(IOException ex) { return flushStream(mTextWriter, ex); }
+		public IOException close(IOException ex) {
+			IOException e = closeStream(mTextWriter, ex);
+			mTextWriter = null;
+			closed();
+			return e;
+		}
+	}
+
+	public static class TextReaderInfo extends FileInfo {
+		public BufferedReader mTextReader;
+		public TextReaderInfo(int mode) { super(mode, true); }	// true means it is text
+
+		public IOException close(IOException ex) {
+			IOException e = closeStream(mTextReader, ex);
+			mTextReader = null;
+			closed();
+			return e;
+		}
+	}
+
+	public static class ByteWriterInfo extends FileInfo {
+		public FileOutputStream mByteWriter;					// stream for almost all operations
+
+		// Both of these are built from the FileOutputStream.
+		// Only one can be used at a time. Once one is used, we close the stream
+		// to keep the other from being used in parallel.
+		private DataOutputStream mDOStream;
+		private FileChannel mChannel;
+
+		public ByteWriterInfo(int mode) { super(mode, false); }	// false means it is byte, not text
+
+		public DataOutputStream getDOS() {
+			if (mDOStream == null) { mDOStream = new DataOutputStream(mByteWriter); }
+			return mDOStream;
+		}
+
+		public void truncateFile(long length) throws IOException {
+			IOException ex = null;
+			if ((mByteWriter == null) || (mDOStream != null)) {
+				ex = new IOException("Error getting FileChannel");
+			} else {
+				long pnow = position();
+				if (length < 0) { length = 0; }
+				if (length < (pnow - 1)) {
+					mChannel = mByteWriter.getChannel();
+					try {
+						mChannel.truncate(length);				// truncate the file
+						position(length + 1);
+					} catch (IOException e) { ex = e; }
+					eof();
+				}
+			}
+			ex = close(flushChannel(ex));
+			if (ex != null) { throw ex; }
+		}
+
+		// arg: previous exception or null;
+		// return: previous exception if any, else new exception if any, else null
+		private IOException flushChannel(IOException ex) {		// flush the channel
+			FileChannel chnl = mChannel;
+			mChannel = null;
+			if (chnl == null) { return ex; }
+			try { chnl.force(false); return ex; }
+			catch ( IOException e ) { return (ex == null) ? e : ex; }
+		}
+
+		// arg: previous exception or null;
+		// return: previous exception if any, else new exception if any, else null
+		public IOException flush(IOException ex) {				// flush the channel
+			return (mChannel != null) ?
+					flushChannel(ex) :
+					flushStream(((mDOStream != null) ? mDOStream : mByteWriter), ex);
+		}
+
+		// args: stream to close, previous exception or null
+		// return: previous exception if any, else new exception if any, else null
+		public IOException close(IOException ex) {
+			Closeable stream = (mChannel != null) ? mChannel : ((mDOStream != null) ? mDOStream : mByteWriter);
+			mChannel = null; mDOStream = null; mByteWriter = null;
+			closed();
+			return closeStream(stream, ex);
+		}
+	}
+
+	public static class ByteReaderInfo extends FileInfo {
+		public BufferedInputStream mByteReader;
+		public ByteReaderInfo(int mode) { super(mode, false); }	// false means it is byte, not text
+
+		public IOException close(IOException ex) {
+			IOException e = closeStream(mByteReader, ex);
+			mByteReader = null;
+			closed();
+			return e;
+		}
+	}
 
 	// *********************** FunctionParameter class ************************
 
@@ -1455,10 +1570,6 @@ public class Run extends ListActivity {
 	private static final int FMW = 1;						// File Mode Write
 
 	public static ArrayList<FileInfo> FileTable;			// File table list
-	public static ArrayList<BufferedReader> BRlist;			// A list of of file readers
-	public static ArrayList<FileWriter> FWlist;				// A list of file writers
-	public static ArrayList<DataOutputStream> DOSlist;		// A list of output streams
-	public static ArrayList<BufferedInputStream> BISlist;	// A list of input streams
 
 	// ********************************* TEXT I/O variables *********************************
 
@@ -1499,6 +1610,7 @@ public class Run extends ListActivity {
 	private static final String BKW_BYTE_READ_BUFFER = "read.buffer";
 	private static final String BKW_BYTE_WRITE_BUFFER = "write.buffer";
 	private static final String BKW_BYTE_COPY = "copy";
+	private static final String BKW_BYTE_TRUNCATE = "truncate";
 	private static final String BKW_BYTE_POSITION_GET = "position.get";
 	private static final String BKW_BYTE_POSITION_SET = "position.set";
 	private static final String BKW_BYTE_POSITION_MARK = "position.mark";
@@ -1507,7 +1619,7 @@ public class Run extends ListActivity {
 		BKW_BYTE_OPEN, BKW_BYTE_CLOSE,
 		BKW_BYTE_READ_BYTE, BKW_BYTE_WRITE_BYTE,
 		BKW_BYTE_READ_BUFFER, BKW_BYTE_WRITE_BUFFER,
-		BKW_BYTE_COPY,
+		BKW_BYTE_COPY, BKW_BYTE_TRUNCATE,
 		BKW_BYTE_POSITION_GET, BKW_BYTE_POSITION_SET,
 		BKW_BYTE_POSITION_MARK,
 	};
@@ -1520,6 +1632,7 @@ public class Run extends ListActivity {
 		new Command(BKW_BYTE_READ_BUFFER)   { public boolean run() { return executeBYTE_READ_BUFFER(); } },
 		new Command(BKW_BYTE_WRITE_BUFFER)  { public boolean run() { return executeBYTE_WRITE_BUFFER(); } },
 		new Command(BKW_BYTE_COPY)          { public boolean run() { return executeBYTE_COPY(); } },
+		new Command(BKW_BYTE_TRUNCATE)      { public boolean run() { return executeBYTE_TRUNCATE(); } },
 		new Command(BKW_BYTE_POSITION_GET)  { public boolean run() { return executeBYTE_POSITION_GET(); } },
 		new Command(BKW_BYTE_POSITION_SET)  { public boolean run() { return executeBYTE_POSITION_SET(); } },
 		new Command(BKW_BYTE_POSITION_MARK) { public boolean run() { return executeBYTE_POSITION_MARK(); } },
@@ -3334,10 +3447,6 @@ public class Run extends ListActivity {
 	// ******************************* File I/O operation variables ************************
 
 	FileTable = new ArrayList<FileInfo>() ;				// File table list
-	BRlist = new ArrayList<BufferedReader>() ;			// A list of of file readers
-	FWlist = new ArrayList<FileWriter>() ;				// A list of file writers
-	DOSlist = new ArrayList<DataOutputStream> () ;		// A list of output streams
-	BISlist = new ArrayList<BufferedInputStream> () ;	// A list of input streams
 
 	// ******************** READ variables *******************************************
 
@@ -7978,34 +8087,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	
 // ***************************** Data I/O Operations ***********************************
 
-	// args: stream to flush, previous exception or null;
-	// return: previous exception if any, else new exception if any, else null 
-	private static IOException flushStream(Flushable stream, IOException ex) {	// flush a stream
-		if (stream == null) { return ex; }
-		try { stream.flush(); return ex; }
-		catch ( IOException e ) { return (ex == null) ? e : ex; }
-	}
-
-	// args: stream to close, previous exception or null
-	// return: previous exception if any, else new exception if any, else null 
-	private static IOException closeStream(Closeable stream, IOException ex) {	// close a stream
-		if (stream == null) { return ex; }
-		try { stream.close(); return ex; }
-		catch ( IOException e ) { return (ex == null) ? e : ex; }
-	}
-
-	private boolean checkReadFile(int FileNumber, ArrayList<?> list) {		// Validate input file for read commands
-		// Note: if list is null, list size is not checked - needed for POSITION_GET
+	private boolean checkReadFile(int FileNumber) {							// Validate input file for read commands
 		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
 		else if (FileNumber < 0)                    { RunTimeError("Read file did not exist"); }
-		else if (list != null && list.size() == 0)  { RunTimeError("No files opened for read"); }
 		else if (FileNumber >= FileTable.size())    { RunTimeError("Invalid File Number at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
 	}
 
-	private boolean checkWriteFile(int FileNumber, ArrayList<?> list) {		// Validate input file for write commands 
+	private boolean checkFile(int FileNumber) {								// Validate input file number for read or write commands 
 		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
-		else if (list.size() == 0)                  { RunTimeError("No files opened for write"); }
 		else if (FileNumber >= FileTable.size() || FileNumber < 0)
 													{ RunTimeError("Invalid File Number at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
@@ -8075,9 +8165,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		File file = new File(Basic.getDataPath(fileName));
 
-		FileInfo fInfo = new FileInfo(FileMode, true);				// Prepare the FileTable object for text ops
-
 		if (FileMode == FMR) {										// Read was selected
+			TextReaderInfo fInfo = new TextReaderInfo(FileMode);	// Prepare the FileTable object
 			BufferedReader buf = null;
 			int flen = (int)Math.min(file.length(), Integer.MAX_VALUE);
 			try {
@@ -8091,14 +8180,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			catch (Exception e) { writeErrorMsg(e); }
 			if (buf != null) {
-				fInfo.stream(BRlist.size());						// The stream parm indexes
-				BRlist.add(buf);									// into the BRlist
+				fInfo.mTextReader = buf;							// store reader in fInfo
 			} else {
 				fileNumber = -1;									// change file index to report file does not exist
 			}
+			FileTable.add(fInfo);
 		}
 
 		else if (FileMode == FMW) {									// Write Selected
+			TextWriterInfo fInfo = new TextWriterInfo(FileMode);	// Prepare the FileTable object
 			FileWriter writer = null;
 			if (append && file.exists()) {
 				fInfo.position(file.length() + 1);
@@ -8111,13 +8201,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				catch (IOException e) { writeErrorMsg(e); }
 			}
 			if (writer != null) {
-				fInfo.stream(FWlist.size());						// The stream parm indexes
-				FWlist.add(writer);									// into the FWlist
+				fInfo.mTextWriter = writer;							// store writer in fInfo
 			} else {
 				fileNumber = -1;									// change file index to report file does not exist
 			}
+			FileTable.add(fInfo);
 		}
-		FileTable.add(fInfo);
 		NumericVarValues.set(saveValueIndex, fileNumber);
 		return true;												// Done
 	}
@@ -8137,40 +8226,37 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (fInfo.isClosed()) return true;							// Already closed
 
 		int FileMode = fInfo.mode();
-		int streamIndex = fInfo.stream();
 		if (FileMode == FMR) {										// Close file open for read
-			BufferedReader buf = BRlist.get(streamIndex);
-			IOException e = closeStream(buf, null);
+			IOException e = ((TextReaderInfo)fInfo).close(null);
 			if (e != null) return RunTimeError(e);
 		}
 		else if (FileMode == FMW) {									// close file open for write
-			FileWriter writer = FWlist.get(streamIndex);
-			IOException e = closeStream(writer, flushStream(writer, null));
+			TextWriterInfo twInfo = (TextWriterInfo)fInfo;
+			IOException e = twInfo.close(twInfo.flush(null));
 			if (e != null) return RunTimeError(e);
 		} else {
 			return RunTimeError("File not opened for read or write");
 		}
-		fInfo.closed();												// mark the file closed in fInfo
 		return true;
 	}
 
 	private boolean executeTEXT_READLN() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber, BRlist)) return false;		// Check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
 
 		if (!isNext(',')) return false;
 		if (!getSVar()) return false;								// Second parm is the string var
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		TextReaderInfo fInfo = (TextReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadTextAttributes(fInfo)) return false;			// Check runtime errors
 
 		String data = null;
 		if (fInfo.isEOF()) {								// If already eof don't read
 			data = "EOF";									// but force returned data to "EOF"
 		} else {
-			BufferedReader buf = BRlist.get(fInfo.stream());
+			BufferedReader buf = fInfo.mTextReader;
 			try { data = buf.readLine(); }					// Read a line
 			catch (IOException e) { return RunTimeError("I/O error at:"); }
 			if (data == null) {
@@ -8197,11 +8283,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		textPrintLine = "";								// clear the accumulated text print line
 
-		if (!checkWriteFile(FileNumber, FWlist)) return false;		// Check runtime errors
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		if (!checkFile(FileNumber)) return false;					// Check runtime errors
+		TextWriterInfo fInfo = (TextWriterInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkWriteTextAttributes(fInfo)) return false;			// Check runtime errors
 
-		FileWriter writer = FWlist.get(fInfo.stream());
+		FileWriter writer = fInfo.mTextWriter;
 		try { writer.write(StringConstant); }			// Oh, and write the line
 		catch (IOException e) { return RunTimeError("I/O error at"); }
 
@@ -8244,7 +8330,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeTEXT_POSITION_SET() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber, BRlist)) return false;		// Check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
 
 		if (!isNext(',')) return false;								// Second parm is the position var expression
 		if (!evalNumericExpression()) return false;
@@ -8254,10 +8340,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		TextReaderInfo fInfo = (TextReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadTextAttributes(fInfo)) return false;			// Check runtime errors
 
-		BufferedReader buf = BRlist.get(fInfo.stream());
+		BufferedReader buf = fInfo.mTextReader;
 		long pnow = fInfo.position();
 		boolean eof = fInfo.isEOF();
 
@@ -8286,7 +8372,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeTEXT_POSITION_GET() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber, null)) return false;			// Check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
 
 		if (!isNext(',')) return false;								// Second parm is the position var
 		if (!getNVar()) return false;
@@ -8311,7 +8397,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} else {
 			FileNumber = FileTable.size() - 1;						// default if no file pointer arg
 		}
-		if (!checkReadFile(FileNumber, BRlist)) return false;		// check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// check runtime errors
 
 		if (isComma) {												// second parm is the mark limit
 			if (!evalNumericExpression()) return false;
@@ -8320,14 +8406,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		TextReaderInfo fInfo = (TextReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadTextAttributes(fInfo)) return false;			// check runtime errors
 
 		if (markLimit < 0) {
 			markLimit = fInfo.markLimit();							// retrieve mark limit from fInfo 
 		}
 
-		BufferedReader buf = BRlist.get(fInfo.stream());
+		BufferedReader buf = fInfo.mTextReader;
 		try { buf.mark(markLimit); }								// set the mark
 		catch (IOException e) { return RunTimeError("I/O error at:"); }
 
@@ -8393,9 +8479,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		String fileName = StringConstant;
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = new FileInfo(FileMode, false);				// Prepare the FileTable object for byte ops
-
 		if (FileMode == FMR) {										// Read was selected
+			ByteReaderInfo fInfo = new ByteReaderInfo(FileMode);	// Prepare the FileTable object
 			BufferedInputStream buf = null;
 			if (fileName.startsWith("http")) {
 				try {
@@ -8420,15 +8505,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				catch (Exception e) { writeErrorMsg(e); }
 			}
 			if (buf != null) {
-				fInfo.stream(BISlist.size());						// The stream parm indexes
-				BISlist.add(buf);									// into the BISlist
+				fInfo.mByteReader = buf;							// store reader in fInfo
 			} else {
 				fileNumber = -1;									// change file index to report file does not exist
 			}
+			FileTable.add(fInfo);
 		}
 
 		else if (FileMode == FMW) {									// Write Selected
-			DataOutputStream dos = null;
+			ByteWriterInfo fInfo = new ByteWriterInfo(FileMode);	// Prepare the FileTable object
+			FileOutputStream fos = null;
 			File file = new File(Basic.getDataPath(fileName));
 			if (append && file.exists()) {
 				fInfo.position(file.length() + 1);
@@ -8437,17 +8523,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				catch (IOException e) { writeErrorMsg(e); }
 			}
 			if (file.exists() && file.canWrite()) {
-				try { dos = new DataOutputStream(new FileOutputStream(file.getAbsolutePath(), append)); }
+				try { fos = new FileOutputStream(file.getAbsolutePath(), append); }
 				catch (Exception e) { writeErrorMsg(e); }
 			}
-			if (dos != null) {
-				fInfo.stream(DOSlist.size());						// The stream parm indexes
-				DOSlist.add(dos);									// into the DOSlist
+			if (fos != null) {
+				fInfo.mByteWriter = fos;							// store writer in fInfo
 			} else {
 				fileNumber = -1;									// change file index to report file does not exist
 			}
+			FileTable.add(fInfo);
 		}
-		FileTable.add(fInfo);
 		NumericVarValues.set(saveValueIndex, fileNumber);
 		return true;												// Done
 	}
@@ -8467,38 +8552,35 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (fInfo.isClosed()) return true;							// Already closed
 
 		int FileMode = fInfo.mode();
-		int streamIndex = fInfo.stream();
-		if (FileMode == FMR) {								// Close file open for read
-			BufferedInputStream bis = BISlist.get(streamIndex);
-			IOException e = closeStream(bis, null);
+		if (FileMode == FMR) {										// close file open for read
+			IOException e = ((ByteReaderInfo)fInfo).close(null);
 			if (e != null) return RunTimeError(e);
 		}
-		else if (FileMode == FMW) {							// close file open for write
-			DataOutputStream dos = DOSlist.get(streamIndex);
-			IOException e = closeStream(dos, flushStream(dos, null));
+		else if (FileMode == FMW) {									// close file open for write
+			ByteWriterInfo bwInfo = (ByteWriterInfo)fInfo;
+			IOException e = bwInfo.close(bwInfo.flush(null));
 			if (e != null) return RunTimeError(e);
 		} else {
 			return RunTimeError("File not opened for read or write");
 		}
-		fInfo.closed();										// mark the file closed in fInfo
 		return true;
 	}
 
 	private boolean executeBYTE_COPY() {
 		if (!evalNumericExpression()) return false;					// First parm is the source filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber, BISlist)) return false;		// Check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
 
 		if (!isNext(',')) return false;
 		if (!evalStringExpression()) return false;					// Second parm is the destination file name
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// Check runtime errors
 
 		if (fInfo.isEOF()) { return RunTimeError("Attempt to read beyond the EOF at:"); }
 
-		BufferedInputStream bis = BISlist.get(fInfo.stream());
+		BufferedInputStream bis = fInfo.mByteReader;
 
 		String theFileName = StringConstant;
 		File file = new File(Basic.getDataPath(theFileName));
@@ -8520,6 +8602,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if ((bis == null) || (outFile == null)) return false;
 		long p = (fInfo != null) ? fInfo.position() : 0;
 
+		IOException ex = null;
 		BufferedOutputStream bos = null;
 		try {
 			bos = new BufferedOutputStream(new FileOutputStream(outFile), 8192);
@@ -8530,12 +8613,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				bos.write(buffer, 0, len);
 				p += len;
 			}
-		} catch (Exception e) {
+		} catch (IOException e) {
+			ex = e;
 			return RunTimeError("Exception: " + e);
 		} finally {
-			try { bos.flush(); } catch (Exception e) { return RunTimeError(e); }
-			try { bis.close(); } catch (Exception e) { return RunTimeError(e); }
-			try { bos.close(); } catch (Exception e) { return RunTimeError(e); }
+			ex = FileInfo.closeStream(bis, ex);
+			ex = FileInfo.closeStream(bos, FileInfo.flushStream(bos, ex));
+			if (ex != null) { return !SyntaxError && RunTimeError(ex); }
 		}
 		if (fInfo != null) {							// update fInfo, if there is one
 			fInfo.position(p);
@@ -8547,18 +8631,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeBYTE_READ_BYTE() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber, BISlist)) return false;		// Check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
 
 		if (!isNext(',')) return false;
 		if (!getNVar()) return false;								// Second parm is the return data var
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// Check runtime errors
 
 		int data = -1;
 		if (!fInfo.isEOF()) {								// If already eof don't read
-			BufferedInputStream bis = BISlist.get(fInfo.stream());
+			BufferedInputStream bis = fInfo.mByteReader;
 			try { data = bis.read(); }						// Read a byte
 			catch (Exception e) { return RunTimeError(e); }
 			if (data < 0) {
@@ -8574,7 +8658,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeBYTE_READ_BUFFER() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber, BISlist)) return false;		// Check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
 
 		if (!isNext(',')) return false;
 		if (!evalNumericExpression()) return false;					// Second parm is the byte count
@@ -8584,12 +8668,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getSVar()) return false;
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// Check runtime errors
 
 		String buff = "";
 		if (!fInfo.isEOF()) {								// If already eof don't read
-			BufferedInputStream bis = BISlist.get(fInfo.stream());
+			BufferedInputStream bis = fInfo.mByteReader;
 			byte[] byteArray = new byte[byteCount];
 			int count = 0;
 			try { count = bis.read(byteArray, 0, byteCount); }	// Read the bytes
@@ -8611,7 +8695,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeBYTE_WRITE_BYTE() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkWriteFile(FileNumber, DOSlist)) return false;		// Check runtime errors
+		if (!checkFile(FileNumber)) return false;					// Check runtime errors
 
 		if (!isNext(',')) return false;								// Second parm is the byte var
 
@@ -8625,19 +8709,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		ByteWriterInfo fInfo = (ByteWriterInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkWriteByteAttributes(fInfo)) return false;			// Check runtime errors
 
-		DataOutputStream dos = DOSlist.get(fInfo.stream());
+		FileOutputStream fos = fInfo.mByteWriter;
 		try {
 			if (OutputIsByte) {
-				dos.writeByte(b);							// Oh, and write the byte
+				fos.write(b);								// Oh, and write the byte
 				fInfo.incPosition();
 			} else {
 				int len = StringConstant.length();
 				for (int k = 0; k < len; ++k) {				// or bytes
 					b = (byte)StringConstant.charAt(k);
-					dos.writeByte(b);
+					fos.write(b);
 				}
 				fInfo.incPosition(len);
 			}
@@ -8650,21 +8734,21 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeBYTE_WRITE_BUFFER() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkWriteFile(FileNumber, DOSlist)) return false;		// Check runtime errors
+		if (!checkFile(FileNumber)) return false;					// Check runtime errors
 
 		if (!isNext(',')) return false;								// Second parm is the buffer
 		if (!evalStringExpression()) return false;
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		ByteWriterInfo fInfo = (ByteWriterInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkWriteByteAttributes(fInfo)) return false;			// Check runtime errors
 
-		DataOutputStream dos = DOSlist.get(fInfo.stream());
+		FileOutputStream fos = fInfo.mByteWriter;
 		int len = StringConstant.length();
 		try {
 			for (int k = 0; k < len; ++k) {							// Write the buffer
-				byte bb = (byte)StringConstant.charAt(k);
-				dos.writeByte(bb);
+				byte b = (byte)StringConstant.charAt(k);
+				fos.write(b);
 			}
 		} catch (IOException e) {
 			return RunTimeError("I/O error at");
@@ -8673,10 +8757,28 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
+	private boolean executeBYTE_TRUNCATE() {				// truncate a file opened for write
+		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkFile(FileNumber)) return false;					// Check runtime errors
+		if (!isNext(',')) return false;
+
+		if (!evalNumericExpression()) return false;					// Second parm is the truncation length
+		long length = EvalNumericExpressionValue.longValue();
+		if (!checkEOL()) return false;
+
+		ByteWriterInfo fInfo = (ByteWriterInfo)FileTable.get(FileNumber);	// Get the file info
+		if (!checkWriteByteAttributes(fInfo)) return false;			// Check runtime errors
+
+		try { fInfo.truncateFile(length); }
+		catch (IOException ex) { return RunTimeError(ex.getMessage()); }
+		return true;
+	}
+
 	private boolean executeBYTE_POSITION_SET() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber, BISlist)) return false;		// Check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
 
 		if (!isNext(',')) return false;								// Second parm is the position var expression
 		if (!evalNumericExpression()) return false;
@@ -8686,10 +8788,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// Check runtime errors
 
-		BufferedInputStream bis = BISlist.get(fInfo.stream());
+		BufferedInputStream bis = fInfo.mByteReader;
 		long pnow = fInfo.position();
 		boolean eof = fInfo.isEOF();
 
@@ -8725,7 +8827,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeBYTE_POSITION_GET() {
 		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber, null)) return false;			// Check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
 
 		if (!isNext(',')) return false;								// Second parm is the position var
 		if (!getNVar()) return false;
@@ -8750,7 +8852,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} else {
 			FileNumber = FileTable.size() - 1;						// default if no file pointer arg
 		}
-		if (!checkReadFile(FileNumber, BISlist)) return false;		// check runtime errors
+		if (!checkReadFile(FileNumber)) return false;				// check runtime errors
 
 		if (isComma) {												// second parm is the mark limit
 			if (!evalNumericExpression()) return false;
@@ -8759,14 +8861,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// check runtime errors
 
 		if (markLimit < 0) {
 			markLimit = fInfo.markLimit();							// retrieve mark limit from fInfo 
 		}
 
-		BufferedInputStream bis = BISlist.get(fInfo.stream());
+		BufferedInputStream bis = fInfo.mByteReader;
 		bis.mark(markLimit);										// set the mark
 
 		fInfo.markCurrentPosition(markLimit);						// update the fInfo
@@ -8867,7 +8969,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				isFile = true;
 			}
 			catch (Exception ex) { }						// eat exception and return false
-			finally { closeStream(inputStream, null); }
+			finally { FileInfo.closeStream(inputStream, null); }
 		}
 		return isFile;
 	}
@@ -8904,7 +9006,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				size = inputStream.available();
 			}
 			catch (Exception ex) { }						// eat exception and return -1
-			finally { closeStream(inputStream, null); }
+			finally { FileInfo.closeStream(inputStream, null); }
 		}
 		return size;
 	}
@@ -8942,7 +9044,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			size = bytesRead;
 		} catch (IOException e) { Log.d(LOGTAG, "getAssetSize:open:" + e); }
-		finally { closeStream(bis, null); }
+		finally { FileInfo.closeStream(bis, null); }
 
 		return ((size == AssetFileDescriptor.UNKNOWN_LENGTH) ? -1 : size);
 	}
@@ -9098,7 +9200,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		catch (IOException ie) { ioex = ie; }
 		catch (Exception e) { ex = e; }
 		finally {
-			ioex = closeStream(bis, ioex);
+			ioex = FileInfo.closeStream(bis, ioex);
 			if (ioex != null) { return RunTimeError(ioex); }		// Report first exception, if any, and if no previous RTE set
 			if (ex != null) { return RunTimeError(ex); }
 		}
@@ -9143,7 +9245,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} catch (Exception e) {										// Report exception in run time error
 			return RunTimeError(e);									// finally will close stream before return happens
 		} finally {
-			IOException ex = closeStream(bis, null);				// Close stream if not already closed
+			IOException ex = FileInfo.closeStream(bis, null);		// Close stream if not already closed
 			if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
 		}
 		StringVarValues.set(saveVarIndex, result);
@@ -11691,7 +11793,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			b.compress(format, quality, ostream);					// write png or jpg
 			ostream.close();
 		} catch (Exception e) {
-			closeStream(ostream, null);
+			FileInfo.closeStream(ostream, null);
 			return RunTimeError(e);
 		}
 		return true;
@@ -14381,8 +14483,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			} catch (Exception e) {
 				err = "Error: " + e;
 			} finally {
-				IOException ex = flushStream(os, null);
-				ex = closeStream(os, ex);
+				IOException ex = FileInfo.closeStream(os, FileInfo.flushStream(os, null));
 				if (ex != null && err != null) {
 					err = "Error: " + ex;
 				}
@@ -14426,14 +14527,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) { return false; }
 
 		int FileNumber = NumericVarValues.get(theValueIndex).intValue();
-		if (!checkReadFile(FileNumber, BISlist)) { return false; }			// Check runtime errors
+		if (!checkReadFile(FileNumber)) { return false; }					// Check runtime errors
 
-		FileInfo fInfo = FileTable.get(FileNumber);							// Get the file info
+		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkReadByteAttributes(fInfo)) { return false; }				// Check runtime errors
 
 		if (fInfo.isEOF()) { return RunTimeError("Attempt to read beyond the EOF at:"); }
 
-		BufferedInputStream bis = BISlist.get(fInfo.stream());
+		BufferedInputStream bis = fInfo.mByteReader;
 		int bufferSize = 1024*16;
 		try {
 			OutputStream os = socket.getOutputStream();
@@ -14447,9 +14548,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		} catch (Exception e) {
 			return RunTimeError(e);
+		} finally {
+			fInfo.eof();													// update fInfo
+			fInfo.close(null);	// file is already closed, this cleans up the fInfo
 		}
-		fInfo.eof();														// update fInfo
-		fInfo.closed();
 		return true;														// Success
 	}
 
@@ -14459,23 +14561,24 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) { return false; }
 
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkWriteFile(FileNumber, DOSlist)) { return false; }			// Check runtime errors
+		if (!checkFile(FileNumber)) { return false; }						// Check runtime errors
 
-		FileInfo fInfo = FileTable.get(FileNumber);							// Get the file info
+		ByteWriterInfo fInfo = (ByteWriterInfo)FileTable.get(FileNumber);	// Get the file info
 		if (!checkWriteByteAttributes(fInfo)) { return false; }				// Check runtime errors
 
-		DataOutputStream dos = DOSlist.get(fInfo.stream());
+		DataOutputStream dos = fInfo.getDOS();
+		if (dos == null) { return RunTimeError("Error writing file"); }
 		int bufferSize = 1024*512;
 		try {
 			InputStream is = socket.getInputStream();
 			BufferedInputStream bis = new BufferedInputStream(is);
-			streamCopy(bis, dos, bufferSize, 0L);							// Copy from socket to file
-
+			streamCopy(bis, dos, bufferSize, 0L);							// Copy from socket to file and close streams
 		} catch (Exception e) {
 			return RunTimeError(e);
+		} finally {
+			fInfo.eof();													// update fInfo
+			fInfo.close(null);	// file is already closed, this cleans up the fInfo
 		}
-		fInfo.eof();														// update fInfo
-		fInfo.closed();
 		return true;														// Success
 	}
 
@@ -14510,10 +14613,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		} catch (IOException e) {
 			ex = e;
-			return false;		// doesn't return
+			return false;		// doesn't return, but overwrites return value
 		} finally {
-			ex = closeStream(dos, ex);								// close the streams
-			ex = closeStream(bis, ex);
+			ex = FileInfo.closeStream(dos, ex);						// close the streams
+			ex = FileInfo.closeStream(bis, ex);
 			if (ex != null) { throw ex; }
 		}
 	}
@@ -14862,7 +14965,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				status = mFTPClient.retrieveFile(srcFilePath, desFileStream);
 				desFileStream.close();
 			} catch (Exception e) {
-				closeStream(desFileStream, null);
+				FileInfo.closeStream(desFileStream, null);
 				return RunTimeError(e);
 			}
 			if (!status) { RunTimeError("Download error"); }
@@ -14893,7 +14996,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				status = mFTPClient.storeFile(desFilePath, srcFileStream);
 				srcFileStream.close();
 			} catch (Exception e) {
-				closeStream(srcFileStream, null);
+				FileInfo.closeStream(srcFileStream, null);
 				return RunTimeError(e);
 			}
 			if (!status) { RunTimeError("Upload problem"); }
