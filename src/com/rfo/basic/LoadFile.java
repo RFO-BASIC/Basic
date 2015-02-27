@@ -91,55 +91,55 @@ public class LoadFile extends ListActivity {
 		// End of Click Listener **********************************************
 	}
 
-private void updateList(){
+	private void updateList() {
 
-	 ProgramPath = Basic.SD_ProgramPath;                 // Set Load path to current program path
-  	 File lbDir = new File(Basic.getSourcePath(ProgramPath));
-	 lbDir.mkdirs();
+		ProgramPath = Basic.SD_ProgramPath;						// Set Load path to current program path
+		File lbDir = new File(Basic.getSourcePath(ProgramPath));
+		lbDir.mkdirs();
 
-	 String[] FL = lbDir.list();									// Get the list of files in this dir
-	 if (FL == null){
-		Basic.toaster(this, "System Error. File not directory");
-		return;
-	 }
-	 
+		String[] FL = lbDir.list();								// Get the list of files in this dir
+		if (FL == null) {
+			String msg = lbDir.exists() ? "File not directory" : "Source directory does not exist";
+			Basic.toaster(this, "System Error: " + msg);
+			return;
+		}
 
-	// Go through the list of files and mark directories with (d)
-	// also only display files with the .bas extension
-	ArrayList<String> dirs = new ArrayList<String>();
-	ArrayList<String> files = new ArrayList<String>();
-	String absPath = lbDir.getAbsolutePath() + '/';
-	for (String s : FL) {
-		File test = new File(absPath + s);
-		if (test.isDirectory()) {								// If file is a directory, add "(d)"
-			dirs.add(s + "(d)");								// and add to display list
-		} else {
-			if (s.toLowerCase().endsWith(".bas")) {				// 	Only put files ending in
-				files.add(s);									// .bas into the display list
+		// Go through the list of files and mark directories with (d)
+		// also only display files with the .bas extension
+		ArrayList<String> dirs = new ArrayList<String>();
+		ArrayList<String> files = new ArrayList<String>();
+		String absPath = lbDir.getAbsolutePath() + '/';
+		for (String s : FL) {
+			File test = new File(absPath + s);
+			if (test.isDirectory()) {							// If file is a directory, add "(d)"
+				dirs.add(s + "(d)");							// and add to display list
+			} else {
+				if (s.toLowerCase().endsWith(".bas")) {			// 	Only put files ending in
+					files.add(s);								// .bas into the display list
+				}
 			}
 		}
+		Collections.sort(dirs);									// Sort the directory list
+		Collections.sort(files);								// Sort the file list
+
+		FL1.clear();
+		FL1.add("..");											// put  the ".." to the top of the list
+		FL1.addAll(dirs);										// copy the directory list to the adapter list
+		FL1.addAll(files);										// copy the file list to the end of the adapter list
+
+		if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
+
+		Basic.toaster(this, "Select File To Load");				// Tell the user what to do using Toast
 	}
-	Collections.sort(dirs);									// Sort the directory list
-	Collections.sort(files);								// Sort the file list
 
-	FL1.clear();
-	FL1.add("..");											// put  the ".." to the top of the list
-	FL1.addAll(dirs);										// copy the directory list to the adapter list
-	FL1.addAll(files);										// copy the file list to the end of the adapter list
-
-	if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
-
-	Basic.toaster(this, "Select File To Load");					// Tell the user what to do using Toast
-}
-
-@Override
-public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key pressed
-    if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {      // and the key is the BACK key
-       finish();																// then done with LoadFile
-       return true;
-    }
-    return super.onKeyUp(keyCode, event);
-}
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event) {						// If back key pressed
+		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {	// and the key is the BACK key
+			finish();															// then done with LoadFile
+			return true;
+		}
+		return super.onKeyUp(keyCode, event);
+	}
 
 	public static String goUp(String path){					// Return the parent directory
 		if (path.equals("")) { return path; }					// if up at top level dir, just return
