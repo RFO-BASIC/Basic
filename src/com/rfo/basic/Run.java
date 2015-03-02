@@ -62,7 +62,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1801,7 +1800,7 @@ public class Run extends ListActivity {
 	private Intent GRclass;								// Graphics Intent Class
 	public static boolean GRopen = false;				// Graphics Open Flag
 
-	public static ArrayList<Bundle> DisplayList;
+	public static ArrayList<GR.BDraw> DisplayList;
 	public static ArrayList<Integer> RealDisplayList;
 
 	public static ArrayList<Paint> PaintList;
@@ -1835,6 +1834,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_HIDE = "hide";
 	private static final String BKW_GR_LINE = "line";
 	private static final String BKW_GR_MODIFY = "modify";
+	private static final String BKW_GR_MOVE = "move";
 	private static final String BKW_GR_NEWDL = "newdl";
 	private static final String BKW_GR_ONGRTOUCH_RESUME = "ongrtouch.resume";
 	private static final String BKW_GR_OPEN = "open";
@@ -1980,6 +1980,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_NEWDL)                   { public boolean run() { return execute_gr_newdl(); } },
 		new Command(BKW_GR_HIDE)                    { public boolean run() { return execute_gr_hide(); } },
 		new Command(BKW_GR_LINE)                    { public boolean run() { return execute_gr_line(); } },
+		new Command(BKW_GR_MOVE)                    { public boolean run() { return execute_gr_move(); } },
 		new Command(BKW_GR_ONGRTOUCH_RESUME)        { public boolean run() { return execute_gr_touch_resume(); } },
 		new Command(BKW_GR_OPEN, CID_OPEN)          { public boolean run() { return execute_gr_open(); } },
 		new Command(BKW_GR_ORIENTATION)             { public boolean run() { return execute_gr_orientation(); } },
@@ -3484,8 +3485,8 @@ public class Run extends ListActivity {
 
 	GRclass = null;									// Graphics Intent Class
 	GRopen = false;									// Graphics Open Flag
-	DisplayList = new ArrayList<Bundle>() ;
-	RealDisplayList = new ArrayList<Integer>() ;
+	DisplayList = new ArrayList<GR.BDraw>();
+	RealDisplayList = new ArrayList<Integer>();
 	PaintList = new ArrayList<Paint>();
 	BitmapList = new ArrayList<Bitmap>();
 	aPaint = new Paint();
@@ -10467,9 +10468,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(GrText_cmd, "Gr.Text");
 	}
 
-	private void DisplayListAdd(Bundle b) {
-		b.putInt("alpha", 256);
-		b.putInt("paint", PaintList.size() - 1);					// paint for this object
+	private void DisplayListAdd(GR.BDraw b) {
+		b.common((PaintList.size() - 1), 256);			// paint and alpha for this object
 
 		if (drawintoCanvas != null) {
 			GR.drawView.doDraw(drawintoCanvas, b);
@@ -10535,13 +10535,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		PaintList.clear();											// and the Paint list
 		PaintList.add(aPaint);										// Add dummy element 0
 
-		Bundle b = new Bundle();									// Create a new Display list
-		b.putInt("type", GR.dNull);									// with a null entry
-
 		aPaint = initPaint(newPaint(aPaint), 255, 0, 0, 0);			// Create a new Paint object
 		PaintList.add(aPaint);										// Add to the Paint List as element 1
 
-		DisplayListAdd(b);
+		GR.BDraw b = new GR.BDraw(GR.Type.Null);					// Create a new Display list
+		DisplayListAdd(b);											// with a null entry
 
 //		StopDisplay = false;										// Tell GR it can start displaying again
 	}
@@ -10577,7 +10575,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		for (int idx : RealDisplayList) {							// For each object index
 			boolean include = ((idx != 0) &&						// If not index of null object...
 				(keepHiddenObjects ||								// ... and either keeping all objects...
-					(DisplayList.get(idx).getInt("hide") == 0)));	// ... or object is not hidden...
+					DisplayList.get(idx).isVisible()));				// ... or object is not hidden...
 			if (include) { list[count++] = idx; }					// ... then put index in the new list
 		}
 		if (count == 0) { count = 1; }								// if no objects, make a list with
@@ -10682,10 +10680,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		DisplayListClear();											// Clear the existing display list
 
-		Bundle aBundle = new Bundle();								// Create a new display list bundle
-		aBundle.putInt("type", GR.dClose);							// which commands GR.java to close
-		aBundle.putInt("hide", 0);
-		DisplayListAdd(aBundle);
+		GR.BDraw b = new GR.BDraw(GR.Type.Close);					// Create a new display list object
+		DisplayListAdd(b);											// which commands GR.java to close
 
 		synchronized (GR.Rendering) {
 			if (GR.Rendering) return true;
@@ -10774,30 +10770,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// Common processing for the beginning of a command that creates a graphical object.
 	// Expect a numeric variable on the command line. Leave its index in global theValueIndex.
-	private Bundle createGrObj_start(int type) {
+	private GR.BDraw createGrObj_start(GR.Type type) {
 		if (!getNVar()) return null;
-		Bundle b = new Bundle();
-		b.putInt("type", type);
-		b.putInt("hide", 0);
+		GR.BDraw b = new GR.BDraw(type);
 		return b;
 	}
 
-	// Common parameter handler for commands that create graphical objects.
-	private boolean nextArgNumberToBundle(Bundle b, String name) {
-		if (!isNext(',') || !evalNumericExpression()) return false;	// expect a comma and a numeric expression.
-		b.putInt(name, EvalNumericExpressionValue.intValue());		// put the expression value in the bundle
-		return true;
-	}
-
-	// Common parameter handler for commands that create graphical objects.
-	private boolean nextArgStringToBundle(Bundle b, String name) {
-		if (!isNext(',') || !getStringArg()) return false;			// expect a comma and a string expression.
-		b.putString(name, StringConstant);							// put the expression value in the bundle
-		return true;
-	}
-
 	// Common processing for the end of a command that creates a graphical object.
-	private boolean createGrObj_finish(Bundle b, int varIndex) {
+	private boolean createGrObj_finish(GR.BDraw b, int varIndex) {
 		if (!checkEOL()) return false;
 		NumericVarValues.set(varIndex, (double)DisplayList.size());	// save the object index into the var
 		DisplayListAdd(b);											// add the object to the Display List
@@ -10812,81 +10792,92 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_point() {
-		Bundle aBundle = createGrObj_start(GR.dPoint);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Point);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
-		if (!nextArgNumberToBundle(aBundle, "x")) return false;
-		if (!nextArgNumberToBundle(aBundle, "y")) return false;
+		if (!isNext(',')) return false;
+		int[] xy = getArgsII();
+		if (xy == null) return false;
+		b.xy(xy);
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private boolean execute_gr_line() {
-		Bundle aBundle = createGrObj_start(GR.dLine);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Line);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
-		if (!nextArgNumberToBundle(aBundle, "x1")) return false;
-		if (!nextArgNumberToBundle(aBundle, "y1")) return false;
-		if (!nextArgNumberToBundle(aBundle, "x2")) return false;
-		if (!nextArgNumberToBundle(aBundle, "y2")) return false;
+		if (!isNext(',')) return false;
+		int[] x2y2 = getArgs4I();									// in x1, y1, x2, y2 order
+		if (x2y2 == null) return false;
+		b.ltrb(x2y2);
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private boolean execute_gr_rect() {
-		Bundle aBundle = createGrObj_start(GR.dRect);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Rect);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
-		if (!nextArgNumberToBundle(aBundle, "left")) return false;
-		if (!nextArgNumberToBundle(aBundle, "top")) return false;
-		if (!nextArgNumberToBundle(aBundle, "right")) return false;
-		if (!nextArgNumberToBundle(aBundle, "bottom")) return false;
+		if (!isNext(',')) return false;
+		int[] ltrb = getArgs4I();
+		if (ltrb == null) return false;
+		b.ltrb(ltrb);
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private boolean execute_gr_arc() {
-		Bundle aBundle = createGrObj_start(GR.dArc);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Arc);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
-		if (!nextArgNumberToBundle(aBundle, "left")) return false;
-		if (!nextArgNumberToBundle(aBundle, "top")) return false;
-		if (!nextArgNumberToBundle(aBundle, "right")) return false;
-		if (!nextArgNumberToBundle(aBundle, "bottom")) return false;
-		if (!nextArgNumberToBundle(aBundle, "start_angle")) return false;
-		if (!nextArgNumberToBundle(aBundle, "sweep_angle")) return false;
-		if (!nextArgNumberToBundle(aBundle, "fill_mode")) return false;
+		if (!isNext(',')) return false;
+		int[] ltrb = getArgs4I();
+		if (ltrb == null) return false;
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		if (!isNext(',')) return false;
+		double[] angles = getArgsDD();
+		if (angles == null) return false;
+
+		if (!isNext(',') || !evalNumericExpression()) return false;
+		int fillMode = EvalNumericExpressionValue.intValue();
+
+		b.arc(ltrb, (float)angles[0], (float)angles[1], fillMode);
+
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private boolean execute_gr_circle() {
-		Bundle aBundle = createGrObj_start(GR.dCircle);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Circle);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
-		if (!nextArgNumberToBundle(aBundle, "x")) return false;
-		if (!nextArgNumberToBundle(aBundle, "y")) return false;
-		if (!nextArgNumberToBundle(aBundle, "radius")) return false;
+		if (!isNext(',')) return false;
+		int[] xy = getArgsII();
+		if (xy == null) return false;
+		if (!isNext(',') || !evalNumericExpression()) return false;
+		int radius = EvalNumericExpressionValue.intValue();
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		b.circle(xy, radius);
+
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private boolean execute_gr_oval() {
-		Bundle aBundle = createGrObj_start(GR.dOval);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Oval);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
-		if (!nextArgNumberToBundle(aBundle, "left")) return false;
-		if (!nextArgNumberToBundle(aBundle, "top")) return false;
-		if (!nextArgNumberToBundle(aBundle, "right")) return false;
-		if (!nextArgNumberToBundle(aBundle, "bottom")) return false;
+		if (!isNext(',')) return false;
+		int[] ltrb = getArgs4I();
+		if (ltrb == null) return false;
+		b.ltrb(ltrb);
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private double gr_collide(int Object1, int Object2) {
@@ -10899,8 +10890,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			RunTimeError("Object 1 Number out of range");
 			return fail;
 		}
-		Bundle b1 = DisplayList.get(Object1);						// Get the first object
-		if (b1.getInt("hide") != 0) return xfalse;					// If hidden then no collide
+		GR.BDraw b1 = DisplayList.get(Object1);						// Get the first object
+		if (b1.isHidden()) return xfalse;							// If hidden then no collide
 		Rect r1 = gr_getRect(b1);
 		if (r1 == null) return fail;
 
@@ -10908,8 +10899,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			RunTimeError("Object 2 Number out of range");
 			return fail;
 		}
-		Bundle b2 = DisplayList.get(Object2);						// Get the second object
-		if (b2.getInt("hide") != 0) return xfalse;					// If hidden then no collide
+		GR.BDraw b2 = DisplayList.get(Object2);						// Get the second object
+		if (b2.isHidden()) return xfalse;							// If hidden then no collide
 		Rect r2 = gr_getRect(b2);
 		if (r2 == null) return fail;
 
@@ -10925,49 +10916,42 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return xtrue;
 	}
 
-	private Rect gr_getRect(Bundle b) {
+	private Rect gr_getRect(GR.BDraw b) {
 		Rect theRect = null;
 
-		int type = b.getInt("type");
+		GR.Type type = b.type();
 		switch (type) {
-			case GR.dCircle:
-				theRect = new Rect();
-				int cx = b.getInt("x");
-				int cy = b.getInt("y");
-				int cr = b.getInt("radius");
-				theRect.top = cy - cr;
-				theRect.left = cx - cr;
-				theRect.bottom = cy + cr;
-				theRect.right = cx + cr;
+			case Circle:
+				int cx = b.x();
+				int cy = b.y();
+				int cr = b.radius();
+				theRect = new Rect(cx - cr, cy - cr, cx + cr, cy + cr);
 				break;
 
-			case GR.dRect:
-			case GR.dOval:
-			case GR.dArc:
-				theRect = new Rect();
-				theRect.left= b.getInt("left");
-				theRect.top =b.getInt("top");
-				theRect.bottom = b.getInt("bottom");
-				theRect.right =b.getInt("right");
+			case Arc:
+			case Oval:
+			case Point:
+			case Rect:
+				theRect = new Rect(b.left(), b.top(), b.right(), b.bottom());
 				break;
 
-			case GR.dBitmap:
-				theRect = new Rect();
-				theRect.top = b.getInt("y");
-				theRect.left = b.getInt("x");
-				Bitmap theBitmap = BitmapList.get(b.getInt("bitmap"));
-				theRect.bottom = theRect.top + theBitmap.getHeight();
-				theRect.right = theRect.left + theBitmap.getWidth();
+			case Bitmap:
+				int top = b.top();
+				int left = b.left();
+				Bitmap theBitmap = BitmapList.get(b.bitmap());
+				int bottom = top + theBitmap.getHeight();
+				int right = left + theBitmap.getWidth();
+				theRect = new Rect(left, top, right, bottom);
 				break;
 
-			case GR.dText:
+			case Text:
 				theRect = new Rect();
-				Paint paint = PaintList.get(b.getInt("paint"));
-				String text = b.getString("text");
+				Paint paint = PaintList.get(b.paint());
+				String text = b.text();
 				paint.getTextBounds(text, 0, text.length(), theRect);	// returns the minimum bounding box
 																		// from implied origin (0,0)
-				int tx = b.getInt("x");
-				int ty = b.getInt("y");
+				int tx = b.x();
+				int ty = b.y();
 				float tw = paint.measureText(text);						// width used for alignment
 																		// generally more than theRect.width()
 				Paint.Align align = paint.getTextAlign();
@@ -10976,6 +10960,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					case CENTER: theRect.offset((int)(tx - tw/2), ty); break;
 					case RIGHT:  theRect.offset((int)(tx - tw),   ty); break;
 				}
+				break;
+
+			default:
 				break;
 		}
 
@@ -11022,9 +11009,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (obj < 0) return false;
 		if (!checkEOL()) return false;
 
-		Bundle b = DisplayList.get(obj);							// get the Graphics Object
-		b.putInt("hide", 1);										// set hide to true
-		DisplayList.set(obj, b);									// put the modified object back
+		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
+		b.hide(true);												// set hide to false
 		return true;
 	}
 
@@ -11033,53 +11019,59 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (obj < 0) return false;
 		if (!checkEOL()) return false;
 
-		Bundle b = DisplayList.get(obj);							// get the Graphics Object
-		b.putInt("hide", 0);										// set hide to false
-		DisplayList.set(obj, b);									// put the modified object back
+		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
+		b.hide(false);												// set hide to false
+		return true;
+	}
+
+	private boolean execute_gr_move() {
+		int obj = getObjectNumber();
+		if (obj < 0) return false;
+		if (!isNext(',') || !evalNumericExpression()) return false;
+		int dx = EvalNumericExpressionValue.intValue();
+		if (!isNext(',') || !evalNumericExpression()) return false;
+		int dy = EvalNumericExpressionValue.intValue();
+		if (!checkEOL()) return false;
+
+		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
+		b.move(dx, dy);
 		return true;
 	}
 
 	private boolean execute_gr_get_position() {
 		int obj = getObjectNumber();
 		if (obj < 0) return false;
-		Bundle b = DisplayList.get(obj);							// get the Graphics Object
-
 		if (!isNext(',') || !getNVar()) return false;
 		int xIndex = theValueIndex;
 		if (!isNext(',') || !getNVar()) return false;
 		int yIndex = theValueIndex;
 		if (!checkEOL()) return false;
 
-		int x = b.getInt(b.containsKey("x") ? "x" : b.containsKey("left") ? "left" : "x1");
-		int y = b.getInt(b.containsKey("y") ? "y" : b.containsKey("top")  ? "top"  : "y1");
-
-		NumericVarValues.set(xIndex, (double) x);
-		NumericVarValues.set(yIndex, (double) y);
-
+		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
+		NumericVarValues.set(xIndex, (double)b.x());
+		NumericVarValues.set(yIndex, (double)b.y());
 		return true;
 	}
 
 	private boolean execute_gr_get_value() {
 		int obj = getObjectNumber();
 		if (obj < 0) return false;
-		Bundle b = DisplayList.get(obj);							// get the Graphics Object
-
 		if (!isNext(',') || !getStringArg()) return false;			// get the parameter string
 		String parm = StringConstant;
+		if (!isNext(',') || !getVar() || !checkEOL()) return false;	// var for value
 
-		if (!b.containsKey(parm)) {
+		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
+		if (!b.type().hasParameter(parm)) {
 			return RunTimeError("Object does not contain " + parm);
 		}
-
-		if (!isNext(',') || !getVar() || !checkEOL()) return false;	// var for value
 		if (VarIsNumeric == parm.equals("text")) {					// error if numeric var and "text" tag
 			return RunTimeError("Wrong var type for tag: " + parm);	// or string var and not "text" tag
 		}
 		if (VarIsNumeric) {
-			int value = b.getInt(parm);
-			NumericVarValues.set(theValueIndex, (double) value);
+			double value = b.getValue(parm);
+			NumericVarValues.set(theValueIndex, value);
 		} else {
-			String theText = b.getString(parm);
+			String theText = b.text();
 			StringVarValues.set(theValueIndex, theText);
 		}
 		return true;
@@ -11088,33 +11080,28 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_gr_get_type() {
 		int obj = getObjectNumber();
 		if (obj < 0) return false;
-		Bundle b = DisplayList.get(obj);							// get the Graphics Object
-
 		if (!isNext(',') || !getVar() || !checkEOL()) return false;	// var for type string
 
-		int type = b.getInt("type");
-		StringVarValues.set(theValueIndex, GR.types[type]);
+		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
+		GR.Type type = b.type();
+		StringVarValues.set(theValueIndex, type.type());
 		return true;
 	}
 
 	private boolean execute_gr_get_params() {
 		int obj = getObjectNumber();
 		if (obj < 0) return false;
-		Bundle b = DisplayList.get(obj);							// get the Graphics Object
+		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
 
 		if (!isNext(',')) { return false; }
 		String var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
 		if (var == null) { return false; }							// must name a new string array variable
 		if (!checkEOL()) { return false; }							// line must end with ']'
 
-		Set<String> keySet = b.keySet();							// get reference to Set of parameters in Bundle
-		Set<String> keyCopy = new HashSet<String>(keySet);			// make copy so remove won't affect Bundle
-		keyCopy.remove("type");
-		keyCopy.remove("hide");
-		ArrayList<String> keys = new ArrayList<String>(keyCopy);
+		ArrayList<String> params = (ArrayList<String>)Arrays.asList(b.type().parameters());
 
 		/* Puts the list of keys into a new array */
-		return ListToBasicStringArray(var, keys, keys.size());
+		return ListToBasicStringArray(var, params, params.size());
 	}
 
 	private boolean execute_gr_touch(int p) {
@@ -11166,15 +11153,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_text_draw() {
-		Bundle aBundle = createGrObj_start(GR.dText);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Text);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
-		if (!nextArgNumberToBundle(aBundle, "x")) return false;
-		if (!nextArgNumberToBundle(aBundle, "y")) return false;
-		if (!nextArgStringToBundle(aBundle, "text")) return false;
+		if (!isNext(',')) return false;
+		int[] xy = getArgsII();
+		if (xy == null) return false;
+		if (!isNext(',') || !getStringArg()) return false;
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		b.xy(xy);
+		b.text(StringConstant);
+
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private boolean execute_gr_text_align() {
@@ -11263,13 +11254,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private Bundle getTextBundle(int dlIndex) {
+	private GR.BDraw getTextObject(int dlIndex) {
 		if (dlIndex < 0 || dlIndex >= DisplayList.size()) {
 			RunTimeError("Object Number out of range");
 			return null;
 		}
-		Bundle b = DisplayList.get(dlIndex);
-		if (b.getInt("type") != GR.dText) {
+		GR.BDraw b = DisplayList.get(dlIndex);
+		if (b.type() != GR.Type.Text) {
 			RunTimeError("Not a text object");
 			return null;
 		}
@@ -11281,10 +11272,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		String text;
 		if (evalNumericExpression()) {								// if argument is an object number
 			int index = EvalNumericExpressionValue.intValue();
-			Bundle b = getTextBundle(index);
+			GR.BDraw b = getTextObject(index);
 			if (b == null) return false;
-			paint = PaintList.get(b.getInt("paint"));				// use the text object's paint
-			text = b.getString("text");								// get text from the text object
+			paint = PaintList.get(b.paint());						// use the text object's paint
+			text = b.text();										// get text from the text object
 		} else {
 			if (SyntaxError) return false;
 			if (!getStringArg()) return false;
@@ -11338,10 +11329,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		String text;
 		if (evalNumericExpression()) {								// if argument is an object number
 			int index = EvalNumericExpressionValue.intValue();
-			Bundle b = getTextBundle(index);
+			GR.BDraw b = getTextObject(index);
 			if (b == null) return false;
-			paint = PaintList.get(b.getInt("paint"));				// use the text object's paint
-			text = b.getString("text");								// get text from the text object
+			paint = PaintList.get(b.paint());						// use the text object's paint
+			text = b.text();										// get text from the text object
 		} else {
 			if (SyntaxError) return false;
 			if (!getStringArg()) return false;
@@ -11484,8 +11475,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_bitmap_draw() {
-		Bundle aBundle = createGrObj_start(GR.dBitmap);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Bitmap);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
@@ -11494,12 +11485,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (BitmapList.get(bitmapPtr) == null) {					// check the bitmap
 			return RunTimeError("Bitmap was deleted");
 		}
-		aBundle.putInt("bitmap", bitmapPtr);						// store the bitmap number
+		b.bitmap(bitmapPtr);										// store the bitmap number
 
-		if (!nextArgNumberToBundle(aBundle, "x")) return false;
-		if (!nextArgNumberToBundle(aBundle, "y")) return false;
+		if (!isNext(',')) return false;
+		int[] xy = getArgsII();
+		if (xy == null) return false;
+		b.xy(xy);
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);			// store the object and return its index 
 	}
 
 	private boolean execute_gr_bitmap_create() {
@@ -11530,15 +11523,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_rotate_start(){
-		Bundle aBundle = new Bundle();								// create a new object of type Rotate Start
-		aBundle.putInt("type", GR.dRotate_Start);
-		aBundle.putInt("hide", 0);
+		GR.BDraw b = new GR.BDraw(GR.Type.RotateStart);				// create a new object of type Rotate Start
 
 		if (!evalNumericExpression()) return false;					// get angle
-		aBundle.putInt("angle", EvalNumericExpressionValue.intValue());
-		
-		if (!nextArgNumberToBundle(aBundle, "x")) return false;
-		if (!nextArgNumberToBundle(aBundle, "y")) return false;
+		b.angle(EvalNumericExpressionValue.floatValue());
+
+		if (!isNext(',')) return false;
+		int[] xy = getArgsII();
+		if (xy == null) return false;
+		b.xy(xy);
 
 		if (isNext(',')) {											// optional graphic object pointer variable
 			if (!getNVar()) return false;
@@ -11546,14 +11539,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		DisplayListAdd(aBundle);									// put the new object into the display list
+		DisplayListAdd(b);											// put the new object into the display list
 		return true;
 	}
 
 	private boolean execute_gr_rotate_end() {
-		Bundle aBundle = new Bundle();								// create a new object of type Rotate End
-		aBundle.putInt("type", GR.dRotate_End);
-		aBundle.putInt("hide", 0);
+		GR.BDraw b = new GR.BDraw(GR.Type.RotateEnd);				// create a new object of type Rotate End
 
 		if (!isEOL()) {
 			if (!getNVar()) return false; 
@@ -11561,40 +11552,60 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (!checkEOL()) return false;
 		}
 
-		DisplayListAdd(aBundle);									// add the object to the display list
+		DisplayListAdd(b);											// add the object to the display list
 		return true;
 	}
 
 	private boolean execute_gr_modify() {
 		int obj = getObjectNumber("Object Number out of range");
 		if (obj < 0) return false;
-		Bundle b = DisplayList.get(obj);							// Get the bundle to change
+		GR.BDraw b = DisplayList.get(obj);							// get the object to change
+		GR.Type type = b.type();
 
 		while (isNext(',')) {
 			if (!getStringArg()) return false;						// get the parameter string
 			if (!isNext(',')) return false;
 			String parm = StringConstant;
 
-			if (!b.containsKey(parm)) {
-				return RunTimeError("Object does not contain: " + parm);
-			}
-
+			String sVal = "";
+			int iVal = 0;
+			float fVal = 0.0f;
 			if (parm.equals("text")) {
 				if (!getStringArg()) return false;					// get the parameter string
-				b.putString(parm, StringConstant);
+				sVal = StringConstant;
 			} else {
 				if (!evalNumericExpression()) return false;			// get parameter value
-				int value = EvalNumericExpressionValue.intValue();
-				if (parm.equals("bitmap")) {
-					if (value < 0 | value >= BitmapList.size()) {
+				fVal = EvalNumericExpressionValue.floatValue();
+				iVal = EvalNumericExpressionValue.intValue();
+			}
+
+			// For now, these list validations must be done here and not in BDraw.modify()
+			if (parm.equals("paint")
+					&& ((iVal < 1) || (iVal >= PaintList.size()))) {
+				return RunTimeError ("Invalid Paint object number");
+			}
+			switch (type) {
+				case Bitmap:
+					if (parm.equals("bitmap")
+							&& ((iVal < 0) | (iVal >= BitmapList.size()))) {
 						return RunTimeError("Bitmap pointer out of range");
 					}
-				} else if (parm.equals("paint")) {
-					if (value < 1 || value >= PaintList.size()) {
-						return RunTimeError ("Invalid Paint object number");
+					break;
+				case Poly:
+					if (parm.equals("list")) {
+						if ((iVal < 0) | (iVal >= theLists.size())) {
+							return RunTimeError("List pointer out of range");
+						}
+						// For now, the list parm must be set this way.
+						ArrayList<Double> list = theLists.get(iVal);
+						b.list(iVal, list);
 					}
-				}
-				b.putInt(parm, value);
+					break;
+				default:
+					break;
+			}
+			if (!b.modify(parm, iVal, fVal, sVal)) {
+				return RunTimeError(b.errorMsg());
 			}
 		}
 		return checkEOL();
@@ -11683,8 +11694,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_set_pixels() {
-		Bundle aBundle = createGrObj_start(GR.dsetPixels);			// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.SetPixels);			// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
 		if (!isNext(',')) return false;
@@ -11695,14 +11706,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Integer[] pair = { null, null };
 		if (!getIndexPair(pair)) return false;						// get values inside [], if any
 
-		int x = 0;
-		int y = 0;
+		int[] xy = { 0, 0 };
 		if (isNext(',')) {
 			if (!evalNumericExpression()) return false;
-			x = EvalNumericExpressionValue.intValue();
+			xy[0] = EvalNumericExpressionValue.intValue();
 			if (!isNext(',')) return false;
 			if (!evalNumericExpression()) return false;
-			y = EvalNumericExpressionValue.intValue();
+			xy[1] = EvalNumericExpressionValue.intValue();
 		}
 		if (!checkEOL()) return false;
 
@@ -11713,12 +11723,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Not an even number of elements in pixel array");
 		}
 
-		aBundle.putInt("pbase", base);
-		aBundle.putInt("plength", length);
-		aBundle.putInt("x", x);
-		aBundle.putInt("y", y);
+		ArrayList<Integer> dims = new ArrayList<Integer>(1);
+		dims.add(length);
+		ArrayDescriptor array = new ArrayDescriptor(dims);
+		array.setArray(base);
+		b.array(array);
+		b.xy(xy);
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private boolean execute_gr_get_bmpixel() {
@@ -11909,14 +11921,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_clip() {
-		Bundle aBundle = createGrObj_start(GR.dClip);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Clip);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
-		if (!nextArgNumberToBundle(aBundle, "left")) return false;
-		if (!nextArgNumberToBundle(aBundle, "top")) return false;
-		if (!nextArgNumberToBundle(aBundle, "right")) return false;
-		if (!nextArgNumberToBundle(aBundle, "bottom")) return false;
+		if (!isNext(',')) return false;
+		int[] ltrb = getArgs4I();
+		if (ltrb == null) return false;
+		b.ltrb(ltrb);
 
 		if (isNext(',')) {
 			if (!evalNumericExpression()) return false;
@@ -11924,14 +11936,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (RegionOp < 0 || RegionOp > 5) {
 				return RunTimeError("Region Operator not 0 to 5");
 			}
-			aBundle.putInt("RO", RegionOp);
+			b.clipOp(RegionOp);
 		}
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	private boolean execute_gr_poly() {
-		Bundle aBundle = createGrObj_start(GR.dPoly);				// create bundle and get Graphic Object variable
-		if (aBundle == null) return false;
+		GR.BDraw b = createGrObj_start(GR.Type.Poly);				// create Graphic Object and get variable
+		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 
 		if (!isNext(',')) return false;
@@ -11952,21 +11964,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (r != 0) {
 			return RunTimeError("List must have even number of elements");
 		}
-		aBundle.putInt("list", theListIndex);
+		b.list(theListIndex, thisList);
 
-		int x = 0;
-		int y = 0;
+		int[] xy = { 0, 0 };
 		if (isNext(',')) {
 			if (!evalNumericExpression()) return false;
-			x = EvalNumericExpressionValue.intValue();
+			xy[0] = EvalNumericExpressionValue.intValue();
 			if (!isNext(',')) return false;
 			if (!evalNumericExpression()) return false;
-			y = EvalNumericExpressionValue.intValue();
+			xy[1] = EvalNumericExpressionValue.intValue();
 		}
-		aBundle.putInt("x", x);
-		aBundle.putInt("y", y);
+		b.xy(xy);
 
-		return createGrObj_finish(aBundle, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
 	@SuppressLint("NewApi")											// Uses value from API 9

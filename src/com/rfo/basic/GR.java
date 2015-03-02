@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -27,6 +27,7 @@ This file is part of BASIC! for Android
 package com.rfo.basic;
 
 import java.util.ArrayList;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -64,66 +65,351 @@ public class GR extends Activity {
 	public static final String EXTRA_ORIENTATION = "orientation";
 	public static final String EXTRA_BACKGROUND_COLOR = "background";
 
-    public static Context context;
-    public static DrawView drawView;
-    public static Bitmap screenBitmap = null;
-//    public static boolean NewTouch[] = {false, false};
-//    public static double TouchX[] = {0,0};
-//    public static double TouchY[] = {0,0};
-    public static float scaleX = 1f;
-    public static float scaleY = 1f;
-    public static Boolean Rendering = false;	// Boolean (not boolean) so it has a lock
-    public static boolean NullBitMap = false;
-    public static InputMethodManager GraphicsImm ;
-    public static float Brightness = -1;
-    
-    public static boolean doSTT = false;
-    public static boolean doEnableBT = false;
-    public static boolean startConnectBT = false;
-    
-    public static final int dNull = 0;
-    public static final int dCircle = 1;
-    public static final int dRect = 2;
-    public static final int dLine = 3;
-    public static final int dOval = 4;
-    public static final int dArc = 5;
-    public static final int dText = 6;
-    public static final int dBitmap = 7;
-    public static final int dRotate_Start = 8;
-    public static final int dRotate_End = 9;
-    public static final int dOrientation = 10;
-    public static final int dClose = 11;
-    public static final int dsetPixels = 12;
-    public static final int dClip = 13;
-    public static final int dPoly = 14;
-    public static final int dPoint = 15;
-    public static final String[] types = {			// KEEP THESE IN SYNC!!!
-        "null",				// dNull = 0;
-        "circle",			// dCircle = 1;
-        "rect",				// dRect = 2;
-        "line",				// dLine = 3;
-        "oval",				// dOval = 4;
-        "arc",				// dArc = 5;
-        "text",				// dText = 6;
-        "bitmap",			// dBitmap = 7;
-        "rotate.start",		// dRotate_Start = 8;
-        "rotate.end",		// dRotate_End = 9;
-        "orientation",		// dOrientation = 10;
-        "close",			// dClose = 11;
-        "set.pixels",		// dsetPixels = 12;
-        "clip",				// dClip = 13;
-        "poly",				// dPoly = 14;
-        "point",			// dPoint = 15;
-    };
+	public static Context context;
+	public static DrawView drawView;
+	public static Bitmap screenBitmap = null;
+//	public static boolean NewTouch[] = {false, false};
+//	public static double TouchX[] = {0,0};
+//	public static double TouchY[] = {0,0};
+	public static float scaleX = 1f;
+	public static float scaleY = 1f;
+	public static Boolean Rendering = false;	// Boolean (not boolean) so it has a lock
+	public static boolean NullBitMap = false;
+	public static InputMethodManager GraphicsImm ;
+	public static float Brightness = -1;
+
+	public static boolean doSTT = false;
+	public static boolean doEnableBT = false;
+	public static boolean startConnectBT = false;
+
+	// ************* enumeration of BASIC! Drawable Object types **************
+
+	public enum Type {
+		Null("null",				new String[0]),
+		Point("point",				new String[]
+				{ "x", "y" } ),
+		Line("line",				new String[]
+				{ "x1", "y1", "x2", "y2" } ),
+		Rect("rect",				new String[]
+				{ "left", "right", "top", "bottom" } ),
+		Circle("circle",			new String[]
+				{ "x", "y", "radius" } ),
+		Oval("oval",				new String[]
+				{ "left", "right", "top", "bottom" } ),
+		Arc("arc",					new String[]
+				{ "left", "right", "top", "bottom",
+					"start_angle", "sweep_angle", "fill_mode" } ),
+		Poly("poly",				new String[]
+				{ "x", "y", "list" } ),
+		Bitmap("bitmap",			new String[]
+				{ "x", "y" } ),
+		SetPixels("set.pixels",		new String[]
+				{ "x", "y" } ),
+		Text("text",				new String[]
+				{ "x", "y", "text" } ),
+		RotateStart("rotate.start",	new String[]
+				{ "x", "y", "angle" } ),
+		RotateEnd("rotate.end",		new String[0]),
+		Clip("clip",				new String[]
+				{ "left", "right", "top", "bottom", "RO" } ),
+		Orientation("orientation",	new String[0]),
+		Close("close",				new String[0]);
+
+		private final String mType;
+		private final String[] mParameters;		// all parameters except "paint" and "alpha"
+		Type(String type, String[] parameters) {
+			mType = type;
+			mParameters = parameters;
+		}
+
+		public String type()			{ return mType; }
+		public String[] parameters()	{ return mParameters; }
+
+		public boolean hasParameter(String parameter) {
+			for (String p : mParameters) {
+				if (parameter.equals(p)) { return true; }
+			}
+			if (parameter.equals("paint")) { return true; }
+			if (parameter.equals("alpha")) { return true; }
+			return false;
+		}
+	}
+
+	public static final int dNull = 0;
+	public static final int dCircle = 1;
+	public static final int dRect = 2;
+	public static final int dLine = 3;
+	public static final int dOval = 4;
+	public static final int dArc = 5;
+	public static final int dText = 6;
+	public static final int dBitmap = 7;
+	public static final int dRotate_Start = 8;
+	public static final int dRotate_End = 9;
+	public static final int dOrientation = 10;
+	public static final int dClose = 11;
+	public static final int dsetPixels = 12;
+	public static final int dClip = 13;
+	public static final int dPoly = 14;
+	public static final int dPoint = 15;
+	public static final String[] types = {			// KEEP THESE IN SYNC!!!
+		"null",				// dNull = 0;
+		"circle",			// dCircle = 1;
+		"rect",				// dRect = 2;
+		"line",				// dLine = 3;
+		"oval",				// dOval = 4;
+		"arc",				// dArc = 5;
+		"text",				// dText = 6;
+		"bitmap",			// dBitmap = 7;
+		"rotate.start",		// dRotate_Start = 8;
+		"rotate.end",		// dRotate_End = 9;
+		"orientation",		// dOrientation = 10;
+		"close",			// dClose = 11;
+		"set.pixels",		// dsetPixels = 12;
+		"clip",				// dClip = 13;
+		"poly",				// dPoly = 14;
+		"point",			// dPoint = 15;
+	};
 
 //  Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " String Var Value =  ");
 
+	// ********************* BASIC! Drawable Object class *********************
+	// Objects go on the Display List. Not related to Android's Drawable class.
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-//    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " On Create  ");
-        super.onCreate(savedInstanceState);
-        setVolumeControlStream(AudioManager.STREAM_MUSIC);
+	public static class BDraw {
+		private final Type mType;
+		private String mErrorMsg;
+
+		private int mBitmap;							// index into the BitmapList
+		private int mPaint;								// index into the PaintList
+		private int mAlpha;
+		private boolean mVisible;
+
+		private String mText;							// for Type.Text
+		private int mClipOpIndex;						// for getValue
+		private Region.Op mClipOp;						// for Type.Clip
+		private int mListIndex;							// for getValue
+		private ArrayList<Double> mList;				// for Type.Poly
+		private Run.ArrayDescriptor mArray;				// for Type.SetPixels
+		private int mRadius;							// for Type.Circle
+		private float mAngle_1;							// for Type.Rotate, Arc
+		private float mAngle_2;							// for Type.Arc
+		private int mFillMode;							// for getValue
+		private boolean mUseCenter;						// for Type.Arc
+
+		private int mLeft;								// left, x, or x1
+		private int mRight;								// right or x2
+		private int mTop;								// top, y, or y1
+		private int mBottom;							// bottom or y2
+
+		public BDraw(Type type) {
+			mType = type;
+			mVisible = true;
+			mErrorMsg = "";
+		}
+
+		public void common(int paintIndex, int alpha) { mPaint = paintIndex; mAlpha = alpha; }
+
+		// setters
+		// For now, range checking for bitmap, paint, and list must be done in Run.
+		public void bitmap(int bitmap) { mBitmap = bitmap; }	// index into the BitmapList
+		public void paint(int paint) { mPaint = paint; }		// index into the PaintList
+		public void alpha(int alpha) { mAlpha = alpha; }
+		public void hide(boolean hide) { mVisible = !hide; }
+
+		public void xy(int[] xy) { mLeft = mRight = xy[0]; mTop = mBottom = xy[1]; }
+		public void ltrb(int[] ltrb) { mLeft = ltrb[0]; mTop = ltrb[1]; mRight = ltrb[2]; mBottom = ltrb[3]; }
+		public void radius(int radius) { mRadius = radius; }
+		public void text(String text) { mText = text; }
+		public void array(Run.ArrayDescriptor array) { mArray = array; }
+		public void angle(float angle) { mAngle_1 = angle; }
+
+		public void clipOp(int opIndex) {
+			Region.Op[] ops = {
+				Region.Op.INTERSECT, Region.Op.DIFFERENCE, Region.Op.REPLACE,
+				Region.Op.REVERSE_DIFFERENCE, Region.Op.UNION, Region.Op.XOR
+			};
+			mClipOpIndex = opIndex;
+			mClipOp = ops[opIndex];
+		}
+
+		public void list(int index, ArrayList<Double> list) {
+			mListIndex = index;
+			mList = list;
+		}
+
+		public void useCenter(int fillMode) {
+			mFillMode = fillMode;
+			mUseCenter = (fillMode != 0);
+		}
+
+		public void arc(int[] ltrb, float startAngle, float sweepAngle, int fillMode) {
+			ltrb(ltrb);
+			mAngle_1 = startAngle;
+			mAngle_2 = sweepAngle;
+			useCenter(fillMode);
+		}
+
+		public void circle(int[] xy, int radius) {
+			xy(xy);					// (x, y) in mTop and mLeft marks the CENTER of the circle
+			mRadius = radius;
+		}
+
+		public void move(int dx, int dy) {
+			mLeft += dx; mRight += dx;
+			mTop += dy; mBottom += dy;
+		}
+
+		// universal getters
+		public Type type()			{ return mType; }
+		public String errorMsg()	{ return mErrorMsg; }
+		public int bitmap()			{ return mBitmap; }	// index into the BitmapList
+		public int paint()			{ return mPaint; }	// index into the PaintList
+		public int alpha()			{ return mAlpha; }
+		public boolean isHidden()	{ return !mVisible; }
+		public boolean isVisible()	{ return mVisible; }
+
+		// type-specific getters
+		public String text()				{ return mText; }
+		public Region.Op clipOp()			{ return mClipOp; }
+		public ArrayList<Double> list()		{ return mList; }
+		public Run.ArrayDescriptor array()	{ return mArray; }
+		public int radius()					{ return mRadius; }
+		public float angle()				{ return mAngle_1; }
+		public float arcStart()				{ return mAngle_1; }
+		public float arcSweep()				{ return mAngle_2; }
+		public boolean useCenter()			{ return mUseCenter; }
+
+		// coordinate getters
+		public int x()				{ return mLeft; }
+		public int x1()				{ return mLeft; }
+		public int left()			{ return mLeft; }
+		public int y()				{ return mTop; }
+		public int y1()				{ return mTop; }
+		public int top()			{ return mTop; }
+		public int x2() 			{ return mRight; }
+		public int right()			{ return mRight; }
+		public int y2()				{ return mBottom; }
+		public int bottom()			{ return mBottom; }
+
+		// For GR.Get.Value
+		public double getValue(String p) {
+			if (p.equals("paint"))	{ return mPaint; }
+			if (p.equals("alpha"))	{ return mAlpha; }
+			
+			switch (mType) {
+				case Circle:	if (p.equals("radius")) { return mRadius; }
+				case Bitmap:
+				case Point:
+				case SetPixels:
+				case Text:	// For now, "text" must be handled by Run
+					if (p.equals("x"))				{ return mLeft; }
+					if (p.equals("y"))				{ return mTop; }
+					break;
+				case Line:
+					if (p.equals("x1"))				{ return mLeft; }
+					if (p.equals("y1"))				{ return mTop; }
+					if (p.equals("x2"))				{ return mRight; }
+					if (p.equals("y2"))				{ return mBottom; }
+					break;
+				case Clip:		if (p.equals("RO")) { return mClipOpIndex; }
+				case Oval:
+				case Rect:
+					if (p.equals("left"))			{ return mLeft; }
+					if (p.equals("top"))			{ return mTop; }
+					if (p.equals("right"))			{ return mRight; }
+					if (p.equals("bottom"))			{ return mBottom; }
+					break;
+				case Arc:
+					if (p.equals("start_angle"))	{ return mAngle_1; }
+					if (p.equals("sweep_angle"))	{ return mAngle_2; }
+					if (p.equals("fill_mode"))		{ return mFillMode; }
+					if (p.equals("left"))			{ return mLeft; }
+					if (p.equals("top"))			{ return mTop; }
+					if (p.equals("right"))			{ return mRight; }
+					if (p.equals("bottom"))			{ return mBottom; }
+					break;
+				case Poly:
+					if (p.equals("list"))			{ return mListIndex; }
+					if (p.equals("x"))				{ return mLeft; }
+					if (p.equals("y"))				{ return mTop; }
+				case RotateStart:
+					if (p.equals("angle"))			{ return mAngle_1; }
+					if (p.equals("x"))				{ return mLeft; }
+					if (p.equals("y"))				{ return mTop; }
+					break;
+				case Close:
+				case Null:
+				case Orientation:
+				case RotateEnd:
+				default:							break;
+			}
+			return 0.0;
+		} // getValue(String)
+
+		// For GR.Modify
+		private boolean mod_xy(String p, int val) {
+			if (p.equals("x"))		{ mLeft = mRight  = val; return true; }
+			if (p.equals("y"))		{ mTop  = mBottom = val; return true; }
+			return false;
+		}
+		private boolean mod_x2y2(String p, int val) {
+			if (p.equals("x1"))		{ mLeft   = val; return true; }
+			if (p.equals("y1"))		{ mTop    = val; return true; }
+			if (p.equals("x2"))		{ mRight  = val; return true; }
+			if (p.equals("y2"))		{ mBottom = val; return true; }
+			return false;
+		}
+		private boolean mod_ltrb(String p, int val) {
+			if (p.equals("left"))	{ mLeft   = val; return true; }
+			if (p.equals("top"))	{ mTop    = val; return true; }
+			if (p.equals("right"))	{ mRight  = val; return true; }
+			if (p.equals("bottom"))	{ mBottom = val; return true; }
+			return false;
+		}
+		public boolean modify(String p, int iVal, float fVal, String text) {
+			// For now, PaintList range check must be handled in Run.
+			if (p.equals("paint"))	{ mPaint = iVal; return true; }
+			if (p.equals("alpha"))	{ mAlpha = iVal; return true; }
+			switch (mType) {
+				case Circle:	if (p.equals("radius")) { mRadius = iVal; return true; }
+				case Bitmap:	// for now, BitmapList range check must be handled in Run
+				case Point:
+				case Poly:		// for now, list parm must be handled in Run
+				case SetPixels:	return mod_xy(p, iVal);
+				case Line:		return mod_x2y2(p, iVal);
+				case Clip:		if (p.equals("RO")) { clipOp(iVal); return true; }
+				case Oval:
+				case Rect:		return mod_ltrb(p, iVal);
+				case Arc:
+					if (p.equals("start_angle"))	{ mAngle_1 = fVal; return true; }
+					if (p.equals("sweep_angle"))	{ mAngle_2 = fVal; return true; }
+					if (p.equals("fill_mode"))		{ useCenter(iVal); return true; }
+					if (mod_ltrb(p, iVal))			{ return true; }
+					break;
+				case RotateStart:
+					if (p.equals("angle"))			{ mAngle_1 = fVal; return true; }
+					if (mod_xy(p, iVal))			{ return true; }
+					break;
+				case Text:
+					if (p.equals("text"))			{ mText = text; return true; }
+					if (mod_xy(p, iVal))			{ return true; }
+					break;
+				case Close:
+				case Null:
+				case Orientation:
+				case RotateEnd:
+				default:							break;
+			}
+			mErrorMsg = "Object does not contain: " + p;
+			return false;
+		} // modify(String, int, float, String)
+	} // BDraw class
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+//		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " On Create  ");
+		super.onCreate(savedInstanceState);
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
 		Intent intent = getIntent();
 		int showStatusBar = intent.getIntExtra(EXTRA_SHOW_STATUSBAR, 0);
@@ -145,61 +431,60 @@ public class GR extends Activity {
 
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-        scaleX = 1.0f;
-        scaleY = 1.0f;
-        Brightness = -1;
-        Rendering = false;
+		scaleX = 1.0f;
+		scaleY = 1.0f;
+		Brightness = -1;
+		Rendering = false;
 
-//        Run.GRrunning = true;
-//        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " on create display list =  "+Run.DisplayList);        
-    }
-    
-   
-    @Override
-    protected void onPause() {
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onPause ");
-    	Run.background = true;
-    	Run.bgStateChange = true;
-      super.onPause();
-    }    
-   
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStart");
-    }    
+//		Run.GRrunning = true;
+//		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " on create display list =  " + DisplayList);
+	}
 
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onRestart");
-    }   
-    
-    protected void onStop(){
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStop ");
-    	Run.background = true;
-    	Run.bgStateChange = true;
-    	super.onStop();
-    }
-    
-    @Override
-    protected void onResume() {
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onResume ");
-//        Run.GRrunning = true;
-    	Run.background = false;
-    	Run.bgStateChange = true;
+	@Override
+	protected void onPause() {
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onPause ");
+		Run.background = true;
+		Run.bgStateChange = true;
+		super.onPause();
+	}
+
+	@Override
+	protected void onStart() {
+		super.onStart();
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStart");
+	}
+
+	@Override
+	protected void onRestart() {
+		super.onRestart();
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onRestart");
+	}
+
+	protected void onStop() {
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStop ");
+		Run.background = true;
+		Run.bgStateChange = true;
+		super.onStop();
+	}
+
+	@Override
+	protected void onResume() {
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onResume ");
+//		Run.GRrunning = true;
+		Run.background = false;
+		Run.bgStateChange = true;
 		context = this;
-      super.onResume();
-    }  
-    @Override
-    protected void onDestroy() {
-    	Run.GRrunning = false;
-    	Run.GraphicsPaused = false;
-        super.onDestroy();
-        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onDestroy");
-    }
-    
-    
+		super.onResume();
+	}
+
+	@Override
+	protected void onDestroy() {
+		Run.GRrunning = false;
+		Run.GraphicsPaused = false;
+		super.onDestroy();
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onDestroy");
+	}
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event)  {
 
@@ -430,154 +715,113 @@ public class GR extends Activity {
 	  }
 
 		@Override
-		public  void onDraw(Canvas canvas) {
+		public void onDraw(Canvas canvas) {
 //			Log.d(LOGTAG,"onDraw " + getWidth() + " x " + getHeight());
-            if (doEnableBT) {							// If this activity is running
-            	enableBT();								// Bluetooth must be enabled here
-            	doEnableBT = false;
-            }
-            
-            if (startConnectBT) {
-            	startsBTConnect();
-            	startConnectBT = false;
-            }
-       		
-       		if (doSTT) {
-   					startVoiceRecognitionActivity();
-   					doSTT = false;
-       		}
+			if (doEnableBT) {							// If this activity is running
+				enableBT();								// Bluetooth must be enabled here
+				doEnableBT = false;
+			}
 
-        	synchronized (Rendering) {
-        		Run.GRrunning = true;
-        		if (!Rendering) return;		// If Run.java did not ask to render then don't render
-        	}
-        	
-            float scale = getResources().getDisplayMetrics().density;
-        	Paint thePaint;
-        	Bitmap theBitmap;
-        	drawView.setDrawingCacheEnabled(true);
-        	canvas.scale(scaleX, scaleY);
-        	
-        	if (Run.DisplayList == null){					        // If we have lost context then
-        		throw new RuntimeException("GR.onDraw: null DisplayList");
-        	}
-        	
-        	if (Brightness != -1){
-        		WindowManager.LayoutParams lp = getWindow().getAttributes();
-        		lp.screenBrightness = Brightness;
-        		getWindow().setAttributes(lp);
-        	}
+			if (startConnectBT) {
+				startsBTConnect();
+				startConnectBT = false;
+			}
 
-        	if (Run.RealDisplayList != null){
-        		for (int di = 0 ; di< Run.RealDisplayList.size(); ++di){
-        			int rdi = Run.RealDisplayList.get(di);
-        			if (Run.DisplayList != null){
-        				if (rdi >= Run.DisplayList.size()) return;
-        				Bundle b = Run.DisplayList.get(rdi);
-        				doDraw(canvas, b);
-        			}
-        		}
-        	}
+			if (doSTT) {
+				startVoiceRecognitionActivity();
+				doSTT = false;
+			}
 
-       		Rendering = false;
-            
-            
-        }
+			synchronized (Rendering) {
+				Run.GRrunning = true;
+				if (!Rendering) return;		// If Run.java did not ask to render then don't render
+			}
 
-		public void doDraw(Canvas canvas, Bundle b) {
+			// float scale = getResources().getDisplayMetrics().density;
+			drawView.setDrawingCacheEnabled(true);
+			canvas.scale(scaleX, scaleY);
+
+			if (Run.DisplayList == null){				// If we have lost context then
+				throw new RuntimeException("GR.onDraw: null DisplayList");
+			}
+
+			if (Brightness != -1){
+				WindowManager.LayoutParams lp = getWindow().getAttributes();
+				lp.screenBrightness = Brightness;
+				getWindow().setAttributes(lp);
+			}
+
+			if (Run.RealDisplayList != null) {
+				for (int di : Run.RealDisplayList) {
+					if (Run.DisplayList != null) {
+						if (di >= Run.DisplayList.size()) return;
+						BDraw b = Run.DisplayList.get(di);
+						doDraw(canvas, b);
+					}
+				}
+			}
+
+			Rendering = false;
+		}
+
+		public void doDraw(Canvas canvas, BDraw b) {
 //			Log.v(GR.LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
 
-			int x1;
-			int y1;
-			int x2;
-			int y2;
-			int r;
 			float fx1;
 			float fy1;
+			RectF rectf;
 
 			Paint thePaint;
 			Bitmap theBitmap;
 //			canvas.scale(scaleX, scaleY);
 
 			thePaint = null;
-			int type = dNull;
-			if ((b != null) && (b.getInt("hide") == 0)) {
-				type = b.getInt("type");
-				int pIndex = b.getInt("paint");
+			Type type = Type.Null;
+			if ((b != null) && b.isVisible()) {
+				type = b.type();
+				int pIndex = b.paint();
 				if (Run.PaintList.size() == 0) return;
 				if (pIndex < 1 || pIndex >= Run.PaintList.size()) return;
 				thePaint = newPaint(Run.PaintList.get(pIndex));
-				int alpha = b.getInt("alpha");
+				int alpha = b.alpha();
 				if (alpha < 256) thePaint.setAlpha(alpha);
 			}
 
 			switch (type) {
-				case dNull:
+				case Null:
 					break;
-				case dClose:
+				case Close:
 					finish();
 					break;
-				case dCircle:
-					x1 = b.getInt("x");
-					y1 = b.getInt("y");
-					r = b.getInt("radius");
-					canvas.drawCircle(x1,y1,r, thePaint);
+				case Circle:
+					canvas.drawCircle(b.x(),b.y(),b.radius(), thePaint);
 					break;
-				case dRect:
-					x1 = b.getInt("left");
-					x2 = b.getInt("top");
-					y2 = b.getInt("bottom");
-					y1 = b.getInt("right");
-					canvas.drawRect(x1,x2,y1,y2, thePaint);
+				case Rect:
+					canvas.drawRect(b.left(), b.top(), b.right(), b.bottom(), thePaint);
 					break;
-				case dClip:
-					x1 = b.getInt("left");
-					x2 = b.getInt("top");
-					y2 = b.getInt("bottom");
-					y1 = b.getInt("right");
-					int RO = b.getInt("RO");
-					Region.Op[] ops = {
-						Region.Op.INTERSECT, Region.Op.DIFFERENCE, Region.Op.REPLACE,
-						Region.Op.REVERSE_DIFFERENCE, Region.Op.UNION, Region.Op.XOR
-					};
-					canvas.clipRect(x1,x2,y1,y2, ops[RO]);
+				case Clip:
+					canvas.clipRect(b.left(), b.top(), b.right(), b.bottom(), b.clipOp());
 					break;
-				case dOval:
-					x1 = b.getInt("left");
-					x2 = b.getInt("top");
-					y1 = b.getInt("right");
-					y2 = b.getInt("bottom");
-					RectF rect = new RectF(x1,x2,y1,y2);
-					canvas.drawOval(rect , thePaint);
+				case Oval:
+					rectf = new RectF(b.left(), b.top(), b.right(), b.bottom());
+					canvas.drawOval(rectf, thePaint);
 					break;
-				case dArc:
-					x1 = b.getInt("left");
-					x2 = b.getInt("top");
-					y1 = b.getInt("right");
-					y2 = b.getInt("bottom");
-					rect = new RectF(x1,x2,y1,y2);
-					int sa = b.getInt("start_angle");
-					int ea = b.getInt("sweep_angle");
-					boolean fill = (b.getInt("fill_mode") != 0);
-					canvas.drawArc(rect, sa,ea,fill, thePaint);
+				case Arc:
+					rectf = new RectF(b.left(), b.top(), b.right(), b.bottom());
+					canvas.drawArc(rectf, b.arcStart(), b.arcSweep(), b.useCenter(), thePaint);
 					break;
-				case dLine:
-					x1 = b.getInt("x1");
-					x2 = b.getInt("x2");
-					y1 = b.getInt("y1");
-					y2 = b.getInt("y2");
-					canvas.drawLine(x1,y1,x2,y2, thePaint);
+				case Line:
+					canvas.drawLine(b.x1(),b.y1(),b.x2(),b.y2(), thePaint);
 					break;
-				case dPoint:
-					x1 = b.getInt("x");
-					y1 = b.getInt("y");
-					canvas.drawPoint(x1,y1, thePaint);
+				case Point:
+					canvas.drawPoint(b.x(),b.y(), thePaint);
 					break;
-				case dsetPixels:
-					fx1 = b.getInt("x");
-					fy1 = b.getInt("y");
-					int pBase = b.getInt("pbase");
-					int pLength = b.getInt("plength");
+				case SetPixels:
+					fx1 = b.x();
+					fy1 = b.y();
+					Run.ArrayDescriptor array = b.array();
+					int pBase = array.base();
+					int pLength = array.length();
 					float[] pixels = new float[pLength];
 					for (int j = 0; j < pLength; ++j) {
 						pixels[j] = Run.NumericVarValues.get(pBase + j).floatValue() + fx1;
@@ -586,11 +830,10 @@ public class GR extends Activity {
 					}
 					canvas.drawPoints(pixels, thePaint);
 					break;
-				case dPoly:
-					fx1 = b.getInt("x");
-					fy1 = b.getInt("y");
-					int ListIndex = b.getInt("list");
-					ArrayList<Double> thisList = Run.theLists.get(ListIndex);
+				case Poly:
+					fx1 = b.x();
+					fy1 = b.y();
+					ArrayList<Double> thisList = b.list();
 					Path p = new Path();
 					float firstX = thisList.get(0).floatValue() + fx1;
 					float firstY = thisList.get(1).floatValue() + fy1;
@@ -605,36 +848,29 @@ public class GR extends Activity {
 					p.close();
 					canvas.drawPath(p, thePaint);
 					break;
-				case dText:
-					x1 = b.getInt("x");
-					y1 = b.getInt("y");
-					String s = b.getString("text");
-					canvas.drawText(s, x1, y1, thePaint);
+				case Text:
+					canvas.drawText(b.text(), b.x(), b.y(), thePaint);
 					break;
-				case dBitmap:
-					x1 = b.getInt("x");
-					y1 = b.getInt("y");
-					theBitmap = Run.BitmapList.get(b.getInt("bitmap"));
+				case Bitmap:
+					int bitmapIndex = b.bitmap();
+					theBitmap = Run.BitmapList.get(bitmapIndex);
 					if (theBitmap != null) {
 						if (theBitmap.isRecycled()) {
-							Run.BitmapList.set(b.getInt("bitmap"), null);
+							Run.BitmapList.set(bitmapIndex, null);
 							theBitmap = null;
 						}
 					}
 					if (theBitmap != null) {
-						canvas.drawBitmap(theBitmap, x1, y1, thePaint);
+						canvas.drawBitmap(theBitmap, b.x(), b.y(), thePaint);
 					} else {
 						NullBitMap = true;
 					}
 					break;
-				case dRotate_Start:
-					int angle = b.getInt("angle");
-					x1 = b.getInt("x");
-					y1 = b.getInt("y");
+				case RotateStart:
 					canvas.save();
-					canvas.rotate(angle, x1, y1);
+					canvas.rotate(b.angle(), b.x1(), b.y1());
 					break;
-				case dRotate_End:
+				case RotateEnd:
 					canvas.restore();
 					break;
 				default:
