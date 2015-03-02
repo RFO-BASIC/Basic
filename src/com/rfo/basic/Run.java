@@ -672,6 +672,7 @@ public class Run extends ListActivity {
 
 		public boolean isNumeric() { return mIsNumeric; }
 		public boolean isString() { return mIsString; }
+		@Override
 		public String toString() { return mStr; }
 	}
 
@@ -4134,7 +4135,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean RunTimeError(Exception e) {
-		return RunTimeError("Error: " + e);
+		return RunTimeError("Error: " + e.getMessage());
 	}
 
 	private void writeErrorMsg(String msg) {		// Write errorMsg, do NOT set SyntaxError
@@ -4197,6 +4198,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// types: 1 numeric, 2 string, 3 either
 	// Type 3 coming in is overwritten to type of variable found on command line.
 	private boolean getOptVars(byte[] type, int[] index) {
+
+		if (isEOL()) return true;							// no arguments
 		int nArgs = type.length;
 		if (nArgs != index.length) return false;			// array lengths must match
 
@@ -4221,6 +4224,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	// types: 1 numeric, 2 string, 3 either
 	// Type 3 coming in is overwritten to type of expression found on command line.
 	private boolean getOptExprs(byte[] type, Double[] nVal, String[] sVal) {
+
+		if (isEOL()) return true;							// no arguments
 		int nArgs = type.length;
 		if (nArgs != nVal.length) return false;				// array lengths must match
 		if (nArgs != sVal.length) return false;				// array lengths must match
@@ -4238,7 +4243,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						} else {
 							if (typ == 3) { typ = 1; }		// actual type is numeric
 							nVal[arg] = EvalNumericExpressionValue;
-						} 
+						}
 					}
 					if (typ == 2) {							// try string expression
 						if (!getStringArg()) return false;
@@ -4249,7 +4254,25 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		}
 		return (!isComma && checkEOL());
-	} // getOptExprs
+	} // getOptExprs(byte[], Double[], Sring[])
+
+	// Like getOptExprs, but limited to integer arguments.
+	private boolean getOptExprs(int[] iVal) {
+		if (isEOL()) return true;							// no arguments
+		int nArgs = iVal.length;
+		boolean isComma = true;
+		for (int arg = 0; arg < nArgs; ++arg) {
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (!evalNumericExpression()) return false;
+					iVal[arg] = EvalNumericExpressionValue.intValue();
+					isComma = isNext(',');
+				}
+			}
+		}
+		return (!isComma && checkEOL());
+	} // getOptExprs(int[])
 
 	// ************************* start of getVar() and its derivatives ****************************
 
@@ -4433,7 +4456,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (var.equals(VarNames.get(j))) {		// found it
 				if (VarIsArray) {
 					ArrayDescriptor array = ArrayTable.get(VarIndex.get(j));
-					if (!array.valid()) return false;
+					if (!array.valid()) {			// array invalidated through a different variable
+						VarNames.set(j, " ");		// clear this variable so a new one with the same name can be created
+						break;
+					}
 				}
 				VarIsNew = false;
 				VarNumber = j;
@@ -6131,6 +6157,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
 			if (!isNext(']'))								{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 			if (!VarIsNew) {											// if DIMed, UNDIM it
+				// Clear the variable name so it can't be used to access this array any more.
+				// Mark the array invalid in case any other variable is looking at it.
+				VarNames.set(VarNumber, " ");
 				ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber));
 				array.invalidate();
 			}
@@ -10373,45 +10402,41 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
     	  return true;
       }
 
-		private boolean execute_sql_new_table(){
+		private boolean execute_sql_new_table() {
 
 			if (!getDbPtrArg()) return false;						// get variable for the DB table pointer
 			int i = NumericVarValues.get(theValueIndex).intValue();
 			SQLiteDatabase db = DataBases.get(i-1);					// get the data base
 
 			if (!isNext(',')) return false;
-			if (!getStringArg()) return false;			   			// Table Name
+			if (!getStringArg()) return false;						// Table Name
 			String TableName = StringConstant;
 
 			if (!isNext(',')) return false;
-			ArrayList <String> Columns = new ArrayList<String>();
-			do{
-				if (!getStringArg()) return false;						// Columns
+			ArrayList<String> Columns = new ArrayList<String>();
+			do {
+				if (!getStringArg()) return false;					// Columns
 				Columns.add(StringConstant);
 			} while (isNext(','));
 			if (!checkEOL()) return false;
 
-		   String columns = "";
-		   int cc = Columns.size();
-		   for (int j =0; j<cc; ++j){
-			   columns = columns + Columns.get(j) + " TEXT";
-			   if (j != cc-1) columns = columns +  " , ";
-		   }
-		   
-		   String CommandString = StringConstant;	   
-		   CommandString = "CREATE TABLE " + TableName + "( "
-		   + "_id INTEGER PRIMARY KEY AUTOINCREMENT, " 
-		   + columns + " )";
+			String columns = "";
+			int cc = Columns.size();
+			for (int j =0; j<cc; ++j) {
+				columns = columns + Columns.get(j) + " TEXT";
+				if (j != cc-1) columns = columns +  " , ";
+			}
 
-		   try {
-		        db.execSQL(CommandString);
-			   }catch (Exception e) {
-					return RunTimeError(e);
-			   }
-		   
-    	  
-    	  return true;
-      }
+			String CommandString = StringConstant;
+			CommandString = "CREATE TABLE " + TableName + "( "
+					+ "_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+					+ columns + " )";
+
+			try { db.execSQL(CommandString); }
+			catch (Exception e) { return RunTimeError(e); }
+
+			return true;
+		}
 
 	// ************************************  Graphics Package ***********************************
 
@@ -10598,24 +10623,15 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Graphics already opened");
 		}
 
-		int[] argb = getArgs4I();									// [a, r, g, b]
-		if (argb == null) return false;								// error getting values
-		int a = argb[0];
-		int r = argb[1];
-		int g = argb[2];
-		int b = argb[3];
+		int[] args = { 255, 255, 255, 255, 0, 0 };	// default to opaque white, no status bar, landscape
+		if (!getOptExprs(args)) return false;
 
-		int showStatusBar = 0;										// default to status bar not showing
-		int orientation = 0;										// default to landscape
-		if (isNext(',')) {
-			if (!evalNumericExpression()) return false;
-			showStatusBar = EvalNumericExpressionValue.intValue();
-			if (isNext(',')) {
-				if (!evalNumericExpression()) return false;
-				orientation = EvalNumericExpressionValue.intValue();
-			}
-		}
-		if (!checkEOL()) return false;
+		int a = args[0];
+		int r = args[1];
+		int g = args[2];
+		int b = args[3];
+		int showStatusBar = args[4];
+		int orientation = args[5];
 
 		int backgroundColor =	a * 0x1000000 +						// Set the appropriate bytes
 								r * 0x10000 +
@@ -10708,24 +10724,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_color() {
-		int[] argb = getArgs4I();									// [a, r, g, b]
-		if (argb == null) return false;								// error getting values
-		int a = argb[0];
-		int r = argb[1];
-		int g = argb[2];
-		int b = argb[3];
+		int[] args = { -1, -1, -1, -1, -1 };						// default to current color and style
+		if (!getOptExprs(args)) return false;
 
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;					// get fill style
-		int style = EvalNumericExpressionValue.intValue();
-		if (!checkEOL()) return false;
+		int color = aPaint.getColor();
+		int a = (args[0] != -1) ? args[0] : 255 & (color >>> 24);
+		int r = (args[1] != -1) ? args[1] : 255 & (color >>> 24);
+		int g = (args[2] != -1) ? args[2] : 255 & (color >>> 24);
+		int b = (args[3] != -1) ? args[3] : 255 & (color >>> 24);
+		int style = args[4];
 
 		Paint tPaint = newPaint(aPaint);							// clone the current paint
 		tPaint.setARGB(a, r, g, b);									// set the colors, etc
 //		tPaint.setAntiAlias(true);
-		if      (style == 0) { tPaint.setStyle(Paint.Style.STROKE); }
-		else if (style == 1) { tPaint.setStyle(Paint.Style.FILL); }
-		else                 { tPaint.setStyle(Paint.Style.FILL_AND_STROKE); }
+		if      (style == 0)  { tPaint.setStyle(Paint.Style.STROKE); }
+		else if (style == 1)  { tPaint.setStyle(Paint.Style.FILL); }
+		else if (style != -1) { tPaint.setStyle(Paint.Style.FILL_AND_STROKE); }
 
 		aPaint = tPaint;											// set the new current paint
 		PaintList.add(aPaint);										// and add it to the paint list
@@ -11716,7 +11730,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return getTheBMpixel(SourceBitmap);
 	}
 
-	private boolean execute_gr_get_pixel(){
+	private boolean execute_gr_get_pixel() {
 		boolean retval = true;
 		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
 		if (b == null) {
@@ -12793,7 +12807,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		boolean statusIsNumeric = true;
 		int inFixVarIndex  = -1;
 		int inViewVarIndex = -1;
-		ArrayList<Object> sats = null;								// list of satellite bundles
+		ArrayList<Object> sats = null;						// list of satellite bundles
 
 		boolean isComma = isNext(',');
 		if (!isComma) {
