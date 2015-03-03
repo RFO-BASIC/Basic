@@ -107,6 +107,7 @@ public class GR extends Activity {
 				{ "x", "y" } ),
 		Text("text",				new String[]
 				{ "x", "y", "text" } ),
+		Group("group",				new String[0]),
 		RotateStart("rotate.start",	new String[]
 				{ "x", "y", "angle" } ),
 		RotateEnd("rotate.end",		new String[0]),
@@ -134,41 +135,6 @@ public class GR extends Activity {
 			return false;
 		}
 	}
-
-	public static final int dNull = 0;
-	public static final int dCircle = 1;
-	public static final int dRect = 2;
-	public static final int dLine = 3;
-	public static final int dOval = 4;
-	public static final int dArc = 5;
-	public static final int dText = 6;
-	public static final int dBitmap = 7;
-	public static final int dRotate_Start = 8;
-	public static final int dRotate_End = 9;
-	public static final int dOrientation = 10;
-	public static final int dClose = 11;
-	public static final int dsetPixels = 12;
-	public static final int dClip = 13;
-	public static final int dPoly = 14;
-	public static final int dPoint = 15;
-	public static final String[] types = {			// KEEP THESE IN SYNC!!!
-		"null",				// dNull = 0;
-		"circle",			// dCircle = 1;
-		"rect",				// dRect = 2;
-		"line",				// dLine = 3;
-		"oval",				// dOval = 4;
-		"arc",				// dArc = 5;
-		"text",				// dText = 6;
-		"bitmap",			// dBitmap = 7;
-		"rotate.start",		// dRotate_Start = 8;
-		"rotate.end",		// dRotate_End = 9;
-		"orientation",		// dOrientation = 10;
-		"close",			// dClose = 11;
-		"set.pixels",		// dsetPixels = 12;
-		"clip",				// dClip = 13;
-		"poly",				// dPoly = 14;
-		"point",			// dPoint = 15;
-	};
 
 //  Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " String Var Value =  ");
 
@@ -254,7 +220,9 @@ public class GR extends Activity {
 			mRadius = radius;
 		}
 
-		public void move(int dx, int dy) {
+		public void move(int[] dxdy) {
+			int dx = dxdy[0];
+			int dy = dxdy[1];
 			mLeft += dx; mRight += dx;
 			mTop += dy; mBottom += dy;
 		}
@@ -271,7 +239,10 @@ public class GR extends Activity {
 		// type-specific getters
 		public String text()				{ return mText; }
 		public Region.Op clipOp()			{ return mClipOp; }
-		public ArrayList<Double> list()		{ return mList; }
+		public ArrayList<Double> list()		{
+			if (mList == null) { mList = new ArrayList<Double>(); }
+			return mList;
+		}
 		public Run.ArrayDescriptor array()	{ return mArray; }
 		public int radius()					{ return mRadius; }
 		public float angle()				{ return mAngle_1; }
@@ -332,12 +303,14 @@ public class GR extends Activity {
 					if (p.equals("list"))			{ return mListIndex; }
 					if (p.equals("x"))				{ return mLeft; }
 					if (p.equals("y"))				{ return mTop; }
+					break;
 				case RotateStart:
 					if (p.equals("angle"))			{ return mAngle_1; }
 					if (p.equals("x"))				{ return mLeft; }
 					if (p.equals("y"))				{ return mTop; }
 					break;
 				case Close:
+				case Group:
 				case Null:
 				case Orientation:
 				case RotateEnd:
@@ -395,6 +368,7 @@ public class GR extends Activity {
 					if (mod_xy(p, iVal))			{ return true; }
 					break;
 				case Close:
+				case Group:
 				case Null:
 				case Orientation:
 				case RotateEnd:
@@ -788,6 +762,7 @@ public class GR extends Activity {
 			}
 
 			switch (type) {
+				case Group:
 				case Null:
 					break;
 				case Close:
@@ -874,6 +849,7 @@ public class GR extends Activity {
 					canvas.restore();
 					break;
 				default:
+					break;
 			}
 		} // doDraw()
 

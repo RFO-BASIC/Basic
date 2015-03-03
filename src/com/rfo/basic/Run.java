@@ -1479,7 +1479,7 @@ public class Run extends ListActivity {
 	private int interruptVarSearchStart;				// Save VarSearchStart across interrupt
 
 	ClipboardManager clipboard;
-	private static long sTime;
+	private long sTime;
 
 	// ********************************** RUN variables *********************************
 
@@ -1524,7 +1524,7 @@ public class Run extends ListActivity {
 
 	// ******************************** Wakelock variables *********************************
 
-	private static PowerManager.WakeLock theWakeLock;
+	private PowerManager.WakeLock theWakeLock;
 	private static final int partial = 1;
 	private static final int dim = 2;
 	private static final int bright = 3;
@@ -1533,7 +1533,7 @@ public class Run extends ListActivity {
 
 	// ******************************** Wifilock variables *********************************
 
-	private static WifiManager.WifiLock theWifiLock;
+	private WifiManager.WifiLock theWifiLock;
 	private static final int wifi_mode_scan = 1;
 	private static final int wifi_mode_full = 2;
 	private static final int wifi_mode_high = 3;
@@ -1569,7 +1569,7 @@ public class Run extends ListActivity {
 	private static final int FMR = 0;						// File Mode Read
 	private static final int FMW = 1;						// File Mode Write
 
-	public static ArrayList<FileInfo> FileTable;			// File table list
+	public ArrayList<FileInfo> FileTable;			// File table list
 
 	// ********************************* TEXT I/O variables *********************************
 
@@ -1674,7 +1674,7 @@ public class Run extends ListActivity {
 			new Command(BKW_FONT_CLEAR)             { public boolean run() { return executeFONT_CLEAR(); } },
 	};
 
-	public static ArrayList<Typeface> FontList;
+	public ArrayList<Typeface> FontList;
 
 	// ******************** Console Command variables ********************************
 
@@ -1723,20 +1723,20 @@ public class Run extends ListActivity {
 		new Command(BKW_DIALOG_SELECT)          { public boolean run() { return executeDIALOG_SELECT(); } },
 	};
 
-	private int mAlertItemID = 0;						// index of button or list item
+	private int mAlertItemID = 0;							// index of button or list item
 
 	// ******************** Popup Command variables ********************************
 
-	public static String ToastMsg;
-	public static int ToastX;
-	public static int ToastY;
-	public static int ToastDuration;
+	private String ToastMsg;
+	private int ToastX;
+	private int ToastY;
+	private int ToastDuration;
 
 	// ******************** Variables for the SELECT Command ***********************
 
-	public static int SelectedItem;						// The index of the selected item
-	public static boolean ItemSelected;					// Signal from Select.java saying an item has been selected 
-	public static boolean SelectLongClick;				// True if long click
+	public static int SelectedItem;							// The index of the selected item
+	public static boolean ItemSelected;						// Signal from Select.java saying an item has been selected 
+	public static boolean SelectLongClick;					// True if long click
 
 	// ******************** SQL Variables ******************************************
 
@@ -1778,17 +1778,16 @@ public class Run extends ListActivity {
 		new Command(BKW_SQL_NEW_TABLE)      { public boolean run() { return execute_sql_new_table(); } }
 	};
 
-	public static ArrayList<SQLiteDatabase> DataBases; 	 // List of created data bases
-	public static ArrayList<Cursor> Cursors; 	 		 // List of created data bases
+	public ArrayList<SQLiteDatabase> DataBases; 	 // List of created data bases
+	public ArrayList<Cursor> Cursors; 	 		 // List of created data bases
 
 	// ******************************** Variables for the INKEY$ command ***********************
 
-	public static boolean KeyPressed = false;
 	public static final String Numbers = "0123456789";    // translations for key codes
 	public static final String Chars = "abcdefghijklmnopqrstuvwxyz";
-	public static String Buffer = "0123456789";
-	public static ArrayList<String> InChar ;
-	public static int OnKeyLine;
+	public static ArrayList<String> InChar;
+	public static boolean KeyPressed = false;
+	private int OnKeyLine;
 
 	// ********************************* Variables for text.input command **********************
 
@@ -1888,6 +1887,18 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_GET_TEXTBOUNDS = "textbounds";
 	private static final String BKW_GR_GET_TYPE = "type";
 	private static final String BKW_GR_GET_VALUE = "value";
+	// gr group group
+	private static final String BKW_GR_GROUP_GROUP = "group.";
+	private static final String BKW_GR_GROUP_ADD = "add";
+	private static final String BKW_GR_GROUP_ADDLIST = "add.list";
+	private static final String BKW_GR_GROUP_CLEAR = "clear";
+	private static final String BKW_GR_GROUP_HIDE = "hide";
+	private static final String BKW_GR_GROUP_HIDE_TOGGLE = "hide.toggle";
+//	private static final String BKW_GR_GROUP_LIST_GET = "list.get";
+//	private static final String BKW_GR_GROUP_LIST_SET = "list.set";
+	private static final String BKW_GR_GROUP_MOVE = "move";
+	private static final String BKW_GR_GROUP_NEW = "new";
+	private static final String BKW_GR_GROUP_SHOW = "show";
 	// gr text group
 	private static final String BKW_GR_TEXT_GROUP = "text.";
 	private static final String BKW_GR_TEXT_ALIGN = "align";
@@ -1942,6 +1953,16 @@ public class Run extends ListActivity {
 		BKW_GR_GET_GROUP + BKW_GR_GET_TEXTBOUNDS,
 		BKW_GR_GET_GROUP + BKW_GR_GET_TYPE,
 		BKW_GR_GET_GROUP + BKW_GR_GET_VALUE,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_ADDLIST,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_ADD,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_CLEAR,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_HIDE_TOGGLE,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_HIDE,
+//		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_LIST_GET,
+//		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_LIST_SET,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_MOVE,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_NEW,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_SHOW,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_BOLD,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_DRAW,
@@ -1966,6 +1987,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_BITMAP_GROUP, CID_GROUP) { public boolean run() { return executeGR_BITMAP(); } },
 		new Command(BKW_GR_CAMERA_GROUP, CID_GROUP) { public boolean run() { return executeGR_CAMERA(); } },
 		new Command(BKW_GR_GET_GROUP, CID_GROUP)    { public boolean run() { return executeGR_GET(); } },
+		new Command(BKW_GR_GROUP_GROUP, CID_GROUP)  { public boolean run() { return executeGR_GROUP(); } },
 		new Command(BKW_GR_TEXT_GROUP, CID_GROUP)   { public boolean run() { return executeGR_TEXT(); } },
 
 		new Command(BKW_GR_ARC)                     { public boolean run() { return execute_gr_arc(); } },
@@ -1978,7 +2000,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_FRONT)                   { public boolean run() { return execute_gr_front(); } },
 		new Command(BKW_GR_GETDL)                   { public boolean run() { return execute_gr_getdl(); } },
 		new Command(BKW_GR_NEWDL)                   { public boolean run() { return execute_gr_newdl(); } },
-		new Command(BKW_GR_HIDE)                    { public boolean run() { return execute_gr_hide(); } },
+		new Command(BKW_GR_HIDE)                    { public boolean run() { return execute_gr_hide(true); } },
 		new Command(BKW_GR_LINE)                    { public boolean run() { return execute_gr_line(); } },
 		new Command(BKW_GR_MOVE)                    { public boolean run() { return execute_gr_move(); } },
 		new Command(BKW_GR_ONGRTOUCH_RESUME)        { public boolean run() { return execute_gr_touch_resume(); } },
@@ -1998,7 +2020,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_SET_ANTIALIAS)           { public boolean run() { return execute_gr_antialias(); } },
 		new Command(BKW_GR_SET_PIXELS)              { public boolean run() { return execute_gr_set_pixels(); } },
 		new Command(BKW_GR_SET_STROKE)              { public boolean run() { return execute_gr_stroke_width(); } },
-		new Command(BKW_GR_SHOW)                    { public boolean run() { return execute_gr_show(); } },
+		new Command(BKW_GR_SHOW)                    { public boolean run() { return execute_gr_hide(false); } },
 		new Command(BKW_GR_STATUSBAR_SHOW)          { public boolean run() { return execute_statusbar_show(); } },
 		new Command(BKW_GR_STATUSBAR)               { public boolean run() { return execute_gr_statusbar(); } },
 	};
@@ -2032,6 +2054,19 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_GET_TEXTBOUNDS)          { public boolean run() { return execute_gr_get_textbounds(); } },
 		new Command(BKW_GR_GET_TYPE)                { public boolean run() { return execute_gr_get_type(); } },
 		new Command(BKW_GR_GET_VALUE)               { public boolean run() { return execute_gr_get_value(); } },
+	};
+
+	private final Command[] GrGroup_cmd = new Command[] {	// Map GR.group command keywords to their execution functions
+			new Command(BKW_GR_GROUP_NEW)           { public boolean run() { return execute_gr_group_new(); } },
+			new Command(BKW_GR_GROUP_MOVE)          { public boolean run() { return execute_gr_group_move(); } },
+			new Command(BKW_GR_GROUP_HIDE_TOGGLE)   { public boolean run() { return execute_gr_group_hide_toggle(); } },
+			new Command(BKW_GR_GROUP_HIDE)          { public boolean run() { return execute_gr_group_hide(true); } },
+			new Command(BKW_GR_GROUP_SHOW)          { public boolean run() { return execute_gr_group_hide(false); } },
+			new Command(BKW_GR_GROUP_ADDLIST)       { public boolean run() { return execute_gr_group_add_list(); } },
+			new Command(BKW_GR_GROUP_ADD)           { public boolean run() { return execute_gr_group_add(); } },
+			new Command(BKW_GR_GROUP_CLEAR)         { public boolean run() { return execute_gr_group_clear(); } },
+//			new Command(BKW_GR_GROUP_LIST_GET)      { public boolean run() { return execute_gr_group_list_get(); } },
+//			new Command(BKW_GR_GROUP_LIST_SET)      { public boolean run() { return execute_gr_group_list_set(); } },
 	};
 
 	private final Command[] GrText_cmd = new Command[] {	// Map GR.text command keywords to their execution functions
@@ -2088,10 +2123,10 @@ public class Run extends ListActivity {
 		new Command(BKW_AUDIO_RECORD_STOP)      { public boolean run() { return execute_audio_record_stop(); } },
 	};
 
-	private static MediaPlayer theMP = null;
-	private static ArrayList<MediaPlayer> theMPList;
-	private static ArrayList<String> theMPNameList;
-	private static boolean PlayIsDone;
+	private MediaPlayer theMP = null;
+	private ArrayList<MediaPlayer> theMPList;
+	private ArrayList<String> theMPNameList;
+	private boolean PlayIsDone;
 	private MediaRecorder mRecorder = null;
 
 	// ******************************* Variables for Sensor Commands **********************************
@@ -2244,8 +2279,8 @@ public class Run extends ListActivity {
 		new Command(BKW_LIST_SEARCH)            { public boolean run() { return execute_LIST_SEARCH(); } },
 	};
 
-	public static ArrayList<ArrayList> theLists;
-	public static ArrayList<VarType> theListsType;
+	public ArrayList<ArrayList> theLists;
+	public ArrayList<VarType> theListsType;
 
 	// ************************************ Bundle Variables ****************************************
 
@@ -2279,7 +2314,7 @@ public class Run extends ListActivity {
 		new Command(BKW_BUNDLE_REMOVE)          { public boolean run() { return execute_BUNDLE_REMOVE(); } },
 	};
 
-	private static ArrayList <Bundle> theBundles;
+	private ArrayList<Bundle> theBundles;
 
 	// *********************************** Stack Variables **********************************************
 
@@ -2307,8 +2342,8 @@ public class Run extends ListActivity {
 		new Command(BKW_STACK_CLEAR)            { public boolean run() { return execute_STACK_CLEAR(); } },
 	};
 
-	private static ArrayList<Stack> theStacks;
-	private static ArrayList<VarType> theStacksType; 
+	private ArrayList<Stack> theStacks;
+	private ArrayList<VarType> theStacksType; 
 
 //  ******************************* Socket Variables **************************************************
 
@@ -2483,8 +2518,8 @@ public class Run extends ListActivity {
 		new Command(BKW_DEBUG_STATS)            { public boolean run() { return executeDEBUG_STATS(); } },
 	};
 
-	public static boolean Debug = false;
-	public static boolean Echo = false;
+	private boolean Debug = false;
+	private boolean Echo = false;
 
 	// *********************************************** Text to Speech *******************************
 
@@ -2505,7 +2540,7 @@ public class Run extends ListActivity {
 		new Command(BKW_TTS_STOP)               { public boolean run() { return executeTTS_STOP(); } }
 	};
 
-	public static TextToSpeechActivity theTTS;
+	private TextToSpeechActivity theTTS;
 	public static boolean ttsInit;
 
 	// *********************************************** FTP Client *************************************
@@ -2588,8 +2623,8 @@ public class Run extends ListActivity {
     //
     public static ArrayList <String> BT_Read_Buffer;
     public static BluetoothDevice btConnectDevice = null;
-    public static boolean btReadReady = false;
-    public static int OnBTReadLine = 0;
+    private boolean btReadReady = false;
+    private int OnBTReadLine = 0;
 
 	private static final String BKW_BT_OPEN = "open";
 	private static final String BKW_BT_CLOSE = "close";
@@ -2697,7 +2732,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SOUNDPOOL_SETRATE)          { public boolean run() { return execute_SP_setrate(); } },
 	};
 
-	public static SoundPool theSoundPool ;
+	private SoundPool theSoundPool ;
 
 	// *************************************** Ringer Vars ****************************************
 
@@ -2776,7 +2811,7 @@ public class Run extends ListActivity {
 	private static final int MESSAGE_LOAD_STRING   = MESSAGE_HTML_GROUP + 7;
 	private static final int MESSAGE_POST          = MESSAGE_HTML_GROUP + 8;
 
-	public static ArrayList <String> htmlData_Buffer;
+	public static ArrayList<String> htmlData_Buffer;
 	private Intent htmlIntent;
 	private boolean htmlOpening;
 
@@ -2798,7 +2833,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SMS_SEND)               { public boolean run() { return executeSMS_SEND(); } }
 	};
 
-	public static ArrayList <String> smsRcvBuffer;
+	public ArrayList<String> smsRcvBuffer;
 
 	// ******************** Speech to text Vars ********************************
 
@@ -2823,10 +2858,10 @@ public class Run extends ListActivity {
 		new Command(BKW_TIMER_RESUME)           { public boolean run() { return executeTIMER_RESUME(); } }
 	};
 
-	public static int OnTimerLine;
-	public static Timer theTimer;
-	public static boolean timerExpired;
-	public static boolean timerStarting;
+	public int OnTimerLine;
+	public Timer theTimer;
+	public boolean timerExpired;
+	public boolean timerStarting;
 
 	// ******************** TimeZone Variables *******************************
 
@@ -10464,6 +10499,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(GrGet_cmd, "Gr.Get");
 	}
 
+	private boolean executeGR_GROUP() {
+		return executeCommand(GrGroup_cmd, "Gr.Group");
+	}
+
 	private boolean executeGR_TEXT() {
 		return executeCommand(GrText_cmd, "Gr.Text");
 	}
@@ -10737,6 +10776,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		else if (style == 1)  { tPaint.setStyle(Paint.Style.FILL); }
 		else if (style != -1) { tPaint.setStyle(Paint.Style.FILL_AND_STROKE); }
 
+		Paint.Style tStyle = tPaint.getStyle();
 		aPaint = tPaint;											// set the new current paint
 		PaintList.add(aPaint);										// and add it to the paint list
 		return true;
@@ -11004,37 +11044,190 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return obj;
 	}
 
-	private boolean execute_gr_hide() {
-		int obj = getObjectNumber("Hide parameter out of range");
-		if (obj < 0) return false;
+	private boolean execute_gr_group_new() {
+		GR.BDraw b = createGrObj_start(GR.Type.Rect);				// create Graphic Object and get variable
+		if (b == null) return false;
+		int SaveValueIndex = theValueIndex;
+		if (!isNext(',')) return false;
+
+		int listIndex = -1;
+		boolean isComma = isNext(',');
+		if (!isComma) {
+			listIndex = getListArg(VarType.NUM);					// reuse old list or create new one
+			if (listIndex < 0) return false;
+			isComma = isNext(',');
+		}
+		ArrayList<Double> list = (listIndex != -1)	? theLists.get(listIndex)
+													: new ArrayList<Double>();
+		while (isComma) {
+			double lObj = getObjectNumber();
+			if (lObj < 0.0) return false;
+			list.add(lObj);
+			isComma = isNext(',');
+		}
 		if (!checkEOL()) return false;
 
-		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
-		b.hide(true);												// set hide to false
+		b.list(listIndex, list);
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+	}
+
+	private boolean execute_gr_group_add() {
+		int obj = getObjectNumber();								// get number of Group Object
+		if (obj < 0) return false;
+		ArrayList<Double> list = new ArrayList<Double>();
+		while (isNext(',')) {										// get Graphics Object numbers to add to group
+			double lObj = getObjectNumber();
+			if (lObj < 0.0) return false;
+			list.add(lObj);
+		}
+		if (!checkEOL()) return false;
+
+		if (list.size() > 0) {
+			GR.BDraw b = DisplayList.get(obj);						// get the Group Object
+			b.list().addAll(list);									// add the new Graphics Objects
+		}
 		return true;
 	}
 
-	private boolean execute_gr_show() {
-		int obj = getObjectNumber("Show parameter out of range");
+	private boolean execute_gr_group_add_list() {
+		int obj = getObjectNumber();								// get number of Group Object
+		if (obj < 0) return false;
+		if (!isNext(',')) return false;
+
+		int listIndex = getListArg();								// get the source pointer
+		if (listIndex < 0) return false;
+		if (!checkEOL()) return false;
+
+		if (!theListsType.get(listIndex).isNumeric()) { return RunTimeError("List is not numeric"); }
+		ArrayList<Double> list = theLists.get(listIndex);
+		if (list.size() > 0) {
+			GR.BDraw b = DisplayList.get(obj);						// get the Group Object
+			b.list().addAll(list);									// add the new Graphics Objects
+		}
+		return true;
+	}
+
+	private boolean execute_gr_group_clear() {
+		int obj = getObjectNumber();
+		if (obj < 0) return false;
+		if (!checkEOL()) return false;
+
+		GR.BDraw b = DisplayList.get(obj);							// get the Group Object
+		b.list().clear();											// clear its list
+		return true;
+	}
+
+	private boolean execute_gr_group_list_get() {
+		int obj = getObjectNumber();								// get number of Group Object
+		if (obj < 0) return false;
+		if (!isNext(',')) return false;
+
+		int listIndex = getListArg(VarType.NUM);					// reuse old list or create new one
+		if (listIndex < 0) return false;
+		if (!checkEOL()) return false;
+
+		if (!theListsType.get(listIndex).isNumeric()) { return RunTimeError("List is not numeric"); }
+		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
+		theLists.set(listIndex, b.list());							// put the list in theLists
+		return true;
+	}
+
+	private boolean execute_gr_group_list_set() {
+		int obj = getObjectNumber();								// get number of Group Object
+		if (obj < 0) return false;
+		if (!isNext(',')) return false;
+
+		int listIndex = getListArg();								// get list pointer
+		if (listIndex < 0) return false;
+		if (!checkEOL()) return false;
+
+		if (!theListsType.get(listIndex).isNumeric()) { return RunTimeError("List is not numeric"); }
+		GR.BDraw b = DisplayList.get(obj);							// get the Group Object
+		b.list(listIndex, theLists.get(listIndex));					// put the list in Group Object
+		return true;
+	}
+
+	private boolean execute_gr_hide(boolean hide) {
+		int obj = getObjectNumber((hide ? "Hide" : "Show") + " object out of range");
 		if (obj < 0) return false;
 		if (!checkEOL()) return false;
 
 		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
-		b.hide(false);												// set hide to false
+		b.hide(hide);												// hide or show it
+		return true;
+	}
+
+	private boolean execute_gr_group_hide(boolean hide) {
+		int obj = getObjectNumber();								// get the Group Object
+		if (obj < 0) return false;
+		if (!checkEOL()) return false;
+
+		int dlSize = DisplayList.size();
+		GR.BDraw b = DisplayList.get(obj);							// get the list of Graphics Objects
+		ArrayList<Double> list = b.list();
+		if (list == null) return true;
+		for (Double d : list) {
+			obj = d.intValue();										// get each index from the list
+			if ((obj < 0) || (obj >= dlSize)) {
+				return RunTimeError((hide ? "Hide" : "Show") + " object out of range");
+			}
+			b = DisplayList.get(obj);								// get each Graphics Object to move
+			b.hide(hide);											// hide or show it
+		}
+		return true;
+	}
+
+	private boolean execute_gr_group_hide_toggle() {
+		int obj = getObjectNumber();								// get the Group Object
+		if (obj < 0) return false;
+		if (!checkEOL()) return false;
+
+		int dlSize = DisplayList.size();
+		GR.BDraw b = DisplayList.get(obj);							// get the list of Graphics Objects
+		ArrayList<Double> list = b.list();
+		if (list == null) return true;
+		for (Double d : list) {
+			obj = d.intValue();										// get each index from the list
+			if ((obj < 0) || (obj >= dlSize)) {
+				return RunTimeError("Hide object out of range");
+			}
+			b = DisplayList.get(obj);								// get each Graphics Object to move
+			b.hide(b.isVisible());									// hide or show it
+		}
 		return true;
 	}
 
 	private boolean execute_gr_move() {
-		int obj = getObjectNumber();
+		int obj = getObjectNumber();								// get the Graphics Ojbect to move
 		if (obj < 0) return false;
-		if (!isNext(',') || !evalNumericExpression()) return false;
-		int dx = EvalNumericExpressionValue.intValue();
-		if (!isNext(',') || !evalNumericExpression()) return false;
-		int dy = EvalNumericExpressionValue.intValue();
-		if (!checkEOL()) return false;
+		int[] dxdy = { 0, 0 };										// default: deltas both zero
+		if (isNext(',') ? !getOptExprs(dxdy)
+						: !checkEOL()) return false;				// get the deltas if there are any
 
 		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
-		b.move(dx, dy);
+		b.move(dxdy);
+		return true;
+	}
+
+	private boolean execute_gr_group_move() {
+		int obj = getObjectNumber();								// get the Group Object
+		if (obj < 0) return false;
+		int[] dxdy = { 0, 0 };										// default: deltas both zero
+		if (isNext(',') ? !getOptExprs(dxdy)
+						: !checkEOL()) return false;				// get the deltas if there are any
+
+		int dlSize = DisplayList.size();
+		GR.BDraw b = DisplayList.get(obj);							// get the list of Graphics Objects
+		ArrayList<Double> list = b.list();
+		if (list == null) return true;
+		for (Double d : list) {
+			obj = d.intValue();										// get each index from the list
+			if ((obj < 0) || (obj >= dlSize)) {
+				return RunTimeError("Object out of range");
+			}
+			b = DisplayList.get(obj);								// get each Graphics Object to move
+			b.move(dxdy);											// move it
+		}
 		return true;
 	}
 

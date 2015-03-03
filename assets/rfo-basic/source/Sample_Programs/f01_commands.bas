@@ -9,8 +9,6 @@
 % - Middle of Line Comment, 47
 ABS(<nexp>), 51
 ACOS(<nexp>), 54
-Array. reverse Array$[{<start>,<length>}], 37
-Array. reverse Array[{<start>,<length>}], 37
 Array.average <Average_nvar>, Array[{<start>,<length>}], 36
 Array.copy SourceArray$[{<start>,<length>}], DestinationArray$[{{-}<extras>}], 36
 Array.copy SourceArray[{<start>,<length>}], DestinationArray[{{-}<extras>}], 36
@@ -21,6 +19,8 @@ Array.load Array$[], <sexp>, ..., 37
 Array.load Array[], <nexp>, ..., 37
 Array.max <max_nvar> Array[{<start>,<length>}], 37
 Array.min <min_nvar>, Array[{<start>,<length>}], 37
+Array.reverse Array$[{<start>,<length>}], 37
+Array.reverse Array[{<start>,<length>}], 37
 Array.search Array$[{<start>,<length>}], <value_sexp>, <result_nvar>{,<start_nexp>}, 37
 Array.search Array[{<start>,<length>}], <value_nexp>, <result_nvar>{,<start_nexp>}, 37
 Array.shuffle Array[{<start>,<length>}], 38
@@ -93,7 +93,7 @@ Clipboard.get <svar>, 109
 Clipboard.put <sexp>, 109
 CLOCK(), 57
 Cls, 81
-Console.line. count <count_nvar >, 82
+Console.line.count <count_nvar >, 82
 Console.line.text <line_nexp>, <text_svar>, 82
 Console.line.touched <line_nvar> {, <press_lvar>}, 83
 Console.save <filename_sexp>, 83
@@ -218,9 +218,18 @@ Gr.get.textbounds <sexp>, left, top, right, bottom, 136
 Gr.get.type <object_ptr_nvar>, <type_svar>, 144
 Gr.get.value <object_ptr_nvar>, <tag_sexp>, {<value_nvar | value_svar>}, 145
 Gr.getDL <dl_array[]> {, <keep_all_objects_lexp> }, 148
+Gr.group.add <object_number_nexp>, <obj1_nexp>..., 0
+Gr.group.add.list <object_number_nexp>, <list_ptr_nexp>, 0
+Gr.group.clear <object_number_nexp>, 0
+Gr.group.hide <object_number_nexp>, 0
+Gr.group.hide.toggle <object_number_nexp>, 0
+Gr.group.move <object_number_nexp>{{, <dx_nexp>}{, <dy_nexp}}
+Gr.group.new <object_number_nvar>, <list_ptr_sexp>, <obj1_nexp>..., 0
+Gr.group.show <object_number_nvar>, 0
 Gr.hide <object_number_nvar>, 134
 Gr.line <object_number_nvar>, x1, y1, x2, y2, 132
 Gr.modify <object_ptr_nvar>, {<tag_sexp>, <value_nvar | value_svar>}, ..., 145
+Gr.move <object_number_nexp>{{, <dx_nexp>}{, <dy_nexp}}, 0
 Gr.newDL <dl_array[{<start>,<length>}]>, 148
 Gr.onGrTouch.resume, 135
 Gr.open alpha, red, green, blue {, <ShowStatusBar_lexp> {, <Orientation_nexp>}}, 128
@@ -386,7 +395,7 @@ Socket.server.write.line <sexp>, 103
 Soundpool.load <soundID_nvar>, <file_path_sexp>, 151
 Soundpool.open <MaxStreams_nexp>, 151
 Soundpool.pause <streamID_nexp>, 152
-Soundpool.play <streamID_nvar>, <sounded_nexp>, <rightVolume_nexp>, <leftVolume_nexp>, <priority_nexp>, <loop_nexp>, <rate_nexp>, 152
+Soundpool.play <streamID_nvar>, <soundID_nexp>, <rightVolume_nexp>, <leftVolume_nexp>, <priority_nexp>, <loop_nexp>, <rate_nexp>, 152
 Soundpool.release, 152
 Soundpool.resume <streamID_nexp>, 152
 Soundpool.setpriority <streamID_nexp>, <priority_nexp>, 152
