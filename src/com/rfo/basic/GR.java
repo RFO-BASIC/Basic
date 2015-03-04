@@ -82,6 +82,8 @@ public class GR extends Activity {
 	public static boolean doEnableBT = false;
 	public static boolean startConnectBT = false;
 
+	public enum VISIBLE { SHOW, HIDE, TOGGLE; }
+
 	// ************* enumeration of BASIC! Drawable Object types **************
 
 	public enum Type {
@@ -102,18 +104,18 @@ public class GR extends Activity {
 		Poly("poly",				new String[]
 				{ "x", "y", "list" } ),
 		Bitmap("bitmap",			new String[]
-				{ "x", "y" } ),
+				{ "x", "y", "bitmap" } ),
 		SetPixels("set.pixels",		new String[]
 				{ "x", "y" } ),
 		Text("text",				new String[]
 				{ "x", "y", "text" } ),
-		Group("group",				new String[0]),
+		Group("group",				new String[]
+				{ "list" } ),
 		RotateStart("rotate.start",	new String[]
 				{ "x", "y", "angle" } ),
 		RotateEnd("rotate.end",		new String[0]),
 		Clip("clip",				new String[]
 				{ "left", "right", "top", "bottom", "RO" } ),
-		Orientation("orientation",	new String[0]),
 		Close("close",				new String[0]);
 
 		private final String mType;
@@ -180,7 +182,6 @@ public class GR extends Activity {
 		public void bitmap(int bitmap) { mBitmap = bitmap; }	// index into the BitmapList
 		public void paint(int paint) { mPaint = paint; }		// index into the PaintList
 		public void alpha(int alpha) { mAlpha = alpha; }
-		public void hide(boolean hide) { mVisible = !hide; }
 
 		public void xy(int[] xy) { mLeft = mRight = xy[0]; mTop = mBottom = xy[1]; }
 		public void ltrb(int[] ltrb) { mLeft = ltrb[0]; mTop = ltrb[1]; mRight = ltrb[2]; mBottom = ltrb[3]; }
@@ -188,6 +189,14 @@ public class GR extends Activity {
 		public void text(String text) { mText = text; }
 		public void array(Run.ArrayDescriptor array) { mArray = array; }
 		public void angle(float angle) { mAngle_1 = angle; }
+
+		public void show(VISIBLE show) {
+			switch (show) {
+				case SHOW: mVisible = true;
+				case HIDE: mVisible = false;
+				case TOGGLE: mVisible = !mVisible;
+			}
+		}
 
 		public void clipOp(int opIndex) {
 			Region.Op[] ops = {
@@ -269,7 +278,6 @@ public class GR extends Activity {
 			
 			switch (mType) {
 				case Circle:	if (p.equals("radius")) { return mRadius; }
-				case Bitmap:
 				case Point:
 				case SetPixels:
 				case Text:	// For now, "text" must be handled by Run
@@ -300,7 +308,13 @@ public class GR extends Activity {
 					if (p.equals("bottom"))			{ return mBottom; }
 					break;
 				case Poly:
+					if (p.equals("x"))				{ return mLeft; }
+					if (p.equals("y"))				{ return mTop; }
+				case Group:
 					if (p.equals("list"))			{ return mListIndex; }
+					break;
+				case Bitmap:
+					if (p.equals("bitmap"))			{ return mBitmap; }
 					if (p.equals("x"))				{ return mLeft; }
 					if (p.equals("y"))				{ return mTop; }
 					break;
@@ -310,9 +324,7 @@ public class GR extends Activity {
 					if (p.equals("y"))				{ return mTop; }
 					break;
 				case Close:
-				case Group:
 				case Null:
-				case Orientation:
 				case RotateEnd:
 				default:							break;
 			}
@@ -340,37 +352,42 @@ public class GR extends Activity {
 			return false;
 		}
 		public boolean modify(String p, int iVal, float fVal, String text) {
-			// For now, PaintList range check must be handled in Run.
-			if (p.equals("paint"))	{ mPaint = iVal; return true; }
+			// For now, "paint" is handled in Run because of range check.
+			// if (p.equals("paint"))	{ mPaint = iVal; return true; }
 			if (p.equals("alpha"))	{ mAlpha = iVal; return true; }
 			switch (mType) {
-				case Circle:	if (p.equals("radius")) { mRadius = iVal; return true; }
+				case Circle:	if (p.equals("radius"))	{ mRadius = iVal; return true; }
 				case Bitmap:	// for now, BitmapList range check must be handled in Run
 				case Point:
 				case Poly:		// for now, list parm must be handled in Run
-				case SetPixels:	return mod_xy(p, iVal);
-				case Line:		return mod_x2y2(p, iVal);
-				case Clip:		if (p.equals("RO")) { clipOp(iVal); return true; }
+				case SetPixels:	if (mod_xy(p, iVal))	{ return true; } else { break; }
+
+				case Line:		if (mod_x2y2(p, iVal))	{ return true; } else { break; }
+
+				case Clip:		if (p.equals("RO"))		{ clipOp(iVal); return true; }
 				case Oval:
-				case Rect:		return mod_ltrb(p, iVal);
+				case Rect:		if (mod_ltrb(p, iVal))	{ return true; } else { break; }
+
 				case Arc:
 					if (p.equals("start_angle"))	{ mAngle_1 = fVal; return true; }
 					if (p.equals("sweep_angle"))	{ mAngle_2 = fVal; return true; }
 					if (p.equals("fill_mode"))		{ useCenter(iVal); return true; }
 					if (mod_ltrb(p, iVal))			{ return true; }
 					break;
+
 				case RotateStart:
 					if (p.equals("angle"))			{ mAngle_1 = fVal; return true; }
 					if (mod_xy(p, iVal))			{ return true; }
 					break;
+
 				case Text:
 					if (p.equals("text"))			{ mText = text; return true; }
 					if (mod_xy(p, iVal))			{ return true; }
 					break;
+
 				case Close:
-				case Group:
+				case Group:		// for now, list parm must be handled in Run
 				case Null:
-				case Orientation:
 				case RotateEnd:
 				default:							break;
 			}

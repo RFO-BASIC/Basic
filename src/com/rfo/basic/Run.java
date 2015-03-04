@@ -1854,6 +1854,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_SET_PIXELS = "set.pixels";
 	private static final String BKW_GR_SET_STROKE = "set.stroke";
 	private static final String BKW_GR_SHOW = "show";
+	private static final String BKW_GR_SHOW_TOGGLE = "show.toggle";
 	private static final String BKW_GR_STATUSBAR = "statusbar";
 	private static final String BKW_GR_STATUSBAR_SHOW = "statusbar.show";
 	private static final String BKW_GR_TOUCH = "touch";
@@ -1891,14 +1892,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_GROUP_GROUP = "group.";
 	private static final String BKW_GR_GROUP_ADD = "add";
 	private static final String BKW_GR_GROUP_ADDLIST = "add.list";
-	private static final String BKW_GR_GROUP_CLEAR = "clear";
-	private static final String BKW_GR_GROUP_HIDE = "hide";
-	private static final String BKW_GR_GROUP_HIDE_TOGGLE = "hide.toggle";
-//	private static final String BKW_GR_GROUP_LIST_GET = "list.get";
-//	private static final String BKW_GR_GROUP_LIST_SET = "list.set";
-	private static final String BKW_GR_GROUP_MOVE = "move";
 	private static final String BKW_GR_GROUP_NEW = "new";
-	private static final String BKW_GR_GROUP_SHOW = "show";
 	// gr text group
 	private static final String BKW_GR_TEXT_GROUP = "text.";
 	private static final String BKW_GR_TEXT_ALIGN = "align";
@@ -1920,7 +1914,8 @@ public class Run extends ListActivity {
 		BKW_GR_ARC, BKW_GR_BRIGHTNESS, BKW_GR_CIRCLE,
 		BKW_GR_CLIP, BKW_GR_CLOSE, BKW_GR_CLS,
 		BKW_GR_COLOR, BKW_GR_FRONT,
-		BKW_GR_GETDL, BKW_GR_NEWDL, BKW_GR_HIDE, BKW_GR_SHOW,
+		BKW_GR_GETDL, BKW_GR_NEWDL,
+		BKW_GR_HIDE, BKW_GR_SHOW_TOGGLE, BKW_GR_SHOW,
 		BKW_GR_LINE, BKW_GR_ONGRTOUCH_RESUME,
 		BKW_GR_OPEN, BKW_GR_ORIENTATION, BKW_GR_OVAL,
 		BKW_GR_PAINT_GET, BKW_GR_POINT, BKW_GR_POLY,
@@ -1955,14 +1950,7 @@ public class Run extends ListActivity {
 		BKW_GR_GET_GROUP + BKW_GR_GET_VALUE,
 		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_ADDLIST,
 		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_ADD,
-		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_CLEAR,
-		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_HIDE_TOGGLE,
-		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_HIDE,
-//		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_LIST_GET,
-//		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_LIST_SET,
-		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_MOVE,
 		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_NEW,
-		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_SHOW,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_BOLD,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_DRAW,
@@ -2000,7 +1988,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_FRONT)                   { public boolean run() { return execute_gr_front(); } },
 		new Command(BKW_GR_GETDL)                   { public boolean run() { return execute_gr_getdl(); } },
 		new Command(BKW_GR_NEWDL)                   { public boolean run() { return execute_gr_newdl(); } },
-		new Command(BKW_GR_HIDE)                    { public boolean run() { return execute_gr_hide(true); } },
+		new Command(BKW_GR_HIDE)                    { public boolean run() { return execute_gr_show(GR.VISIBLE.HIDE); } },
 		new Command(BKW_GR_LINE)                    { public boolean run() { return execute_gr_line(); } },
 		new Command(BKW_GR_MOVE)                    { public boolean run() { return execute_gr_move(); } },
 		new Command(BKW_GR_ONGRTOUCH_RESUME)        { public boolean run() { return execute_gr_touch_resume(); } },
@@ -2020,7 +2008,8 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_SET_ANTIALIAS)           { public boolean run() { return execute_gr_antialias(); } },
 		new Command(BKW_GR_SET_PIXELS)              { public boolean run() { return execute_gr_set_pixels(); } },
 		new Command(BKW_GR_SET_STROKE)              { public boolean run() { return execute_gr_stroke_width(); } },
-		new Command(BKW_GR_SHOW)                    { public boolean run() { return execute_gr_hide(false); } },
+		new Command(BKW_GR_SHOW_TOGGLE)             { public boolean run() { return execute_gr_show(GR.VISIBLE.TOGGLE); } },
+		new Command(BKW_GR_SHOW)                    { public boolean run() { return execute_gr_show(GR.VISIBLE.SHOW); } },
 		new Command(BKW_GR_STATUSBAR_SHOW)          { public boolean run() { return execute_statusbar_show(); } },
 		new Command(BKW_GR_STATUSBAR)               { public boolean run() { return execute_gr_statusbar(); } },
 	};
@@ -2057,16 +2046,9 @@ public class Run extends ListActivity {
 	};
 
 	private final Command[] GrGroup_cmd = new Command[] {	// Map GR.group command keywords to their execution functions
-			new Command(BKW_GR_GROUP_NEW)           { public boolean run() { return execute_gr_group_new(); } },
-			new Command(BKW_GR_GROUP_MOVE)          { public boolean run() { return execute_gr_group_move(); } },
-			new Command(BKW_GR_GROUP_HIDE_TOGGLE)   { public boolean run() { return execute_gr_group_hide_toggle(); } },
-			new Command(BKW_GR_GROUP_HIDE)          { public boolean run() { return execute_gr_group_hide(true); } },
-			new Command(BKW_GR_GROUP_SHOW)          { public boolean run() { return execute_gr_group_hide(false); } },
-			new Command(BKW_GR_GROUP_ADDLIST)       { public boolean run() { return execute_gr_group_add_list(); } },
-			new Command(BKW_GR_GROUP_ADD)           { public boolean run() { return execute_gr_group_add(); } },
-			new Command(BKW_GR_GROUP_CLEAR)         { public boolean run() { return execute_gr_group_clear(); } },
-//			new Command(BKW_GR_GROUP_LIST_GET)      { public boolean run() { return execute_gr_group_list_get(); } },
-//			new Command(BKW_GR_GROUP_LIST_SET)      { public boolean run() { return execute_gr_group_list_set(); } },
+		new Command(BKW_GR_GROUP_NEW)               { public boolean run() { return execute_gr_group_new(); } },
+		new Command(BKW_GR_GROUP_ADDLIST)           { public boolean run() { return execute_gr_group_add_list(); } },
+		new Command(BKW_GR_GROUP_ADD)               { public boolean run() { return execute_gr_group_add(); } },
 	};
 
 	private final Command[] GrText_cmd = new Command[] {	// Map GR.text command keywords to their execution functions
@@ -11045,7 +11027,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean execute_gr_group_new() {
-		GR.BDraw b = createGrObj_start(GR.Type.Rect);				// create Graphic Object and get variable
+		GR.BDraw b = createGrObj_start(GR.Type.Group);				// create Graphic Object and get variable
 		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
 		if (!isNext(',')) return false;
@@ -11074,6 +11056,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_gr_group_add() {
 		int obj = getObjectNumber();								// get number of Group Object
 		if (obj < 0) return false;
+
 		ArrayList<Double> list = new ArrayList<Double>();
 		while (isNext(',')) {										// get Graphics Object numbers to add to group
 			double lObj = getObjectNumber();
@@ -11082,8 +11065,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
+		GR.BDraw b = DisplayList.get(obj);							// get the Group Object
+		if (b.type() != GR.Type.Group) { return RunTimeError("Object is not a Group"); }
 		if (list.size() > 0) {
-			GR.BDraw b = DisplayList.get(obj);						// get the Group Object
 			b.list().addAll(list);									// add the new Graphics Objects
 		}
 		return true;
@@ -11098,134 +11082,66 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (listIndex < 0) return false;
 		if (!checkEOL()) return false;
 
+		GR.BDraw b = DisplayList.get(obj);							// get the Group Object
+		if (b.type() != GR.Type.Group) { return RunTimeError("Object is not a Group"); }
+
 		if (!theListsType.get(listIndex).isNumeric()) { return RunTimeError("List is not numeric"); }
 		ArrayList<Double> list = theLists.get(listIndex);
 		if (list.size() > 0) {
-			GR.BDraw b = DisplayList.get(obj);						// get the Group Object
 			b.list().addAll(list);									// add the new Graphics Objects
 		}
 		return true;
 	}
 
-	private boolean execute_gr_group_clear() {
-		int obj = getObjectNumber();
+	private boolean execute_gr_show(GR.VISIBLE show) {
+		int obj = getObjectNumber();								// get the Graphics Object number
 		if (obj < 0) return false;
 		if (!checkEOL()) return false;
 
-		GR.BDraw b = DisplayList.get(obj);							// get the Group Object
-		b.list().clear();											// clear its list
-		return true;
-	}
-
-	private boolean execute_gr_group_list_get() {
-		int obj = getObjectNumber();								// get number of Group Object
-		if (obj < 0) return false;
-		if (!isNext(',')) return false;
-
-		int listIndex = getListArg(VarType.NUM);					// reuse old list or create new one
-		if (listIndex < 0) return false;
-		if (!checkEOL()) return false;
-
-		if (!theListsType.get(listIndex).isNumeric()) { return RunTimeError("List is not numeric"); }
-		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
-		theLists.set(listIndex, b.list());							// put the list in theLists
-		return true;
-	}
-
-	private boolean execute_gr_group_list_set() {
-		int obj = getObjectNumber();								// get number of Group Object
-		if (obj < 0) return false;
-		if (!isNext(',')) return false;
-
-		int listIndex = getListArg();								// get list pointer
-		if (listIndex < 0) return false;
-		if (!checkEOL()) return false;
-
-		if (!theListsType.get(listIndex).isNumeric()) { return RunTimeError("List is not numeric"); }
-		GR.BDraw b = DisplayList.get(obj);							// get the Group Object
-		b.list(listIndex, theLists.get(listIndex));					// put the list in Group Object
-		return true;
-	}
-
-	private boolean execute_gr_hide(boolean hide) {
-		int obj = getObjectNumber((hide ? "Hide" : "Show") + " object out of range");
-		if (obj < 0) return false;
-		if (!checkEOL()) return false;
-
-		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
-		b.hide(hide);												// hide or show it
-		return true;
-	}
-
-	private boolean execute_gr_group_hide(boolean hide) {
-		int obj = getObjectNumber();								// get the Group Object
-		if (obj < 0) return false;
-		if (!checkEOL()) return false;
-
-		int dlSize = DisplayList.size();
-		GR.BDraw b = DisplayList.get(obj);							// get the list of Graphics Objects
-		ArrayList<Double> list = b.list();
-		if (list == null) return true;
-		for (Double d : list) {
-			obj = d.intValue();										// get each index from the list
-			if ((obj < 0) || (obj >= dlSize)) {
-				return RunTimeError((hide ? "Hide" : "Show") + " object out of range");
-			}
-			b = DisplayList.get(obj);								// get each Graphics Object to move
-			b.hide(hide);											// hide or show it
+		GR.BDraw b = DisplayList.get(obj);							// get Graphics Object
+		if (b.type() != GR.Type.Group) {							// if it is not a Group
+			b.show(show);											// hide or show it
+			return true;
 		}
-		return true;
-	}
 
-	private boolean execute_gr_group_hide_toggle() {
-		int obj = getObjectNumber();								// get the Group Object
-		if (obj < 0) return false;
-		if (!checkEOL()) return false;
+		ArrayList<Double> list = b.list();							// Group: get the list of objects to change
+		if (list == null) return true;								// nothing to do
 
 		int dlSize = DisplayList.size();
-		GR.BDraw b = DisplayList.get(obj);							// get the list of Graphics Objects
-		ArrayList<Double> list = b.list();
-		if (list == null) return true;
-		for (Double d : list) {
-			obj = d.intValue();										// get each index from the list
-			if ((obj < 0) || (obj >= dlSize)) {
-				return RunTimeError("Hide object out of range");
-			}
-			b = DisplayList.get(obj);								// get each Graphics Object to move
-			b.hide(b.isVisible());									// hide or show it
-		}
-		return true;
-	}
-
-	private boolean execute_gr_move() {
-		int obj = getObjectNumber();								// get the Graphics Ojbect to move
-		if (obj < 0) return false;
-		int[] dxdy = { 0, 0 };										// default: deltas both zero
-		if (isNext(',') ? !getOptExprs(dxdy)
-						: !checkEOL()) return false;				// get the deltas if there are any
-
-		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
-		b.move(dxdy);
-		return true;
-	}
-
-	private boolean execute_gr_group_move() {
-		int obj = getObjectNumber();								// get the Group Object
-		if (obj < 0) return false;
-		int[] dxdy = { 0, 0 };										// default: deltas both zero
-		if (isNext(',') ? !getOptExprs(dxdy)
-						: !checkEOL()) return false;				// get the deltas if there are any
-
-		int dlSize = DisplayList.size();
-		GR.BDraw b = DisplayList.get(obj);							// get the list of Graphics Objects
-		ArrayList<Double> list = b.list();
-		if (list == null) return true;
 		for (Double d : list) {
 			obj = d.intValue();										// get each index from the list
 			if ((obj < 0) || (obj >= dlSize)) {
 				return RunTimeError("Object out of range");
 			}
-			b = DisplayList.get(obj);								// get each Graphics Object to move
+			b = DisplayList.get(obj);								// get each Graphics Object to change
+			b.show(show);											// show or hide it
+		}
+		return true;
+	}
+
+	private boolean execute_gr_move() {
+		int obj = getObjectNumber();								// get the Graphics Object number
+		if (obj < 0) return false;
+		int[] dxdy = { 0, 0 };										// default: deltas both zero
+		if (isNext(',') ? !getOptExprs(dxdy)						// get the deltas if there are any
+						: !checkEOL()) return false;
+
+		GR.BDraw b = DisplayList.get(obj);							// get Graphics Object
+		if (b.type() != GR.Type.Group) {							// if it is not a Group
+			b.move(dxdy);											// move it
+			return true;
+		}
+
+		ArrayList<Double> list = b.list();							// Group: get the list of objects to change
+		if (list == null) return true;								// nothing to do
+
+		int dlSize = DisplayList.size();
+		for (Double d : list) {
+			obj = d.intValue();										// get each index from the list
+			if ((obj < 0) || (obj >= dlSize)) {
+				return RunTimeError("Object out of range");
+			}
+			b = DisplayList.get(obj);								// get each Graphics Object to change
 			b.move(dxdy);											// move it
 		}
 		return true;
@@ -11755,6 +11671,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		GR.BDraw b = DisplayList.get(obj);							// get the object to change
 		GR.Type type = b.type();
 
+		modify_while:
 		while (isNext(',')) {
 			if (!getStringArg()) return false;						// get the parameter string
 			if (!isNext(',')) return false;
@@ -11773,17 +11690,23 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 
 			// For now, these list validations must be done here and not in BDraw.modify()
-			if (parm.equals("paint")
-					&& ((iVal < 1) || (iVal >= PaintList.size()))) {
-				return RunTimeError ("Invalid Paint object number");
+			if (parm.equals("paint")) {
+				if ((iVal < 1) || (iVal >= PaintList.size())) {
+					return RunTimeError ("Invalid Paint object number");
+				}
+				b.paint(iVal);
 			}
 			switch (type) {
 				case Bitmap:
-					if (parm.equals("bitmap")
-							&& ((iVal < 0) | (iVal >= BitmapList.size()))) {
-						return RunTimeError("Bitmap pointer out of range");
+					if (parm.equals("bitmap")) {
+						if ((iVal < 0) | (iVal >= BitmapList.size())) {
+							return RunTimeError("Bitmap pointer out of range");
+						}
+						b.bitmap(iVal);
+						break modify_while;
 					}
 					break;
+				case Group:
 				case Poly:
 					if (parm.equals("list")) {
 						if ((iVal < 0) | (iVal >= theLists.size())) {
@@ -11793,7 +11716,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						ArrayList<Double> list = theLists.get(iVal);
 						b.list(iVal, list);
 					}
-					break;
+					break modify_while;
 				default:
 					break;
 			}
