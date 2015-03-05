@@ -192,9 +192,9 @@ public class GR extends Activity {
 
 		public void show(VISIBLE show) {
 			switch (show) {
-				case SHOW: mVisible = true;
-				case HIDE: mVisible = false;
-				case TOGGLE: mVisible = !mVisible;
+				case SHOW: mVisible = true; break;
+				case HIDE: mVisible = false; break;
+				case TOGGLE: mVisible = !mVisible; break;
 			}
 		}
 
