@@ -1835,6 +1835,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_MODIFY = "modify";
 	private static final String BKW_GR_MOVE = "move";
 	private static final String BKW_GR_NEWDL = "newdl";
+	private static final String BKW_GR_OBJGROUP = "group";
 	private static final String BKW_GR_ONGRTOUCH_RESUME = "ongrtouch.resume";
 	private static final String BKW_GR_OPEN = "open";
 	private static final String BKW_GR_ORIENTATION = "orientation";
@@ -1888,11 +1889,6 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_GET_TEXTBOUNDS = "textbounds";
 	private static final String BKW_GR_GET_TYPE = "type";
 	private static final String BKW_GR_GET_VALUE = "value";
-	// gr group group
-	private static final String BKW_GR_GROUP_GROUP = "group.";
-	private static final String BKW_GR_GROUP_ADD = "add";
-	private static final String BKW_GR_GROUP_ADDLIST = "add.list";
-	private static final String BKW_GR_GROUP_NEW = "new";
 	// gr text group
 	private static final String BKW_GR_TEXT_GROUP = "text.";
 	private static final String BKW_GR_TEXT_ALIGN = "align";
@@ -1948,9 +1944,6 @@ public class Run extends ListActivity {
 		BKW_GR_GET_GROUP + BKW_GR_GET_TEXTBOUNDS,
 		BKW_GR_GET_GROUP + BKW_GR_GET_TYPE,
 		BKW_GR_GET_GROUP + BKW_GR_GET_VALUE,
-		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_ADDLIST,
-		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_ADD,
-		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_NEW,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_BOLD,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_DRAW,
@@ -1975,7 +1968,6 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_BITMAP_GROUP, CID_GROUP) { public boolean run() { return executeGR_BITMAP(); } },
 		new Command(BKW_GR_CAMERA_GROUP, CID_GROUP) { public boolean run() { return executeGR_CAMERA(); } },
 		new Command(BKW_GR_GET_GROUP, CID_GROUP)    { public boolean run() { return executeGR_GET(); } },
-		new Command(BKW_GR_GROUP_GROUP, CID_GROUP)  { public boolean run() { return executeGR_GROUP(); } },
 		new Command(BKW_GR_TEXT_GROUP, CID_GROUP)   { public boolean run() { return executeGR_TEXT(); } },
 
 		new Command(BKW_GR_ARC)                     { public boolean run() { return execute_gr_arc(); } },
@@ -1991,6 +1983,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_HIDE)                    { public boolean run() { return execute_gr_show(GR.VISIBLE.HIDE); } },
 		new Command(BKW_GR_LINE)                    { public boolean run() { return execute_gr_line(); } },
 		new Command(BKW_GR_MOVE)                    { public boolean run() { return execute_gr_move(); } },
+		new Command(BKW_GR_OBJGROUP)                { public boolean run() { return execute_gr_group(); } },
 		new Command(BKW_GR_ONGRTOUCH_RESUME)        { public boolean run() { return execute_gr_touch_resume(); } },
 		new Command(BKW_GR_OPEN, CID_OPEN)          { public boolean run() { return execute_gr_open(); } },
 		new Command(BKW_GR_ORIENTATION)             { public boolean run() { return execute_gr_orientation(); } },
@@ -2043,12 +2036,6 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_GET_TEXTBOUNDS)          { public boolean run() { return execute_gr_get_textbounds(); } },
 		new Command(BKW_GR_GET_TYPE)                { public boolean run() { return execute_gr_get_type(); } },
 		new Command(BKW_GR_GET_VALUE)               { public boolean run() { return execute_gr_get_value(); } },
-	};
-
-	private final Command[] GrGroup_cmd = new Command[] {	// Map GR.group command keywords to their execution functions
-		new Command(BKW_GR_GROUP_NEW)               { public boolean run() { return execute_gr_group_new(); } },
-		new Command(BKW_GR_GROUP_ADDLIST)           { public boolean run() { return execute_gr_group_add_list(); } },
-		new Command(BKW_GR_GROUP_ADD)               { public boolean run() { return execute_gr_group_add(); } },
 	};
 
 	private final Command[] GrText_cmd = new Command[] {	// Map GR.text command keywords to their execution functions
@@ -10481,10 +10468,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(GrGet_cmd, "Gr.Get");
 	}
 
-	private boolean executeGR_GROUP() {
-		return executeCommand(GrGroup_cmd, "Gr.Group");
-	}
-
 	private boolean executeGR_TEXT() {
 		return executeCommand(GrText_cmd, "Gr.Text");
 	}
@@ -11026,7 +11009,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return obj;
 	}
 
-	private boolean execute_gr_group_new() {
+	private boolean execute_gr_group() {
 		GR.BDraw b = createGrObj_start(GR.Type.Group);				// create Graphic Object and get variable
 		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
@@ -11051,46 +11034,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		b.list(listIndex, list);
 		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
-	}
-
-	private boolean execute_gr_group_add() {
-		int obj = getObjectNumber();								// get number of Group Object
-		if (obj < 0) return false;
-
-		ArrayList<Double> list = new ArrayList<Double>();
-		while (isNext(',')) {										// get Graphics Object numbers to add to group
-			double lObj = getObjectNumber();
-			if (lObj < 0.0) return false;
-			list.add(lObj);
-		}
-		if (!checkEOL()) return false;
-
-		GR.BDraw b = DisplayList.get(obj);							// get the Group Object
-		if (b.type() != GR.Type.Group) { return RunTimeError("Object is not a Group"); }
-		if (list.size() > 0) {
-			b.list().addAll(list);									// add the new Graphics Objects
-		}
-		return true;
-	}
-
-	private boolean execute_gr_group_add_list() {
-		int obj = getObjectNumber();								// get number of Group Object
-		if (obj < 0) return false;
-		if (!isNext(',')) return false;
-
-		int listIndex = getListArg();								// get the source pointer
-		if (listIndex < 0) return false;
-		if (!checkEOL()) return false;
-
-		GR.BDraw b = DisplayList.get(obj);							// get the Group Object
-		if (b.type() != GR.Type.Group) { return RunTimeError("Object is not a Group"); }
-
-		if (!theListsType.get(listIndex).isNumeric()) { return RunTimeError("List is not numeric"); }
-		ArrayList<Double> list = theLists.get(listIndex);
-		if (list.size() > 0) {
-			b.list().addAll(list);									// add the new Graphics Objects
-		}
-		return true;
 	}
 
 	private boolean execute_gr_show(GR.VISIBLE show) {
