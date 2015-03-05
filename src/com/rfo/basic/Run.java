@@ -10729,9 +10729,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		int color = aPaint.getColor();
 		int a = (args[0] != -1) ? args[0] : 255 & (color >>> 24);
-		int r = (args[1] != -1) ? args[1] : 255 & (color >>> 24);
-		int g = (args[2] != -1) ? args[2] : 255 & (color >>> 24);
-		int b = (args[3] != -1) ? args[3] : 255 & (color >>> 24);
+		int r = (args[1] != -1) ? args[1] : 255 & (color >>> 16);
+		int g = (args[2] != -1) ? args[2] : 255 & (color >>> 8);
+		int b = (args[3] != -1) ? args[3] : 255 & (color);
 		int style = args[4];
 
 		Paint tPaint = newPaint(aPaint);							// clone the current paint
@@ -11614,7 +11614,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		GR.BDraw b = DisplayList.get(obj);							// get the object to change
 		GR.Type type = b.type();
 
-		modify_while:
 		while (isNext(',')) {
 			if (!getStringArg()) return false;						// get the parameter string
 			if (!isNext(',')) return false;
@@ -11638,6 +11637,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					return RunTimeError ("Invalid Paint object number");
 				}
 				b.paint(iVal);
+				continue;											// next parameter
 			}
 			switch (type) {
 				case Bitmap:
@@ -11646,7 +11646,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 							return RunTimeError("Bitmap pointer out of range");
 						}
 						b.bitmap(iVal);
-						break modify_while;
+						continue;									// next parameter
 					}
 					break;
 				case Group:
@@ -11658,8 +11658,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						// For now, the list parm must be set this way.
 						ArrayList<Double> list = theLists.get(iVal);
 						b.list(iVal, list);
+						continue;									// next parameter
 					}
-					break modify_while;
 				default:
 					break;
 			}
