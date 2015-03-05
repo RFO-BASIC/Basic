@@ -218,14 +218,7 @@ Gr.get.textbounds <sexp>, left, top, right, bottom, 136
 Gr.get.type <object_ptr_nvar>, <type_svar>, 144
 Gr.get.value <object_ptr_nvar>, <tag_sexp>, {<value_nvar | value_svar>}, 145
 Gr.getDL <dl_array[]> {, <keep_all_objects_lexp> }, 148
-Gr.group.add <object_number_nexp>, <obj1_nexp>..., 0
-Gr.group.add.list <object_number_nexp>, <list_ptr_nexp>, 0
-Gr.group.clear <object_number_nexp>, 0
-Gr.group.hide <object_number_nexp>, 0
-Gr.group.hide.toggle <object_number_nexp>, 0
-Gr.group.move <object_number_nexp>{{, <dx_nexp>}{, <dy_nexp}}
-Gr.group.new <object_number_nvar>, <list_ptr_sexp>, <obj1_nexp>..., 0
-Gr.group.show <object_number_nvar>, 0
+Gr.group <object_number_nvar>, {<list_ptr_sexp>}, <obj_nexp>..., 0
 Gr.hide <object_number_nvar>, 134
 Gr.line <object_number_nvar>, x1, y1, x2, y2, 132
 Gr.modify <object_ptr_nvar>, {<tag_sexp>, <value_nvar | value_svar>}, ..., 145
@@ -250,6 +243,7 @@ Gr.set.antialias <lexp>, 129
 Gr.set.pixels <object_number_nvar>, pixels[{<start>,<length>}] {,x,y}, 133
 Gr.set.stroke <nexp>, 129
 Gr.show <object_number_nvar>, 134
+Gr.show.toggle <object_number_nvar>, 0
 Gr.statusbar {<height_nvar>} {, showing_lvar}, 129
 Gr.statusbar.show <nexp>, 130
 Gr.text.align type, 135
