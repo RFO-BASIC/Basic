@@ -181,7 +181,7 @@ public class GR extends Activity {
 		// For now, range checking for bitmap, paint, and list must be done in Run.
 		public void bitmap(int bitmap) { mBitmap = bitmap; }	// index into the BitmapList
 		public void paint(int paint) { mPaint = paint; }		// index into the PaintList
-		public void alpha(int alpha) { mAlpha = alpha; }
+		public void alpha(int alpha) { mAlpha = alpha & 255; }
 
 		public void xy(int[] xy) { mLeft = mRight = xy[0]; mTop = mBottom = xy[1]; }
 		public void ltrb(int[] ltrb) { mLeft = ltrb[0]; mTop = ltrb[1]; mRight = ltrb[2]; mBottom = ltrb[3]; }
@@ -354,7 +354,7 @@ public class GR extends Activity {
 		public boolean modify(String p, int iVal, float fVal, String text) {
 			// For now, "paint" is handled in Run because of range check.
 			// if (p.equals("paint"))	{ mPaint = iVal; return true; }
-			if (p.equals("alpha"))	{ mAlpha = iVal; return true; }
+			if (p.equals("alpha"))	{ alpha(iVal); return true; }
 			switch (mType) {
 				case Circle:	if (p.equals("radius"))	{ mRadius = iVal; return true; }
 				case Bitmap:	// for now, BitmapList range check must be handled in Run
@@ -426,9 +426,6 @@ public class GR extends Activity {
 		scaleY = 1.0f;
 		Brightness = -1;
 		Rendering = false;
-
-//		Run.GRrunning = true;
-//		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " on create display list =  " + DisplayList);
 	}
 
 	@Override
@@ -461,7 +458,6 @@ public class GR extends Activity {
 	@Override
 	protected void onResume() {
 		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onResume ");
-//		Run.GRrunning = true;
 		Run.background = false;
 		Run.bgStateChange = true;
 		context = this;
@@ -489,11 +485,11 @@ public class GR extends Activity {
     }
     
 	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit a key
-		
+
     	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyUp " + keyCode);
-    	
+
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-        	 
+
             Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " BACK KEY HIT");
 
         	if (Run.OnBackKeyLine != 0){
@@ -548,8 +544,8 @@ public class GR extends Activity {
 	    }
 	    Run.KeyPressed = true;
 	    return true;
-		}
-	
+	}
+
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
         case Run.REQUEST_CONNECT_DEVICE_SECURE:
@@ -583,10 +579,9 @@ public class GR extends Activity {
             Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " VR Done");
         }
     }
-    
+
     public void connectDevice(Intent data, boolean secure) {
-    	
-    	
+
         String address = data.getExtras()
             .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
         Run.btConnectDevice = null;
@@ -599,7 +594,7 @@ public class GR extends Activity {
         }
         // Attempt to connect to the device
     }
-    
+
     public void startsBTConnect() {
     	Intent serverIntent = null;
         serverIntent = new Intent(this, DeviceListActivity.class);
@@ -613,7 +608,6 @@ public class GR extends Activity {
 
     }
 
-    
     public void startVoiceRecognitionActivity() {
         Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " VR Start" + Process.myTid());
 
@@ -623,7 +617,7 @@ public class GR extends Activity {
         intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "BASIC! Speech To Text");
         startActivityForResult(intent, Run.VOICE_RECOGNITION_REQUEST_CODE);
     }
-    
+
     public void enableBT() {
         Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
         startActivityForResult(enableIntent, Run.REQUEST_ENABLE_BT);
@@ -639,7 +633,7 @@ public class GR extends Activity {
 			GraphicsImm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
 		}
 
-		public void setOrientation(int orientation) {	// Convert and apply orientation setting
+		synchronized public void setOrientation(int orientation) {	// Convert and apply orientation setting
 //			Log.v(GR.LOGTAG, "Set orientation " + orientation);
 			switch (orientation) {
 				default:
@@ -671,7 +665,6 @@ public class GR extends Activity {
         	super.onTouchEvent(event);
         	int action = event.getAction();  // Get action type
 
-
         	for (int i = 0; i < event.getPointerCount(); i++){
         		if ( i > 1 ) break;
             	int pid = event.getPointerId(i);
@@ -694,19 +687,19 @@ public class GR extends Activity {
             		Run.NewTouch[pid] = false;
             	}
         	}
-        	
+
         	return true;
         }
-   
-  	  public Paint newPaint(Paint fromPaint){
-		  Typeface tf = fromPaint.getTypeface();
-		  Paint rPaint = new Paint(fromPaint);
-		  rPaint.setTypeface(tf);
-		  return rPaint;
-	  }
+
+		public Paint newPaint(Paint fromPaint) {
+			Typeface tf = fromPaint.getTypeface();
+			Paint rPaint = new Paint(fromPaint);
+			rPaint.setTypeface(tf);
+			return rPaint;
+		}
 
 		@Override
-		public void onDraw(Canvas canvas) {
+		synchronized public void onDraw(Canvas canvas) {
 //			Log.d(LOGTAG,"onDraw " + getWidth() + " x " + getHeight());
 			if (doEnableBT) {							// If this activity is running
 				enableBT();								// Bluetooth must be enabled here
@@ -725,21 +718,24 @@ public class GR extends Activity {
 
 			synchronized (Rendering) {
 				Run.GRrunning = true;
-				if (!Rendering) return;		// If Run.java did not ask to render then don't render
+				if (Run.DisplayList == null) {
+					if (Rendering) {					// lost context?
+						throw new RuntimeException("GR.onDraw: null DisplayList");
+					} else {
+						return;							// nothing to render
+					}
+				}
 			}
 
 			// float scale = getResources().getDisplayMetrics().density;
 			drawView.setDrawingCacheEnabled(true);
 			canvas.scale(scaleX, scaleY);
 
-			if (Run.DisplayList == null){				// If we have lost context then
-				throw new RuntimeException("GR.onDraw: null DisplayList");
-			}
-
-			if (Brightness != -1){
+			if (Brightness != -1) {
 				WindowManager.LayoutParams lp = getWindow().getAttributes();
 				lp.screenBrightness = Brightness;
 				getWindow().setAttributes(lp);
+				Brightness = -1;						// do it only once
 			}
 
 			if (Run.RealDisplayList != null) {

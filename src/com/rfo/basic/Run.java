@@ -108,6 +108,7 @@ import org.apache.http.util.ByteArrayBuffer;
 
 import com.rfo.basic.Basic.TextStyle;
 import com.rfo.basic.GPS.GpsData;
+import com.rfo.basic.GR.Type;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -1830,12 +1831,12 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_COLOR = "color";
 	private static final String BKW_GR_FRONT = "front";
 	private static final String BKW_GR_GETDL = "getdl";
+	private static final String BKW_GR_GROUP_CMD = "group";
 	private static final String BKW_GR_HIDE = "hide";
 	private static final String BKW_GR_LINE = "line";
 	private static final String BKW_GR_MODIFY = "modify";
 	private static final String BKW_GR_MOVE = "move";
 	private static final String BKW_GR_NEWDL = "newdl";
-	private static final String BKW_GR_OBJGROUP = "group";
 	private static final String BKW_GR_ONGRTOUCH_RESUME = "ongrtouch.resume";
 	private static final String BKW_GR_OPEN = "open";
 	private static final String BKW_GR_ORIENTATION = "orientation";
@@ -1889,6 +1890,10 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_GET_TEXTBOUNDS = "textbounds";
 	private static final String BKW_GR_GET_TYPE = "type";
 	private static final String BKW_GR_GET_VALUE = "value";
+	// gr group group
+	private static final String BKW_GR_GROUP_GROUP = "group.";
+	private static final String BKW_GR_GROUP_LIST = "list";
+	// use existing constants for getdl and newdl
 	// gr text group
 	private static final String BKW_GR_TEXT_GROUP = "text.";
 	private static final String BKW_GR_TEXT_ALIGN = "align";
@@ -1904,13 +1909,13 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_TEXT_SETFONT = "setfont";
 
 	private static final String GR_KW[] = {				// Command list for Format
-		BKW_GR_RENDER, BKW_GR_MODIFY,
+		BKW_GR_RENDER, BKW_GR_MODIFY, BKW_GR_MOVE,
 		BKW_GR_BOUNDED_TOUCH2, BKW_GR_BOUNDED_TOUCH,
 		BKW_GR_TOUCH2, BKW_GR_TOUCH,
 		BKW_GR_ARC, BKW_GR_BRIGHTNESS, BKW_GR_CIRCLE,
 		BKW_GR_CLIP, BKW_GR_CLOSE, BKW_GR_CLS,
 		BKW_GR_COLOR, BKW_GR_FRONT,
-		BKW_GR_GETDL, BKW_GR_NEWDL,
+		BKW_GR_GETDL, BKW_GR_NEWDL, BKW_GR_GROUP_CMD,
 		BKW_GR_HIDE, BKW_GR_SHOW_TOGGLE, BKW_GR_SHOW,
 		BKW_GR_LINE, BKW_GR_ONGRTOUCH_RESUME,
 		BKW_GR_OPEN, BKW_GR_ORIENTATION, BKW_GR_OVAL,
@@ -1944,6 +1949,9 @@ public class Run extends ListActivity {
 		BKW_GR_GET_GROUP + BKW_GR_GET_TEXTBOUNDS,
 		BKW_GR_GET_GROUP + BKW_GR_GET_TYPE,
 		BKW_GR_GET_GROUP + BKW_GR_GET_VALUE,
+		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_LIST,
+		BKW_GR_GROUP_GROUP + BKW_GR_GETDL,
+		BKW_GR_GROUP_GROUP + BKW_GR_NEWDL,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_BOLD,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_DRAW,
@@ -1960,6 +1968,7 @@ public class Run extends ListActivity {
 	private final Command[] GR_cmd = new Command[] {	// Map GR command keywords to their execution functions
 		new Command(BKW_GR_RENDER)                  { public boolean run() { return execute_gr_render(); } },
 		new Command(BKW_GR_MODIFY)                  { public boolean run() { return execute_gr_modify(); } },
+		new Command(BKW_GR_MOVE)                    { public boolean run() { return execute_gr_move(); } },
 		new Command(BKW_GR_BOUNDED_TOUCH2)          { public boolean run() { return execute_gr_bound_touch(1); } },
 		new Command(BKW_GR_BOUNDED_TOUCH)           { public boolean run() { return execute_gr_bound_touch(0); } },
 		new Command(BKW_GR_TOUCH2)                  { public boolean run() { return execute_gr_touch(1); } },
@@ -1968,6 +1977,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_BITMAP_GROUP, CID_GROUP) { public boolean run() { return executeGR_BITMAP(); } },
 		new Command(BKW_GR_CAMERA_GROUP, CID_GROUP) { public boolean run() { return executeGR_CAMERA(); } },
 		new Command(BKW_GR_GET_GROUP, CID_GROUP)    { public boolean run() { return executeGR_GET(); } },
+		new Command(BKW_GR_GROUP_GROUP, CID_GROUP)  { public boolean run() { return executeGR_GROUP(); } },
 		new Command(BKW_GR_TEXT_GROUP, CID_GROUP)   { public boolean run() { return executeGR_TEXT(); } },
 
 		new Command(BKW_GR_ARC)                     { public boolean run() { return execute_gr_arc(); } },
@@ -1980,10 +1990,9 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_FRONT)                   { public boolean run() { return execute_gr_front(); } },
 		new Command(BKW_GR_GETDL)                   { public boolean run() { return execute_gr_getdl(); } },
 		new Command(BKW_GR_NEWDL)                   { public boolean run() { return execute_gr_newdl(); } },
+		new Command(BKW_GR_GROUP_CMD)               { public boolean run() { return execute_gr_group_objs(); } },
 		new Command(BKW_GR_HIDE)                    { public boolean run() { return execute_gr_show(GR.VISIBLE.HIDE); } },
 		new Command(BKW_GR_LINE)                    { public boolean run() { return execute_gr_line(); } },
-		new Command(BKW_GR_MOVE)                    { public boolean run() { return execute_gr_move(); } },
-		new Command(BKW_GR_OBJGROUP)                { public boolean run() { return execute_gr_group(); } },
 		new Command(BKW_GR_ONGRTOUCH_RESUME)        { public boolean run() { return execute_gr_touch_resume(); } },
 		new Command(BKW_GR_OPEN, CID_OPEN)          { public boolean run() { return execute_gr_open(); } },
 		new Command(BKW_GR_ORIENTATION)             { public boolean run() { return execute_gr_orientation(); } },
@@ -2036,6 +2045,12 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_GET_TEXTBOUNDS)          { public boolean run() { return execute_gr_get_textbounds(); } },
 		new Command(BKW_GR_GET_TYPE)                { public boolean run() { return execute_gr_get_type(); } },
 		new Command(BKW_GR_GET_VALUE)               { public boolean run() { return execute_gr_get_value(); } },
+	};
+
+	private final Command[] GrGroup_cmd = new Command[] {	// Map GR.group command keywords to their execution functions
+		new Command(BKW_GR_GROUP_LIST)              { public boolean run() { return execute_gr_group_list(); } },
+		new Command(BKW_GR_GETDL)                   { public boolean run() { return execute_gr_group_getdl(); } },
+		new Command(BKW_GR_NEWDL)                   { public boolean run() { return execute_gr_group_newdl(); } },
 	};
 
 	private final Command[] GrText_cmd = new Command[] {	// Map GR.text command keywords to their execution functions
@@ -10468,6 +10483,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return executeCommand(GrGet_cmd, "Gr.Get");
 	}
 
+	private boolean executeGR_GROUP() {
+		return executeCommand(GrGroup_cmd, "Gr.Group");
+	}
+
 	private boolean executeGR_TEXT() {
 		return executeCommand(GrText_cmd, "Gr.Text");
 	}
@@ -10534,8 +10553,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 //		BitmapList.clear();
 //		BitmapList.add(null);										// Set Zero entry as null
 
-		DisplayList.clear();										// Clear the Display List
-		RealDisplayList.clear();
+		if (DisplayList == null)									// Clear the Display List
+		{
+			DisplayList = new ArrayList<GR.BDraw>();
+			RealDisplayList = new ArrayList<Integer>();
+		} else {
+			DisplayList.clear();
+			RealDisplayList.clear();
+		}
 		PaintList.clear();											// and the Paint list
 		PaintList.add(aPaint);										// Add dummy element 0
 
@@ -10576,8 +10601,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		double[] list = new double[RealDisplayList.size() + 1];
 		int count = 0;
-		for (int idx : RealDisplayList) {							// For each object index
-			boolean include = ((idx != 0) &&						// If not index of null object...
+		for (Integer Idx : RealDisplayList) {						// For each object index
+			int idx = (Idx == null) ? 0 : Idx.intValue();
+			boolean include = ((idx != 0) &&						// If not null or index of null object...
 				(keepHiddenObjects ||								// ... and either keeping all objects...
 					DisplayList.get(idx).isVisible()));				// ... or object is not hidden...
 			if (include) { list[count++] = idx; }					// ... then put index in the new list
@@ -10607,7 +10633,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int length = p[1].intValue();
 
 		RealDisplayList.clear();
-		RealDisplayList.add(0);										// First entry points to null bundle
+		RealDisplayList.add(0);										// First entry points to null object
 
 		for (int i = 0; i < length; ++i) {							// Copy the bundle pointers 
 			int id = NumericVarValues.get(base + i).intValue();
@@ -10641,13 +10667,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 								b;
 		mShowStatusBar = (showStatusBar != 0);						// record choice for GR.StatusBar command
 
-		drawintoCanvas = null;
-		DisplayListClear();
-		BitmapListClear();
-		BitmapList.add(null);										// Set Zero entry as null
-
-		aPaint = initPaint(new Paint(), a, r, g, b);				// Create a new Paint object
-		PaintList.add(aPaint);										// Add to the Paint List as element 2
+		DisplayList = null;											// to keep GR.DrawView from trying to draw
 
 		GRclass = new Intent(this, GR.class);						// Set up parameters for the Graphics Activity
 		GRclass.putExtra(GR.EXTRA_SHOW_STATUSBAR, showStatusBar);
@@ -10658,6 +10678,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		GRrunning = false;
 		startActivityForResult(GRclass, BASIC_GENERAL_INTENT);		// Start the Graphics Activity
 		while (!GRrunning) Thread.yield();							// Do not continue until GR signals it is running
+
+		drawintoCanvas = null;
+		DisplayListClear();
+		BitmapListClear();
+		BitmapList.add(null);										// Set Zero entry as null
+
+		aPaint = initPaint(new Paint(), a, r, g, b);				// Create a new Paint object
+		PaintList.add(aPaint);										// Add to the Paint List as element 2
 
 		background = false;
 		GRopen = true;												// Set some more signals
@@ -11009,21 +11037,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return obj;
 	}
 
-	private boolean execute_gr_group() {
+	private boolean execute_gr_group_objs() {						// create a Group from the object numbers on the command line
 		GR.BDraw b = createGrObj_start(GR.Type.Group);				// create Graphic Object and get variable
 		if (b == null) return false;
 		int SaveValueIndex = theValueIndex;
-		if (!isNext(',')) return false;
 
-		int listIndex = -1;
+		ArrayList<Double> list = new ArrayList<Double>();			// get object numbers, put them in a list
 		boolean isComma = isNext(',');
-		if (!isComma) {
-			listIndex = getListArg(VarType.NUM);					// reuse old list or create new one
-			if (listIndex < 0) return false;
-			isComma = isNext(',');
-		}
-		ArrayList<Double> list = (listIndex != -1)	? theLists.get(listIndex)
-													: new ArrayList<Double>();
 		while (isComma) {
 			double lObj = getObjectNumber();
 			if (lObj < 0.0) return false;
@@ -11032,8 +11052,74 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
+		int listIndex = theLists.size();							// store as a new numeric list
+		theLists.add(list);
+		theListsType.add(VarType.NUM);
+
+		b.list(listIndex, list);									// attach the list to the Group Object
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+	}
+
+	private boolean execute_gr_group_list() {						// create a group from a list
+		GR.BDraw b = createGrObj_start(GR.Type.Group);				// create Graphic Object and get variable
+		if (b == null) return false;
+		int SaveValueIndex = theValueIndex;
+
+		if (!isNext(',')) return false;
+		int listIndex = getListArg(VarType.NUM);					// reuse old list or create new one
+		if (listIndex < 0) return false;
+		if (!checkEOL()) return false;
+
+		ArrayList<Double> list = theLists.get(listIndex);			// retrieve the list
 		b.list(listIndex, list);
 		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+	}
+
+	private boolean execute_gr_group_getdl() {						// create a group from the current Display List
+		GR.BDraw b = createGrObj_start(GR.Type.Group);				// create Graphic Object and get variable
+		if (b == null) return false;
+		int SaveValueIndex = theValueIndex;
+
+		boolean keepHiddenObjects = false;
+		if (isNext(',')) {											// Optional "hidden" flag
+			if (!evalNumericExpression()) { return false; }
+			keepHiddenObjects = (EvalNumericExpressionValue != 0.0);
+		}
+		if (!checkEOL()) { return false; }							// line must end with ']'
+
+		ArrayList<Double> list = new ArrayList<Double>();			// copy Display List to a list
+		for (Integer Idx : RealDisplayList) {						// for each object index
+			int idx = (Idx == null) ? 0 : Idx.intValue();
+			boolean include = ((idx != 0) &&						// if not null or index of null object...
+				(keepHiddenObjects ||								// ... and either keeping all objects...
+					DisplayList.get(idx).isVisible()));				// ... or object is not hidden...
+			if (include) { list.add((double)idx);		 }			// ... then put index in the new list
+		}
+
+		int listIndex = theLists.size();							// store as a new numeric list
+		theLists.add(list);
+		theListsType.add(VarType.NUM);
+
+		b.list(listIndex, list);
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+	}
+
+	private boolean execute_gr_group_newdl() {						// set a new display list from a group
+		int obj = getObjectNumber();								// get the Group Object number
+		if (obj < 0) return false;
+		if (!checkEOL()) return false;
+
+		GR.BDraw b = DisplayList.get(obj);							// get Group Object
+		if (b.type() != GR.Type.Group) { return false; }			// make sure it's a group
+		ArrayList<Double> list = b.list();							// retrive the list
+
+		RealDisplayList.clear();
+		RealDisplayList.add(0);										// first entry points to null object
+		for (Double id : list) {									// copy the group list to the Display List
+			RealDisplayList.add(id.intValue());
+		}
+
+		return true;
 	}
 
 	private boolean execute_gr_show(GR.VISIBLE show) {
@@ -11636,6 +11722,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				if ((iVal < 1) || (iVal >= PaintList.size())) {
 					return RunTimeError ("Invalid Paint object number");
 				}
+				if (type == GR.Type.Group) {
+					// Experiment: modify group Paint means modify Paint of all group objects.
+					// TODO: This is very clumsy. Fix it.
+					int dlSize = DisplayList.size();
+					for (Double d : b.list()) {
+						obj = d.intValue();							// get each index from the list
+						if ((obj < 0) || (obj >= dlSize)) {
+							return RunTimeError("Object out of range");
+						}
+						GR.BDraw toMod = DisplayList.get(obj);		// get each Graphics Object to change
+						toMod.paint(iVal);							// modify it
+					}												// note: the group's Paint gets changed, too
+				}
 				b.paint(iVal);
 				continue;											// next parameter
 			}
@@ -11650,6 +11749,22 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					}
 					break;
 				case Group:
+					// Experiment: modify group alpha means modify alpha of all group objects.
+					// TODO: This is very clumsy. Fix it.
+					if (parm.equals("alpha")) {
+						int dlSize = DisplayList.size();
+						for (Double d : b.list()) {
+							obj = d.intValue();						// get each index from the list
+							if ((obj < 0) || (obj >= dlSize)) {
+								return RunTimeError("Object out of range");
+							}
+							GR.BDraw toMod = DisplayList.get(obj);	// get each Graphics Object to change
+							toMod.alpha(iVal);						// modify it
+						}
+						b.alpha(iVal);
+						continue;									// next parameter
+					}
+					/* FALL THROUGH to handle "list" */
 				case Poly:
 					if (parm.equals("list")) {
 						if ((iVal < 0) | (iVal >= theLists.size())) {
