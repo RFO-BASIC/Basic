@@ -267,6 +267,10 @@ public class Run extends ListActivity {
 		public int length() { return mLineLength; }
 		public Command cmd() { return mCommand; }
 		public int offset() { return mKeywordLength; }
+		public void cmd(Command command) {
+			mCommand = command;
+			mKeywordLength = command.name.length();
+		}
 		public void cmd(Command command, int length) {
 			mCommand = command;
 			mKeywordLength = length;
@@ -385,6 +389,22 @@ public class Run extends ListActivity {
 			return (((mStep > 0) && (var > mLimit)) ||		// test limit
 					((mStep <= 0) && (var < mLimit)));		// return true if stepped past limit
 		}
+	} // class ForNext
+
+	// *************************** WhileRepeat class ***************************
+	// Records information about a While/Repeat loop. Objects go on the WhileStack.
+
+	public static class WhileRepeat {
+		private int mLine;								// loop return location
+		private int mArgOffset;							// offset to "while" condition expression
+
+		public WhileRepeat(int line, int offset) {
+			mLine = line;
+			mArgOffset = offset;
+		}
+
+		public int line() { return mLine; }
+		public int offset() { return mArgOffset; }
 	} // class ForNext
 
 	// **************************** FileInfo class ****************************
@@ -904,14 +924,22 @@ public class Run extends ListActivity {
 	private final int CID_STATUS = 6;
 	private final int CID_DATALINK = 7;
 
-	/* Special case: what to do if no command keyword at the beginning of the line */
+	/* Special case: what to do if no command keyword at the beginning of the line. */
 	private final Command CMD_IMPLICIT = new Command("")         { public boolean run() { return executeImplicitCommand(); } };
 	private final Command CMD_IMPL_LET = new Command("")         { public boolean run() { return executeLET(0.0); } };
-	/* Similar special cases where we need a named Command. */
+	/* Label: length is variable, but irrelevant. No command name, so DO NOT put this in a searchable command table. */
+	private final Command CMD_LABEL    = new Command("")         { public boolean run() { return true; } };
+	/* Other special cases where we need a named Command and also a command table entry. */
 	private final Command CMD_CALL     = new Command(BKW_CALL)   { public boolean run() { return executeCALL(); } };
 	private final Command CMD_LET      = new Command(BKW_LET)    { public boolean run() { return executeLET(); } };
 	private final Command CMD_PREINC   = new Command(BKW_PREINC) { public boolean run() { return executeLET(1.0); } };
 	private final Command CMD_PREDEC   = new Command(BKW_PREDEC) { public boolean run() { return executeLET(-1.0); } };
+	private final Command CMD_FOR      = new Command(BKW_FOR)    { public boolean run() { return executeFOR(); } };
+	private final Command CMD_NEXT     = new Command(BKW_NEXT)   { public boolean run() { return executeNEXT(); } };
+	private final Command CMD_WHILE    = new Command(BKW_WHILE)  { public boolean run() { return executeWHILE(); } };
+	private final Command CMD_REPEAT   = new Command(BKW_REPEAT) { public boolean run() { return executeREPEAT(); } };
+	private final Command CMD_DO       = new Command(BKW_DO)     { public boolean run() { return executeDO(); } };
+	private final Command CMD_UNTIL    = new Command(BKW_UNTIL)  { public boolean run() { return executeUNTIL(); } };
 
 	// Map BASIC! command keywords to their execution functions.
 	// The order of this list determines the order of the linear keyword search, which affects performance.
@@ -922,12 +950,12 @@ public class Run extends ListActivity {
 		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
 		new Command(BKW_ELSE,   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
 		new Command(BKW_PRINT)                  { public boolean run() { return executePRINT(); } },
-		new Command(BKW_FOR)                    { public boolean run() { return executeFOR(); } },
-		new Command(BKW_NEXT)                   { public boolean run() { return executeNEXT(); } },
-		new Command(BKW_WHILE)                  { public boolean run() { return executeWHILE(); } },
-		new Command(BKW_REPEAT)                 { public boolean run() { return executeREPEAT(); } },
-		new Command(BKW_DO)                     { public boolean run() { return executeDO(); } },
-		new Command(BKW_UNTIL)                  { public boolean run() { return executeUNTIL(); } },
+		CMD_FOR,
+		CMD_NEXT,
+		CMD_WHILE,
+		CMD_REPEAT,
+		CMD_DO,
+		CMD_UNTIL,
 		new Command(BKW_F_N_BREAK)              { public boolean run() { return executeF_N_BREAK(); } },
 		new Command(BKW_W_R_BREAK)              { public boolean run() { return executeW_R_BREAK(); } },
 		new Command(BKW_D_U_BREAK)              { public boolean run() { return executeD_U_BREAK(); } },
@@ -1374,7 +1402,7 @@ public class Run extends ListActivity {
 
     private Stack<Integer> GosubStack;					// Stack used for Gosub/Return
     private Stack<ForNext> ForNextStack;				// Stack used for For/Next
-    private Stack<Integer> WhileStack;					// Stack used for While/Repeat
+    private Stack<WhileRepeat> WhileStack;				// Stack used for While/Repeat
     private Stack<Integer> DoStack;						// Stack used for Do/Until
 
     private Stack <Integer> IfElseStack;				// Stack for IF-ELSE-ENDIF operations
@@ -1649,9 +1677,10 @@ public class Run extends ListActivity {
 		BKW_READ_DATA, BKW_READ_NEXT, BKW_READ_FROM
 	};
 
+	private final Command CMD_READ_DATA = new Command(BKW_READ_DATA) { public boolean run() { return true; } };
 	private final Command[] read_cmd = new Command[] {	// Map Read command keywords to their execution functions
 										// Do NOT call executeREAD_DATA, that was done in PreScan
-		new Command(BKW_READ_DATA)          { public boolean run() { return true; } },
+		CMD_READ_DATA,
 		new Command(BKW_READ_NEXT)          { public boolean run() { return executeREAD_NEXT(); } },
 		new Command(BKW_READ_FROM)          { public boolean run() { return executeREAD_FROM(); } },
 	};
@@ -3152,7 +3181,7 @@ public class Run extends ListActivity {
         	interruptVarSearchStart = VarSearchStart;	// Save current VarSearchStart
         	VarSearchStart = 0;							// Force to predictable value
         	IfElseStack.push(IEinterrupt);
-        	return false;								//Turn off the interrupt
+        	return false;								// Turn off the interrupt
         }
 
     } // End of Background class
@@ -3375,14 +3404,14 @@ public class Run extends ListActivity {
     ExecutingLineIndex = 0;							// Points to the current line in Basic.lines
     SEisLE = false;									// If a String expression result is a logical expression
 
-    GosubStack = new Stack<Integer>();			// Stack used for Gosub/Return
-    ForNextStack = new Stack<ForNext>();		// Stack used for For/Next
-    WhileStack = new Stack<Integer>() ;			// Stack used for While/Repeat
-    DoStack = new Stack<Integer>();				// Stack used for Do/Until
+    GosubStack = new Stack<Integer>();				// Stack used for Gosub/Return
+    ForNextStack = new Stack<ForNext>();			// Stack used for For/Next
+    WhileStack = new Stack<WhileRepeat>();			// Stack used for While/Repeat
+    DoStack = new Stack<Integer>();					// Stack used for Do/Until
     
-    IfElseStack = new Stack <Integer>() ;			// Stack for IF-ELSE-ENDIF operations
-    GetNumberValue = (double)0;				// Return value from GetNumber()
-    EvalNumericExpressionValue = (double)0;	// Return value from EvalNumericExprssion()
+    IfElseStack = new Stack <Integer>();			// Stack for IF-ELSE-ENDIF operations
+    GetNumberValue = (double)0;						// Return value from GetNumber()
+    EvalNumericExpressionValue = (double)0;			// Return value from EvalNumericExprssion()
 
     output = new ArrayList<String>();				// The output screen text lines
 //    AA = new ArrayAdapter<String>;				// The output screen array adapter
@@ -3763,7 +3792,7 @@ public boolean onTouchEvent(MotionEvent event){
 		}
 
 		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-			if (OnBackKeyLine != 0){
+			if (OnBackKeyLine != 0) {
 				BackKeyHit = true;
 				return true;
 			}
@@ -4047,6 +4076,7 @@ private void getInterruptLabels() {								// check for interrupt labels
 // Must set ExecutingLineBuffer for use by called functions, but it will be reloaded when
 // RunLoop() starts. At present nobody downstream needs to have ExecutingLineIndex set.
 private boolean PreScan() {
+	final String READ_DATA = BKW_READ_GROUP + BKW_READ_DATA;		// "read.data" command keyword
 	for (int LineNumber = 0; LineNumber < Basic.lines.size(); ++LineNumber) {
 		ExecutingLineBuffer = Basic.lines.get(LineNumber);			// scan one line at a time
 		// ExecutingLineIndex = LineNumber;
@@ -4060,11 +4090,14 @@ private boolean PreScan() {
 
 		if (isNext(':')) {											// if word really is a label, store it
 			if (Labels.put(word, LineNumber) != null) { return RunTimeError("Duplicate label name"); }
+			ExecutingLineBuffer.cmd(CMD_LABEL, LineIndex);
 			if (!checkEOL())                   { return false; }
 		}
-		else if (line.startsWith("read.data")) {					// Is not a label. If it is READ.DATA
-			LineIndex = 9;											// set LineIndex just past READ.DATA
+		else if (line.startsWith(READ_DATA)) {						// Is not a label. If it is READ.DATA
+			LineIndex = READ_DATA.length();							// set LineIndex just past READ.DATA
+			ExecutingLineBuffer.cmd(CMD_READ_DATA, LineIndex);		// store the command reference
 			if (!executeREAD_DATA())           { return false; }	// parse and store the data list
+			if (!checkEOL())                   { return false; }
 		}
 	}
 	getInterruptLabels();
@@ -4098,7 +4131,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} else {
 			c = findCommand(BASIC_cmd);					// get the keyword that may start the line
 			if (c == null) { c = CMD_IMPLICIT; }		// no keyword, assume pseudo LET or CALL
-			ExecutingLineBuffer.cmd(c, c.name.length());// remember the command to bypass future searches
+			ExecutingLineBuffer.cmd(c);					// remember the command to bypass future searches
 		}
 
 		if (!IfElseStack.empty()) {						// if inside IF-ELSE-ENDIF
@@ -6592,24 +6625,34 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	}
 
-	private boolean skipTo(String target, String nest, String errMsg) {
+	private boolean skipTo(Command target, Command nest, String errMsg) {
 		int lineNum;
 		int limit = Basic.lines.size();
 		for (lineNum = ExecutingLineIndex + 1; lineNum < limit; ++lineNum) {
-			String line = Basic.lines.get(lineNum).line();
-			if (line.startsWith(target)) {
-				ExecutingLineIndex = lineNum;					// found the target
-				ExecutingLineBuffer = Basic.lines.get(lineNum);
-				LineIndex = target.length();
+			ProgramLine line = Basic.lines.get(lineNum);
+			Command c = line.cmd();
+			if (c == null) {
+				if (line.startsWith(target.name)) {
+					line.cmd(target);						// found the target
+					c = target;
+				} else if (line.startsWith(nest.name)) {
+					line.cmd(nest);							// found nested block of same type
+					c = nest;
+				} else continue;							// next line
+			}
+			if (c == target) {
+				ExecutingLineIndex = lineNum;				// found the target
+				ExecutingLineBuffer = line;
+				LineIndex = line.offset();
 				return true;
 			}
-			if (line.startsWith(nest)) {
-				ExecutingLineIndex = lineNum;					// found nested block of same type
-				if (!skipTo(target, nest, errMsg)) return false;// recursively seek its end
+			if (c == nest) {
+				ExecutingLineIndex = lineNum;				// found nested block of same type
+				if (!skipTo(target, nest, errMsg)) return false;	// recursively seek its end
 				lineNum = ExecutingLineIndex;
 			}
 		}
-		return RunTimeError(errMsg);							// end of program, target not found
+		return RunTimeError(errMsg);						// end of program, target not found
 	}
 
 	private boolean executeFOR() {
@@ -6655,10 +6698,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean SkipToNext() {
-		return skipTo("next", "for", "FOR without NEXT");
+		return skipTo(CMD_NEXT, CMD_FOR, "FOR without NEXT");
 	}
 
-	private boolean executeF_N_CONTINUE(){
+	private boolean executeF_N_CONTINUE() {
 		if (ForNextStack.empty()) {								// If the stack is empty
 			return RunTimeError("No For Loop Active");			// then we have a misplaced CONTINUE
 		}
@@ -6669,7 +6712,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeF_N_BREAK(){
+	private boolean executeF_N_BREAK() {
 		if (ForNextStack.empty()) {								// If the stack is empty
 			return RunTimeError("No For Loop Active");			// then we have a misplaced BREAK
 		}
@@ -6680,7 +6723,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeNEXT(){
+	private boolean executeNEXT() {
 		if (ForNextStack.empty()) {								// If the stack is empty
 			return RunTimeError("NEXT without FOR");			// then we have a misplaced NEXT
 		}
@@ -6697,34 +6740,41 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeWHILE(){
+	private boolean executeWHILE() {
+		int LI = LineIndex;
 		if (!evalNumericExpression()) return false;
 		if (!checkEOL()) return false;
 
-		if (EvalNumericExpressionValue != 0) {
-			WhileStack.push(ExecutingLineIndex - 1);			// true: push line number onto while stack
+		if (EvalNumericExpressionValue != 0.0) {				// true: push line number and index onto while stack
+			WhileStack.push(new WhileRepeat(ExecutingLineIndex, LI));
 			return true;
 		}
 		return SkipToRepeat();									// false: find the REPEAT for the WHILE
 	}
 
 	private boolean SkipToRepeat() {
-		return skipTo("repeat", "while", "WHILE without REPEAT");
+		return skipTo(CMD_REPEAT, CMD_WHILE, "WHILE without REPEAT");
 	}
 
-	private boolean executeW_R_CONTINUE(){
+	private boolean executeW_R_CONTINUE() {
 		if (WhileStack.empty()) {								// If the stack is empty
 			return RunTimeError("No While Loop Active");		// then we have a misplaced CONTINUE
 		}
 		if (!checkEOL()) return false;
 
-		ExecutingLineIndex = WhileStack.pop();					// Pop the line number of the WHILE
+		int saveLine = ExecutingLineIndex;						// save current line number
+		if (!doRepeat()) return false;							// re-execute the WHILE statement
+		if (EvalNumericExpressionValue == 0.0) {
+			ExecutingLineIndex = saveLine;						// false: skip to end of loop
+			if (!SkipToRepeat()) return false;
+			WhileStack.pop();									// and pop the stack
+		}
 		return true;
 	}
 
-	private boolean executeW_R_BREAK(){
+	private boolean executeW_R_BREAK() {
 		if (WhileStack.empty()) {								// If the stack is empty
-			return RunTimeError("No While Statement Active");	// then we have a misplaced BREAK
+			return RunTimeError("No While Loop Active");		// then we have a misplaced BREAK
 		}
 		if (!checkEOL()) return false;
 
@@ -6733,27 +6783,41 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeREPEAT(){
+	private boolean executeREPEAT() {
 		if (WhileStack.empty()) {								// If the stack is empty
 			return RunTimeError("REPEAT without WHILE");		// then we have a misplaced REPEAT
 		}
 		if (!checkEOL()) return false;
 
-		ExecutingLineIndex = WhileStack.pop();					// Pop the line number of the WHILE
+		int repeatLine = ExecutingLineIndex;					// save current line number
+		if (!doRepeat()) return false;							// re-execute the WHILE statement
+		if (EvalNumericExpressionValue == 0.0) {
+			WhileStack.pop();									// false: pop the stack
+			ExecutingLineIndex = repeatLine;					// and exit loop
+		}														// else re-execute loop
 		return true;
+
 	}
 
-	private boolean executeDO(){
+	private boolean doRepeat() {
+		WhileRepeat line = WhileStack.peek();					// re-execute the WHILE statement
+		ExecutingLineIndex = line.line();
+		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
+		LineIndex = line.offset();
+		return (evalNumericExpression());
+	}
+
+	private boolean executeDO() {
 		if (!checkEOL()) return false;
-		DoStack.push(ExecutingLineIndex - 1);					// push line number onto DO stack.
+		DoStack.push(ExecutingLineIndex);						// push line number onto DO stack.
 		return true;
 	}
 
 	private boolean SkipToUntil() {
-		return skipTo("until", "do", "DO without UNTIL");
+		return skipTo(CMD_UNTIL, CMD_DO, "DO without UNTIL");
 	}
 
-	private boolean executeD_U_CONTINUE(){
+	private boolean executeD_U_CONTINUE() {
 		if (DoStack.empty()) {									// If the stack is empty
 			return RunTimeError("No DO loop active");			// then we have a misplaced CONTINUE
 		}
@@ -6763,7 +6827,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return doUntil();
 	}
 
-	private boolean executeD_U_BREAK(){
+	private boolean executeD_U_BREAK() {
 		if (DoStack.empty()) {									// If the stack is empty
 			return RunTimeError("No DO loop active");			// then we have a misplaced BREAK
 		}
@@ -6774,7 +6838,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeUNTIL(){
+	private boolean executeUNTIL() {
 		if (DoStack.empty()) {									// If the stack is empty
 			return RunTimeError("UNTIL without DO");			// then we have a misplaced UNTIL
 		}
@@ -6786,7 +6850,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) return false;
 
 		if (EvalNumericExpressionValue == 0) {
-			ExecutingLineIndex = DoStack.pop();					// false: pop the DO line number and go to it.
+			ExecutingLineIndex = DoStack.peek();				// false: go back to the DO line number
 		} else {
 			DoStack.pop();										// true: pop the stack
 		}
@@ -7106,8 +7170,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 			readData.add(v);									// Add the bundle to the list
 		} while (isNext(','));									// and do again if more data
-
-		return checkEOL();										// Nothing allowed after scan stops
+		return true;
 	}
 
 	private boolean executeREAD_NEXT() {
@@ -7174,13 +7237,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeECHO_ON(){
+	private boolean executeECHO_ON() {
 		if (!checkEOL()) return false;
 		if (Debug) Echo = true;
 		return true;
 	}
 
-	private boolean executeECHO_OFF(){
+	private boolean executeECHO_OFF() {
 		if (!checkEOL()) return false;
 		Echo = false;
 		return true;
@@ -15791,7 +15854,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeCONSOLE_LINE_COUNT(){
+	private boolean executeCONSOLE_LINE_COUNT() {
 		if (!getNVar()) return false;							// variable to hold the number of lines
 		if (!checkEOL()) return false;
 
@@ -15803,7 +15866,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeCONSOLE_LINE_TEXT(){
+	private boolean executeCONSOLE_LINE_TEXT() {
 		if (!evalNumericExpression()) return false;				// line number to read
 		int lineNum = EvalNumericExpressionValue.intValue();
 		if (!isNext(',') || !getSVar() || !checkEOL()) return false; // variable for line content
@@ -15817,7 +15880,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean executeCONSOLE_LINE_TOUCHED(){
+	private boolean executeCONSOLE_LINE_TOUCHED() {
 		if (!getNVar()) return false; 							// variable for last line number touched
 		int lineVarIndex = theValueIndex;
 		int longTouchVarIndex = -1;
