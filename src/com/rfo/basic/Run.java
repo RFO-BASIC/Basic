@@ -436,7 +436,7 @@ public class Run extends ListActivity {
 			mMarkLimit = newLimit;
 		}
 
-		public void eof() { mIsEOF = true; }
+		public void eof(boolean isEOF) { mIsEOF = isEOF; }
 		protected void closed() { mIsClosed = true; }
 		public void position(long pos) { mPosition = pos; }
 		public void incPosition() { ++mPosition; }
@@ -521,7 +521,7 @@ public class Run extends ListActivity {
 						mChannel.truncate(length);				// truncate the file
 						position(length + 1);
 					} catch (IOException e) { ex = e; }
-					eof();
+					eof(true);
 				}
 			}
 			ex = close(flushChannel(ex));
@@ -641,12 +641,6 @@ public class Run extends ListActivity {
 			LineIndex = mLI;
 			PossibleKeyWord = mPKW;
 			VarSearchStart = mVSS;
-			mSVN = VarNames.size();
-			mVI = VarIndex.size();
-			mNVV = NumericVarValues.size();
-			mSVV = StringVarValues.size();
-			mAT = ArrayTable.size();
-
 			trimArray(VarNames, mSVN);
 			trimArray(VarIndex, mVI);
 			trimArray(NumericVarValues, mNVV);
@@ -8373,7 +8367,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			catch (IOException e) { return RunTimeError("I/O error at:"); }
 			if (data == null) {
 				data = "EOF";								// Hit eof, force returned data
-				fInfo.eof();								// and mark fInfo
+				fInfo.eof(true);							// and mark fInfo
 			} else {
 				fInfo.incPosition();						// Not eof, update position in fInfo
 			}
@@ -8477,7 +8471,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		}
 		fInfo.position(pnow);								// update fInfo
-		fInfo.eof();
+		fInfo.eof(eof);
 		return true;
 	}
 
@@ -8735,7 +8729,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (fInfo != null) {							// update fInfo, if there is one
 			fInfo.position(p);
-			fInfo.eof();
+			fInfo.eof(true);
 		}
 		return true;
 	}
@@ -8758,7 +8752,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			try { data = bis.read(); }						// Read a byte
 			catch (Exception e) { return RunTimeError(e); }
 			if (data < 0) {
-				fInfo.eof();								// Hit eof, mark fInfo
+				fInfo.eof(true);							// Hit eof, mark fInfo
 			} else {
 				fInfo.incPosition();						// Not eof, update position in fInfo
 			}
@@ -8791,7 +8785,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			try { count = bis.read(byteArray, 0, byteCount); }	// Read the bytes
 			catch (Exception e) { return RunTimeError(e); }
 			if (count < 0) {
-				fInfo.eof();								// Hit eof, mark fInfo
+				fInfo.eof(true);							// Hit eof, mark fInfo
 			} else {
 				fInfo.incPosition(count);					// Not eof, update position in Bundle
 				buff = new String(byteArray, 0);			// convert bytes to String for user
@@ -8932,7 +8926,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			pnow += skipped;								// Count bytes skipped
 		}
 		fInfo.position(pnow);								// update fInfo
-		fInfo.eof();
+		fInfo.eof(eof);
 		return true;
 	}
 
@@ -14810,7 +14804,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} catch (Exception e) {
 			return RunTimeError(e);
 		} finally {
-			fInfo.eof();													// update fInfo
+			fInfo.eof(true);												// update fInfo
 			fInfo.close(null);	// file is already closed, this cleans up the fInfo
 		}
 		return true;														// Success
@@ -14837,7 +14831,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} catch (Exception e) {
 			return RunTimeError(e);
 		} finally {
-			fInfo.eof();													// update fInfo
+			fInfo.eof(true);												// update fInfo
 			fInfo.close(null);	// file is already closed, this cleans up the fInfo
 		}
 		return true;														// Success

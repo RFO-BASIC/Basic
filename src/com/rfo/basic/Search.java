@@ -166,8 +166,11 @@ public class Search extends Activity {
 					Editor.Saved = false;
 				}
 				if (nextIndex < 0 ) nextIndex = 0;						// If nextIndex indicates done, then set to start
-				if (Index < 0) Index = 0;								// If Index indicates not found, set to start
-				if (nextIndex < Index){
+				if (Index < 0) {
+					Index = Editor.selectionStart;						// If Index indicates not found, restore position before search
+					nextIndex = Editor.selectionEnd;
+				} else
+				if (nextIndex < Index) {
 					int ni = nextIndex;
 					nextIndex = Index;
 					Index = ni;
