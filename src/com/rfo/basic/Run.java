@@ -1829,7 +1829,6 @@ public class Run extends ListActivity {
 	public static ArrayList<Paint> PaintList;
 	public static ArrayList<Bitmap> BitmapList;
 	private Paint aPaint;
-	private Bitmap aBitmap;
 
 	public static boolean GRrunning;
 	public static boolean Touched;
@@ -4178,20 +4177,30 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		SyntaxError = true;
 		writeErrorMsg(msgs[0]);
+		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
 		return false;						// Always return false as convenience for caller
 	}
 
-	private boolean RunTimeError(Exception e) {
-		return RunTimeError("Error: " + e.getMessage());
+	private boolean RunTimeError(Throwable e) {
+		return RunTimeError("Error:", e);
+	}
+
+	private boolean RunTimeError(String prefix, Throwable e) {
+		String msg = (e == null) ? null : e.getMessage();
+		return RunTimeError(prefix + " " + ((msg == null) ? "?" : msg));
 	}
 
 	private void writeErrorMsg(String msg) {		// Write errorMsg, do NOT set SyntaxError
 		errorMsg = msg + "\nLine: " + ExecutingLineBuffer.line();
-		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
+	}
+
+	private void writeErrorMsg(String prefix, Throwable e) {
+		String msg = (e == null) ? null : e.getMessage();
+		writeErrorMsg(prefix + " " + ((msg == null) ? "?" : msg));
 	}
 
 	private void writeErrorMsg(Exception e) {
-		writeErrorMsg("Error: " + e);
+		writeErrorMsg("Error:", e);
 	}
 
 	private boolean nextLine() {				// Move to beginning of next line
@@ -5883,7 +5892,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		try {
 			StringConstant = String.format(locale, fmt, args);
 		} catch (Exception e) {
-			return RunTimeError("Cannot complete FPRINT\n" + e);
+			return RunTimeError("Cannot complete FPRINT\n", e);
 		}
 
 		return true;
@@ -6012,14 +6021,12 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return args.toArray();
 	}
 
-	private boolean Format(String Fstring, double Fvalue){			// Format a number for output
-																					// Do the heart of the FORMAT$ function
+	private boolean Format(String Fstring, double Fvalue) {			// Format a number for output
+																			// Do the heart of the FORMAT$ function
 		BigDecimal B = BigDecimal.valueOf(0.0);
-		try { B = BigDecimal.valueOf(Math.abs(Fvalue));}
-		catch (Exception e) {
-			return RunTimeError(e);
-		}
-		String Vstring =B.toPlainString();											// and convert the big decimal to a string
+		try { B = BigDecimal.valueOf(Math.abs(Fvalue)); }
+		catch (Exception e) { return RunTimeError(e); }
+		String Vstring = B.toPlainString();									// and convert the big decimal to a string
 
 		String FWstring = "";  		// Will hold the whole number part of the pattern (format) string
 		String FDstring = "";  		// Will hold the decimal part of the pattern string
@@ -8455,7 +8462,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (pto < pnow) {
 			try { buf.reset(); }							// back to mark, exception if mark invalid
-			catch (IOException e) { return RunTimeError(e.getMessage()); }
+			catch (IOException e) { return RunTimeError(e); }
 			eof = false;
 			long pmark = fInfo.mark();
 			pnow = (pmark > 0) ? pmark : 1;					// pmark should not be 0
@@ -8877,7 +8884,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkWriteByteAttributes(fInfo)) return false;			// Check runtime errors
 
 		try { fInfo.truncateFile(length); }
-		catch (IOException ex) { return RunTimeError(ex.getMessage()); }
+		catch (IOException ex) { return RunTimeError(ex); }
 		return true;
 	}
 
@@ -8903,7 +8910,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		if (pto < pnow) {
 			try { bis.reset(); }							// back to mark, exception if mark invalid
-			catch (IOException e) { return RunTimeError(e.getMessage()); }
+			catch (IOException e) { return RunTimeError(e); }
 			eof = false;
 			long pmark = fInfo.mark();
 			pnow = (pmark > 0) ? pmark : 1;					// pmark should not be 0
@@ -9780,7 +9787,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			wi = wm.getConnectionInfo();
 		} catch (Exception e) {
 			Log.d(LOGTAG, e.toString());
-			return RunTimeError("Cannot get WifiInfo: " + e.getMessage());
+			return RunTimeError("Cannot get WifiInfo:", e);
 		}
 
 		int arg = 0;
@@ -9842,96 +9849,96 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeTONE() {
 
-		    double duration = 1; 				// seconds
-		    double freqOfTone = 1000; 			// hz
-		    int sampleRate = 8000;				// a number
+		double duration = 1;							// seconds
+		double freqOfTone = 1000;						// hz
+		int sampleRate = 8000;							// a number
 
-		  if (!evalNumericExpression()) return false;			// Get frequency
-		  freqOfTone =  EvalNumericExpressionValue;
+		if (!evalNumericExpression()) return false;		// Get frequency
+		freqOfTone = EvalNumericExpressionValue;
 
-		  if (!isNext(',')) return false;
+		if (!isNext(',')) return false;
 
-		  if (!evalNumericExpression()) return false;			// Get duration
-		  duration= EvalNumericExpressionValue/1000 ;
+		if (!evalNumericExpression()) return false;		// Get duration
+		duration= EvalNumericExpressionValue / 1000;
 
-	    	double dnumSamples = duration * sampleRate;
-	    	dnumSamples = Math.ceil(dnumSamples);
-	    	int numSamples = (int) dnumSamples;
-	    	double sample[] = new double[numSamples];
-	    	ByteBuffer generatedSnd = ByteBuffer.allocate(2 * numSamples);
-	    	generatedSnd.order(ByteOrder.LITTLE_ENDIAN);
-	    	ShortBuffer shortView = generatedSnd.asShortBuffer();
+		double dnumSamples = duration * sampleRate;
+		dnumSamples = Math.ceil(dnumSamples);
+		int numSamples = (int) dnumSamples;
+		double sample[] = new double[numSamples];
+		ByteBuffer generatedSnd = null;
+		try { generatedSnd = ByteBuffer.allocate(2 * numSamples); }
+		catch (OutOfMemoryError oom) { return RunTimeError(oom); }
 
-	    	boolean flagMinBuff = true;							// Optionally skip checking min buffer size
-	    	if (isNext(',')) {
-	    		if (!evalNumericExpression()) return false;
-	    		if (EvalNumericExpressionValue == 0) { flagMinBuff = false; }
-	    	}
+		generatedSnd.order(ByteOrder.LITTLE_ENDIAN);
+		ShortBuffer shortView = generatedSnd.asShortBuffer();
 
-	    	if (flagMinBuff) {
-	    		int minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-	    				AudioFormat.ENCODING_PCM_16BIT);
-	    		if (2 * numSamples < minBuffer) {
-	    			double minDuration = Math.ceil(1000 * (double)minBuffer/(2 * (double)sampleRate));
-	    			RunTimeError("Minimum tone duration for this device: " + (int) minDuration + " milliseconds");
-	    			return false;
-	    		}
-	    	}
+		boolean flagMinBuff = true;						// Optionally skip checking min buffer size
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;
+			if (EvalNumericExpressionValue == 0) { flagMinBuff = false; }
+		}
 
-	    	if (!checkEOL()) return false;				// No more parameters expected
+		if (flagMinBuff) {
+			int minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+							AudioFormat.ENCODING_PCM_16BIT);
+			if (2 * numSamples < minBuffer) {
+				double minDuration = Math.ceil(1000 * (double)minBuffer/(2 * (double)sampleRate));
+				return RunTimeError("Minimum tone duration for this device: " + (int) minDuration + " milliseconds");
+			}
+		}
 
-	        for (int i = 0; i < numSamples; ++i) {		// Fill the sample array
-	        	sample[i] = Math.sin(freqOfTone * 2 * Math.PI * i / (sampleRate));
-	        }
+		if (!checkEOL()) return false;					// No more parameters expected
 
-	        // convert to 16 bit pcm sound array
-	        // assumes the sample buffer is normalised.
-	        int i = 0 ;
+		for (int i = 0; i < numSamples; ++i) {			// Fill the sample array
+			sample[i] = Math.sin(freqOfTone * 2 * Math.PI * i / (sampleRate));
+		}
 
-	        int ramp = numSamples / 20 ;									// Amplitude ramp as a percent of sample count
+		// convert to 16 bit pcm sound array
+		// assumes the sample buffer is normalised.
+		int i = 0;
 
-	        for (i = 0; i< ramp; ++i) {										// Ramp amplitude up to max (to avoid clicks)
-	            short val = (short) (sample[i] * 32767 * i/ramp);
-	            shortView.put(val);
-	        }
+		int ramp = numSamples / 20 ;					// Amplitude ramp as a percent of sample count
 
-	        for ( ; i< numSamples - ramp; ++i) {							// Max amplitude for most of the samples
-	            short val = (short) (sample[i] * 32767);					// scale to maximum amplitude
-	            shortView.put(val);
-	        }
+		for (i = 0; i< ramp; ++i) {						// Ramp amplitude up to max (to avoid clicks)
+			short val = (short) (sample[i] * 32767 * i/ramp);
+			shortView.put(val);
+		}
 
-	        for ( ; i< numSamples; ++i) {									// Ramp amplitude down to 0
-	            short val = (short) (sample[i] * 32767 * (numSamples-i)/ramp);
-	            shortView.put(val);
-	        }
+		for ( ; i< numSamples - ramp; ++i) {			// Max amplitude for most of the samples
+			short val = (short) (sample[i] * 32767);	// scale to maximum amplitude
+			shortView.put(val);
+		}
 
-	        AudioTrack audioTrack = null;									// Get audio track
-	        try {
-	        	audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
-	        			sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-	        			AudioFormat.ENCODING_PCM_16BIT, numSamples*2,
-	        			AudioTrack.MODE_STATIC);
-	        	audioTrack.write(generatedSnd.array(), 0, numSamples*2);	// Load the track
-	        	audioTrack.play();											// Play the track
-	        }
-	        catch (Exception e) {
-	        	return RunTimeError(e);
-	        }
+		for ( ; i< numSamples; ++i) {					// Ramp amplitude down to 0
+			short val = (short) (sample[i] * 32767 * (numSamples-i)/ramp);
+			shortView.put(val);
+		}
 
-	        int x = 0;
-	        do {													// Montior playback to find when done
-	        	x = (audioTrack != null) ? audioTrack.getPlaybackHeadPosition() : numSamples;
-	        } while (x < numSamples);
+		AudioTrack audioTrack = null;					// Get audio track
+		try {
+			audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
+										sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+										AudioFormat.ENCODING_PCM_16BIT, numSamples*2,
+										AudioTrack.MODE_STATIC);
+			audioTrack.write(generatedSnd.array(), 0, numSamples*2);	// Load the track
+			audioTrack.play();											// Play the track
+		}
+		catch (Exception e) { return RunTimeError(e); }
 
-	        if (audioTrack != null) audioTrack.release();			// Track play done. Release track.
+		int x = 0;
+		do {											// Monitor playback to find when done
+			x = (audioTrack != null) ? audioTrack.getPlaybackHeadPosition() : numSamples;
+		} while (x < numSamples);
 
-	        audioTrack = null;										// Release storage
-	        shortView = null;
-	        generatedSnd = null;
-	        sample = null;
-	        System.gc();
+		if (audioTrack != null) audioTrack.release();	// Track play done. Release track.
 
-	        return true;
+		audioTrack = null;								// Release storage
+		shortView = null;
+		generatedSnd = null;
+		sample = null;
+		System.gc();
+
+		return true;
 	}
 
 	private boolean executeVIBRATE() {
@@ -10004,7 +10011,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		return true;
 	}
-											
+
 	private boolean executeHTTP_POST() {
 		if (!getStringArg()) return false;
 		String url = StringConstant;
@@ -10018,32 +10025,31 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (theListsType.get(theListIndex) != VarType.STR) {
 			return RunTimeError("List must be of string type.");
 		}
-	
+
 		List<String> thisList = theLists.get(theListIndex);
 		int r = thisList.size() % 2;
 		if (r != 0) {
 			return RunTimeError("List must have even number of elements");
 		}
 	
-	       List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
-	       for (int i = 0; i <thisList.size(); ++i){
-	    	   nameValuePairs.add(new BasicNameValuePair(thisList.get(i), thisList.get(++i)));
-	       }
-	       
+		List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
+		for (int i = 0; i <thisList.size(); ++i){
+			nameValuePairs.add(new BasicNameValuePair(thisList.get(i), thisList.get(++i)));
+		}
 
-		   String Result = "";
-		   HttpClient client = new DefaultHttpClient();
-		   HttpPost post = new HttpPost(url);
-		   try {
-			   post.setEntity(new UrlEncodedFormEntity(nameValuePairs, HTTP.UTF_8));
-//			   HttpResponse response = client.execute(post);
+		String Result = "";
+		HttpClient client = new DefaultHttpClient();
+		HttpPost post = new HttpPost(url);
+		try {
+			post.setEntity(new UrlEncodedFormEntity(nameValuePairs, HTTP.UTF_8));
+//			HttpResponse response = client.execute(post);
 
-		        ResponseHandler<String> responseHandler=new BasicResponseHandler();
-		         Result = client.execute(post, responseHandler);
+			ResponseHandler<String> responseHandler=new BasicResponseHandler();
+			Result = client.execute(post, responseHandler);
 
-			} catch (Exception e) {
-				return RunTimeError("! " + e);
-			}
+		} catch (Exception e) {
+			return RunTimeError("!", e);
+		}
 
 		if (!isNext(',')) return false;
 		if (!getSVar()) return false;
@@ -10141,7 +10147,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private boolean execute_sql_open(){
+	private boolean execute_sql_open() {
 
 		if (!getNVar()) return false;								// DB Pointer Variable
 		int SaveValueIndex = theValueIndex;							// for the DB table pointer
@@ -10174,51 +10180,44 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-		private boolean execute_sql_close(){
-		
-			if (!getDbPtrArg()) return false;						// get variable for the DB table pointer
-			int i = NumericVarValues.get(theValueIndex).intValue();
-			if (!checkEOL()) return false;
-			
-			SQLiteDatabase db = DataBases.get(i-1);					// get the data base
-		   try {
-			   db.close();											// Try closing it
-		   }catch (Exception e) {
-			   return RunTimeError(e);
-		   }
-		   
-		   NumericVarValues.set(theValueIndex, 0.0);				// Set the pointer to 0 to indicate closed.
-		   
-    	   return true;
-    		  
-    	  }
+	private boolean execute_sql_close() {
 
-		private boolean execute_sql_insert(){
-		
-			if (!getDbPtrArg()) return false;						// get variable for the DB table pointer
-			int i = NumericVarValues.get(theValueIndex).intValue();
-			SQLiteDatabase db = DataBases.get(i-1);					// get the data base
+		if (!getDbPtrArg()) return false;					// get variable for the DB table pointer
+		int i = NumericVarValues.get(theValueIndex).intValue();
+		if (!checkEOL()) return false;
 
-			if (!isNext(',')) return false;
-			if (!getStringArg()) return false;						// Table Name
-			String TableName = StringConstant;
+		SQLiteDatabase db = DataBases.get(i-1);				// get the data base
+		try { db.close(); }									// Try closing it
+		catch (Exception e) { return RunTimeError(e); }
 
-			ContentValues values = new ContentValues();
-			if (!getColumnValuePairs(values)) return false;			// Get column/value pairs from user command
+		NumericVarValues.set(theValueIndex, 0.0);			// Set the pointer to 0 to indicate closed.
 
-			if (!checkEOL()) return false;
+		return true;
+	}
 
-		   try {													// Now insert the pairs into the named table
-	        db.insertOrThrow(TableName, null, values);
-		   }catch (Exception e) {
-			   return RunTimeError(e);
-		   }
+	private boolean execute_sql_insert() {
 
-		   return true;
-   	   }
+		if (!getDbPtrArg()) return false;						// get variable for the DB table pointer
+		int i = NumericVarValues.get(theValueIndex).intValue();
+		SQLiteDatabase db = DataBases.get(i-1);					// get the data base
 
-		private boolean execute_sql_query(){
-		
+		if (!isNext(',')) return false;
+		if (!getStringArg()) return false;						// Table Name
+		String TableName = StringConstant;
+
+		ContentValues values = new ContentValues();
+		if (!getColumnValuePairs(values)) return false;			// Get column/value pairs from user command
+
+		if (!checkEOL()) return false;
+
+		try { db.insertOrThrow(TableName, null, values); }		// Now insert the pairs into the named table
+		catch (Exception e) { return RunTimeError(e); }
+
+		return true;
+	}
+
+	private boolean execute_sql_query() {
+
 			int[] args = new int[2];							// Get the first two args:
 			if (!getVarAndDbPtrArgs(args)) return false;
 			int SaveValueIndex = args[0];						// Query Cursor Variable
@@ -10281,9 +10280,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		   Cursors.add(cursor);												// and save the cursor.
 		   
 		   return true;
-       }
+	}
 
-		private boolean execute_sql_next(){
+	private boolean execute_sql_next() {
 
 			int[] args = new int[2];							// Get the first two args:
 			if (!getVarAndCursorPtrArgs(args)) return false;
@@ -10315,7 +10314,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 			   return true;
 		   }
-       }
+	}
 
 	private boolean execute_sql_query_length(){					// Report the number of rows in a query result
 		int[] args = new int[2];								// Get the first two args:
@@ -11558,14 +11557,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		System.gc();												// garbage collect
 
-		aBitmap = BitmapFactory.decodeStream(bis);					// create bitmap from the input stream
+		Bitmap bitmap = null;
+		try { bitmap = BitmapFactory.decodeStream(bis); }			// create bitmap from the input stream
+		catch (OutOfMemoryError oom) { RunTimeError(oom); }
 
 		try { bis.close(); }
 		catch (Exception e) { return RunTimeError(e); }
 
-		if (aBitmap == null) { return RunTimeError("Bitmap load failed at:"); }
+		if (bitmap == null) { return RunTimeError("Bitmap load failed at:"); }
 
-		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
+		return createBitmap_finish(bitmap, SaveValueIndex);		// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_bitmap_delete() {
@@ -11614,14 +11615,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return RunTimeError("Width and Height must not be zero");
 		}
 
-		try { aBitmap = Bitmap.createScaledBitmap(srcBitmap, Width, Height, parm); }
+		Bitmap bitmap = null;
+		try { bitmap = Bitmap.createScaledBitmap(srcBitmap, Width, Height, parm); }
 		catch (Exception e) { return RunTimeError(e); }
-		if (aBitmap == srcBitmap) {
-			aBitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
+		catch (OutOfMemoryError oom) { return RunTimeError(oom); }
+
+		if (bitmap == srcBitmap) {
+			// Scale 1:1 does not create a new bitmap. Make a copy.
+			bitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
 		}
 
 		System.gc();
-		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
+		return createBitmap_finish(bitmap, SaveValueIndex);		// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_bitmap_size() {
@@ -11661,12 +11666,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (bounds == null) return false;							// error getting values
 		if (!checkEOL()) return false;
 
-		try { aBitmap = Bitmap.createBitmap(srcBitmap, bounds[0], bounds[1], bounds[2], bounds[3]); }
+		Bitmap bitmap = null;
+		try { bitmap = Bitmap.createBitmap(srcBitmap, bounds[0], bounds[1], bounds[2], bounds[3]); }
 		catch (Exception e) { return RunTimeError(e); }
-		if (aBitmap == srcBitmap) {
-			aBitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
+		catch (OutOfMemoryError oom) { return RunTimeError(oom); }
+
+		if (bitmap == srcBitmap) {
+			// "Crop" to full image does not create a new bitmap. Make a copy.
+			bitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
 		}
-		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
+		return createBitmap_finish(bitmap, SaveValueIndex);		// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_bitmap_draw() {
@@ -11709,12 +11718,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
+		Bitmap bitmap = null;
 		try {
-			aBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
-		} catch (Exception e) {
-			return RunTimeError(e);
+			bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
 		}
-		return createBitmap_finish(aBitmap, SaveValueIndex);		// store the bitmap and return its index
+		catch (Exception e) { return RunTimeError(e); }
+		catch (OutOfMemoryError oom) { return RunTimeError(oom.toString()); }
+
+		return createBitmap_finish(bitmap, SaveValueIndex);			// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_rotate_start(){
@@ -12706,43 +12717,38 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		  try {
-	        mRecorder = new MediaRecorder();
-	        switch (source)
-	        {
-	        case 0:
-	        	mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-	        	break;
-	        case 1:
-	        	mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION);
-	        	break;
-	        case 2:
-	        	mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_CALL);
-	        	break;
-	        case 3:
-	        	mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_DOWNLINK);
-	        	break;
-	        case 4:
-	        	mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_UPLINK);
-	        	break;
-	        }
-	        	
-	        mRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-	        mRecorder.setOutputFile(recordFileName);
-	        mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-	        	        
-	        mRecorder.prepare();
-		    mRecorder.start();
+		try {
+			mRecorder = new MediaRecorder();
+			switch (source)
+			{
+			case 0:
+				mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+				break;
+			case 1:
+				mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION);
+				break;
+			case 2:
+				mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_CALL);
+				break;
+			case 3:
+				mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_DOWNLINK);
+				break;
+			case 4:
+				mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_UPLINK);
+				break;
+			}
 
-	        } catch (Exception e) {
-	            RunTimeError("Audio record error: " + e);
-	            return false;
-	        }
+			mRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+			mRecorder.setOutputFile(recordFileName);
+			mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
-	        
-	        return true;
+			mRecorder.prepare();
+			mRecorder.start();
 
-	  }
+		} catch (Exception e) { return RunTimeError("Audio record error: " + e); }
+
+		return true;
+	}
 
 	private boolean execute_audio_record_stop() {
 		return checkEOL() && audioRecordStop();
@@ -12947,7 +12953,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		try {
 			theGPS = new GPS(this, minTime, minDistance);	// start GPS
 		} catch (Exception e) {
-			writeErrorMsg(e.getMessage());
+			writeErrorMsg(e);
 			errorCode = 0.0;
 		}
 		if (statusVarIndex >= 0) {
@@ -13641,7 +13647,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType type;
 		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 
 		if (type == VarType.STR) {									// String type list
 			ArrayList<String> SValues = theLists.get(listIndex);	// Get the string list
@@ -13701,7 +13707,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType type;
 		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 
 		if (type == VarType.NUM) {
 			ArrayList<Double> Values = theLists.get(listIndex);		// Get the numeric list
@@ -13726,7 +13732,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType type;
 		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 
 		if (type == VarType.STR) {									// String type list
 			if (!evalStringExpression()) {
@@ -13768,7 +13774,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType listType;											// Get this list's type
 		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 
 		boolean isListNumeric = listType.isNumeric();
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
@@ -13801,7 +13807,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) return false;
 
 		try { StringVarValues.set(theValueIndex, theListsType.get(listIndex).typeNS()); }
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 		return true;
 	}
 
@@ -13845,7 +13851,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType listType;											// Get this list's type
 		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 
 		if (listType == VarType.STR) {								// String type list
 			if (!getStringArg()) {
@@ -13899,7 +13905,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType listType;											// Get this list's type
 		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 
 		boolean isListNumeric = listType.isNumeric();
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
@@ -14141,7 +14147,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType type;
 		try { type = theStacksType.get(stackIndex).isNS(); }	// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 
 		if (type == VarType.STR) {								// string stack
 			if (!getStringArg()) {
@@ -14171,7 +14177,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType stackType;
 		try { stackType = theStacksType.get(stackIndex).isNS(); }// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 		boolean isStackNumeric = stackType.isNumeric();
 
 		if (!getVar()) return false;
@@ -14200,7 +14206,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		VarType stackType;
 		try { stackType = theStacksType.get(stackIndex).isNS(); }// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 		boolean isStackNumeric = stackType.isNumeric();
 
 		if (!getVar()) return false;
@@ -14225,7 +14231,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!checkEOL()) return false;
 
 		try { StringVarValues.set(theValueIndex, theStacksType.get(stackIndex).typeNS()); }
-		catch (InvalidParameterException ex) { return RunTimeError(ex.getMessage()); }
+		catch (InvalidParameterException ex) { return RunTimeError(ex); }
 		return true;
 	}
 
