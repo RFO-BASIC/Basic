@@ -12101,15 +12101,18 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean execute_screen_to_bitmap() {
 		if (!getNVar()) return false;
 		if (!checkEOL()) return false;
-		boolean retval = true;
+
+		boolean retval = false;
 		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
 		if (b == null) {
 			RunTimeError("Could not capture screen bitmap. Sorry.");
-			retval = false;
 		} else {
 			NumericVarValues.set(theValueIndex, (double)BitmapList.size()); // Save the GR Object index into the var
-			BitmapList.add(b.copy(Bitmap.Config.ARGB_8888 , true));			
-			retval = true;
+			try {
+				BitmapList.add(b.copy(Bitmap.Config.ARGB_8888, true));	// copy the bitmap from the DrawingCache
+				retval = true;										// success
+			}
+			catch (OutOfMemoryError oom) { RunTimeError(oom); }
 			b.recycle();											// clean up bitmap
 			b = null;
 		}
