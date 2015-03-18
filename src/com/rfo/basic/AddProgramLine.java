@@ -51,7 +51,7 @@ public class AddProgramLine {
 		Basic.lines = new ArrayList<Run.ProgramLine>();
 	}
 	
-	public void AddLine(String line) {
+	public void AddLine(String rawLine) {
 		/* Adds one line to Basic.lines
 		 * Each line will have all white space characters removed and all characters
 		 * converted to lower case (unless they are within quotes).
