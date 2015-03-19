@@ -488,7 +488,7 @@ public class Basic extends Activity  {
 			InputStream inputStream = streamFromResource(dir, path);
 			if (inputStream != null) {
         Resources res = BasicContext.getResources();
-        if (res.getBoolean(R.bool.is_encrypted)) {
+        if (res.getBoolean(R.bool.is_encrypted) && dir == SOURCE_DIR) {
           inputStream = DecryptedStream(inputStream);
         }
         buf = new BufferedReader(new InputStreamReader(inputStream));
