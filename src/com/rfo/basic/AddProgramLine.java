@@ -56,7 +56,11 @@ public class AddProgramLine {
 		 * Each line will have all white space characters removed and all characters
 		 * converted to lower case (unless they are within quotes).
 		 */
-		if (line == null) { return; }
+		if (rawLine == null) { return; }
+
+		// Remove html white space when copy-paste program from forum
+		String html_whitespace = new StringBuilder().append(194).append(160).toString();
+		String line = rawLine.replace(html_whitespace, " "); // remove special html white space
 
 		int linelen = line.length();
 		int i = 0;
