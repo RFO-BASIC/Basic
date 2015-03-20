@@ -85,14 +85,8 @@ import java.nio.ShortBuffer;
 import java.nio.channels.FileChannel;
 
 import java.security.InvalidParameterException;
-import java.security.spec.AlgorithmParameterSpec;
-import java.security.spec.KeySpec;
 
 import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.PBEParameterSpec;
 
 import org.apache.commons.net.ftp.*;
 import org.apache.http.NameValuePair;
@@ -108,7 +102,6 @@ import org.apache.http.util.ByteArrayBuffer;
 
 import com.rfo.basic.Basic.TextStyle;
 import com.rfo.basic.GPS.GpsData;
-import com.rfo.basic.GR.Type;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -14328,46 +14321,19 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getSVar()) return false;						// Get the destination Var string
 		if (!checkEOL()) return false;
 
-	    // 8-byte Salt
-	    byte[] salt = {
-	        (byte)0xA9, (byte)0x9B, (byte)0xC8, (byte)0x32,
-	        (byte)0x56, (byte)0x35, (byte)0xE3, (byte)0x03
-	    };
+		String Dest;
+		try {
+			Cipher ecipher = new Basic.Encryption(Cipher.ENCRYPT_MODE, PW).cipher();
+			byte[] utf8 = Src.getBytes("UTF8");				// Encode the string into bytes using utf-8
+			byte[] enc = ecipher.doFinal(utf8);				// Encrypt
 
-	    // Iteration count
-	    int iterationCount = 19;
-	    
-	    Cipher ecipher = null;
-        String Dest = "abc";
+			Dest = Base64.encodeToString(enc, Base64.NO_WRAP);	// Encode bytes to base64 to get a string
+			Dest = Dest.trim();
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
 
-        try {
-            // Create the key
-            KeySpec keySpec = new PBEKeySpec(PW.toCharArray(), salt, iterationCount);
-            SecretKey key = SecretKeyFactory.getInstance(
-                "PBEWithMD5AndDES").generateSecret(keySpec);
-
-            ecipher = Cipher.getInstance(key.getAlgorithm());
-            // Prepare the parameter to the ciphers
-            AlgorithmParameterSpec paramSpec = new PBEParameterSpec(salt, iterationCount);
-
-            // Create the ciphers
-            ecipher.init(Cipher.ENCRYPT_MODE, key, paramSpec);
-            // Encode the string into bytes using utf-8
-            byte[] utf8 = Src.getBytes("UTF8");
-
-            // Encrypt
-            byte[] enc = ecipher.doFinal(utf8);
-
-            // Encode bytes to base64 to get a string
-            Dest = Base64.encodeToString(enc, Base64.NO_WRAP);
-            Dest = Dest.trim();
-            
-        } catch (Exception e) {
-        	return RunTimeError(e);
-        }
-        
-
-        StringVarValues.set(theValueIndex, Dest);    // Put the encrypted string into the user variable
+		StringVarValues.set(theValueIndex, Dest);			// Put the encrypted string into the user variable
 		return true;
 	}
 
@@ -14384,54 +14350,20 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getSVar()) return false;						// Get the destination Var string
 		if (!checkEOL()) return false;
 
-	    // 8-byte Salt
-	    byte[] salt = {
-	        (byte)0xA9, (byte)0x9B, (byte)0xC8, (byte)0x32,
-	        (byte)0x56, (byte)0x35, (byte)0xE3, (byte)0x03
-	    };
+		String Dest = "@@@@";
+		try {
+			Cipher dcipher = new Basic.Encryption(Cipher.DECRYPT_MODE, PW).cipher();
+			byte[] dec = Base64.decode(Src, Base64.DEFAULT);// Decode base64 to get bytes
+			byte[] utf8 = dcipher.doFinal(dec);				// Decrypt
+			Dest = new String(utf8, "UTF8");				// Encode bytes to UTF 8 to get a string
+		} catch (Exception e) {
+			return RunTimeError(e);
+		}
+		if (Dest.equals("@@@@")) {
+			return RunTimeError("Invalid Password at:");
+		}
 
-	    // Iteration count
-	    int iterationCount = 19;
-	    
-	    Cipher dcipher = null;
-        try {
-            // Create the key
-            KeySpec keySpec = new PBEKeySpec(PW.toCharArray(), salt, iterationCount);
-            SecretKey key = SecretKeyFactory.getInstance(
-                "PBEWithMD5AndDES").generateSecret(keySpec);
-            dcipher = Cipher.getInstance(key.getAlgorithm());
-
-            // Prepare the parameter to the ciphers
-            AlgorithmParameterSpec paramSpec = new PBEParameterSpec(salt, iterationCount);
-
-            // Create the ciphers
-            dcipher.init(Cipher.DECRYPT_MODE, key, paramSpec);
-            
-            
-        } 
-        catch (Exception e) {
-        	return RunTimeError(e);
-        }
-        
-        String Dest = "@@@@";
-        
-        try {
-            // Decode base64 to get bytes
-            byte[] dec = Base64.decode(Src, Base64.DEFAULT);
-            // Decrypt
-            byte[] utf8 = dcipher.doFinal(dec);
-            // Encode bytes to UTF 8 to get a string
-            Dest = new String(utf8, "UTF8");
-        } catch (Exception e) {
-        	return RunTimeError(e);
-        }
-
-        if (Dest.equals("@@@@")){
-        	RunTimeError( "Invalid Password at:");
-        	return false;
-        }
-        
-        StringVarValues.set(theValueIndex, Dest);  // Put the decoded string into the user variable.
+		StringVarValues.set(theValueIndex, Dest);  // Put the decoded string into the user variable.
 
 		return true;
 	}

@@ -35,9 +35,6 @@ This file is part of BASIC! for Android
     <!-- The path name for application directories -->
     <string name="app_path">rfo-basic</string>
 
-    <!-- Option to encrypt (obfuscate) the .bas files -->
-    <bool name="is_encrypted">true</bool>
-
     <!-- If building APK, set true -->
     <bool name="is_apk">false</bool>
 
@@ -46,6 +43,9 @@ This file is part of BASIC! for Android
 
     <!-- If APK needs a /database/ directory, set true -->
     <bool name="apk_create_database_dir">true</bool>
+
+    <!-- Option to encrypt (obfuscate) the .bas files in an APK -->
+    <bool name="apk_programs_encrypted">false</bool>
 
     <!-- The BASIC! program resource to build into the APK -->
     <!-- Default path is assets/<app_path>/source/ -->

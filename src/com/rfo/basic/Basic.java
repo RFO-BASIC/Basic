@@ -70,6 +70,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -181,59 +182,6 @@ public class Basic extends Activity  {
 		catch (IOException e) { Log.w(LOGTAG, "getAppFilePath - getCanonicalPath: " + e); }
 		return path;												// unmodified path if getCanonicalPath threw exception
 	}
-
-  public static InputStream DecryptedStream(InputStream inputStream) {
-    // Decrypt program that was encrypted with PBEWithMD5AndDES
-    String PW = BasicContext.getPackageName();
-    // 8-byte Salt
-    byte[] salt = {
-      (byte)0xA9, (byte)0x9B, (byte)0xC8, (byte)0x32,
-      (byte)0x56, (byte)0x35, (byte)0xE3, (byte)0x03
-    };
-    // Iteration count
-    int iterationCount = 19;
-    Cipher dcipher = null;
-    try {
-      // Create the key
-      KeySpec keySpec = new PBEKeySpec(PW.toCharArray(), salt, iterationCount);
-      SecretKey key = SecretKeyFactory.getInstance(
-        "PBEWithMD5AndDES").generateSecret(keySpec);
-      dcipher = Cipher.getInstance(key.getAlgorithm());
-      // Prepare the parameter to the ciphers
-      AlgorithmParameterSpec paramSpec = new PBEParameterSpec(salt, iterationCount);
-      // Create the ciphers
-      dcipher.init(Cipher.DECRYPT_MODE, key, paramSpec);
-    } 
-    catch (Exception e) {
-    Log.e(LOGTAG, "LoadTheProgram - error preparing decryption: " + e);
-    return null;
-    }
-    String Dest = "@@@@";
-    try {
-      // Get bytes from .bas file
-      ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
-      int bufferSize = 1024;
-      byte[] dec = new byte[bufferSize];
-      int len = 0;
-      while ((len = inputStream.read(dec)) != -1) {
-        byteBuffer.write(dec, 0, len);
-      }
-      dec = byteBuffer.toByteArray();
-      // Decrypt
-      byte[] utf8 = dcipher.doFinal(dec);
-      // Encode bytes to UTF 8 to get a string
-      Dest = new String(utf8, "UTF8");
-    } catch (Exception e) {
-      Log.e(LOGTAG, "LoadTheProgram - error during decryption: " + e);
-      return null;
-    }
-    if (Dest.equals("@@@@")){
-      Log.e(LOGTAG, "LoadTheProgram - bad decryption password");
-      return null;
-    }
-    // Change back decrypted string to input stream
-    return new ByteArrayInputStream(Dest.getBytes());
-  }
 
 	private void initVars() {
 		// Some of these may not need initialization; if so I choose to err on the side of caution
@@ -487,12 +435,12 @@ public class Basic extends Activity  {
 		} else if (isAPK) {
 			InputStream inputStream = streamFromResource(dir, path);
 			if (inputStream != null) {
-        Resources res = BasicContext.getResources();
-        if (res.getBoolean(R.bool.is_encrypted) && dir == SOURCE_DIR) {
-          inputStream = DecryptedStream(inputStream);
-        }
-        buf = new BufferedReader(new InputStreamReader(inputStream));
-      }
+				Resources res = BasicContext.getResources();
+				if (res.getBoolean(R.bool.apk_programs_encrypted) && dir == SOURCE_DIR) {
+					inputStream = getDecryptedStream(inputStream);
+				}
+				buf = new BufferedReader(new InputStreamReader(inputStream));
+			}
 		}
 		return buf;
 	}
@@ -508,6 +456,13 @@ public class Basic extends Activity  {
 			if (inputStream != null) { buf = new BufferedInputStream(inputStream); }
 		}
 		return buf;
+	}
+
+	public static InputStream getDecryptedStream(InputStream inputStream) throws Exception {
+		// Decrypt program that was encrypted with PBEWithMD5AndDES
+		String PW = BasicContext.getPackageName();
+		Cipher cipher = new Basic.Encryption(Cipher.DECRYPT_MODE, PW).cipher();
+		return new CipherInputStream(inputStream, cipher);
 	}
 
 	public static int loadProgramFileToList(boolean isFullPath, String path, ArrayList<String> list) {
@@ -867,14 +822,14 @@ public class Basic extends Activity  {
 			AddProgramLine APL = new AddProgramLine();
 			String name = mRes.getString(R.string.my_program);
 			InputStream inputStream = null;
-			try { inputStream = streamFromResource(SOURCE_DIR, name); }
-			catch (Exception ex) {											// If not found, give up
+			try {
+				inputStream = streamFromResource(SOURCE_DIR, name);
+				if ((inputStream != null) && mRes.getBoolean(R.bool.apk_programs_encrypted)) {
+					inputStream = getDecryptedStream(inputStream);
+				}
+			} catch (Exception ex) {										// If not found or can't decrypt, give up
 				Log.e(LOGTAG, "LoadTheProgram - error getting stream from resource: " + ex);
 				return;
-			}
-
-			if (mRes.getBoolean(R.bool.is_encrypted)) {
-        inputStream = DecryptedStream(inputStream);
 			}
 
 			BufferedReader buffreader = new BufferedReader(new InputStreamReader(inputStream));
@@ -1041,4 +996,36 @@ public class Basic extends Activity  {
 		toast.show();
 	}
 
+	public static class Encryption {
+		public static final boolean ENABLE_DECRYPTION = true;
+		public static final boolean NO_DECRYPTION = false;
+
+		private final static byte[] SALT = {							// 8-byte Salt
+			(byte)0xA9, (byte)0x9B, (byte)0xC8, (byte)0x32,
+			(byte)0x56, (byte)0x35, (byte)0xE3, (byte)0x03
+		};
+		private final static int ITERATION_COUNT = 19;
+
+		private Cipher mCipher = null;
+		public Cipher cipher() { return mCipher; }
+
+		public Encryption(int mode, String PW) throws Exception {
+			try {
+				// Create the key
+				KeySpec keySpec = new PBEKeySpec(PW.toCharArray(), SALT, ITERATION_COUNT);
+				SecretKey key = SecretKeyFactory.getInstance(
+						"PBEWithMD5AndDES").generateSecret(keySpec);
+				mCipher = Cipher.getInstance(key.getAlgorithm());
+
+				// Prepare the parameter to the ciphers
+				AlgorithmParameterSpec paramSpec = new PBEParameterSpec(SALT, ITERATION_COUNT);
+
+				// Create the ciphers
+				mCipher.init(mode, key, paramSpec);
+			}
+			catch (Exception e) {
+				throw e;
+			}
+		}
+	} // class Encryption
 }
