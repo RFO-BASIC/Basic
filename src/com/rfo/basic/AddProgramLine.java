@@ -50,23 +50,22 @@ public class AddProgramLine {
 		lineCharCounts.add(0);							// First line starts with a zero char count
 		Basic.lines = new ArrayList<Run.ProgramLine>();
 	}
-	
-	public void AddLine(String rawLine) {
+
+	public void AddLine(String line) {
 		/* Adds one line to Basic.lines
 		 * Each line will have all white space characters removed and all characters
 		 * converted to lower case (unless they are within quotes).
 		 */
-		if (rawLine == null) { return; }
+		if (line == null) { return; }
 
 		// Remove html white space when copy-paste program from forum
-		String html_whitespace = new StringBuilder().append(194).append(160).toString();
-		String line = rawLine.replace(html_whitespace, " "); // remove special html white space
+		String whitespace = " \t\uC2A0";			// space, tab, and UTF-8 encoding of html &nbsp
 
 		int linelen = line.length();
 		int i = 0;
 		for (; i < linelen; ++i) {					// skip leading spaces and tabs
 			char c = line.charAt(i);
-			if (c != ' ' && c != '\t') { break; }
+			if (whitespace.indexOf(c) == -1) { break; }
 		}
 
 		// Look for block comments. All lines between block comments
@@ -91,7 +90,7 @@ public class AddProgramLine {
 				i = doQuotedString(line, i, linelen, sb);
 			} else if (c == '%') {					// if the % character appears,
 				break;								// drop it and the rest of the line
-			} else if (c != ' ' && c != '\t') {		// toss out spaces and tabs
+			} else if (whitespace.indexOf(c) == -1) { // toss out spaces, tabs, and &nbsp
 				c = Character.toLowerCase(c);		// normal character: convert to lower case
 				sb.append(c);						// and add it to the line
 			}
@@ -179,8 +178,9 @@ public class AddProgramLine {
 		String originalFileName = fileName.substring(kw_include.length()).trim();	// use this for error message
 		fileName = originalFileName.replace("\"",  "");								// use this for file operations
 		BufferedReader buf = null;
-		try { buf = Basic.getBufferedReader(Basic.SOURCE_DIR, fileName); }
-		// If getBufferedReader() returns null, it could not open the file or asset.
+		try { buf = Basic.getBufferedReader(Basic.SOURCE_DIR, fileName, Basic.Encryption.ENABLE_DECRYPTION); }
+		// If getBufferedReader() returned null, it could not open the file or asset,
+		// or it could not decrypt an encrypted asset.
 		// It may or may not throw an exception.
 		// TODO: "not_found" may not be a good error message. Can we change it?
 		catch (Exception e) { }

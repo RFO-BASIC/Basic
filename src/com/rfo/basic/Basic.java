@@ -426,7 +426,7 @@ public class Basic extends Activity  {
 		return inputStream;
 	}
 
-	public static BufferedReader getBufferedReader(String dir, String path) throws Exception {
+	public static BufferedReader getBufferedReader(String dir, String path, boolean enableDecryption) throws Exception {
 		File file = new File((dir == null)	? path						// no dir, use path as given
 											: getFilePath(dir, path));	// dir is SOURCE_DIR, DATA_DIR, etc
 		BufferedReader buf = null;
@@ -436,7 +436,7 @@ public class Basic extends Activity  {
 			InputStream inputStream = streamFromResource(dir, path);
 			if (inputStream != null) {
 				Resources res = BasicContext.getResources();
-				if (res.getBoolean(R.bool.apk_programs_encrypted) && dir == SOURCE_DIR) {
+				if (enableDecryption & res.getBoolean(R.bool.apk_programs_encrypted)) {
 					inputStream = getDecryptedStream(inputStream);
 				}
 				buf = new BufferedReader(new InputStreamReader(inputStream));
@@ -475,7 +475,8 @@ public class Basic extends Activity  {
 
 		int size = 0;
 		BufferedReader buf = null;
-		try { buf = getBufferedReader((isFullPath ? null : Basic.SOURCE_DIR), path); }
+		String dir = isFullPath ? null : Basic.SOURCE_DIR;
+		try { buf = getBufferedReader(dir, path, Basic.Encryption.ENABLE_DECRYPTION); }
 		catch (Exception e) { return size; }
 
 		// Read the file. Insert the the lines into the ArrayList.

@@ -8276,7 +8276,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			BufferedReader buf = null;
 			int flen = (int)Math.min(file.length(), Integer.MAX_VALUE);
 			try {
-				buf = Basic.getBufferedReader(Basic.DATA_DIR, fileName);
+				buf = Basic.getBufferedReader(Basic.DATA_DIR, fileName, Basic.Encryption.NO_DECRYPTION);
 				if (buf == null) {
 					writeErrorMsg(fileName + " not found");
 				} else if (buf.markSupported()) {
@@ -14350,7 +14350,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getSVar()) return false;						// Get the destination Var string
 		if (!checkEOL()) return false;
 
-		String Dest = "@@@@";
+		String Dest = "";
 		try {
 			Cipher dcipher = new Basic.Encryption(Cipher.DECRYPT_MODE, PW).cipher();
 			byte[] dec = Base64.decode(Src, Base64.DEFAULT);// Decode base64 to get bytes
@@ -14358,9 +14358,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			Dest = new String(utf8, "UTF8");				// Encode bytes to UTF 8 to get a string
 		} catch (Exception e) {
 			return RunTimeError(e);
-		}
-		if (Dest.equals("@@@@")) {
-			return RunTimeError("Invalid Password at:");
 		}
 
 		StringVarValues.set(theValueIndex, Dest);  // Put the decoded string into the user variable.
