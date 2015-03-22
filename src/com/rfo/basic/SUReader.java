@@ -26,55 +26,57 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-import java.io.DataInputStream;
+import java.io.BufferedReader;
 import java.util.ArrayList;
 
+import android.util.Log;
 
-//A read thread for Superuser read line. Required because read line is blocking.
+
+// A read thread for su or system.read.line. Required because readLine is blocking.
 
 public class SUReader {
-	
-	public DataInputStream theReader;
+	private static final String LOGTAG = "SUReader";
+
+	public BufferedReader theReader;
 	public ReadThread theReadThread;
 	ArrayList<String> theReadBuffer;
 	public boolean stop;
-	
-	public SUReader (DataInputStream stream, ArrayList<String> buffer){ //Constructor
+
+	public SUReader (BufferedReader stream, ArrayList<String> buffer) {
 		theReader = stream;
 		theReadBuffer = buffer;
 	}
-	
-	public synchronized void start(){							// Start
+
+	public synchronized void start() {							// Start
 		theReadThread = new ReadThread();
 		theReadThread.start();
 		stop = false;
 	}
-	
-	public void stop(){											// Stop
+
+	public void stop() {										// Stop
 		stop = true;
 		theReader = null;
 	}
-	
-	private class ReadThread extends Thread {
-		public ReadThread (){
-		}
-		public void run(){										// Do the actual reading
 
+	private class ReadThread extends Thread {
+
+		public void run() {										// Do the actual reading
 			while (!stop) {
-				String input = "";
-				try{
-					if (theReader != null) input = theReader.readLine();
+				String input = null;
+				try {
+					if (theReader != null) { input = theReader.readLine(); }
 				}
-				catch (Exception e){
-				}
+				catch (Exception e) { }
+				if (input == null) { input = ""; }
+
 				if (theReadBuffer != null) {
 					synchronized (theReadBuffer) {
-						if (input == null) { input = ""; }
-						theReadBuffer.add(input);					// Put the input line into the buffer.
+						theReadBuffer.add(input);				// Put the input line into the buffer.
 					}
 				}
 			}
+			Log.i(LOGTAG, "ReadThread stopped");
 		}
 	}
-	
+
 }

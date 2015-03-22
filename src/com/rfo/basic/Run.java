@@ -2685,12 +2685,12 @@ public class Run extends ListActivity {
 		new Command(BKW_SU_CLOSE)               { public boolean run() { return execute_SU_close(); } }
 	};
 
-    private boolean isSU = true;						// set true for SU commands, false for System commands
-    private DataOutputStream SUoutputStream;
-    private DataInputStream SUinputStream;
-    private Process SUprocess;
-    private ArrayList <String> SU_ReadBuffer;
-    private SUReader theSUReader = null;
+	private boolean isSU = true;						// set true for SU commands, false for System commands
+	private DataOutputStream SUoutputStream;
+	private BufferedReader SUinputStream;
+	private Process SUprocess;
+	private ArrayList <String> SU_ReadBuffer;
+	private SUReader theSUReader = null;
 
 	/***************************************  SOUND POOL  ************************************/
 
@@ -3593,15 +3593,15 @@ public class Run extends ListActivity {
     btReadReady = false;
     interruptResume = -1;
     OnBTReadLine = 0;
-    
-    SUoutputStream = null;
-    SUinputStream = null;
-    SUprocess = null;
-    SU_ReadBuffer = null;
-    theSUReader = null;
-    
-    theSoundPool = null ;
-    
+
+	SUoutputStream = null;
+	SUinputStream = null;
+	SUprocess = null;
+	SU_ReadBuffer = null;
+	theSUReader = null;
+
+	theSoundPool = null ;
+
      headsetState = -1;
      headsetName = "NA" ;
      headsetMic = -1;
@@ -15625,7 +15625,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return false;
 	}
 
-	private boolean execute_SU_open(){
+	private boolean execute_SU_open() {
 		if (!checkEOL()) return false;
 		if (SUprocess != null) return true;
 		SU_ReadBuffer = new ArrayList<String>();				// Initialize buffer
@@ -15641,7 +15641,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			SUprocess = (isSU)	? Runtime.getRuntime().exec("su")				// Request Superuser
 								: Runtime.getRuntime().exec("sh", null, dir);	// Open ordinary shell
 			SUoutputStream = new DataOutputStream(SUprocess.getOutputStream());	// Open the output stream
-			SUinputStream = new DataInputStream(SUprocess.getInputStream());	// Open the input stream
+			SUinputStream = new BufferedReader(									// Open the input stream
+								new InputStreamReader(SUprocess.getInputStream()));
 		} catch (Exception e) {
 			return RunTimeError((isSU ? "SU" : "System") + " Exception: " + e);
 		}
@@ -15651,55 +15652,67 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-		    private boolean execute_SU_write(){
-		    	if (!evalStringExpression()) return false;
-		    	if (!checkEOL()) return false;
-		    	String command = StringConstant;
-		    	try {
-		    		SUoutputStream.writeBytes(command + "\n");  // Write the command followed by new line character
-		    		SUoutputStream.flush();
-		    	}
-		    	catch (Exception e){
-					return RunTimeError((isSU ? "SU" : "System") + " Exception: " + e);
-		    	}
+	private boolean execute_SU_write() {
+		if (!evalStringExpression()) return false;
+		if (!checkEOL()) return false;
 
-		    	return true;
-		    }
-		    
-		    private boolean execute_SU_read_ready(){
-		    	if (!getNVar()) return false;
-		    	synchronized (SU_ReadBuffer) {
-		    		NumericVarValues.set(theValueIndex, (double) SU_ReadBuffer.size() ); // Return buffer size
-		    	}
-		    	return true;
-		    }
+		String command = StringConstant;
+		try {
+			SUoutputStream.writeBytes(command + "\n");	// write the command followed by new line character
+			SUoutputStream.flush();
+		}
+		catch (Exception e) {
+			return RunTimeError((isSU ? "SU" : "System") + " Exception: " + e.getMessage());
+		}
+		return true;
+	}
 
-		    private boolean execute_SU_read_line(){
-		        String msg = "";
-		        synchronized (SU_ReadBuffer){
-		        	int index = SU_ReadBuffer.size();
-		        	if (index > 0 ){
-		        		msg = SU_ReadBuffer.get(0);    // Read the first item in the buffer
-		        		SU_ReadBuffer.remove(0);       // and then remove it.
-		        	}
-		        }
-		        if (!getSVar()) return false;
-		        StringVarValues.set(theValueIndex, msg);
-		    	return true;
-		    }
-		    
-		    private boolean execute_SU_close(){
-		    	theSUReader.stop();
-		    	SUprocess.destroy();
+	private boolean execute_SU_read_ready() {
+		if (!getNVar()) return false;
+		if (!checkEOL()) return false;
 
-		    	SUoutputStream = null;
-		    	SUinputStream = null;
-		    	SU_ReadBuffer = null;
-		    	theSUReader = null;
-		    	SUprocess = null;
+		int bfrSize = 0;
+		for (int pass = 0; pass < 3; ++pass) {					// try more than once so tight loops in user programs work better
+			synchronized (SU_ReadBuffer) {
+				bfrSize = SU_ReadBuffer.size();
+			}
+			if (bfrSize != 0) break;							// data available
+			Thread.yield();										// give the SUreader another chance to read
+		}
+		NumericVarValues.set(theValueIndex, (double)bfrSize);	// return buffer size
+		return true;
+	}
 
-		    	return true;
-		    }
+	private boolean execute_SU_read_line() {
+		if (!getSVar()) return false;
+		if (!checkEOL()) return false;
+
+		boolean available;
+		String msg = "";
+		synchronized (SU_ReadBuffer) {
+			available = (SU_ReadBuffer.size() > 0);
+			if (available) {
+				msg = SU_ReadBuffer.remove(0);					// read and remove the first item in the buffer
+			}
+		}
+		if (available) { Thread.yield(); }						// give the SUreader a chance to read again
+
+		StringVarValues.set(theValueIndex, msg);
+		return true;
+	}
+
+	private boolean execute_SU_close() {
+		theSUReader.stop();
+		SUprocess.destroy();
+
+		SUoutputStream = null;
+		SUinputStream = null;
+		SU_ReadBuffer = null;
+		theSUReader = null;
+		SUprocess = null;
+
+		return true;
+	}
 
 	// *************************************** FONT Commands **************************************
 
