@@ -3,7 +3,7 @@
  BASIC! is an implementation of the Basic programming language for
  Android devices.
 
- Copyright (C) 2010 - 2014 Paul Laughton
+ Copyright (C) 2010 - 2015 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -35,6 +35,7 @@ import java.util.Stack;
 import android.app.ListActivity;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -42,12 +43,20 @@ import android.widget.ListView;
 
 public class Format extends ListActivity {
 
+	private static final String LOGTAG = "Run";
+
+	private static final char ASCII_SPACE = ' ';
+	private static final char ASCII_QUOTE = '\"';
+	private static final char BACK_SLASH  = '\\';
+	private static final char LEFT_QUOTE  = '\u201C';
+	private static final char RIGHT_QUOTE = '\u201D';
+	private static final char NBSP        = '\uC2A0';
+
 	private Background theBackground;					// Background task ID
 	private ArrayAdapter<String> AA;
 	private ListView lv ;								// The output screen list view
 	private ArrayList<String> output;					// The output screen text lines
 	private boolean blockQuote = false;
-
 
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event) {
@@ -125,16 +134,17 @@ public class Format extends ListActivity {
 			finish();
 		}
 
-        private void ProcessLine(String theLine) {							// Process one line
-        	int blanks = CountBlanks(theLine, 0);
-        	if (!isBlockQuote(theLine, blanks)) {
-        		String aLine = ProcessKeyWords(theLine, blanks);			// Do the key words
-        		theLine = ProcessIndents(aLine);							// And then do the indents
-        	}
-        	formattedText += theLine + '\n';
-         	publishProgress(".");											// Show one dot for each line processed
-        }
-        
+		private void ProcessLine(String theLine) {					// Process one line
+			int blanks = CountBlanks(theLine, 0);
+			if (!isBlockQuote(theLine, blanks)) {
+				theLine = fixQuotesAndNbsp(theLine);				// Fix quotes, remove &nbsp
+				theLine = ProcessKeyWords(theLine, blanks);			// Do the key words
+				theLine = ProcessIndents(theLine);					// And then do the indents
+			}
+			formattedText += theLine + '\n';
+			publishProgress(".");									// Show one dot for each line processed
+		}
+
         private String ProcessIndents(String aLine) {							// Do the indenting
         	String temp = "";													// temp will contain the indent spaces
         	
@@ -345,38 +355,71 @@ public class Format extends ListActivity {
 
     }
 
-    private static String TestAndReplaceAll(String kw, String lcLine, String actualLine) {				// Find and replace all occurrences
-		int k = lcLine.indexOf(kw, 0);								// Find instance of keyword
-		if (k < 0) { return actualLine; }							// No instances of this keyword - quick exit
+	private static String TestAndReplaceAll(String kw, String lcLine, String actualLine) {	// Find and replace all occurrences
+		int start = 0;
+		int k = lcLine.indexOf(kw, start);							// find instance of keyword
+		if (k < 0) { return actualLine; }							// no instances of this keyword - quick exit
 
 		StringBuilder sb = new StringBuilder(actualLine);
-		String KW = kw.toUpperCase(Locale.US);						// Upper-case version of keyword
+		String KW = kw.toUpperCase(Locale.US);						// upper-case version of keyword
 		int kl = kw.length();
-		int limit = lcLine.length() - (kl - 1);						// Another keyword won't fit after limit
-		int start = 0;
-		do {
-			int q1 = lcLine.indexOf("\"", start);
-			while (q1 >= 0 && q1 < k) {								// Is this instance in a quoted string?
-				int q2 = lcLine.indexOf("\"", q1 + 1);
-				if (q2 < 0) { return sb.toString(); }				// Unterminated string, give up
-				if (k < q2) { k = lcLine.indexOf(kw, q2 + 1); }		// This instance is in quotes, find next
-				q1 = lcLine.indexOf("\"", q2 + 1);
-			}
-			if (k < 0) break;										// Last instance is in quotes
+		int limit = lcLine.length() - (kl - 1);						// another keyword won't fit after limit
+		while (k >= 0) {
+			int q1 = lcLine.indexOf(ASCII_QUOTE, start);
+			int q2 = skipQuotedSubstring(lcLine, q1);
+			if ((q2 >= 0) && (q2 < k)) { start = ++q2; continue; }	// skip quoted substrings before keyword
 
-			char c = (k > 0) ? lcLine.charAt(k - 1) : '\0';			// Is keyword string embedded in a variable name?
-			if (c == '_' || c == '@' || c == '#' || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
-				start = k + kl;										// Not a keyword, skip it
-			} else {
-				sb.replace(k, k + kl, KW);
-				start = k + kl;
+			while ((k >= 0) && ((q2 < 0) || (k < q2))) {			// process all keywords before end of quoted substring
+				if ((q1 < 0) || (k < q1)) {							// keyword is not in the quoted substring
+					boolean embedded = ((k > 0) &&
+						Run.isVarChar(lcLine.charAt(k - 1)));		// embedded if preceding character is part of a variable name
+					if (!embedded) { sb.replace(k, k + kl, KW); }	// replace kw with upper-case copy
+					start = k + kl;									// skip to the end of the keyword
+				} else {
+					start = 1 + ((q2 >= 0) ? q2 : limit);			// skip to the end of the quoted substring
+				}
+				k = (start <= limit) ? lcLine.indexOf(kw, start) : -1;	// look for next instance of keyword
 			}
-
-			if (start > limit) { break; }							// No more instances of this keyword
-			k = lcLine.indexOf(kw, start);							// Find next instance of keyword
-		} while (k >= 0);
+		}
 
 		return sb.toString();
-    }
+	}
+
+	private static String fixQuotesAndNbsp(String line) {
+		if ((line.indexOf(LEFT_QUOTE) == -1) &&
+			(line.indexOf(RIGHT_QUOTE) == -1) &&
+			(line.indexOf(ASCII_QUOTE) == -1) &&
+			(line.indexOf(NBSP) == -1))		{ return line; }		// nothing to do
+
+		StringBuilder sb = new StringBuilder(line);
+		int size = line.length();
+		for (int ci = 0; ci < size; ++ci) {
+			char ch = sb.charAt(ci);
+			if      (ch == LEFT_QUOTE)		{ sb.setCharAt(ci, ASCII_QUOTE); }
+			else if (ch == RIGHT_QUOTE)		{ sb.setCharAt(ci, ASCII_QUOTE); }
+			if (ch == ASCII_QUOTE) {								// start of quoted string
+				ci = skipQuotedSubstring(line, ci);
+				if (ci < 0)					{ break; }				// no closing quote, done
+
+				if      (ch == LEFT_QUOTE)	{ sb.setCharAt(ci, ASCII_QUOTE); }
+				else if (ch == RIGHT_QUOTE)	{ sb.setCharAt(ci, ASCII_QUOTE); }
+			}
+			else if (ch == NBSP)			{ sb.setCharAt(ci, ASCII_SPACE); }
+		}
+		return sb.toString();
+	}
+
+	private static int skipQuotedSubstring(String line, int start) {	// start is index of opening quotation mark
+		if (start < 0) return start;								// no quoted substring
+
+		int size = line.length();
+		int ci = start + 1;											// skip the opening quote
+		for ( ; ci < size; --ci) {
+			ci = line.indexOf('\"', ci);
+			if (ci < 0) break;										// no closing quote, done
+			if (line.charAt(ci - 1) != BACK_SLASH) break;			// closing quote, unless escaped
+		}
+		return ci;													// return index of closing quote, or -1 if none
+	}
 
 }
