@@ -47,7 +47,7 @@ public class Format extends ListActivity {
 
 	private static final char ASCII_SPACE = ' ';
 	private static final char ASCII_QUOTE = '\"';
-	private static final char BACK_SLASH  = '\\';
+	private static final char BACKSLASH   = '\\';
 	private static final char LEFT_QUOTE  = '\u201C';
 	private static final char RIGHT_QUOTE = '\u201D';
 	private static final char NBSP        = '\uC2A0';
@@ -409,17 +409,21 @@ public class Format extends ListActivity {
 		return sb.toString();
 	}
 
+	// Return the index of the closing quotation mark, or -1 if not is found.
 	private static int skipQuotedSubstring(String line, int start) {	// start is index of opening quotation mark
-		if (start < 0) return start;								// no quoted substring
+		if (start < 0) return start;					// no quoted substring
 
 		int size = line.length();
-		int ci = start + 1;											// skip the opening quote
-		for ( ; ci < size; --ci) {
-			ci = line.indexOf('\"', ci);
-			if (ci < 0) break;										// no closing quote, done
-			if (line.charAt(ci - 1) != BACK_SLASH) break;			// closing quote, unless escaped
+		int ci = start + 1;								// skip the opening quote
+		while (ci < size) {
+			int cq = line.indexOf(ASCII_QUOTE, ci);
+			if (cq < 0) { return -1; }					// no closing quote, return -1
+			int cs = line.indexOf(BACKSLASH, ci);
+			if ((cs < 0) || (cs > cq)) { return cq; }	// no backslash before quote, return index of closing quote
+
+			ci = cs + 2;								// skip the escaped character and search again
 		}
-		return ci;													// return index of closing quote, or -1 if none
+		return -1;										// no unescaped closing quote, return -1
 	}
 
 }

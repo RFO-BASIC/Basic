@@ -75,14 +75,16 @@ public class LoadFile extends ListActivity {
 
 				// User has selected a file.
 				// If the selection is a directory, change the program path
-				// and then display the list of files in that directory
-				// otherwise load the selected file
+				// and then display the list of files in that directory.
+				// Otherwise load the selected file and tell the Editor it was loaded.
 
 				if (!SelectionIsFile(position)){
 					Basic.SD_ProgramPath = ProgramPath;
 					updateList();
 				} else {
 					FileLoader(FL1.get(position));
+					setResult(RESULT_OK);
+					finish();									// LoadFile is done
 					return;
 				}
 			}
@@ -135,6 +137,7 @@ public class LoadFile extends ListActivity {
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event) {						// If back key pressed
 		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {	// and the key is the BACK key
+			setResult(RESULT_CANCELED);
 			finish();															// then done with LoadFile
 			return true;
 		}
@@ -202,7 +205,6 @@ public class LoadFile extends ListActivity {
 			throw new RuntimeException("LoadFile: Editor.mText null");
 		}
 		Editor.mText.setText(Editor.DisplayText);
-		finish();													// LoadFile is done
 	}
 
 }

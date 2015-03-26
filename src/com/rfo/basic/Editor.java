@@ -56,9 +56,11 @@ import android.widget.Toast;
 
 
 public class Editor extends Activity {
-    private static final String LOGTAG = "Editor";
-    private static final String CLASSTAG = Editor.class.getSimpleName();
-//  Log.v(LOGTAG, CLASSTAG + " String Var Value =  " + d);
+	private static final String LOGTAG = "Editor";
+	private static final String CLASSTAG = Editor.class.getSimpleName();
+//	Log.v(LOGTAG, CLASSTAG + " String Var Value =  " + d);
+
+	public static final int LOAD_FILE_INTENT = 1;
 
 	public static LinedEditText mText;					// The Editors display text buffers
 
@@ -71,9 +73,9 @@ public class Editor extends Activity {
     public static int InitialProgramSize;				// Used to determine if program has changed
     public static boolean Saved = true;
 
-    private enum Action { NONE, CLEAR, LOAD, RUN, EXIT }
+    private enum Action { NONE, CLEAR, LOAD, RUN, LOAD_RUN, EXIT }
 
-    public static class LinedEditText extends EditText {          // Part of the edit screen setup
+    public static class LinedEditText extends EditText {	// Part of the edit screen setup
         private Rect mRect;
         private Paint mPaint;
         private boolean mLinesSetting;						// Lines preference setting for onDraw
@@ -104,7 +106,7 @@ public class Editor extends Activity {
         }
 
 		@Override
-		protected void  onTextChanged(CharSequence  text, int start, int before, int after) {
+		protected void onTextChanged(CharSequence  text, int start, int before, int after) {
 
 			// Here we are monitoring for text changes so that we can set Saved properly
 
@@ -127,7 +129,7 @@ public class Editor extends Activity {
 					canvas.drawLine(r.left, baseline + 1, r.right, baseline + 1, paint);
 				}
             }
-            sHeight = getHeight();						// This is where we get the screen height
+            sHeight = getHeight();							// This is where we get the screen height
             super.onDraw(canvas);
         }
 
@@ -149,43 +151,43 @@ public class Editor extends Activity {
 			super.onTouchEvent(event);
 
 			if (mVelocityTracker == null) {						// If we do not have velocity tracker
-				mVelocityTracker = VelocityTracker.obtain();   // then get one
+				mVelocityTracker = VelocityTracker.obtain();	// then get one
 			}
-			mVelocityTracker.addMovement(event);               // add this movement to it
+			mVelocityTracker.addMovement(event);				// add this movement to it
 
-			final int action = event.getAction();  // Get action type
-			final float y = event.getY();          // Get the displacement for the action
+			final int action = event.getAction();				// Get action type
+			final float y = event.getY();						// Get the displacement for the action
 
 			switch (action) {
 
-				case MotionEvent.ACTION_DOWN:       	// User has touched screen
-					if (!mScroller.isFinished()) {		// If scrolling, then stop now
+				case MotionEvent.ACTION_DOWN:					// User has touched screen
+					if (!mScroller.isFinished()) {				// If scrolling, then stop now
 						mScroller.abortAnimation();
 					}
-					mLastMotionY = y;                  // Save start (or end) of motion
+					mLastMotionY = y;							// Save start (or end) of motion
 					mScrollY = this.getScrollY();				// Save where we ended up
 					mText.setCursorVisible(true);
 					didMove = false;
 
 					break;
 
-				case MotionEvent.ACTION_MOVE:          // The user finger is on the move
+				case MotionEvent.ACTION_MOVE:					// The user finger is on the move
 					didMove = true;
-					final int deltaY = (int) (mLastMotionY - y);  // Calculate distance moved since last report
-					mLastMotionY = y;							   // Save the start of this motion
+					final int deltaY = (int) (mLastMotionY - y);	// Calculate distance moved since last report
+					mLastMotionY = y;								// Save the start of this motion
 
-					if (deltaY < 0) {								// If user is moving finger up screen
+					if (deltaY < 0) {							// If user is moving finger up screen
 						if (mScrollY > 0) {						// and we are not at top of text
-							int m = mScrollY - mMinScroll;         // Do not go beyond top of text
+							int m = mScrollY - mMinScroll;		// Do not go beyond top of text
 							if (m < 0) {
 								m = mScrollY; 
 							} else m = mMinScroll;
 
-							scrollBy(0, -m);                           // Scroll the text up
+							scrollBy(0, -m);					// Scroll the text up
 						}
 					} else 
-					if (deltaY > 0) {            				 // The user finger is moving up
-						int max = getLineCount() * getLineHeight() - sHeight;   // Set max up value
+					if (deltaY > 0) {							// The user finger is moving up
+						int max = getLineCount() * getLineHeight() - sHeight;	// Set max up value
 						if (mScrollY < max - mMinScroll) {
 							scrollBy(0, mMinScroll);			// Scroll up
 						}
@@ -193,12 +195,12 @@ public class Editor extends Activity {
 //             postInvalidate();
 					break;
 
-				case MotionEvent.ACTION_UP:                       // User finger lifted up
-					final VelocityTracker velocityTracker = mVelocityTracker;  	// Find out how fast the finger was moving
-					velocityTracker.computeCurrentVelocity(mFlingV);          
+				case MotionEvent.ACTION_UP:						// User finger lifted up
+					final VelocityTracker velocityTracker = mVelocityTracker;		// Find out how fast the finger was moving
+					velocityTracker.computeCurrentVelocity(mFlingV);
 					int velocityY = (int) velocityTracker.getYVelocity();
 
-					if (Math.abs(velocityY) > mFlingV) {								// if the velocity exceeds threshold
+					if (Math.abs(velocityY) > mFlingV) {							// if the velocity exceeds threshold
 						int maxY = getLineCount() * getLineHeight() - sHeight;		// calculate maximum Y movement
 						mScroller.fling(0, mScrollY, 0, -velocityY, 0, 0, 0, maxY);	// Do the filng
 					} else {
@@ -210,14 +212,14 @@ public class Editor extends Activity {
 					break;
 			}
 
-			mScrollY = this.getScrollY();				// Save where we ended up
+			mScrollY = this.getScrollY();						// Save where we ended up
 
-			return true ;									// Tell caller we handled the move event
+			return true ;										// Tell caller we handled the move event
 		}
 
 		@Override
 		public void computeScroll() {					// Called while flinging to execute a fling step
-			if (mScroller.computeScrollOffset()) {		 
+			if (mScroller.computeScrollOffset()) {
 				mScrollY = mScroller.getCurrY();		// Get where we should scroll to 
 				scrollTo(0, mScrollY);					// and do it
 				postInvalidate();						// the redraw the sreem
@@ -307,8 +309,8 @@ public class Editor extends Activity {
             eText = theText.substring(selection);
 
             int lineStart = 0;														// Backtrack over the before text
-            if (selection - 2 > 0) {													// to find the start of the last
-            	for (lineStart = selection - 2; lineStart > 0 ; --lineStart) {			// before ENTER line
+            if (selection - 2 > 0) {												// to find the start of the last
+            	for (lineStart = selection - 2; lineStart > 0 ; --lineStart) {		// before ENTER line
             		char c = theText.charAt(lineStart);
             		if (c == '\n') break;
             	}
@@ -317,7 +319,7 @@ public class Editor extends Activity {
 
 
             String blanks = "";														// Now, count the leading blanks
-            for (int i = lineStart; i < selection - 1; ++i) {							// in the last before ENTER line
+            for (int i = lineStart; i < selection - 1; ++i) {						// in the last before ENTER line
             	char c = fText.charAt(i);
             	if (c != ' ')
             		if (c != '\t') break;
@@ -325,7 +327,7 @@ public class Editor extends Activity {
             }
 
             if (fText.endsWith("#")) {												// If formatting of line was wanted
-            	String theLine = fText.substring(lineStart, fText.length() - 1);		// go format the line
+            	String theLine = fText.substring(lineStart, fText.length() - 1);	// go format the line
             	String newLine = Format.ProcessKeyWords(theLine);
             	String aLine = fText.substring(0, lineStart);
             	fText = aLine + newLine;
@@ -365,7 +367,7 @@ public class Editor extends Activity {
 			setRequestedOrientation(SO);
 			mText.setHorizontallyScrolling(!mText.mLineWrapSetting);		// set scrolling per Preferences
 
-        	if (SyntaxErrorDisplacement >= 0 &&
+			if (SyntaxErrorDisplacement >= 0 &&
 				SyntaxErrorDisplacement < AddProgramLine.lineCharCounts.size()) {	// If run ended in error, select error line
 
         		int end = AddProgramLine.lineCharCounts.get(SyntaxErrorDisplacement);  // Get selection end
@@ -391,42 +393,49 @@ public class Editor extends Activity {
 
     }
 
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		// Returning from LoadFile Activity for LOAD_RUN menu selection.
+		if (requestCode == LOAD_FILE_INTENT) {
+			if (resultCode == RESULT_OK) { Run(); }		// user loaded a program; run it
+		}
+	}
+
 /*
-    @Override
-    protected void onPause() {
-        super.onPause();
-        Log.v(LOGTAG, CLASSTAG + " onPause");
-    }
+	@Override
+	protected void onPause() {
+		super.onPause();
+		Log.v(LOGTAG, CLASSTAG + " onPause");
+	}
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.v(LOGTAG, CLASSTAG + " onStart");
-    }
+	@Override
+	protected void onStart() {
+		super.onStart();
+		Log.v(LOGTAG, CLASSTAG + " onStart");
+	}
 
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        Log.v(LOGTAG, CLASSTAG + " onRestart");
-    }
+	@Override
+	protected void onRestart() {
+		super.onRestart();
+		Log.v(LOGTAG, CLASSTAG + " onRestart");
+	}
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        Log.v(LOGTAG, CLASSTAG + " onDestroy");
-    }
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		Log.v(LOGTAG, CLASSTAG + " onDestroy");
+	}
 */
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {     // When the user presses Menu
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {			// When the user presses Menu
 		super.onCreateOptionsMenu(menu);					// set up and display the Menu
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.main, menu);
 		return true;
-    }
+	}
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {   // A menu item has been selected
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {	// A menu item has been selected
 		switch (item.getItemId()) {
 
 			case R.id.run:									// RUN
@@ -439,7 +448,7 @@ public class Editor extends Activity {
 
 			case R.id.load:									// LOAD
 				if (Saved) {								// If current program has been saved
-					loadFile();								// then load the program
+					loadFile(false);						// then load the program, but don't run it
 				} else {
 					doSaveDialog(Action.LOAD);				// Ask if the user wants to save before loading
 				}
@@ -449,25 +458,41 @@ public class Editor extends Activity {
 				saveFile(Action.NONE);						// Just do it; no action needed after Save
 				return true;
 
-			case R.id.search:
+			case R.id.clear:								// CLEAR
+				if (Saved) {									// If program has been saved
+					clearProgram();								// then clear the Editor
+				} else {
+					doSaveDialog(Action.CLEAR);					// Ask if the user wants to save before clearing
+				}
+				return(true);
+
+			case R.id.load_run:								// LOAD and RUN
+				if (Saved) {									// If program has been saved
+					loadFile(true);								// then load the program, and run it
+				} else {
+					doSaveDialog(Action.LOAD_RUN);				// Ask if the user wants to save before clearing
+				}
+				return(true);
+
+			case R.id.search:								// SEARCH
 				if (mText == null) {
 					throw new RuntimeException("Editor: attempt to Search with null mText");
 				}
 				DisplayText = mText.getText().toString();
 				selectionStart = mText.getSelectionStart();
 				selectionEnd = mText.getSelectionEnd();
-				startActivity(new Intent(this, Search.class));			// Start the search activity
+				startActivity(new Intent(this, Search.class));	// Start the search activity
 				return true;
 
-			case R.id.format:
+			case R.id.format:								// FORMAT
 				if (mText == null) {
 					throw new RuntimeException("Editor: attempt to Format with null mText");
 				}
 				doFormatDialog();
 				return true;
 
-			case R.id.delete:									// DELETE
-				DisplayText = mText.getText().toString();				// get the text being displayed
+			case R.id.delete:								// DELETE
+				DisplayText = mText.getText().toString();		// get the text being displayed
 
 				// First make sure that the SD Card is present and can be written to
 
@@ -479,46 +504,38 @@ public class Editor extends Activity {
 					return true;
 				}
 
-				startActivity(new Intent(this, Delete.class));		// Go to Delete Activity
+				startActivity(new Intent(this, Delete.class));	// Go to Delete Activity
 				return true;
 
-			case R.id.clear:								// CLEAR
-				if (Saved) {								// If program has been saved
-					clearProgram();							// then clear the Editor
-				} else {
-					doSaveDialog(Action.CLEAR);				// Ask if the user wants to save before clearing
-				}
-				return(true);
-
-			case R.id.help:											// HELP
-				startActivity(new Intent(this, Help.class));			// Start the help activity
+			case R.id.settings:								// SETTINGS
+				startActivity(new Intent(this, Settings.class));// Start the Setting activity
 				return true;
 
-			case R.id.about:										// ABOUT
-				String version = getString(R.string.version);			// Get the version string
+			case R.id.help:									// COMMANDS
+				startActivity(new Intent(this, Help.class));	// Start the help activity
+				return true;
+
+			case R.id.about:								// ABOUT
+				String version = getString(R.string.version);	// Get the version string
 				String url = "https://bintray.com/rfo-basic/android/RFO-BASIC/v"	// add it to the URL
 							+ version + "/view/read";
-				Intent i = new Intent(Intent.ACTION_VIEW);				// Go to the About web page
+				Intent i = new Intent(Intent.ACTION_VIEW);		// Go to the About web page
 				i.setData(Uri.parse(url));
 				startActivity(i);
 				return true;
 
-			case R.id.settings:										// SETTINGS
-				startActivity(new Intent(this, Settings.class));		// Start the Setting activity
-				return true;
-
-			case R.id.exit:
-				if (Saved) {								// If program has been saved
-					finish();								// exit immediately
+			case R.id.exit:									// EXIT
+				if (Saved) {									// If program has been saved
+					finish();									// exit immediately
 				} else {
-					doSaveDialog(Action.EXIT);				// Ask if the user wants to save before exiting
+					doSaveDialog(Action.EXIT);					// Ask if the user wants to save before exiting
 				}
 				return(true);
 
 			default:
 				return true;
 		}
-    }
+	}
 
 	private void doSaveDialog(final Action afterSave) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -545,7 +562,7 @@ public class Editor extends Activity {
 
 		AlertDialog alert = builder.create();
 		alert.show();
-    }
+ 	}
 
 
 	private void doFormatDialog() {
@@ -577,7 +594,7 @@ public class Editor extends Activity {
 		alert.show();
 	}
 
-	private void  Run() {
+	private void Run() {
 
 		/* Run a program
 		 * Create a new Basic.lines object and then copy
@@ -602,15 +619,14 @@ public class Editor extends Activity {
 		startActivity(Basic.theProgramRunner);
 	}
 
-
-
-	private void loadFile() {
+	private void loadFile(boolean doRun) {
 		if (!Basic.checkSDCARD('r')) {							// Make sure SD card is present. If not, popup
 			CharSequence text = "External storage not available.";	// some toast and do not go to LoadFile
 			Toast.makeText(this, text, Toast.LENGTH_LONG).show();
 		} else {												// If the SD Card can be read
-			Intent intent = new  Intent(this, LoadFile.class);	// Go to the LoadFile Activity
-			startActivity(intent);								// Now go Load
+			Intent intent = new  Intent(this, LoadFile.class);
+			// Go to the LoadFile Activity. If doRun, catch returned intent and run the loaded program.
+			startActivityForResult(intent, doRun ? LOAD_FILE_INTENT : -1);
 		}
 	}
 
@@ -768,10 +784,13 @@ public class Editor extends Activity {
 		case NONE:											// No action needed
 			break;
 		case LOAD:											// if diverted from Doing Load
-			loadFile();										// then go do load
+			loadFile(false);								// then go do load, but don't run
 			break;
 		case RUN:											// if diverted from Doing Run
 			Run();											// then go do run
+			break;
+		case LOAD_RUN:										// if diverted from Doing LOAD_RUN
+			loadFile(true);									// then go do load, then run
 			break;
 		case CLEAR:											// if diverted from Doing Clear
 			clearProgram();									// then go do clear
@@ -796,7 +815,7 @@ public class Editor extends Activity {
     					  "Restart BASIC! Now\n" +
     					  "or Wait and restart BASIC! yourself.")					
     	.setCancelable(false)												// Do not allow user BACK key out of dialog
-    	
+
 // The click listeners ****************************
     	.setPositiveButton("Restart Now", new DialogInterface.OnClickListener() {
 
@@ -820,10 +839,8 @@ public class Editor extends Activity {
     	AlertDialog alert = alt_bld.create();								// Display the dialog
     	alert.setTitle("Base Drive Changed");
     	alert.show();
-    
-    
     }
-    
+
     private void waitMessage(){
     	AlertDialog.Builder alt_bld = new AlertDialog.Builder(this);		// using a dialog box.
 
@@ -847,11 +864,6 @@ public class Editor extends Activity {
     	AlertDialog alert = alt_bld.create();								// Display the dialog
     	alert.setTitle("Restart Later");
     	alert.show();
-    
-
-    	
     }
 
 }
-    
- 
