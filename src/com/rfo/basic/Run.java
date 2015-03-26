@@ -40,7 +40,6 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.Closeable;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.Flushable;
@@ -810,6 +809,7 @@ public class Run extends ListActivity {
 	private static final String BKW_PREDEC = "--";				// omit from BasicKeyWords[]
 	private static final String BKW_PREINC = "++";				// omit from BasicKeyWords[]
 	private static final String BKW_PRINT = "print";
+	private static final String BKW_PRINT_SHORTCUT = "?";
 	private static final String BKW_READ_GROUP = "read.";
 	private static final String BKW_REM = "rem";
 	private static final String BKW_RENAME = "rename";			// same as "file.rename"
@@ -852,6 +852,7 @@ public class Run extends ListActivity {
 	// This array lists all of the top-level keywords so Format can find them.
 	// The order of this list determines the order Format uses for its linear search.
 	// BKW_PREDEC and BKW_PREINC are omitted as they look like regular expressions (!).
+	// BKW_PRINT_SHORTCUT, too.
 	// This array is also used by DEBUG.COMMANDS.
 	public static final String BasicKeyWords[] = {
 		BKW_LET, BKW_PRINT,
@@ -937,6 +938,7 @@ public class Run extends ListActivity {
 		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
 		new Command(BKW_ELSE,   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
 		new Command(BKW_PRINT)                  { public boolean run() { return executePRINT(); } },
+		new Command(BKW_PRINT_SHORTCUT)         { public boolean run() { return executePRINT(); } },
 		CMD_FOR,
 		CMD_NEXT,
 		CMD_WHILE,
@@ -4015,7 +4017,7 @@ public void onLowMemory() {
 
 // The methods starting here are the core code for running a Basic program
 
-private void trimArray(ArrayList Array, int start) {
+private static void trimArray(ArrayList Array, int start) {
 	int last = Array.size()-1;
 	int k = last;
 	while (k >= start) {
@@ -4024,23 +4026,31 @@ private void trimArray(ArrayList Array, int start) {
 	}
 }
 
+private static boolean isVarStartChar(char c) {
+	return ((c >= 'a' && c <= 'z') || c == '_' || c == '@' || c == '#');
+}
+
+public static boolean isVarChar(char c) {
+	return (isVarStartChar(c) || (c >= '0' && c <= '9'));
+}
+
 // Look for a BASIC! word: [_@#\l]?[_@#\l\d]*
-private String getWord(String line, int start, boolean stopOnPossibleKeyword) {
+public static String getWord(String line, int start, String possibleKeyword) {
 	int max = line.length();
 	if (start >= max || start < 0) { return ""; }
+
 	int li = start;
 	char c = line.charAt(li);
-	if ((c >= 'a' && c <= 'z') || c == '_' || c == '@' || c == '#') { // if first character matches
+	if (isVarStartChar(c)) {										// if first character matches
 		do {														// there's a word
 			if (++li >= max) break; 								// done if no more characters
 
-			if (stopOnPossibleKeyword &&							// caller wants to stop at keyword
-				line.startsWith(PossibleKeyWord, li)) { break; }	// THEN, TO, or STEP
+			if (!possibleKeyword.equals("") &&						// caller wants to stop at keyword
+				line.startsWith(possibleKeyword, li)) { break; }	// THEN, TO, or STEP
 
 			c = line.charAt(li);									// get next character
 		}
-		while ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||	// and check it, stop if not valid
-				c == '_' || c == '@' || c == '#');
+		while (isVarChar(c));										// and check it, stop if not valid
 	}
 	return line.substring(start, li);
 }
@@ -4071,7 +4081,7 @@ private boolean PreScan() {
 		int li = line.indexOf(":");									// fast check
 		if ((li <= 0) && (line.charAt(0) != 'r')) { continue; }		// not label or READ.DATA, next line
 
-		String word = getWord(line, 0, false);
+		String word = getWord(line, 0, "");
 		LineIndex = word.length();
 
 		if (isNext(':')) {											// if word really is a label, store it
@@ -4471,10 +4481,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		String line = ExecutingLineBuffer.line();
 		int max = line.length();
 
-		// For the special cases where a var could be followed by keyword THEN, TO or STEP
-		boolean stopOnPossibleKeyWord = !PossibleKeyWord.equals("");
+		// PoosibleKeyWord is for the special cases where a var could be followed by keyword THEN, TO or STEP
 																// Isolate the var characters
-		String var = getWord(line, LI, stopOnPossibleKeyWord);
+		String var = getWord(line, LI, PossibleKeyWord);
 		if (var.length() == 0) { return null; }					// length is 0, no var
 		LI += var.length();
 		if (LI < max) {
@@ -6449,7 +6458,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean getLabelLineNum() {
 		int li = LineIndex;
-		String label = getWord(ExecutingLineBuffer.line(), LineIndex, false);	// get label name
+		String label = getWord(ExecutingLineBuffer.line(), LineIndex, "");	// get label name
 		int len = label.length();
 		LineIndex += len;												// move LineIndex for isEOL()
 		if (isEOL()) {					// If EOL, this is a simple "GOTO/GOSUB label" statement.
@@ -6465,7 +6474,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			ArrayList<String> labels = new ArrayList<String>();			// build label list
 			do {
 				if (isEOL()) return false;								// don't end with comma
-				label = getWord(ExecutingLineBuffer.line(), LineIndex, false);
+				label = getWord(ExecutingLineBuffer.line(), LineIndex, "");
 				labels.add(label);
 				LineIndex += label.length();
 			} while(isNext(','));
