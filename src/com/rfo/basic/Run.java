@@ -3227,8 +3227,13 @@ public class Run extends ListActivity {
 					doAlertDialog((Bundle)msg.obj);
 					break;
 				case MESSAGE_TOAST:
-					Toast toast = Toaster(ToastMsg, ToastDuration);
-					toast.setGravity(Gravity.CENTER, ToastX, ToastY);
+					String msgText = (String)msg.obj;
+					Bundle b = msg.getData();
+					int duration = b.getInt("dur", Toast.LENGTH_SHORT);
+					Toast toast = Toaster(msgText, duration);
+					int x = msg.arg1;
+					int y = msg.arg2;
+					toast.setGravity(Gravity.CENTER, x,y);
 					toast.show();
 					break;
 				}
@@ -3252,11 +3257,7 @@ public class Run extends ListActivity {
 
 		for (int i=0; i<str.length; ++i) {								// Check for signals
 			if (str[i].startsWith("@")) {								// Fast check for possible signal
-				if (str[i].startsWith("@@4")){							// Does the toast for popup command
-					Toast toast = Toaster(ToastMsg, ToastDuration);
-					toast.setGravity(Gravity.CENTER, ToastX, ToastY);
-					toast.show();
-        		}else if (str[i].startsWith("@@5")){					// Clear Screen Signal
+				if (str[i].startsWith("@@5")) {							// Clear Screen Signal
         			output.clear();
         		}else if (str[i].startsWith("@@9")){					// from checkpointProgress
         			ProgressPending = false;							// progress is published, done waiting
@@ -9525,28 +9526,28 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return doResume("No Current Key Interrupt");
 	}
 
-	private boolean executePOPUP(){
-		if (!getStringArg()) return false;						// get the message
-		ToastMsg = StringConstant;
-
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;				// get x
-		ToastX = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;				// get y
-		ToastY = EvalNumericExpressionValue.intValue();
-
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;				// get duration
-		ToastDuration = (EvalNumericExpressionValue == 0.0)
-					  ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG;
+	private boolean executePOPUP() {
+		if (!getStringArg()) return false;				// get the message
+		String msg = StringConstant;
+		int[] args = { 0, 0, 0 };						// default x, y, duration
+		if (isNext(',')) {								// any optional args?
+			if (!getOptExprs(args)) return false;		// get the optional args
+			args[2] = (args[2] == 0) ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG;	// convert boolean to int
+		}
 		if (!checkEOL()) return false;
 
-		PrintShow("@@4");										// tell the UI Task to pop the toast
+		Message m = mHandler.obtainMessage(MESSAGE_TOAST, args[0], args[1], msg);
+		// If duration is Long, send it in a Bundle, otherwise let message default to SHORT.
+		if (args[2] == Toast.LENGTH_LONG) {
+			Bundle b = new Bundle();
+			b.putInt("dur", args[2]);
+			m.setData(b);
+		}
+		m.sendToTarget();								// tell the UI Task to pop the toast
 		return true;
 	}
 
-	public boolean executeCLS(){							// Clear Screen
+	public boolean executeCLS() {							// Clear Screen
 		if (!checkEOL()) return false;
 		PrintShow("@@5");										// signal UI task
 		return true;

@@ -466,14 +466,6 @@ public class Editor extends Activity {
 				}
 				return(true);
 
-			case R.id.load_run:								// LOAD and RUN
-				if (Saved) {									// If program has been saved
-					loadFile(true);								// then load the program, and run it
-				} else {
-					doSaveDialog(Action.LOAD_RUN);				// Ask if the user wants to save before clearing
-				}
-				return(true);
-
 			case R.id.search:								// SEARCH
 				if (mText == null) {
 					throw new RuntimeException("Editor: attempt to Search with null mText");
@@ -483,6 +475,14 @@ public class Editor extends Activity {
 				selectionEnd = mText.getSelectionEnd();
 				startActivity(new Intent(this, Search.class));	// Start the search activity
 				return true;
+
+			case R.id.load_run:								// LOAD and RUN
+				if (Saved) {									// If program has been saved
+					loadFile(true);								// then load the program, and run it
+				} else {
+					doSaveDialog(Action.LOAD_RUN);				// Ask if the user wants to save before clearing
+				}
+				return(true);
 
 			case R.id.format:								// FORMAT
 				if (mText == null) {

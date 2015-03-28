@@ -42,11 +42,11 @@ This file is part of BASIC! for Android
      <item android:id="@+id/clear"
       android:title="@string/clear"/>
 
-     <item android:id="@+id/load_run"
-      android:title="@string/load_run"/>
-
      <item android:id="@+id/search"
       android:title="@string/search"/>
+
+     <item android:id="@+id/load_run"
+      android:title="@string/load_run"/>
 
      <item android:id="@+id/format"
       android:title="@string/format"/>
