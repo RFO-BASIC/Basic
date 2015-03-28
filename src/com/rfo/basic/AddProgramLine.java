@@ -58,15 +58,14 @@ public class AddProgramLine {
 		 */
 		if (line == null) { return; }
 
-		// Remove html white space when copy-paste program from forum
-		String whitespace = " \t\uC2A0";			// space, tab, and UTF-8 encoding of html &nbsp
+		// Regular expressions
+		String ignored_lead_regex	= "[" + Basic.whitespace + ":]*";		// ignore leading characters whitespaces & colon
+		String simple_label_regex	= ":[" + Basic.whitespace + "]*";		// a label followed by 0 or more whitespaces
+		String label_comment_regex 	= simple_label_regex + "%.*";	// idem followed by a comment
 
+		line = line.replaceFirst(ignored_lead_regex, "");			// skip leading whitespaces and colons
 		int linelen = line.length();
 		int i = 0;
-		for (; i < linelen; ++i) {					// skip leading spaces and tabs
-			char c = line.charAt(i);
-			if (whitespace.indexOf(c) == -1) { break; }
-		}
 
 		// Look for block comments. All lines between block comments
 		// are tossed out
@@ -83,6 +82,7 @@ public class AddProgramLine {
 		}
 
 		StringBuilder sb = new StringBuilder();
+		String afterColon = "";
 
 		for (; i < linelen; ++i) {					// do not mess with characters
 			char c = line.charAt(i);				// between quote marks
@@ -90,7 +90,20 @@ public class AddProgramLine {
 				i = doQuotedString(line, i, linelen, sb);
 			} else if (c == '%') {					// if the % character appears,
 				break;								// drop it and the rest of the line
-			} else if (whitespace.indexOf(c) == -1) { // toss out spaces, tabs, and &nbsp
+			} else if (c == ':') {					// if the : character appears,
+				if ( sb.indexOf("sql.update") == 0	// keep it if it's part of a SQL.UPDATE command
+				  || sb.indexOf("~") != -1 ) {		// or if the line contains a '~' somewhere
+					sb.append(c);
+				} else {
+					if ( line.substring(i).matches(simple_label_regex)
+					  || line.substring(i).matches(label_comment_regex) ) {
+						sb.append(c);				// followed by nothing, whitespaces, or a comment: it's a label
+					} else {						// else it's a delimiter for multiple commands per line
+						afterColon = line.substring(i+1);	// split the rest of the line for later use
+					}
+					break;							// in both cases (label|multi-command), treat the line up to ':'
+				}
+			} else if (Basic.whitespace.indexOf(c) == -1) { // toss out spaces, tabs, and &nbsp
 				c = Character.toLowerCase(c);		// normal character: convert to lower case
 				sb.append(c);						// and add it to the line
 			}
@@ -122,6 +135,10 @@ public class AddProgramLine {
 		}
 		Temp += "\n";								// end the line with New Line
 		Basic.lines.add(new Run.ProgramLine(Temp));	// add to Basic.lines
+
+		if (afterColon.length() > 0) {				// if the input line contained a colon (not at the end)
+			AddLine(afterColon);					// recursively treat the part after the colon
+		}
 	}
 
 	private int doQuotedString(String line, int index, int linelen, StringBuilder s) {
