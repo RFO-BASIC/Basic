@@ -423,7 +423,7 @@ public class Format extends ListActivity {
 		return sb.toString();
     }
 
-    private static int FindKeyWord(String kw, String line, int start) {	// Find instance of keyword, not quoted nor
+    public static int FindKeyWord(String kw, String line, int start) {	// Find instance of keyword, not quoted nor
 		int k = line.indexOf(kw, start);								// commented nor embedded in a variable name
 		if (k < 0) { return -1; }									// no instances of this keyword - quick exit
 

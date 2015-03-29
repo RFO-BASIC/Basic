@@ -59,11 +59,14 @@ public class AddProgramLine {
 		if (line == null) { return; }
 
 		// Regular expressions
+		String ws					= "[" + Basic.whitespace + "]*";
 		String ignored_lead_regex	= "[" + Basic.whitespace + ":]*";		// ignore leading characters whitespaces & colon
-		String simple_label_regex	= ":[" + Basic.whitespace + "]*";		// a label followed by 0 or more whitespaces
-		String label_comment_regex 	= simple_label_regex + "%.*";	// idem followed by a comment
+		String label_regex			= ":" + ws;								// a label followed by 0 or more whitespaces
+		String endif_regex			= ".*" + ws + "end" + ws + "if" + ws; 	// ENDIF followed by 0 or more whitespace
 
 		line = line.replaceFirst(ignored_lead_regex, "");			// skip leading whitespaces and colons
+		int k = Format.FindKeyWord("%", line, 0);					// find a possible end-of-line comment,
+		if (k >= 0) { line = line.substring(0, k); }				// and strip it from the line
 		int linelen = line.length();
 		int i = 0;
 
@@ -81,6 +84,26 @@ public class AddProgramLine {
 			return;
 		}
 
+		// Detect (and transform internally!) multi-commands in single-line IF/THEN/ELSE
+
+		String lcLine = line.toLowerCase();
+		k = Format.FindKeyWord(":", lcLine, 0);
+		if (lcLine.startsWith("if") && k > 0) {					// line starts with IF and contains a ':' (not between quotes)
+			if (!lcLine.matches(endif_regex)) {					// no ENDIF at the end of the global line
+				//Log.v(LOGTAG, "AddLine(before): " + line);
+				k = Format.FindKeyWord("then", lcLine, 0);
+				if (k > 0) { line = Insert(line, ":", k+4); } 	// transform THEN into THEN:
+				lcLine = line.toLowerCase();
+				k = Format.FindKeyWord("else", lcLine, k+4);
+				if (k > 0) {									// transform ELSE into :ELSE:
+					line = Insert(line, ":", k+4);
+					line = Insert(line, ":", k);
+				}
+				line += ":endif";								// finally, add an ending :ENDIF
+				//Log.v(LOGTAG, "AddLine(after): " + line);
+			}
+		}
+
 		StringBuilder sb = new StringBuilder();
 		String afterColon = "";
 
@@ -88,15 +111,12 @@ public class AddProgramLine {
 			char c = line.charAt(i);				// between quote marks
 			if (c == '"' || c == '\u201c') {		// Change funny quote to real quote
 				i = doQuotedString(line, i, linelen, sb);
-			} else if (c == '%') {					// if the % character appears,
-				break;								// drop it and the rest of the line
 			} else if (c == ':') {					// if the : character appears,
 				if ( sb.indexOf("sql.update") == 0	// keep it if it's part of a SQL.UPDATE command
 				  || sb.indexOf("~") != -1 ) {		// or if the line contains a '~' somewhere
 					sb.append(c);
 				} else {
-					if ( line.substring(i).matches(simple_label_regex)
-					  || line.substring(i).matches(label_comment_regex) ) {
+					if (line.substring(i).matches(label_regex)) {
 						sb.append(c);				// followed by nothing, whitespaces, or a comment: it's a label
 					} else {						// else it's a delimiter for multiple commands per line
 						afterColon = line.substring(i+1);	// split the rest of the line for later use
@@ -139,6 +159,10 @@ public class AddProgramLine {
 		if (afterColon.length() > 0) {				// if the input line contained a colon (not at the end)
 			AddLine(afterColon);					// recursively treat the part after the colon
 		}
+	}
+
+	private static String Insert(String main, String ins, int pos) {	// Insert string 'ins' into 'main' at position 'pos'
+		return main.substring(0, pos) + ins + main.substring(pos, main.length());
 	}
 
 	private int doQuotedString(String line, int index, int linelen, StringBuilder s) {
