@@ -5765,8 +5765,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int length = str.length();
 		if (length > 0) {
 			int count = EvalNumericExpressionValue.intValue();
-			if (count <= 0) { str = ""; }
-			else if (count < length) { str = str.substring(0, count); }
+			if (count < 0) {
+				if (Math.abs(count) < length) {
+					str = str.substring(0, length + count);
+				} else { str = ""; }
+			} else if (count < length) {
+				str = str.substring(0, count);
+			}
 		}
 		StringConstant = str;
 		return true;
@@ -5782,8 +5787,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		int length = str.length();
 		if (length > 0) {
 			int count = EvalNumericExpressionValue.intValue();
-			if (count <= 0) { str = ""; }
-			else if (count < length) { str = str.substring(length - count); }
+			if (count < 0) {
+				if (Math.abs(count) < length) {
+					str = str.substring(Math.abs(count));
+				} else { str = ""; }
+			} else if (count < length) {
+				str = str.substring(length - count);
+			}
 		}
 		StringConstant = str;
 		return true;
