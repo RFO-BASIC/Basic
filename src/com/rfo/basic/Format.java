@@ -137,23 +137,8 @@ public class Format extends ListActivity {
 		private void ProcessLine(String theLine) {					// Process one line
 			int blanks = CountBlanks(theLine, 0);
 			if (!isBlockQuote(theLine, blanks)) {
-				theLine = fixQuotesAndNbsp(theLine);				// Fix quotes, remove &nbsp
-        		String aLine = ProcessKeyWords(theLine, blanks);	// Do the key words
-				theLine = "";
-				int colon = aLine.indexOf(":");
-				while (colon >= 0) {								// Continue to treat multi-commands per line
-					if (aLine.substring(colon).matches(":["+Basic.whitespace+"]*") ||
-						aLine.substring(colon).matches(":["+Basic.whitespace+"]*%.*")
-						) {											// Break if ':' at end of line (label)
-						break;
-					}
-					colon += CountBlanks(aLine, colon+1);
-					theLine += aLine.substring(0, colon+1);			// Store already processed part of line
-					aLine = aLine.substring(colon+1);
-					aLine = ProcessKeyWords(aLine, 0);
-					colon = aLine.indexOf(":");
-				}
-        		theLine = ProcessIndents(theLine + aLine);			// And then do the indents
+				theLine = ProcessKeyWords(theLine);					// Do the key words
+        		theLine = ProcessIndents(theLine);					// And then do the indents
 			}
 			formattedText += theLine + '\n';
 			publishProgress(".");									// Show one dot for each line processed
@@ -311,8 +296,25 @@ public class Format extends ListActivity {
     }
 
     public static String ProcessKeyWords(String actualLine) {	// Find and capitalize the key words
-    	int blanks = CountBlanks(actualLine, 0);				// First skip leading blanks
-    	return ProcessKeyWords(actualLine, blanks);
+		actualLine = fixQuotesAndNbsp(actualLine);				// Fix quotes, remove &nbsp
+    	int blanks = CountBlanks(actualLine, 0);				// Skip leading blanks
+
+		String aLine = ProcessKeyWords(actualLine, blanks);		// Do the key words
+		actualLine = "";
+		int colon = aLine.indexOf(":");
+		while (colon >= 0) {									// Continue to treat multi-commands per line
+			if (aLine.substring(colon).matches(":["+Basic.whitespace+"]*") ||
+				aLine.substring(colon).matches(":["+Basic.whitespace+"]*%.*")
+				) {												// Break if ':' at end of line (label)
+				break;
+			}
+			colon += CountBlanks(aLine, colon+1);
+			actualLine += aLine.substring(0, colon+1);			// Store already processed part of line
+			aLine = aLine.substring(colon+1);
+			aLine = ProcessKeyWords(aLine, 0);
+			colon = aLine.indexOf(":");
+		}
+		return actualLine + aLine;								// Return full treated line
     }
 
     private static String ProcessKeyWords(String actualLine, int blanks) {
