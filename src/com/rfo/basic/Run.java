@@ -16826,11 +16826,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		boolean exists = false;
 		if (!Basic.isAPK) { exists = new File(path).exists(); }				// standard BASIC can only RUN a file
 		else if (Basic.getRawResourceID(fileName) != 0) { exists = true; }	// APK can run resource
-		else try {															// or asset
+		else {																// or asset
 			String assetPath = Basic.getAppFilePath(Basic.SOURCE_DIR, fileName);
-			getAssets().openFd(assetPath); 									// exception if asset does not exist
-			exists = true;
-		} catch (IOException ex) { }
+			if (getAssetType(assetPath) == "f") { exists = true; }  		// it is a valid asset file
+		}
 		if (!exists) {														// error if the program does not exist
 			return RunTimeError(fileName + " not found");
 		}
