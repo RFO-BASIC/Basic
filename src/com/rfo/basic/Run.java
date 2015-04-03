@@ -3049,12 +3049,11 @@ public class Run extends ListActivity {
 		// The RunLoop() drives the execution of the program. It is called from doInBackground and
 		// recursively from doUserFunction.
 
-		public  boolean RunLoop() {
+		public boolean RunLoop() {
 			boolean flag = true;
-			do {
-				if (ExecutingLineIndex >= Basic.lines.size()) break;
-				ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);  // Next program line
-//				Log.v(LOGTAG, "Background.RunLoop: " + ExecutingLineBuffer.line());
+			while (ExecutingLineIndex < Basic.lines.size() && flag && !Stop) {	// keep executing statements until end
+				ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex); 		// next program line
+//				Log.d(LOGTAG, "RunLoop: " + ExecutingLineBuffer.line());
 				LineIndex = 0 ;
 				sTime = SystemClock.uptimeMillis();
 
@@ -3146,14 +3145,13 @@ public class Run extends ListActivity {
 					}
 				}
 
-				++ExecutingLineIndex;								// Step to next line
-
 				if (fnRTN) {				// fn_rtn signal. If true make RunLoop() return
 					fnRTN = false;			// to doUserFunction
-					return true;
+					break;
 				}
 
-			} while (ExecutingLineIndex < Basic.lines.size() && flag && !Stop) ;  //keep executing statements until end
+				++ExecutingLineIndex;								// Step to next line
+			}
 			return flag;
 		} // end RunLoop
 
@@ -7997,9 +7995,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} else {
 			if (!evalStringExpression()) return false;
 		}
+		if (!checkEOL()) return false;
 
-		fnRTN = true;										// Signal RunLoop() to return
-		return checkEOL();
+		return endUserFunction();
 	}
 
 	private boolean executeFN_END() {
@@ -8013,9 +8011,16 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		} else {
 			StringConstant = "";							// Set default value
 		}
+		if (!checkEOL()) return false;
 
+		return endUserFunction();
+	}
+
+	private boolean endUserFunction() {
+		FunctionStack.pop().restore();						// Function execution done. Restore stuff.
+		ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
 		fnRTN = true;										// Signal RunLoop() to return
-		return checkEOL();
+		return true;
 	}
 
 	private boolean executeCALL() {
@@ -8045,98 +8050,91 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean doUserFunction() {
 
-	CallStackFrame frame = new CallStackFrame();
-	frame.store(FnDef);													// build a stack fram
-	int sVarNames = VarNames.size();									// remember where the variable name list ends
+		CallStackFrame frame = new CallStackFrame();
+		frame.store(FnDef);												// build a stack fram
+		int sVarNames = VarNames.size();								// remember where the variable name list ends
 
-	int pCount = FnDef.nParms();										// The number of parameters
-	int i = 0;
-	if (pCount != 0) {													// For each parameter
-		do {
-			if (i >= pCount) {											// Insure no more parms than defined
-				return RunTimeError("Calling parameter count exceeds defined parameter count");
-			}
-
-			boolean isGlobal = isNext('&');								// optional for scalars, ignored for arrays
-			FunctionParameter parm = FnDef.parms().get(i);
-			String pName = parm.name();
-			boolean typeIsNumeric = parm.type().isNumeric();
-			if (parm.isArray()) {										// if this parm is an array
-				if (getArrayVarForRead() == null) { return false; }		// get the array name var
-				if (!isNext(']')) {										// must be no indices
-					return RunTimeError(EXPECT_ARRAY_NO_INDEX);
-				} else  if (typeIsNumeric != VarIsNumeric) {			// insure type (string or number) match
-					return RunTimeError("Array parameter type mismatch at:");
+		int pCount = FnDef.nParms();									// The number of parameters
+		int i = 0;
+		if (pCount != 0) {												// For each parameter
+			do {
+				if (i >= pCount) {										// Insure no more parms than defined
+					return RunTimeError("Calling parameter count exceeds defined parameter count");
 				}
 
-				VarNames.add(pName);									// and add the var name
-				VarIndex.add(VarIndex.get(VarNumber));					// copy array table pointer to the new array.
-			} // end array
-			else {
-				if (isGlobal) {
-					String var = getVarAndType();						// if this is a Global Var
-					if (var == null)		{ return false; }			// then must be var not expression
-					if (VarIsNew) { return RunTimeError("Call by reference vars must be predefined"); }
-					if (typeIsNumeric != VarIsNumeric) {				// insure type (string or number) match
-						return RunTimeError("Global parameter type mismatch at:");
+				boolean isGlobal = isNext('&');							// optional for scalars, ignored for arrays
+				FunctionParameter parm = FnDef.parms().get(i);
+				String pName = parm.name();
+				boolean typeIsNumeric = parm.type().isNumeric();
+				if (parm.isArray()) {									// if this parm is an array
+					if (getArrayVarForRead() == null) { return false; }	// get the array name var
+					if (!isNext(']')) {									// must be no indices
+						return RunTimeError(EXPECT_ARRAY_NO_INDEX);
+					} else  if (typeIsNumeric != VarIsNumeric) {		// insure type (string or number) match
+						return RunTimeError("Array parameter type mismatch at:");
 					}
-					if (!getVarValue(var))	{ return false; }			// bottom half of getVar()
 
-					VarNames.add(pName);								// add the called var name to the var name table
-					VarIndex.add(theValueIndex);						// but give it the value index of the calling var
-				} // end global
+					VarNames.add(pName);								// and add the var name
+					VarIndex.add(VarIndex.get(VarNumber));				// copy array table pointer to the new array.
+				} // end array
 				else {
-					if (!typeIsNumeric) {								// if parm is string
-						if (!evalStringExpression()) {					// get the string value
-							return RunTimeError("Parameter type mismatch at:");
-						}else{
-							VarIndex.add(StringVarValues.size());		// Put the string value into the
-							StringVarValues.add(StringConstant);		// string var values table
-							VarNames.add(pName);						// and add the var name
+					if (isGlobal) {
+						String var = getVarAndType();					// if this is a Global Var
+						if (var == null)		{ return false; }		// then must be var not expression
+						if (VarIsNew) { return RunTimeError("Call by reference vars must be predefined"); }
+						if (typeIsNumeric != VarIsNumeric) {			// insure type (string or number) match
+							return RunTimeError("Global parameter type mismatch at:");
 						}
-					} else {
-						if (!evalNumericExpression()) {					// if parm is number get the numeric value
-							return RunTimeError("Parameter type mismatch at:");
+						if (!getVarValue(var))	{ return false; }		// bottom half of getVar()
+
+						VarNames.add(pName);							// add the called var name to the var name table
+						VarIndex.add(theValueIndex);					// but give it the value index of the calling var
+					} // end global
+					else {
+						if (!typeIsNumeric) {							// if parm is string
+							if (!evalStringExpression()) {				// get the string value
+								return RunTimeError("Parameter type mismatch at:");
+							}else{
+								VarIndex.add(StringVarValues.size());	// Put the string value into the
+								StringVarValues.add(StringConstant);	// string var values table
+								VarNames.add(pName);					// and add the var name
+							}
 						} else {
-							VarIndex.add(NumericVarValues.size());				// Put the number values into the
-							NumericVarValues.add(EvalNumericExpressionValue);	// numeric var values table
-							VarNames.add(pName);								// and add the var name
+							if (!evalNumericExpression()) {				// if parm is number get the numeric value
+								return RunTimeError("Parameter type mismatch at:");
+							} else {
+								VarIndex.add(NumericVarValues.size());				// Put the number values into the
+								NumericVarValues.add(EvalNumericExpressionValue);	// numeric var values table
+								VarNames.add(pName);								// and add the var name
+							}
 						}
 					}
-				}
-			} // end scalar
+				} // end scalar
 
-			++i;											//  Keep going while calling parms exist
+				++i;										//  Keep going while calling parms exist
 
-		} while ( isNext(','));
-	} // end if
+			} while ( isNext(','));
+		} // end if
 
-	if (i != pCount) { return RunTimeError("Too few calling parameters at:"); }
+		if (i != pCount) { return RunTimeError("Too few calling parameters at:"); }
 
-	if (!isNext(')')) { return false; }					// Every function must have a closing right parenthesis.
+		if (!isNext(')')) { return false; }					// Every function must have a closing right parenthesis.
 
-	frame.storeLI();									// Save out index into the line buffer
+		frame.storeLI();									// Save out index into the line buffer
 
-	FunctionStack.push(frame);							// Push the stack frame
-	VarSearchStart = sVarNames;							// Set the new start location for var name searches
+		FunctionStack.push(frame);							// Push the stack frame
+		VarSearchStart = sVarNames;							// Set the new start location for var name searches
 
-	ExecutingLineIndex = FnDef.line() + 1;				// Set to execute first line after fn.def statement
+		ExecutingLineIndex = FnDef.line() + 1;				// Set to execute first line after fn.def statement
 
-	fnRTN = false;										// Will be set true by fn.rtn
-														// cause RunLoop() to return when true
+		fnRTN = false;										// Will be set true by fn.rtn
 
-	boolean flag = theBackground.RunLoop();				// Now go execute the function
-
-	if (FunctionStack.isEmpty()) {
-		return RunTimeError("System problem. Wait 10 seconds before rerunning.");
-	}
-
-	frame = FunctionStack.pop();						// Function execution done. Restore stuff.
-	frame.restore();
-	ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
-
-	return flag;										// Pass on the pass/fail state from the function
-	}
+		// The function body is executed in a recursive call to RunLoop().
+		// FN.RTN or FN.END will signal RunLoop to exit, returning pass/fail state of the function here.
+		return theBackground.RunLoop();
+		// Note that the part of RunLoop after StatementExecuter runs twice,
+		// once after FN.RTN/END and again now, when this method exits.
+	} // doUserFunction
 
 	// ************************************ Switch Statements *************************************
 
@@ -9475,7 +9473,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		while (IfElseStack.peek() != IEinterrupt) {
 			IfElseStack.pop();
 		}
-		IfElseStack.pop();  // Top is stack is now IEInterrupt, pop it
+		IfElseStack.pop();  // Top of stack is now IEInterrupt, pop it
 
 		return true;
 	}
