@@ -523,7 +523,8 @@ public class Basic extends Activity  {
 			}
 		}
 		if (sb.length() != 0) {									// if last line has no newline
-			 APL.AddLine(sb.toString());						// add the line now
+			AddProgramLine.charCount = length + offset;			// add the line now
+			APL.AddLine(sb.toString());
 		}
 	}
 

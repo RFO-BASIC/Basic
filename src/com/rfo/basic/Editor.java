@@ -64,46 +64,45 @@ public class Editor extends Activity {
 
 	public static LinedEditText mText;					// The Editors display text buffers
 
-    public static String DisplayText = "REM Start of BASIC! Program\n";
-    public static int SyntaxErrorDisplacement = -1;
-
-    public static int selectionStart;
-    public static int selectionEnd;
-    public static final String Name = "BASIC! Program Editor - ";
-    public static int InitialProgramSize;				// Used to determine if program has changed
-    public static boolean Saved = true;
-
-    private enum Action { NONE, CLEAR, LOAD, RUN, LOAD_RUN, EXIT }
-
-    public static class LinedEditText extends EditText {	// Part of the edit screen setup
-        private Rect mRect;
-        private Paint mPaint;
-        private boolean mLinesSetting;						// Lines preference setting for onDraw
-        private boolean mLineWrapSetting;					// Line-wrap preference setting
-
-        private Scroller mScroller;							// The scroller object
-        private VelocityTracker mVelocityTracker;			// The velocity tracker
-        private int mScrollY = 0;							// The current scroll location
-        private float mLastMotionY;							// Start of last movement
-        private int mMinScroll;                             // Minimum scroll distance
-        private int mFlingV;								// Minimum velocity for fling
-        public static int sHeight;							// Screen height minus the crap at top
-        public static boolean didMove;						// Determines if super called on UP
-
+	public static String DisplayText = "REM Start of BASIC! Program\n";
+	public static int SyntaxErrorDisplacement = -1;
+	
+	public static int selectionStart;
+	public static int selectionEnd;
+	public static final String Name = "BASIC! Program Editor - ";
+	public static int InitialProgramSize;				// Used to determine if program has changed
+	public static boolean Saved = true;
+	
+	private enum Action { NONE, CLEAR, LOAD, RUN, LOAD_RUN, EXIT }
+	
+	public static class LinedEditText extends EditText {	// Part of the edit screen setup
+		private Rect mRect;
+		private Paint mPaint;
+		private boolean mLinesSetting;						// Lines preference setting for onDraw
+		private boolean mLineWrapSetting;					// Line-wrap preference setting
+		
+		private Scroller mScroller;							// The scroller object
+		private VelocityTracker mVelocityTracker;			// The velocity tracker
+		private int mScrollY = 0;							// The current scroll location
+		private float mLastMotionY;							// Start of last movement
+		private int mMinScroll;								// Minimum scroll distance
+		private int mFlingV;								// Minimum velocity for fling
+		public static int sHeight;							// Screen height minus the crap at top
+		public static boolean didMove;						// Determines if super called on UP
 
 
 // ************** Methods for drawing Lined Edit Text ****************8         
 
 
-        public LinedEditText(Context context, AttributeSet attrs) {
-            super(context, attrs);
+		public LinedEditText(Context context, AttributeSet attrs) {
+			super(context, attrs);
 
-            mRect = new Rect();
-            mPaint = new Paint();
-            mPaint.setStyle(Paint.Style.STROKE);
-            mPaint.setColor(0x800000FF);
-            InitScroller(context);
-        }
+			mRect = new Rect();
+			mPaint = new Paint();
+			mPaint.setStyle(Paint.Style.STROKE);
+			mPaint.setColor(0x800000FF);
+			InitScroller(context);
+		}
 
 		@Override
 		protected void onTextChanged(CharSequence  text, int start, int before, int after) {
@@ -118,9 +117,9 @@ public class Editor extends Activity {
 			super.onTextChanged(text, start, before, after);
 		}
 
-        @Override
-        protected void onDraw(Canvas canvas) {
-            if (mLinesSetting) {
+		@Override
+		protected void onDraw(Canvas canvas) {
+			if (mLinesSetting) {
 				Rect r = mRect;
 				Paint paint = mPaint;
 				int count = getLineCount();					// Draw the lines under each line of text
@@ -128,23 +127,22 @@ public class Editor extends Activity {
 					int baseline = getLineBounds(i, r);
 					canvas.drawLine(r.left, baseline + 1, r.right, baseline + 1, paint);
 				}
-            }
-            sHeight = getHeight();							// This is where we get the screen height
-            super.onDraw(canvas);
-        }
+			}
+			sHeight = getHeight();							// This is where we get the screen height
+			super.onDraw(canvas);
+		}
 
 		// *************  Methods for scrolling *****************************8
 
-        public void InitScroller(Context context) {
-        	mScroller = new Scroller(context);       // Get a scroller object
-        	mScrollY = 0 ;   					    // Set beginning of program as top of screen.
-//        	mMinScroll = getLineHeight ()/2;	        // Set minimum scroll distance
-        	mMinScroll = 1;	        // Set minimum scroll distance
+		public void InitScroller(Context context) {
+			mScroller = new Scroller(context);       // Get a scroller object
+			mScrollY = 0 ;   					    // Set beginning of program as top of screen.
+//			mMinScroll = getLineHeight ()/2;	        // Set minimum scroll distance
+			mMinScroll = 1;	        // Set minimum scroll distance
 
-        	mFlingV = 750;                         // Minimum fling velocity
-//        	mScroller.setFriction((float) 10);
-
-        }
+			mFlingV = 750;                         // Minimum fling velocity
+//			mScroller.setFriction((float) 10);
+		}
 
 		@Override
 		public boolean onTouchEvent(MotionEvent event) {
@@ -343,23 +341,23 @@ public class Editor extends Activity {
 		return super.onKeyUp(keyCode, event);
 	}
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-    	if (Settings.changeBaseDrive) {
-    		doBaseDriveChange();
-    	}
+	@Override
+	protected void onResume() {
+		super.onResume();
+		if (Settings.changeBaseDrive) {
+			doBaseDriveChange();
+		}
 
-    	if (Run.Exit) {		// Somebody told Run to exit, so exit Editor, too.
-    		finish();		// Do not clear Exit here; it might still be seen by another Activity
-    		return;			// Instead, clear it in onCreate() the next time the Editor starts
-    	}
+		if (Run.Exit) {		// Somebody told Run to exit, so exit Editor, too.
+			finish();		// Do not clear Exit here; it might still be seen by another Activity
+			return;			// Instead, clear it in onCreate() the next time the Editor starts
+		}
 
-//        Log.v(LOGTAG, CLASSTAG + ".onResume " + BasicDoAutoRun);
-        if (Basic.DoAutoRun) {
-        	Log.e(LOGTAG, CLASSTAG + ".onResume: AutoRun is set. Shutting down.");
-        	finish();
-        } else {
+//		Log.v(LOGTAG, CLASSTAG + ".onResume " + BasicDoAutoRun);
+		if (Basic.DoAutoRun) {
+			Log.e(LOGTAG, CLASSTAG + ".onResume: AutoRun is set. Shutting down.");
+			finish();
+		} else {
 			setTitle(Name + Basic.ProgramFileName);
 
 			mText.getPreferences(this);
@@ -370,28 +368,28 @@ public class Editor extends Activity {
 			if (SyntaxErrorDisplacement >= 0 &&
 				SyntaxErrorDisplacement < AddProgramLine.lineCharCounts.size()) {	// If run ended in error, select error line
 
-        		int end = AddProgramLine.lineCharCounts.get(SyntaxErrorDisplacement);  // Get selection end
-        		if (end >= DisplayText.length()) end = DisplayText.length() - 1;
-        		int start = end - 1;										// back up over the new line
+				int end = AddProgramLine.lineCharCounts.get(SyntaxErrorDisplacement);  // Get selection end
+				if (end >= DisplayText.length()) end = DisplayText.length();
+				int start = end - 1;										// back up over the new line
 
-        		for (start = end - 1; start > 0 ; --start) {				// Scan for previous nl or start
-        			char c = DisplayText.charAt(start);
-        			if (c == '\n') {
-        				start = start + 1;
-        				break;
-        			}
-        		}
+				for (start = end - 1; start > 0 ; --start) {				// Scan for previous nl or start
+					char c = DisplayText.charAt(start);
+					if (c == '\n') {
+						start = start + 1;
+						break;
+					}
+				}
 
-				if (start > 0 && end > 0 && start <= end &&					// make sure values are not crash bait
-						 end < mText.length()) {		// Note: if RUN command, DisplayText may not match mText. TODO: FIX THIS!
+				if (start >= 0 && end >= 0 && start <= end &&				// make sure values are not crash bait
+						 end <= mText.length()) {		// Note: if RUN command, DisplayText does not match mText. TODO: FIX THIS?
 					mText.setSelection(start, end);							// Set the selection
 				}
 				mText.setCursorVisible(true);
 				SyntaxErrorDisplacement = -1;							// Reset the value
 			}
-        }
+		}
 
-    }
+	}
 
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// Returning from LoadFile Activity for LOAD_RUN menu selection.
