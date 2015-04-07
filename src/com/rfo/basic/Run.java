@@ -223,15 +223,12 @@ public class Run extends ListActivity {
 	private static final int MESSAGE_DEBUG_GROUP       = 0x0F00;// add this offset to messages from debug commands
 
 																// message numbers < 256 are in "default" group 0
-	private static final int MESSAGE_PUBLISH_PROGRESS  = 1;
-	private static final int MESSAGE_CHECKPOINT        = 2;		// for checkpointMessage() method
-	private static final int MESSAGE_START_GPS         = 3;		// for GPS.OPEN command
+	private static final int MESSAGE_CHECKPOINT        = 1;		// for checkpointMessage() method
 
-	private static final int MESSAGE_CONSOLE_WRITE     = MESSAGE_CONSOLE_GROUP + 0;	// write to the console
-	private static final int MESSAGE_CLEAR_SCREEN      = MESSAGE_CONSOLE_GROUP + 1;	// for CLS command
-	private static final int MESSAGE_CONSOLE_TITLE     = MESSAGE_CONSOLE_GROUP + 2;	// for CONSOLE.TITLE command
-	private static final int MESSAGE_CONSOLE_LINE_NEW  = MESSAGE_CONSOLE_GROUP + 3;	// for CONSOLE.LINE.NEW command
-	private static final int MESSAGE_CONSOLE_LINE_CHAR = MESSAGE_CONSOLE_GROUP + 4;	// for CONSOLE.LINE.CHAR command
+	private static final int MESSAGE_UPDATE_CONSOLE    = MESSAGE_CONSOLE_GROUP + 0;
+	private static final int MESSAGE_CONSOLE_LINE_CHAR = MESSAGE_CONSOLE_GROUP + 2;	// for CONSOLE.LINE.CHAR command
+	private static final int MESSAGE_CLEAR_CONSOLE     = MESSAGE_CONSOLE_GROUP + 3;	// for CLS command
+	private static final int MESSAGE_CONSOLE_TITLE     = MESSAGE_CONSOLE_GROUP + 4;	// for CONSOLE.TITLE command
 
 	private static final int MESSAGE_TOAST             = MESSAGE_DIALOG_GROUP + 0;	// for POPUP command
 	private static final int MESSAGE_INPUT_DIALOG      = MESSAGE_DIALOG_GROUP + 1;	// for INPUT command
@@ -280,33 +277,6 @@ public class Run extends ListActivity {
 		public Command(String name) { this(name, 0); }
 		public Command(String name, int id) { this.name = name; this.id = id; }
 		public boolean run() { return false; }			// Run the command execution function
-	}
-
-	// If the current line starts with a keyword in a command list execute the command.
-	// The "type" is used only to report errors.
-	private boolean executeCommand(Command[] commands, String type) {
-		Command c = findCommand(commands, type);
-		return (c != null) ? c.run() : false;
-	}
-
-	// If the current line starts with a keyword in a command list return the Command object.
-	// If not found return null and set an error. The "type" is used only for the error message.
-	private Command findCommand(Command[] commands, String type) {
-		Command c = findCommand(commands);
-		if (c == null) { RunTimeError("Unknown " + type + " command"); }	// no keyword found
-		return c;
-	}
-
-	// If the current line starts with a keyword in a command list return the Command object.
-	// If not found return null.
-	private Command findCommand(Command[] commands) {
-		for (Command c : commands) {								// loop through the command list
-			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) {// if there is a match
-				LineIndex += c.name.length();						// move the line index to end of keyword
-				return c;											// return the Command object
-			}
-		}
-		return null;												// no keyword found
 	}
 
 	// ************************* ArrayDescriptor class *************************
@@ -902,159 +872,6 @@ public class Run extends ListActivity {
 		BKW_ONKEYPRESS, BKW_ONMENUKEY, BKW_ONTIMER,
 	};
 
-	/* Markers for IF, etc., to facilitate skipping them in StatementExecuter() */
-	private final int CID_SKIP_TO_ELSE  = 1;	// Ok to execute when skipping to ELSE or ENDIF
-	private final int CID_SKIP_TO_ENDIF = 2;	// Ok to execute when skipping to ENDIF
-	/* Other markers to make special-case handling faster */
-	private final int CID_GROUP = 3;
-	private final int CID_OPEN = 4;
-	private final int CID_CLOSE = 5;
-	private final int CID_STATUS = 6;
-	private final int CID_DATALINK = 7;
-
-	/* Special case: what to do if no command keyword at the beginning of the line. */
-	private final Command CMD_IMPLICIT = new Command("")         { public boolean run() { return executeImplicitCommand(); } };
-	private final Command CMD_IMPL_LET = new Command("")         { public boolean run() { return executeLET(0.0); } };
-	/* Label: length is variable, but irrelevant. No command name, so DO NOT put this in a searchable command table. */
-	private final Command CMD_LABEL    = new Command("")         { public boolean run() { return true; } };
-	/* Other special cases where we need a named Command and also a command table entry. */
-	private final Command CMD_CALL     = new Command(BKW_CALL)   { public boolean run() { return executeCALL(); } };
-	private final Command CMD_LET      = new Command(BKW_LET)    { public boolean run() { return executeLET(); } };
-	private final Command CMD_PREINC   = new Command(BKW_PREINC) { public boolean run() { return executeLET(1.0); } };
-	private final Command CMD_PREDEC   = new Command(BKW_PREDEC) { public boolean run() { return executeLET(-1.0); } };
-	private final Command CMD_FOR      = new Command(BKW_FOR)    { public boolean run() { return executeFOR(); } };
-	private final Command CMD_NEXT     = new Command(BKW_NEXT)   { public boolean run() { return executeNEXT(); } };
-	private final Command CMD_WHILE    = new Command(BKW_WHILE)  { public boolean run() { return executeWHILE(); } };
-	private final Command CMD_REPEAT   = new Command(BKW_REPEAT) { public boolean run() { return executeREPEAT(); } };
-	private final Command CMD_DO       = new Command(BKW_DO)     { public boolean run() { return executeDO(); } };
-	private final Command CMD_UNTIL    = new Command(BKW_UNTIL)  { public boolean run() { return executeUNTIL(); } };
-
-	// Map BASIC! command keywords to their execution functions.
-	// The order of this list determines the order of the linear keyword search, which affects performance.
-	private final Command[] BASIC_cmd = new Command[] {
-		CMD_LET,
-		new Command(BKW_IF,     CID_SKIP_TO_ENDIF) { public boolean run() { return executeIF(); } },
-		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
-		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
-		new Command(BKW_ELSE,   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
-		new Command(BKW_PRINT)                  { public boolean run() { return executePRINT(); } },
-		new Command(BKW_PRINT_SHORTCUT)         { public boolean run() { return executePRINT(); } },
-		CMD_FOR,
-		CMD_NEXT,
-		CMD_WHILE,
-		CMD_REPEAT,
-		CMD_DO,
-		CMD_UNTIL,
-		new Command(BKW_F_N_BREAK)              { public boolean run() { return executeF_N_BREAK(); } },
-		new Command(BKW_W_R_BREAK)              { public boolean run() { return executeW_R_BREAK(); } },
-		new Command(BKW_D_U_BREAK)              { public boolean run() { return executeD_U_BREAK(); } },
-		new Command(BKW_F_N_CONTINUE)           { public boolean run() { return executeF_N_CONTINUE(); } },
-		new Command(BKW_W_R_CONTINUE)           { public boolean run() { return executeW_R_CONTINUE(); } },
-		new Command(BKW_D_U_CONTINUE)           { public boolean run() { return executeD_U_CONTINUE(); } },
-		new Command(BKW_SW_GROUP, CID_GROUP)    { public boolean run() { return executeSW(); } },
-		new Command(BKW_FN_GROUP, CID_GROUP)    { public boolean run() { return executeFN(); } },
-		CMD_CALL,
-		new Command(BKW_GOTO)                   { public boolean run() { return executeGOTO(); } },
-		new Command(BKW_GOSUB)                  { public boolean run() { return executeGOSUB(); } },
-		new Command(BKW_RETURN)                 { public boolean run() { return executeRETURN(); } },
-		new Command(BKW_GR_GROUP, CID_GROUP)    { public boolean run() { return executeGR(); } },
-		new Command(BKW_DIM)                    { public boolean run() { return executeDIM(); } },
-		new Command(BKW_UNDIM)                  { public boolean run() { return executeUNDIM(); } },
-		new Command(BKW_ARRAY_GROUP, CID_GROUP) { public boolean run() { return executeARRAY(); } },
-		new Command(BKW_BUNDLE_GROUP,CID_GROUP) { public boolean run() { return executeBUNDLE(); } },
-		new Command(BKW_LIST_GROUP,  CID_GROUP) { public boolean run() { return executeLIST(); } },
-		new Command(BKW_STACK_GROUP, CID_GROUP) { public boolean run() { return executeSTACK(); } },
-		CMD_PREINC,
-		CMD_PREDEC,
-		new Command(BKW_INKEY)                  { public boolean run() { return executeINKEY(); } },
-		new Command(BKW_INPUT)                  { public boolean run() { return executeINPUT(); } },
-		new Command(BKW_DIALOG_GROUP,CID_GROUP) { public boolean run() { return executeDIALOG(); } },
-		new Command(BKW_SELECT)                 { public boolean run() { return executeSELECT(); } },
-		new Command(BKW_TGET)                   { public boolean run() { return executeTGET(); } },
-		new Command(BKW_FILE_GROUP, CID_GROUP)  { public boolean run() { return executeFILE(); } },
-		new Command(BKW_TEXT_GROUP, CID_GROUP)  { public boolean run() { return executeTEXT(); } },
-		new Command(BKW_BYTE_GROUP, CID_GROUP)  { public boolean run() { return executeBYTE(); } },
-		new Command(BKW_READ_GROUP, CID_GROUP)  { public boolean run() { return executeREAD(); } },
-		new Command(BKW_DIR)                    { public boolean run() { return executeDIR(); } },
-		new Command(BKW_MKDIR)                  { public boolean run() { return executeMKDIR(); } },
-		new Command(BKW_RENAME)                 { public boolean run() { return executeRENAME(); } },
-		new Command(BKW_GRABFILE)               { public boolean run() { return executeGRABFILE(); } },
-		new Command(BKW_GRABURL)                { public boolean run() { return executeGRABURL(); } },
-		new Command(BKW_BROWSE)                 { public boolean run() { return executeBROWSE(); } },
-		new Command(BKW_BT_GROUP, CID_GROUP)    { public boolean run() { return executeBT(); } },
-		new Command(BKW_FTP_GROUP, CID_GROUP)   { public boolean run() { return executeFTP(); } },
-		new Command(BKW_HTML_GROUP, CID_GROUP)  { public boolean run() { return executeHTML(); } },
-		new Command(BKW_HTTP_POST)              { public boolean run() { return executeHTTP_POST(); } },
-		new Command(BKW_SOCKET_GROUP,CID_GROUP) { public boolean run() { return executeSOCKET(); } },
-		new Command(BKW_SQL_GROUP, CID_GROUP)   { public boolean run() { return executeSQL(); } },
-		new Command(BKW_GPS_GROUP, CID_GROUP)   { public boolean run() { return executeGPS(); } },
-		new Command(BKW_POPUP)                  { public boolean run() { return executePOPUP(); } },
-		new Command(BKW_SENSORS_GROUP,CID_GROUP){ public boolean run() { return executeSENSORS(); } },
-		new Command(BKW_AUDIO_GROUP, CID_GROUP) { public boolean run() { return executeAUDIO(); } },
-		new Command(BKW_SOUNDPOOL_GROUP,CID_GROUP){ public boolean run() { return executeSOUNDPOOL(); } },
-		new Command(BKW_RINGER_GROUP,CID_GROUP) { public boolean run() { return executeRINGER(); } },
-		new Command(BKW_TONE)                   { public boolean run() { return executeTONE(); } },
-		new Command(BKW_CLIPBOARD_GET)          { public boolean run() { return executeCLIPBOARD_GET(); } },
-		new Command(BKW_CLIPBOARD_PUT)          { public boolean run() { return executeCLIPBOARD_PUT(); } },
-		new Command(BKW_ENCRYPT)                { public boolean run() { return executeENCRYPT(); } },
-		new Command(BKW_DECRYPT)                { public boolean run() { return executeDECRYPT(); } },
-		new Command(BKW_SWAP)                   { public boolean run() { return executeSWAP(); } },
-		new Command(BKW_SPLIT_ALL)              { public boolean run() { return executeSPLIT(-1); } },
-		new Command(BKW_SPLIT)                  { public boolean run() { return executeSPLIT(0); } },
-		new Command(BKW_CLS)                    { public boolean run() { return executeCLS(); } },
-		new Command(BKW_FONT_GROUP, CID_GROUP)  { public boolean run() { return executeFONT(); } },
-		new Command(BKW_CONSOLE_GROUP,CID_GROUP){ public boolean run() { return executeCONSOLE(); } },
-		new Command(BKW_DEBUG_GROUP, CID_GROUP) { public boolean run() { return executeDEBUG(); } },
-		new Command(BKW_DEVICE)                 { public boolean run() { return executeDEVICE(); } },
-		new Command(BKW_ECHO_ON)                { public boolean run() { return executeECHO_ON(); } },
-		new Command(BKW_ECHO_OFF)               { public boolean run() { return executeECHO_OFF(); } },
-		new Command(BKW_KB_TOGGLE)              { public boolean run() { return executeKB_TOGGLE(); } },
-		new Command(BKW_KB_HIDE)                { public boolean run() { return executeKB_HIDE(); } },
-		new Command(BKW_NOTIFY)                 { public boolean run() { return executeNOTIFY(); } },
-		new Command(BKW_RUN)                    { public boolean run() { return executeRUN(); } },
-		new Command(BKW_EMPTY_PROGRAM)          { public boolean run() { return executeEMPTY_PROGRAM(); } },
-		new Command(BKW_SU_GROUP, CID_GROUP)    { public boolean run() { return executeSU(true); } },
-		new Command(BKW_SYSTEM_GROUP,CID_GROUP) { public boolean run() { return executeSU(false); } },
-		new Command(BKW_STT_LISTEN)             { public boolean run() { return executeSTT_LISTEN(); } },
-		new Command(BKW_STT_RESULTS)            { public boolean run() { return executeSTT_RESULTS(); } },
-		new Command(BKW_TTS_GROUP, CID_GROUP)   { public boolean run() { return executeTTS(); } },
-		new Command(BKW_TIMER_GROUP, CID_GROUP) { public boolean run() { return executeTIMER(); } },
-		new Command(BKW_TIMEZONE_GROUP,CID_GROUP){ public boolean run() { return executeTIMEZONE(); } },
-		new Command(BKW_TIME)                   { public boolean run() { return executeTIME(); } },
-		new Command(BKW_VIBRATE)                { public boolean run() { return executeVIBRATE(); } },
-		new Command(BKW_WAKELOCK)               { public boolean run() { return executeWAKELOCK(); } },
-		new Command(BKW_WIFILOCK)               { public boolean run() { return executeWIFILOCK(); } },
-		new Command(BKW_END)                    { public boolean run() { return executeEND(); } },
-		new Command(BKW_EXIT)                   { public boolean run() { Stop = Exit = true; return true; } },
-		new Command(BKW_HOME)                   { public boolean run() { return executeHOME(); } },
-		new Command(BKW_INCLUDE)                { public boolean run() { return true; } },
-		new Command(BKW_PAUSE)                  { public boolean run() { return executePAUSE(); } },
-		new Command(BKW_REM)                    { public boolean run() { return true; } },
-		new Command(BKW_WIFI_INFO)              { public boolean run() { return executeWIFI_INFO(); } },
-		new Command(BKW_HEADSET)                { public boolean run() { return executeHEADSET(); } },
-		new Command(BKW_MYPHONENUMBER)          { public boolean run() { return executeMYPHONENUMBER(); } },
-		new Command(BKW_EMAIL_SEND)             { public boolean run() { return executeEMAIL_SEND(); } },
-		new Command(BKW_PHONE_GROUP, CID_GROUP) { public boolean run() { return executePHONE(); } },
-		new Command(BKW_SMS_GROUP, CID_GROUP)   { public boolean run() { return executeSMS(); } },
-		new Command(BKW_AM_GROUP,CID_GROUP) 	{ public boolean run() { return executeAM(); } },
-
-		new Command(BKW_BACK_RESUME)            { public boolean run() { return executeBACK_RESUME(); } },
-		new Command(BKW_BACKGROUND_RESUME)      { public boolean run() { return executeBACKGROUND_RESUME(); } },
-		new Command(BKW_CONSOLETOUCH_RESUME)    { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
-		new Command(BKW_KEY_RESUME)             { public boolean run() { return executeKEY_RESUME(); } },
-		new Command(BKW_MENUKEY_RESUME)         { public boolean run() { return executeMENUKEY_RESUME(); } },
-
-		new Command(BKW_ONERROR)                { public boolean run() { return true; } },
-		new Command(BKW_ONBACKKEY)              { public boolean run() { return true; } },
-		new Command(BKW_ONBACKGROUND)           { public boolean run() { return true; } },
-		new Command(BKW_ONBTREADREADY)          { public boolean run() { return true; } },
-		new Command(BKW_ONCONSOLETOUCH)         { public boolean run() { return true; } },
-		new Command(BKW_ONGRTOUCH)              { public boolean run() { return true; } },
-		new Command(BKW_ONKEYPRESS)             { public boolean run() { return true; } },
-		new Command(BKW_ONMENUKEY)              { public boolean run() { return true; } },
-		new Command(BKW_ONTIMER)                { public boolean run() { return true; } },
-	};
-
 	private String PossibleKeyWord = "";						// Used when TO, STEP, THEN are expected
 
 	private static HashMap<String, String[]> keywordLists = null;	// For Format: map associates a keyword group
@@ -1173,72 +990,17 @@ public class Run extends ListActivity {
 		MF_INT, MF_FRAC, MF_SGN,
 	};
 
-	private final Command[] MF_cmd = new Command[] {	// Map math function names to their functions
-		new Command(MF_SIN)                     { public boolean run() { return executeMF_SIN(); } },
-		new Command(MF_COS)                     { public boolean run() { return executeMF_COS(); } },
-		new Command(MF_TAN)                     { public boolean run() { return executeMF_TAN(); } },
-		new Command(MF_SQR)                     { public boolean run() { return executeMF_SQR(); } },
-		new Command(MF_ABS)                     { public boolean run() { return executeMF_ABS(); } },
-		new Command(MF_RND)                     { public boolean run() { return executeMF_RND(); } },
-		new Command(MF_VAL)                     { public boolean run() { return executeMF_VAL(); } },
-		new Command(MF_LEN)                     { public boolean run() { return executeMF_LEN(); } },
-		new Command(MF_ACOS)                    { public boolean run() { return executeMF_ACOS(); } },
-		new Command(MF_ASIN)                    { public boolean run() { return executeMF_ASIN(); } },
-		new Command(MF_ATAN2)                   { public boolean run() { return executeMF_ATAN2(); } },
-		new Command(MF_CEIL)                    { public boolean run() { return executeMF_CEIL(); } },
-		new Command(MF_FLOOR)                   { public boolean run() { return executeMF_FLOOR(); } },
-		new Command(MF_MOD)                     { public boolean run() { return executeMF_MOD(); } },
-		new Command(MF_LOG)                     { public boolean run() { return executeMF_LOG(); } },
-		new Command(MF_ROUND)                   { public boolean run() { return executeMF_ROUND(); } },
-		new Command(MF_TORADIANS)               { public boolean run() { return executeMF_TORADIANS(); } },
-		new Command(MF_TODEGREES)               { public boolean run() { return executeMF_TODEGREES(); } },
-		new Command(MF_TIME)                    { public boolean run() { return executeMF_TIME(); } },
-		new Command(MF_EXP)                     { public boolean run() { return executeMF_EXP(); } },
-		new Command(MF_IS_IN)                   { public boolean run() { return executeMF_IS_IN(); } },
-		new Command(MF_CLOCK)                   { public boolean run() { return executeMF_CLOCK(); } },
-		new Command(MF_BNOT)                    { public boolean run() { return executeMF_BNOT(); } },
-		new Command(MF_BOR)                     { public boolean run() { return executeMF_BOR(); } },
-		new Command(MF_BAND)                    { public boolean run() { return executeMF_BAND(); } },
-		new Command(MF_BXOR)                    { public boolean run() { return executeMF_BXOR(); } },
-		new Command(MF_GR_COLLISION)            { public boolean run() { return executeMF_GR_COLLISION(); } },
-		new Command(MF_ASCII)                   { public boolean run() { return executeMF_ASCII(); } },
-		new Command(MF_STARTS_WITH)             { public boolean run() { return executeMF_STARTS_WITH(); } },
-		new Command(MF_ENDS_WITH)               { public boolean run() { return executeMF_ENDS_WITH(); } },
-		new Command(MF_HEX)                     { public boolean run() { return executeMF_base(16); } },
-		new Command(MF_OCT)                     { public boolean run() { return executeMF_base(8); } },
-		new Command(MF_BIN)                     { public boolean run() { return executeMF_base(2); } },
-		new Command(MF_SHIFT)                   { public boolean run() { return executeMF_SHIFT(); } },
-		new Command(MF_RANDOMIZE)               { public boolean run() { return executeMF_RANDOMIZE(); } },
-		new Command(MF_BACKGROUND)              { public boolean run() { return executeMF_BACKGROUND(); } },
-		new Command(MF_ATAN)                    { public boolean run() { return executeMF_ATAN(); } },
-		new Command(MF_CBRT)                    { public boolean run() { return executeMF_CBRT(); } },
-		new Command(MF_COSH)                    { public boolean run() { return executeMF_COSH(); } },
-		new Command(MF_HYPOT)                   { public boolean run() { return executeMF_HYPOT(); } },
-		new Command(MF_SINH)                    { public boolean run() { return executeMF_SINH(); } },
-		new Command(MF_POW)                     { public boolean run() { return executeMF_POW(); } },
-		new Command(MF_LOG10)                   { public boolean run() { return executeMF_LOG10(); } },
-		new Command(MF_UCODE)                   { public boolean run() { return executeMF_UCODE(); } },
-		new Command(MF_PI)                      { public boolean run() { return executeMF_PI(); } },
-		new Command(MF_MIN)                     { public boolean run() { return executeMF_MIN(); } },
-		new Command(MF_MAX)                     { public boolean run() { return executeMF_MAX(); } },
-		new Command(MF_INT)                     { public boolean run() { return executeMF_INT(); } },
-		new Command(MF_FRAC)                    { public boolean run() { return executeMF_FRAC(); } },
-		new Command(MF_SGN)                     { public boolean run() { return executeMF_SGN(); } },
-	};
-
-	private final HashMap<String, Command> MF_map = new HashMap<String, Command>(64) {{
-		for (Command c : MF_cmd) { put(c.name, c); }
-	}};
-
-	private static final HashMap<String, Integer> mRoundingModeTable = new HashMap<String, Integer>(7) {{
-		put("hd", BigDecimal.ROUND_HALF_DOWN);
-		put("he", BigDecimal.ROUND_HALF_EVEN);
-		put("hu", BigDecimal.ROUND_HALF_UP);
-		put("d",  BigDecimal.ROUND_DOWN);
-		put("u",  BigDecimal.ROUND_UP);
-		put("f",  BigDecimal.ROUND_FLOOR);
-		put("c",  BigDecimal.ROUND_CEILING);
-	}};
+	private static final HashMap<String, Integer> mRoundingModeTable = new HashMap<String, Integer>(7) {
+		private static final long serialVersionUID = 101L;
+		{
+			put("hd", BigDecimal.ROUND_HALF_DOWN);
+			put("he", BigDecimal.ROUND_HALF_EVEN);
+			put("hu", BigDecimal.ROUND_HALF_UP);
+			put("d",  BigDecimal.ROUND_DOWN);
+			put("u",  BigDecimal.ROUND_UP);
+			put("f",  BigDecimal.ROUND_FLOOR);
+			put("c",  BigDecimal.ROUND_CEILING);
+		}};
 
 	//*********************** The variables for the Operators  ************************
 
@@ -1338,31 +1100,6 @@ public class Run extends ListActivity {
 		SF_GETERROR, SF_VERSION,
 	};
 
-	private final Command[] SF_cmd = new Command[] {	// Map string function names to their functions
-		new Command(SF_LEFT)                    { public boolean run() { return executeSF_LEFT(); } },
-		new Command(SF_MID)                     { public boolean run() { return executeSF_MID(); } },
-		new Command(SF_RIGHT)                   { public boolean run() { return executeSF_RIGHT(); } },
-		new Command(SF_STR)                     { public boolean run() { return executeSF_STR(); } },
-		new Command(SF_UPPER)                   { public boolean run() { return executeSF_UPPER(); } },
-		new Command(SF_LOWER)                   { public boolean run() { return executeSF_LOWER(); } },
-		new Command(SF_FORMAT_USING)            { public boolean run() { return executeSF_USING(); } },
-		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
-		new Command(SF_USING)                   { public boolean run() { return executeSF_USING(); } },
-		new Command(SF_CHR)                     { public boolean run() { return executeSF_CHR(); } },
-		new Command(SF_REPLACE)                 { public boolean run() { return executeSF_REPLACE(); } },
-		new Command(SF_WORD)                    { public boolean run() { return executeSF_WORD(); } },
-		new Command(SF_INT)                     { public boolean run() { return executeSF_INT(); } },
-		new Command(SF_HEX)                     { public boolean run() { return executeSF_HEX(); } },
-		new Command(SF_OCT)                     { public boolean run() { return executeSF_OCT(); } },
-		new Command(SF_BIN)                     { public boolean run() { return executeSF_BIN(); } },
-		new Command(SF_GETERROR)                { public boolean run() { return executeSF_GETERROR(); } },
-		new Command(SF_VERSION)                 { public boolean run() { return executeSF_VERSION(); } },
-	};
-
-	private final HashMap<String, Command> SF_map = new HashMap<String, Command>(64) {{
-		for (Command c : SF_cmd) { put(c.name, c); }
-	}};
-
     // *****************************   Various execution control variables *********************
 
     public static final int BASIC_GENERAL_INTENT = 255;
@@ -1405,17 +1142,17 @@ public class Run extends ListActivity {
     private Long EvalNumericExpressionIntValue = 0L;		// Integer copy of EvalNumericExpressionValue when VarIsInt is true
     private Vibrator myVib;
 
-    public static ArrayList<String> output;					// The output screen text lines
-    private Basic.ColoredTextAdapter AA;					// The output screen array adapter
-    private ListView lv;									// The output screen list view
-    private static final int MaxTempOutput = 500;
-    private static String TempOutput[] = new String[MaxTempOutput];	// Holds waiting output screen line
-    private static int TempOutputIndex = 0;					// Index to next available TempOutput entry
+															// The output screen text lines
+	final private static int MIN_CONSOLE_LINES = 100;		// starting capacity of mConsole
+	public final ArrayList<String> mOutput = new ArrayList<String>(MIN_CONSOLE_LINES);
+	public final ArrayList<String> mConsoleBuffer = new ArrayList<String>();	// carries output from Background to UI
 
-    private Background theBackground;						// Background task ID
-    private boolean SyntaxError = false;					// Set true when Syntax Error message has been output
+	public Basic.ColoredTextAdapter mConsole;				// The output screen array adapter
+	private ListView lv;									// The output screen list view
+	private Background theBackground;						// Background task - the program runner
+	private boolean SyntaxError = false;					// Set true when Syntax Error message has been output
 
-    private boolean ProgressPending = false;
+	private boolean mMessagePending;						// If true, may be messages pending
 
 	// debugger dialog and ui thread vars
 	private static final int MESSAGE_DEBUG_DIALOG = MESSAGE_DEBUG_GROUP + 1;
@@ -1513,12 +1250,6 @@ public class Run extends ListActivity {
 		BKW_FN_DEF, BKW_FN_RTN, BKW_FN_END
 	};
 
-	private final Command[] fn_cmd = new Command[] {	// Map user function command keywords to their execution functions
-		new Command(BKW_FN_DEF)         { public boolean run() { return executeFN_DEF(); } },
-		new Command(BKW_FN_RTN)         { public boolean run() { return executeFN_RTN(); } },
-		new Command(BKW_FN_END)         { public boolean run() { return executeFN_END(); } },
-	};
-
 	// ******************************** SWITCH variables ********************************
 
 	private static final String BKW_SW_BEGIN = "begin";
@@ -1530,14 +1261,6 @@ public class Run extends ListActivity {
 	private static final String sw_KW[] = {				// Command list for Format
 		BKW_SW_BEGIN, BKW_SW_CASE, BKW_SW_BREAK,
 		BKW_SW_DEFAULT, BKW_SW_END
-	};
-
-	private final Command[] sw_cmd = new Command[] {	// Map sw (switch) command keywords to their execution functions
-		new Command(BKW_SW_BEGIN)       { public boolean run() { return executeSW_BEGIN(); } },
-		new Command(BKW_SW_CASE)        { public boolean run() { return executeSW_CASE(); } },
-		new Command(BKW_SW_BREAK)       { public boolean run() { return executeSW_BREAK(); } },
-		new Command(BKW_SW_DEFAULT)     { public boolean run() { return executeSW_DEFAULT(); } },
-		new Command(BKW_SW_END)         { public boolean run() { return executeSW_END(); } },
 	};
 
 	// ******************************** Wakelock variables *********************************
@@ -1573,17 +1296,6 @@ public class Run extends ListActivity {
 		BKW_FILE_RENAME, BKW_FILE_ROOT, BKW_FILE_EXISTS, BKW_FILE_TYPE
 	};
 
-	private final Command[] file_cmd = new Command[] {	// Map File command keywords to their execution functions
-		new Command(BKW_FILE_DELETE)    { public boolean run() { return executeDELETE(); } },
-		new Command(BKW_FILE_SIZE)      { public boolean run() { return executeFILE_SIZE(); } },
-		new Command(BKW_FILE_DIR)       { public boolean run() { return executeDIR(); } },
-		new Command(BKW_FILE_MKDIR)     { public boolean run() { return executeMKDIR(); } },
-		new Command(BKW_FILE_RENAME)    { public boolean run() { return executeRENAME(); } },
-		new Command(BKW_FILE_ROOT)      { public boolean run() { return executeFILE_ROOTS(); } },
-		new Command(BKW_FILE_EXISTS)    { public boolean run() { return executeFILE_EXISTS(); } },
-		new Command(BKW_FILE_TYPE)      { public boolean run() { return executeFILE_TYPE(); } }
-	};
-
 	private static final int FMR = 0;						// File Mode Read
 	private static final int FMW = 1;						// File Mode Write
 
@@ -1606,17 +1318,6 @@ public class Run extends ListActivity {
 		BKW_TEXT_INPUT,
 		BKW_TEXT_POSITION_GET, BKW_TEXT_POSITION_SET,
 		BKW_TEXT_POSITION_MARK,
-	};
-
-	private final Command[] text_cmd = new Command[] {	// Map Text I/O command keywords to their execution functions
-		new Command(BKW_TEXT_OPEN)          { public boolean run() { return executeTEXT_OPEN(); } },
-		new Command(BKW_TEXT_CLOSE)         { public boolean run() { return executeTEXT_CLOSE(); } },
-		new Command(BKW_TEXT_READLN)        { public boolean run() { return executeTEXT_READLN(); } },
-		new Command(BKW_TEXT_WRITELN)       { public boolean run() { return executeTEXT_WRITELN(); } },
-		new Command(BKW_TEXT_INPUT)         { public boolean run() { return executeTEXT_INPUT(); } },
-		new Command(BKW_TEXT_POSITION_GET)  { public boolean run() { return executeTEXT_POSITION_GET(); } },
-		new Command(BKW_TEXT_POSITION_SET)  { public boolean run() { return executeTEXT_POSITION_SET(); } },
-		new Command(BKW_TEXT_POSITION_MARK) { public boolean run() { return executeTEXT_POSITION_MARK(); } },
 	};
 
 	// ******************************* BYTE I/O variables *******************************
@@ -1642,20 +1343,6 @@ public class Run extends ListActivity {
 		BKW_BYTE_POSITION_MARK,
 	};
 
-	private final Command[] byte_cmd = new Command[] {	// Map Byte I/O command keywords to their execution functions
-		new Command(BKW_BYTE_OPEN)          { public boolean run() { return executeBYTE_OPEN(); } },
-		new Command(BKW_BYTE_CLOSE)         { public boolean run() { return executeBYTE_CLOSE(); } },
-		new Command(BKW_BYTE_READ_BYTE)     { public boolean run() { return executeBYTE_READ_BYTE(); } },
-		new Command(BKW_BYTE_WRITE_BYTE)    { public boolean run() { return executeBYTE_WRITE_BYTE(); } },
-		new Command(BKW_BYTE_READ_BUFFER)   { public boolean run() { return executeBYTE_READ_BUFFER(); } },
-		new Command(BKW_BYTE_WRITE_BUFFER)  { public boolean run() { return executeBYTE_WRITE_BUFFER(); } },
-		new Command(BKW_BYTE_COPY)          { public boolean run() { return executeBYTE_COPY(); } },
-		new Command(BKW_BYTE_TRUNCATE)      { public boolean run() { return executeBYTE_TRUNCATE(); } },
-		new Command(BKW_BYTE_POSITION_GET)  { public boolean run() { return executeBYTE_POSITION_GET(); } },
-		new Command(BKW_BYTE_POSITION_SET)  { public boolean run() { return executeBYTE_POSITION_SET(); } },
-		new Command(BKW_BYTE_POSITION_MARK) { public boolean run() { return executeBYTE_POSITION_MARK(); } },
-	};
-
 	// ******************** READ variables *******************************************
 
 	private static final String BKW_READ_DATA = "data";
@@ -1666,17 +1353,6 @@ public class Run extends ListActivity {
 		BKW_READ_DATA, BKW_READ_NEXT, BKW_READ_FROM
 	};
 
-	private final Command CMD_READ_DATA = new Command(BKW_READ_DATA) { public boolean run() { return true; } };
-	private final Command[] read_cmd = new Command[] {	// Map Read command keywords to their execution functions
-										// Do NOT call executeREAD_DATA, that was done in PreScan
-		CMD_READ_DATA,
-		new Command(BKW_READ_NEXT)          { public boolean run() { return executeREAD_NEXT(); } },
-		new Command(BKW_READ_FROM)          { public boolean run() { return executeREAD_FROM(); } },
-	};
-
-	private int readNext = 0;
-	private ArrayList<Var> readData;
-
 	// ********************** Font Command variables *********************************
 
 	private static final String BKW_FONT_LOAD = "load";
@@ -1685,12 +1361,6 @@ public class Run extends ListActivity {
 
 	private static final String font_KW[] = {			// Font command list for Format
 		BKW_FONT_LOAD, BKW_FONT_DELETE, BKW_FONT_CLEAR
-	};
-
-	private final Command[] font_cmd = new Command[] {	// Map font command keywords to their execution functions
-			new Command(BKW_FONT_LOAD)              { public boolean run() { return executeFONT_LOAD(); } },
-			new Command(BKW_FONT_DELETE)            { public boolean run() { return executeFONT_DELETE(); } },
-			new Command(BKW_FONT_CLEAR)             { public boolean run() { return executeFONT_CLEAR(); } },
 	};
 
 	public ArrayList<Typeface> FontList;
@@ -1712,17 +1382,6 @@ public class Run extends ListActivity {
 		BKW_CONSOLE_LINE_NEW, BKW_CONSOLE_LINE_CHAR
 	};
 
-	private final Command[] Console_cmd = new Command[] {	// Map console command keywords to their execution functions
-		new Command(BKW_CONSOLE_FRONT)          { public boolean run() { return executeCONSOLE_FRONT(); } },
-		new Command(BKW_CONSOLE_SAVE)           { public boolean run() { return executeCONSOLE_DUMP(); } },
-		new Command(BKW_CONSOLE_TITLE)          { public boolean run() { return executeCONSOLE_TITLE(); } },
-		new Command(BKW_CONSOLE_LINE_COUNT)     { public boolean run() { return executeCONSOLE_LINE_COUNT(); } },
-		new Command(BKW_CONSOLE_LINE_TEXT)      { public boolean run() { return executeCONSOLE_LINE_TEXT(); } },
-		new Command(BKW_CONSOLE_LINE_TOUCHED)   { public boolean run() { return executeCONSOLE_LINE_TOUCHED(); } },
-		new Command(BKW_CONSOLE_LINE_NEW)       { public boolean run() { return executeCONSOLE_LINE_NEW(); } },
-		new Command(BKW_CONSOLE_LINE_CHAR)      { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
-	};
-
 	// ******************** Input Command variables ********************************
 
 	private boolean mInputCancelled = false;			// Signal between background task and foreground
@@ -1737,19 +1396,7 @@ public class Run extends ListActivity {
 		BKW_DIALOG_MESSAGE, BKW_DIALOG_SELECT
 	};
 
-	private final Command[] Dialog_cmd = new Command[] {	// Map dialog command keywords to their execution functions
-		new Command(BKW_DIALOG_MESSAGE)         { public boolean run() { return executeDIALOG_MESSAGE(); } },
-		new Command(BKW_DIALOG_SELECT)          { public boolean run() { return executeDIALOG_SELECT(); } },
-	};
-
 	private int mAlertItemID = 0;							// index of button or list item
-
-	// ******************** Popup Command variables ********************************
-
-	private String ToastMsg;
-	private int ToastX;
-	private int ToastY;
-	private int ToastDuration;
 
 	// ******************** Variables for the SELECT Command ***********************
 
@@ -1779,22 +1426,6 @@ public class Run extends ListActivity {
 		BKW_SQL_NEXT, BKW_SQL_DELETE,
 		BKW_SQL_UPDATE, BKW_SQL_EXEC,
 		BKW_SQL_RAW_QUERY, BKW_SQL_DROP_TABLE, BKW_SQL_NEW_TABLE
-	};
-
-	private final Command[] SQL_cmd = new Command[] {	// Map SQL command keywords to their execution functions
-		new Command(BKW_SQL_OPEN)           { public boolean run() { return execute_sql_open(); } },
-		new Command(BKW_SQL_CLOSE)          { public boolean run() { return execute_sql_close(); } },
-		new Command(BKW_SQL_INSERT)         { public boolean run() { return execute_sql_insert(); } },
-		new Command(BKW_SQL_QUERY_LENGTH)   { public boolean run() { return execute_sql_query_length(); } },
-		new Command(BKW_SQL_QUERY_POSITION) { public boolean run() { return execute_sql_query_position(); } },
-		new Command(BKW_SQL_QUERY)          { public boolean run() { return execute_sql_query(); } },
-		new Command(BKW_SQL_NEXT)           { public boolean run() { return execute_sql_next(); } },
-		new Command(BKW_SQL_DELETE)         { public boolean run() { return execute_sql_delete(); } },
-		new Command(BKW_SQL_UPDATE)         { public boolean run() { return execute_sql_update(); } },
-		new Command(BKW_SQL_EXEC)           { public boolean run() { return execute_sql_exec(); } },
-		new Command(BKW_SQL_RAW_QUERY)      { public boolean run() { return execute_sql_raw_query(); } },
-		new Command(BKW_SQL_DROP_TABLE)     { public boolean run() { return execute_sql_drop_table(); } },
-		new Command(BKW_SQL_NEW_TABLE)      { public boolean run() { return execute_sql_new_table(); } }
 	};
 
 	public ArrayList<SQLiteDatabase> DataBases; 	 // List of created data bases
@@ -1982,6 +1613,2841 @@ public class Run extends ListActivity {
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_SETFONT,
 	};
 
+	// ******************************** Variables for Audio commands ****************************
+
+	private static final String BKW_AUDIO_LOAD = "load";
+	private static final String BKW_AUDIO_PLAY = "play";
+	private static final String BKW_AUDIO_LOOP = "loop";
+	private static final String BKW_AUDIO_STOP = "stop";
+	private static final String BKW_AUDIO_VOLUME = "volume";
+	private static final String BKW_AUDIO_POSITION_CURRENT = "position.current";
+	private static final String BKW_AUDIO_POSITION_SEEK = "position.seek";
+	private static final String BKW_AUDIO_LENGTH = "length";
+	private static final String BKW_AUDIO_RELEASE = "release";
+	private static final String BKW_AUDIO_PAUSE = "pause";
+	private static final String BKW_AUDIO_ISDONE = "isdone";
+	private static final String BKW_AUDIO_RECORD_START = "record.start";
+	private static final String BKW_AUDIO_RECORD_STOP = "record.stop";
+
+	private static final String Audio_KW[] = {			// Command list for Format
+		BKW_AUDIO_LOAD, BKW_AUDIO_PLAY,
+		BKW_AUDIO_LOOP, BKW_AUDIO_STOP, BKW_AUDIO_VOLUME,
+		BKW_AUDIO_POSITION_CURRENT, BKW_AUDIO_POSITION_SEEK,
+		BKW_AUDIO_LENGTH, BKW_AUDIO_RELEASE, BKW_AUDIO_PAUSE,
+		BKW_AUDIO_ISDONE, BKW_AUDIO_RECORD_START, BKW_AUDIO_RECORD_STOP
+	};
+
+	private MediaPlayer theMP = null;
+	private ArrayList<MediaPlayer> theMPList;
+	private ArrayList<String> theMPNameList;
+	private boolean PlayIsDone;
+	private MediaRecorder mRecorder = null;
+
+	// ******************************* Variables for Sensor Commands **********************************
+
+	private static final String BKW_SENSORS_LIST = "list";
+	private static final String BKW_SENSORS_OPEN = "open";
+	private static final String BKW_SENSORS_READ = "read";
+	private static final String BKW_SENSORS_CLOSE = "close";
+	private static final String BKW_SENSORS_ROTATE = "rotate";
+
+	private static final String Sensors_KW[] = {		// Command list for Format
+		BKW_SENSORS_LIST, BKW_SENSORS_OPEN,
+		BKW_SENSORS_READ, BKW_SENSORS_CLOSE, BKW_SENSORS_ROTATE
+	};
+
+	private SensorActivity theSensors;
+
+	// ***********************  Variables for GPS Commands  ******************************************
+
+	private static final String BKW_GPS_ALTITUDE = "altitude";
+	private static final String BKW_GPS_LATITUDE = "latitude";
+	private static final String BKW_GPS_LONGITUDE = "longitude";
+	private static final String BKW_GPS_BEARING = "bearing";
+	private static final String BKW_GPS_ACCURACY = "accuracy";
+	private static final String BKW_GPS_SPEED = "speed";
+	private static final String BKW_GPS_PROVIDER = "provider";
+	private static final String BKW_GPS_SATELLITES = "satellites";
+	private static final String BKW_GPS_TIME = "time";
+	private static final String BKW_GPS_LOCATION = "location";
+	private static final String BKW_GPS_STATUS = "status";
+	private static final String BKW_GPS_OPEN = "open";
+	private static final String BKW_GPS_CLOSE = "close";
+
+	private static final String GPS_KW[] = {			// Command list for Format
+		BKW_GPS_ALTITUDE, BKW_GPS_LATITUDE, BKW_GPS_LONGITUDE,
+		BKW_GPS_BEARING, BKW_GPS_ACCURACY, BKW_GPS_SPEED,
+		BKW_GPS_PROVIDER, BKW_GPS_SATELLITES, BKW_GPS_TIME,
+		BKW_GPS_LOCATION, BKW_GPS_STATUS,
+		BKW_GPS_OPEN, BKW_GPS_CLOSE,
+	};
+
+	private GPS theGPS;
+
+	// ************************* Variables for Array Commands *********************************
+
+	private enum ArrayOrderOps { DoSort, DoShuffle, DoReverse }
+	private enum ArrayMathOps { DoSum, DoAverage, DoMin, DoMax, DoVariance, DoStdDev }
+
+	private static final String BKW_ARRAY_LENGTH = "length";
+	private static final String BKW_ARRAY_LOAD = "load";
+	private static final String BKW_ARRAY_SORT = "sort";
+	private static final String BKW_ARRAY_SUM = "sum";
+	private static final String BKW_ARRAY_AVERAGE = "average";
+	private static final String BKW_ARRAY_REVERSE = "reverse";
+	private static final String BKW_ARRAY_SHUFFLE = "shuffle";
+	private static final String BKW_ARRAY_MIN = "min";
+	private static final String BKW_ARRAY_MAX = "max";
+	private static final String BKW_ARRAY_DELETE = "delete";
+	private static final String BKW_ARRAY_VARIANCE = "variance";
+	private static final String BKW_ARRAY_STD_DEV = "std_dev";
+	private static final String BKW_ARRAY_COPY = "copy";
+	private static final String BKW_ARRAY_SEARCH = "search";
+
+	private static final String Array_KW[] = {			// Command list for Format
+		BKW_ARRAY_LENGTH, BKW_ARRAY_LOAD, BKW_ARRAY_SORT,
+		BKW_ARRAY_SUM, BKW_ARRAY_AVERAGE, BKW_ARRAY_REVERSE,
+		BKW_ARRAY_SHUFFLE, BKW_ARRAY_MIN, BKW_ARRAY_MAX,
+		BKW_ARRAY_DELETE, BKW_ARRAY_VARIANCE, BKW_ARRAY_STD_DEV,
+		BKW_ARRAY_COPY, BKW_ARRAY_SEARCH
+	};
+
+	// ************************************ List command variables *********************************
+
+	private static final String BKW_LIST_CREATE = "create";
+	private static final String BKW_LIST_ADD_LIST = "add.list";
+	private static final String BKW_LIST_ADD_ARRAY = "add.array";
+	private static final String BKW_LIST_ADD = "add";
+	private static final String BKW_LIST_REPLACE = "replace";
+	private static final String BKW_LIST_TYPE = "type";
+	private static final String BKW_LIST_GET = "get";
+	private static final String BKW_LIST_CLEAR = "clear";
+	private static final String BKW_LIST_REMOVE = "remove";
+	private static final String BKW_LIST_INSERT = "insert";
+	private static final String BKW_LIST_SIZE = "size";
+	private static final String BKW_LIST_TOARRAY = "toarray";
+	private static final String BKW_LIST_SEARCH = "search";
+
+	private static final String List_KW[] = {			// Command list for Format
+		BKW_LIST_CREATE, BKW_LIST_ADD_LIST,
+		BKW_LIST_ADD_ARRAY, BKW_LIST_ADD, BKW_LIST_REPLACE,
+		BKW_LIST_TYPE, BKW_LIST_GET, BKW_LIST_CLEAR,
+		BKW_LIST_REMOVE, BKW_LIST_INSERT, BKW_LIST_SIZE,
+		BKW_LIST_TOARRAY, BKW_LIST_SEARCH
+	};
+
+	public ArrayList<ArrayList> theLists;
+	public ArrayList<VarType> theListsType;
+
+	// ************************************ Bundle Variables ****************************************
+
+	private static final String BKW_BUNDLE_CREATE = "create";
+	private static final String BKW_BUNDLE_PUT = "put";
+	private static final String BKW_BUNDLE_GET = "get";
+	private static final String BKW_BUNDLE_NEXT = "next";
+	private static final String BKW_BUNDLE_TYPE = "type";
+	private static final String BKW_BUNDLE_KEYS = "keys";
+	private static final String BKW_BUNDLE_COPY = "copy";
+	private static final String BKW_BUNDLE_CLEAR = "clear";
+	private static final String BKW_BUNDLE_CONTAIN = "contain";
+	private static final String BKW_BUNDLE_REMOVE = "remove";
+
+	private static final String Bundle_KW[] = {			// Command list for Format
+		BKW_BUNDLE_CREATE, BKW_BUNDLE_PUT, BKW_BUNDLE_GET, BKW_BUNDLE_NEXT,
+		BKW_BUNDLE_TYPE, BKW_BUNDLE_KEYS, BKW_BUNDLE_COPY,
+		BKW_BUNDLE_CLEAR, BKW_BUNDLE_CONTAIN, BKW_BUNDLE_REMOVE
+	};
+
+	private ArrayList<Bundle> theBundles;
+
+	// *********************************** Stack Variables **********************************************
+
+	private static final String BKW_STACK_CREATE = "create";
+	private static final String BKW_STACK_PUSH = "push";
+	private static final String BKW_STACK_POP = "pop";
+	private static final String BKW_STACK_PEEK = "peek";
+	private static final String BKW_STACK_TYPE = "type";
+	private static final String BKW_STACK_ISEMPTY = "isempty";
+	private static final String BKW_STACK_CLEAR = "clear";
+
+	private static final String Stack_KW[] = {			// Command list for Format
+		BKW_STACK_CREATE, BKW_STACK_PUSH, BKW_STACK_POP,
+		BKW_STACK_PEEK, BKW_STACK_TYPE,
+		BKW_STACK_ISEMPTY, BKW_STACK_CLEAR
+	};
+
+	private ArrayList<Stack> theStacks;
+	private ArrayList<VarType> theStacksType; 
+
+//  ******************************* Socket Variables **************************************************
+
+	// socket commands
+	private static final String BKW_SOCKET_MYIP = "myip";
+	private static final String BKW_SOCKET_CLIENT_GROUP = "client.";
+	private static final String BKW_SOCKET_SERVER_GROUP = "server.";
+
+	// socket subgroup commands
+	private static final String BKW_SOCKET_CLIENT_IP = "client.ip";
+	private static final String BKW_SOCKET_CLOSE = "close";
+	private static final String BKW_SOCKET_CONNECT = "connect";
+	private static final String BKW_SOCKET_CREATE = "create";
+	private static final String BKW_SOCKET_DISCONNECT = "disconnect";
+	private static final String BKW_SOCKET_READ_FILE = "read.file";
+	private static final String BKW_SOCKET_READ_LINE = "read.line";
+	private static final String BKW_SOCKET_READ_READY = "read.ready";
+	private static final String BKW_SOCKET_SERVER_IP = "server.ip";
+	private static final String BKW_SOCKET_STATUS = "status";
+	private static final String BKW_SOCKET_WRITE_BYTES = "write.bytes";
+	private static final String BKW_SOCKET_WRITE_FILE = "write.file";
+	private static final String BKW_SOCKET_WRITE_LINE = "write.line";
+
+	private static final String Socket_KW[] = {			// Command list for Format
+		BKW_SOCKET_MYIP,
+
+		// SOCKET subgroups - Format can handle only one level of grouping
+		// SOCKET.CLIENT. subgroup
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_CONNECT,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_STATUS,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_READY,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_LINE,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_LINE,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_BYTES,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_CLOSE,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_SERVER_IP,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_FILE,
+		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_FILE,
+		// SOCKET.SERVER. subgroup
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CREATE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CONNECT,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_STATUS,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_READY,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_LINE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_LINE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_BYTES,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_DISCONNECT,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CLOSE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CLIENT_IP,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_FILE,
+		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_FILE,
+	};
+
+	// Constants that indicate the current connection state
+	public static final int STATE_NOT_ENABLED = -1;	// channel is not enabled, or server socket not created
+	public static final int STATE_NONE = 0;			// channel is doing nothing (initial state)
+	public static final int STATE_LISTENING = 1;	// now listening for incoming connections
+	public static final int STATE_CONNECTING = 2;	// now initiating an outgoing connection
+	public static final int STATE_CONNECTED = 3;	// now connected to a remote device
+	public static final int STATE_READING = 4;		// now reading from a remote device
+	public static final int STATE_WRITING = 5;		// now writing to a remote device
+
+	private int clientSocketState;
+	private int serverSocketState;
+
+	private Socket theClientSocket;
+	private ClientSocketConnectThread clientSocketConnectThread;
+	private BufferedReader ClientBufferedReader;
+	private PrintWriter ClientPrintWriter;
+
+	private ServerSocket newSS;
+	private ServerSocketConnectThread serverSocketConnectThread;
+	private Socket theServerSocket;
+	private BufferedReader ServerBufferedReader;
+	private PrintWriter ServerPrintWriter;
+
+	private class ServerSocketConnectThread extends Thread {
+		public void run() {
+			try {
+				theServerSocket = newSS.accept();
+				ServerBufferedReader = new BufferedReader(new InputStreamReader(theServerSocket.getInputStream()));
+				ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
+				serverSocketState = STATE_CONNECTED;
+			} catch (Exception e) {
+				serverSocketState = STATE_NONE;
+			} finally {
+				serverSocketConnectThread = null;							// null global reference to itself
+			}
+			Log.d(LOGTAG, "serverSocketConnectThread exit, state " + serverSocketState);
+		}
+
+		@Override
+		public void interrupt() {
+			if (serverSocketState == STATE_LISTENING) {						// in case SERVER_DISCONNECT interrupts thread
+				serverSocketState = STATE_NONE;								// change state or SERVER_STATUS will report LISTENING
+			}
+			super.interrupt();
+		}
+	}
+
+	private class ClientSocketConnectThread extends Thread {
+		private final String mAddress;
+		private final int mPort;
+
+		public ClientSocketConnectThread(String address, int port) {
+			super();
+			mAddress = address;
+			mPort = port;
+		}
+
+		public void run() {
+			try {
+				theClientSocket = new Socket(mAddress, mPort);
+				ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
+				ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
+				clientSocketState = STATE_CONNECTED;
+			} catch (Exception e) {
+				clientSocketState = STATE_NONE;
+			} finally {
+				clientSocketConnectThread = null;							// null global reference to itself
+			}
+			Log.d(LOGTAG, "clientSocketConnectThread exit, state " + clientSocketState);
+		}
+
+		@Override
+		public void interrupt() {
+			if (clientSocketState == STATE_CONNECTING) {					// in case CLIENT_CLOSE interrupts thread
+				clientSocketState = STATE_NONE;								// change state or CLIENT_STATUS will report CONNECTING
+			}
+			super.interrupt();
+		}
+	}
+
+	// *************************************************** Debug Commands ****************************
+
+	private static final String BKW_DEBUG_ON = "on";
+	private static final String BKW_DEBUG_OFF = "off";
+	private static final String BKW_DEBUG_PRINT = "print";
+	private static final String BKW_DEBUG_ECHO_ON = "echo.on";
+	private static final String BKW_DEBUG_ECHO_OFF = "echo.off";
+	private static final String BKW_DEBUG_DUMP_SCALARS = "dump.scalars";
+	private static final String BKW_DEBUG_DUMP_ARRAY = "dump.array";
+	private static final String BKW_DEBUG_DUMP_LIST = "dump.list";
+	private static final String BKW_DEBUG_DUMP_STACK = "dump.stack";
+	private static final String BKW_DEBUG_DUMP_BUNDLE = "dump.bundle";
+	private static final String BKW_DEBUG_WATCH_CLEAR = "watch.clear";
+	private static final String BKW_DEBUG_WATCH = "watch";
+	private static final String BKW_DEBUG_SHOW_SCALARS = "show.scalars";
+	private static final String BKW_DEBUG_SHOW_ARRAY = "show.array";
+	private static final String BKW_DEBUG_SHOW_LIST = "show.list";
+	private static final String BKW_DEBUG_SHOW_STACK = "show.stack";
+	private static final String BKW_DEBUG_SHOW_BUNDLE = "show.bundle";
+	private static final String BKW_DEBUG_SHOW_WATCH = "show.watch";
+	private static final String BKW_DEBUG_SHOW_PROGRAM = "show.program";
+	private static final String BKW_DEBUG_SHOW = "show";
+	private static final String BKW_DEBUG_CONSOLE = "console";
+	private static final String BKW_DEBUG_COMMANDS = "commands";
+	private static final String BKW_DEBUG_STATS = "stats";
+
+	private static final String Debug_KW[] = {			// Command list for Format
+		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_DEBUG_PRINT, BKW_DEBUG_ECHO_ON,
+		BKW_DEBUG_ECHO_OFF, BKW_DEBUG_DUMP_SCALARS,
+		BKW_DEBUG_DUMP_ARRAY, BKW_DEBUG_DUMP_LIST,
+		BKW_DEBUG_DUMP_STACK, BKW_DEBUG_DUMP_BUNDLE,
+		BKW_DEBUG_WATCH_CLEAR, BKW_DEBUG_WATCH, BKW_DEBUG_SHOW_SCALARS,
+		BKW_DEBUG_SHOW_ARRAY, BKW_DEBUG_SHOW_LIST, BKW_DEBUG_SHOW_STACK,
+		BKW_DEBUG_SHOW_BUNDLE, BKW_DEBUG_SHOW_WATCH, BKW_DEBUG_SHOW_PROGRAM,
+		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE,
+		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS
+	};
+
+	private boolean Debug = false;
+	private boolean Echo = false;
+
+	// *********************************************** Text to Speech *******************************
+
+	private static final String BKW_TTS_INIT = "init";
+	private static final String BKW_TTS_SPEAK_TOFILE = "speak.tofile";
+	private static final String BKW_TTS_SPEAK = "speak";
+	private static final String BKW_TTS_STOP = "stop";
+
+	private static final String tts_KW[] = {			// TTS command list for Format
+		BKW_TTS_INIT, BKW_TTS_SPEAK_TOFILE,
+		BKW_TTS_SPEAK, BKW_TTS_STOP
+	};
+
+	private TextToSpeechActivity theTTS;
+	public static boolean ttsInit;
+
+	// *********************************************** FTP Client *************************************
+
+	private static final String BKW_FTP_OPEN = "open";
+	private static final String BKW_FTP_CLOSE = "close";
+	private static final String BKW_FTP_DIR = "dir";
+	private static final String BKW_FTP_CD = "cd";
+	private static final String BKW_FTP_GET = "get";
+	private static final String BKW_FTP_PUT = "put";
+	private static final String BKW_FTP_DELETE = "delete";
+	private static final String BKW_FTP_RMDIR = "rmdir";
+	private static final String BKW_FTP_MKDIR = "mkdir";
+	private static final String BKW_FTP_RENAME = "rename";
+
+	private static final String ftp_KW[] = {			// FTP command list for Format
+		BKW_FTP_OPEN, BKW_FTP_CLOSE, BKW_FTP_DIR, BKW_FTP_CD,
+		BKW_FTP_GET, BKW_FTP_PUT, BKW_FTP_DELETE, BKW_FTP_RMDIR,
+		BKW_FTP_MKDIR, BKW_FTP_RENAME
+	};
+
+	public FTPClient mFTPClient = null;
+	public String FTPdir = null;
+
+	// *********************************************** Camera *****************************************
+
+	public static Bitmap CameraBitmap;
+	public static boolean CameraDone;
+	private int CameraNumber;
+	private int NumberOfCameras;			// -1 if we don't know yet
+
+	// ***************************************  Bluetooth  ********************************************
+
+	// Message types sent from the BluetoothChatService
+	public static final int MESSAGE_STATE_CHANGE = MESSAGE_BT_GROUP + 1;
+	public static final int MESSAGE_READ         = MESSAGE_BT_GROUP + 2;
+	public static final int MESSAGE_WRITE        = MESSAGE_BT_GROUP + 3;
+	public static final int MESSAGE_DEVICE_NAME  = MESSAGE_BT_GROUP + 4;
+
+	// Key names received from the BluetoothChatService
+	public static final String DEVICE_NAME = "device_name";
+	public static final String TOAST = "toast";
+
+	// Intent request codes
+	public static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
+	public static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
+	public static final int REQUEST_ENABLE_BT = 3;
+
+	public static  UUID MY_UUID_SECURE =
+		UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+	public static  UUID MY_UUID_INSECURE =
+		UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
+	public static int bt_enabled = 0;
+	private int bt_state;
+	public static boolean bt_Secure;
+
+	// Name of the connected device
+	private String mConnectedDeviceName = null;
+	// Array adapter for the conversation thread
+	private StringBuffer mOutStringBuffer;
+	// Local Bluetooth adapter
+	public static BluetoothAdapter mBluetoothAdapter = null;
+	// Member object for the chat services
+	public static BluetoothChatService mChatService = null;
+	// Input buffer - use this for synchronization lock
+	private final ArrayList<String> BT_Read_Buffer = new ArrayList<String>();
+	public static BluetoothDevice btConnectDevice = null;
+	private boolean btReadReady = false;
+	private int OnBTReadLine = 0;
+
+	private static final String BKW_BT_OPEN = "open";
+	private static final String BKW_BT_CLOSE = "close";
+	private static final String BKW_BT_STATUS = "status";
+	private static final String BKW_BT_CONNECT = "connect";
+	private static final String BKW_BT_DEVICE_NAME = "device.name";
+	private static final String BKW_BT_WRITE = "write";
+	private static final String BKW_BT_READ_READY = "read.ready";
+	private static final String BKW_BT_READ_BYTES = "read.bytes";
+	private static final String BKW_BT_SET_UUID = "set.uuid";
+	private static final String BKW_BT_LISTEN = "listen";
+	private static final String BKW_BT_RECONNECT = "reconnect";
+	private static final String BKW_BT_ONREADREADY_RESUME = "onreadready.resume";
+	private static final String BKW_BT_DISCONNECT = "disconnect";
+
+	private static final String bt_KW[] = {				// Bluetooth command list for Format
+		BKW_BT_OPEN, BKW_BT_CLOSE, BKW_BT_STATUS,
+		BKW_BT_CONNECT, BKW_BT_DEVICE_NAME,
+		BKW_BT_WRITE, BKW_BT_READ_READY, BKW_BT_READ_BYTES,
+		BKW_BT_SET_UUID, BKW_BT_LISTEN, BKW_BT_RECONNECT,
+		BKW_BT_ONREADREADY_RESUME, BKW_BT_DISCONNECT
+	};
+
+	/**************************************  Superuser and System  ***************************/
+
+	private static final String BKW_SU_OPEN = "open";
+	private static final String BKW_SU_WRITE = "write";
+	private static final String BKW_SU_READ_READY = "read.ready";
+	private static final String BKW_SU_READ_LINE = "read.line";
+	private static final String BKW_SU_CLOSE = "close";
+
+	private static final String su_KW[] = {				// Command list for Format
+		BKW_SU_OPEN, BKW_SU_WRITE, BKW_SU_READ_READY,
+		BKW_SU_READ_LINE, BKW_SU_CLOSE
+	};
+	private static final String[] System_KW = su_KW;	// Command list for Format
+
+	private boolean isSU = true;						// set true for SU commands, false for System commands
+	private DataOutputStream SUoutputStream;
+	private BufferedReader SUinputStream;
+	private Process SUprocess;
+	private ArrayList <String> SU_ReadBuffer;
+	private SUReader theSUReader = null;
+
+	/***************************************  SOUND POOL  ************************************/
+
+	private static final String BKW_SOUNDPOOL_OPEN = "open";
+	private static final String BKW_SOUNDPOOL_LOAD = "load";
+	private static final String BKW_SOUNDPOOL_PLAY = "play";
+	private static final String BKW_SOUNDPOOL_STOP = "stop";
+	private static final String BKW_SOUNDPOOL_UNLOAD = "unload";
+	private static final String BKW_SOUNDPOOL_PAUSE = "pause";
+	private static final String BKW_SOUNDPOOL_RESUME = "resume";
+	private static final String BKW_SOUNDPOOL_RELEASE = "release";
+	private static final String BKW_SOUNDPOOL_SETVOLUME = "setvolume";
+	private static final String BKW_SOUNDPOOL_SETPRIORITY = "setpriority";
+	private static final String BKW_SOUNDPOOL_SETLOOP = "setloop";
+	private static final String BKW_SOUNDPOOL_SETRATE = "setrate";
+
+	private static final String sp_KW[] = {				// Command list for Format
+		BKW_SOUNDPOOL_OPEN, BKW_SOUNDPOOL_LOAD,
+		BKW_SOUNDPOOL_PLAY, BKW_SOUNDPOOL_STOP,
+		BKW_SOUNDPOOL_UNLOAD, BKW_SOUNDPOOL_PAUSE,
+		BKW_SOUNDPOOL_RESUME, BKW_SOUNDPOOL_RELEASE,
+		BKW_SOUNDPOOL_SETVOLUME, BKW_SOUNDPOOL_SETPRIORITY,
+		BKW_SOUNDPOOL_SETLOOP, BKW_SOUNDPOOL_SETRATE
+	};
+
+	private SoundPool theSoundPool ;
+
+	// *************************************** Ringer Vars ****************************************
+
+	private static final String BKW_RINGER_GET_MODE = "get.mode";
+	private static final String BKW_RINGER_SET_MODE = "set.mode";
+	private static final String BKW_RINGER_GET_VOLUME = "get.volume";
+	private static final String BKW_RINGER_SET_VOLUME = "set.volume";
+
+	private static final String ringer_KW[] = {			// Command list for Format
+		BKW_RINGER_GET_MODE, BKW_RINGER_SET_MODE,
+		BKW_RINGER_GET_VOLUME, BKW_RINGER_SET_VOLUME
+	};
+
+	private static final int RINGER_UNKNOWN = -1;
+	private static final int RINGER_SILENT = 0;
+	private static final int RINGER_VIBRATE = 1;
+	private static final int RINGER_NORMAL = 2;
+
+	// **************** Headset Vars **************************************
+
+	int headsetState;
+	String headsetName;
+	int headsetMic;
+
+	//******************* html Vars ******************************************
+
+	private static final String BKW_HTML_OPEN = "open";
+	private static final String BKW_HTML_ORIENTATION = "orientation";
+	private static final String BKW_HTML_LOAD_URL = "load.url";
+	private static final String BKW_HTML_LOAD_STRING = "load.string";
+	private static final String BKW_HTML_GET_DATALINK = "get.datalink";
+	private static final String BKW_HTML_CLOSE = "close";
+	private static final String BKW_HTML_GO_BACK = "go.back";
+	private static final String BKW_HTML_GO_FORWARD = "go.forward";
+	private static final String BKW_HTML_CLEAR_CACHE = "clear.cache";
+	private static final String BKW_HTML_CLEAR_HISTORY = "clear.history";
+	private static final String BKW_HTML_POST = "post";
+
+	private static final String html_KW[] = {			// Command list for Format
+		BKW_HTML_OPEN, BKW_HTML_ORIENTATION,
+		BKW_HTML_LOAD_URL, BKW_HTML_LOAD_STRING,
+		BKW_HTML_GET_DATALINK, BKW_HTML_CLOSE, BKW_HTML_GO_BACK,
+		BKW_HTML_GO_FORWARD, BKW_HTML_CLEAR_CACHE,
+		BKW_HTML_CLEAR_HISTORY, BKW_HTML_POST
+	};
+
+	// Message types for the HTML commands
+	private static final int MESSAGE_HTML_OPEN     = MESSAGE_HTML_GROUP + 1;
+	private static final int MESSAGE_GO_BACK       = MESSAGE_HTML_GROUP + 2;
+	private static final int MESSAGE_GO_FORWARD    = MESSAGE_HTML_GROUP + 3;
+	private static final int MESSAGE_CLEAR_CACHE   = MESSAGE_HTML_GROUP + 4;
+	private static final int MESSAGE_CLEAR_HISTORY = MESSAGE_HTML_GROUP + 5;
+	private static final int MESSAGE_LOAD_URL      = MESSAGE_HTML_GROUP + 6;
+	private static final int MESSAGE_LOAD_STRING   = MESSAGE_HTML_GROUP + 7;
+	private static final int MESSAGE_POST          = MESSAGE_HTML_GROUP + 8;
+
+	public static ArrayList<String> htmlData_Buffer;
+	private Intent htmlIntent;
+	private boolean htmlOpening;
+
+	public static boolean Notified;
+
+	//********************* SMS Vars ***********************************
+
+	private static final String BKW_SMS_RCV_INIT = "rcv.init";
+	private static final String BKW_SMS_RCV_NEXT = "rcv.next";
+	private static final String BKW_SMS_SEND = "send";
+
+	private static final String SMS_KW[] = {			// Command list for Format
+		BKW_SMS_RCV_INIT, BKW_SMS_RCV_NEXT, BKW_SMS_SEND
+	};
+
+	public ArrayList<String> smsRcvBuffer;
+
+	// ******************** Speech to text Vars ********************************
+
+	public static final int VOICE_RECOGNITION_REQUEST_CODE = 1234;
+	public static ArrayList <String> sttResults;
+	public static boolean sttListening;
+	public static boolean sttDone;
+
+	// ******************** Timer Variables *******************************
+
+	private static final String BKW_TIMER_SET = "set";
+	private static final String BKW_TIMER_CLEAR = "clear";
+	private static final String BKW_TIMER_RESUME = "resume";
+
+	private static final String Timer_KW[] = {			// Command list for Format
+		BKW_TIMER_SET, BKW_TIMER_CLEAR, BKW_TIMER_RESUME
+	};
+
+	public int OnTimerLine;
+	public Timer theTimer;
+	public boolean timerExpired;
+	public boolean timerStarting;
+
+	// ******************** TimeZone Variables *******************************
+
+	private static final String BKW_TIMEZONE_SET = "set";
+	private static final String BKW_TIMEZONE_GET = "get";
+	private static final String BKW_TIMEZONE_LIST = "list";
+
+	private static final String TimeZone_KW[] = {		// Command list for Format
+		BKW_TIMEZONE_SET, BKW_TIMEZONE_GET, BKW_TIMEZONE_LIST
+	};
+
+	public String theTimeZone = "";
+
+	//************************ Phone variables ***************************
+
+	private static final String BKW_PHONE_CALL = "call";
+	private static final String BKW_PHONE_DIAL = "dial";
+	private static final String BKW_PHONE_RCV_INIT = "rcv.init";
+	private static final String BKW_PHONE_RCV_NEXT = "rcv.next";
+	private static final String BKW_PHONE_INFO = "info";
+
+	private static final String phone_KW[] = {			// Command list for Format
+		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT, BKW_PHONE_INFO
+	};
+
+	public int phoneState = 0;
+	public String phoneNumber = "";
+	public boolean phoneRcvInited = false;
+	public TelephonyManager mTM;
+	public SignalStrength mSignalStrength = null;
+
+	//************************ am variables ******************************
+
+	private static final String BKW_AM_BROADCAST = "broadcast";
+	private static final String BKW_AM_START = "start";
+
+	private static final String am_KW[] = {				// Command list for Format
+		BKW_AM_BROADCAST, BKW_AM_START
+	};
+
+	// ****************** Headset Broadcast Receiver ***********************
+
+	public class BroadcastsHandler extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			if (intent.getAction().equalsIgnoreCase(Intent.ACTION_HEADSET_PLUG)) {
+//				String data = intent.getDataString();
+//				Bundle extraData = intent.getExtras();
+
+				headsetState = intent.getIntExtra("state", -1);
+				headsetName = intent.getStringExtra("name");
+				headsetMic = intent.getIntExtra("microphone", -1);
+			}
+		}
+	}
+	private BroadcastsHandler headsetBroadcastReceiver = null;
+
+	private Context getContext() {
+		return GRFront ? GR.context : this;
+	}
+
+	// These sendMessage methods are used by Background to send messages to mHandler.
+	// For convenience, there are several combinations of message parameters provided.
+
+	private void sendMessage(int what) {
+		mHandler.obtainMessage(what).sendToTarget();
+	}
+
+	private void sendMessage(int what, Object obj) {			// Use this to send a String or other Object
+		mHandler.obtainMessage(what, obj).sendToTarget();
+	}
+
+	private void sendMessage(int what, int arg1, int arg2) {	// Use this to send one or two int arguments
+		mHandler.obtainMessage(what, arg1, arg2).sendToTarget();
+	}
+
+	// This Handler is in the UI (foreground) Task part of Run.
+	// It gets control when the background task sends a Message.
+
+	private final Handler mHandler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			switch (msg.what & MESSAGE_GROUP_MASK) {
+			case MESSAGE_DEFAULT_GROUP:
+				switch (msg.what) {
+				case MESSAGE_CHECKPOINT:				// no more messages pending
+					mMessagePending = false;
+					break;
+				}
+				break;
+			case MESSAGE_CONSOLE_GROUP:
+				switch (msg.what) {
+				case MESSAGE_UPDATE_CONSOLE:
+					updateConsole((String[])msg.obj);
+					break;
+				case MESSAGE_CONSOLE_LINE_CHAR:
+					char c = (char)msg.arg1;
+					synchronized (mConsoleBuffer) {
+						int n = mOutput.size() - 1;
+						String s = mOutput.get(n) + c;
+						mOutput.set(n, s);
+						mConsole.notifyDataSetChanged();
+					}
+					break;
+				case MESSAGE_CLEAR_CONSOLE:
+					clearConsole();
+					break;
+				case MESSAGE_CONSOLE_TITLE:
+					String title = (String)msg.obj;
+					setTitle((title != null) ? title : getResources().getString(R.string.run_name));
+					break;
+				}
+				break;
+			case MESSAGE_DIALOG_GROUP:
+				switch (msg.what) {
+				case MESSAGE_INPUT_DIALOG:
+					doInputDialog((Bundle)msg.obj);
+					break;
+				case MESSAGE_ALERT_DIALOG:
+					doAlertDialog((Bundle)msg.obj);
+					break;
+				case MESSAGE_TOAST:
+					String msgText = (String)msg.obj;
+					Bundle b = msg.getData();
+					int duration = b.getInt("dur", Toast.LENGTH_SHORT);
+					Toast toast = Toaster(msgText, duration);
+					int x = msg.arg1;
+					int y = msg.arg2;
+					toast.setGravity(Gravity.CENTER, x,y);
+					toast.show();
+					break;
+				}
+				break;
+			case MESSAGE_BT_GROUP:
+				handleBTMessage(msg);					// handle Bluetooth Messages
+				break;
+			case MESSAGE_HTML_GROUP:
+				handleHtmlMessage(msg);					// handle HTML Messages
+				break;
+			case MESSAGE_DEBUG_GROUP:
+				handleDebugMessage(msg);				// handle debug Messages
+				break;
+			default:									// unrecognized Message
+				break;									// ignore it
+			}
+		}
+	}; // mHandler
+
+	private Toast Toaster(CharSequence msg) {			// default: short, high toast
+		Toast toast = Toaster(msg, Toast.LENGTH_SHORT);
+		toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 50);
+		return toast;
+	}
+
+	private Toast Toaster(CharSequence msg, int duration) {
+		Toast toast = Toast.makeText(Run.this, msg, duration);
+		return toast;
+	}
+
+	private void updateConsole(String... strs) {
+
+		synchronized (mConsoleBuffer) {
+			if (mConsoleBuffer.size() != 0) {			// if any lines
+				mConsole.addAll(mConsoleBuffer);		// write each line to screen
+				mConsoleBuffer.clear();
+			} else { mConsole.notifyDataSetChanged(); }
+			// setListAdapter(AA);						// show the output
+			lv.setSelection(mConsole.getCount() - 1);	// set last line as the selected line to scroll
+		}
+	}
+
+	private void errorToConsole(String str) {			// conditionally write an error message to the console
+		if (OnErrorLine == 0) {							// if there is an OnError label, do not show the message.
+			updateConsole(str);
+		}
+	}
+
+
+	// ************************************* Run Entry Point **************************************
+	// Called by Android runtime when Run is launched from Editor or AutoRun
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+
+		super.onCreate(savedInstanceState);
+		Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex);
+
+		if (Basic.lines == null) {
+			Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
+			Intent intent = new Intent(getApplicationContext(), Basic.class);
+			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			startActivity(intent);
+			finish();
+			return;
+		}
+
+//		System.gc();
+//		Log.v(LOGTAG, CLASSTAG + " isOld  " + isOld);
+		if (isOld) {
+			if (theWakeLock != null) {
+				theWakeLock.release();
+			}
+			if (theWifiLock != null) {
+				theWifiLock.release();
+			}
+		}
+		theWakeLock = null;
+		theWifiLock = null;
+		isOld = true;
+
+		InitRunVars();
+
+															// Establish the output screen
+		TextStyle style = new TextStyle(Basic.defaultTextStyle, Settings.getConsoleTypeface(this));
+		mConsole = new Basic.ColoredTextAdapter(this, mOutput, style);
+		clearConsole();
+		setListAdapter(mConsole);
+		lv = getListView();
+		lv.setTextFilterEnabled(false);
+		lv.setSelection(0);
+		lv.setBackgroundColor(mConsole.getBackgroundColor());
+		if (Settings.getLinedConsole(this)) {
+			lv.setDivider(new ColorDrawable(mConsole.getLineColor()));	// override default from theme, sometimes it's invisible
+			if (lv.getDividerHeight() < 1) { lv.setDividerHeight(1); }	// make sure the divider shows
+		} else {
+			lv.setDividerHeight(0);							// don't show the divider
+		}
+
+//		IMM.restartInput(lv);
+		kbHide();
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		setRequestedOrientation(Settings.getSreenOrientation(this));
+
+		headsetBroadcastReceiver = new BroadcastsHandler();
+		this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
+
+		Basic.theRunContext = this;
+
+		// Listeners for Console Touch
+
+		lv.setOnItemClickListener(new OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				if (onCTLine != 0) {
+					TouchedConsoleLine = position + 1;
+					ConsoleLongTouch = false; 
+					ConsoleTouched = true;
+				}
+			}
+		});
+
+		lv.setOnItemLongClickListener(new OnItemLongClickListener() {
+			public boolean  onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+				if (onCTLine != 0) {
+					TouchedConsoleLine = position + 1;
+					ConsoleLongTouch = true; 
+					ConsoleTouched = true;
+					return true;
+				}
+				return false;
+			}
+		});
+
+		theBackground = new Background();					// Start the interpreter in a background task
+		theBackground.start();
+
+	} // end onCreate
+
+	private void InitRunVars() {							// init vars needed for Run
+		IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+		myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
+		clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+		theBackground = null;								// Background task ID
+	}
+
+	// The following methods run in the foreground. The are called by asynchronous user events
+	// caused by the user pressing a key.
+
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+		super.onTouchEvent(event);
+		int action = event.getAction();  // Get action type
+		return false;
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {		// The user hit a key
+		// Log.v(LOGTAG, CLASSTAG + " onKeyDown" + keyCode);
+		if (keyCode == KeyEvent.KEYCODE_MENU) {
+			if (OnMenuKeyLine != 0) {
+				MenuKeyHit = true;
+				return true;
+			}
+			if (Basic.isAPK)			// If menu key hit in APK and not trapped by OnMenuKey									
+				return true;			// then tell OS to ignore it
+			
+			return false;				// Let Android create the Run Menu.
+		}
+
+		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+			if (OnBackKeyLine != 0) {
+				BackKeyHit = true;
+				return true;
+			}
+
+			if (Basic.DoAutoRun) Exit = true;	// If AutoRun, back key always means exit
+			if (!Stop) {
+				Stop = true;				// If running a program, stop it
+			}
+			else finish();				// else already stopped, return to the Editor
+			return true;
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+
+	@Override
+	public boolean onKeyUp( int keyCode, KeyEvent event) {
+		// Log.v(LOGTAG, CLASSTAG + " onKeyUp" + keyCode);
+
+		if (keyCode == KeyEvent.KEYCODE_MENU) {
+			if (OnMenuKeyLine != 0) {
+				MenuKeyHit = true;
+				return true;
+			}
+			if (Basic.isAPK)			// If menu key hit in APK and not trapped by OnMenuKey									
+				return true;			// then tell OS to ignore it
+			
+			return false;				// Let Android create the Run Menu.
+		}
+		
+		if (kbShown)
+			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+
+
+		if (keyCode == KeyEvent.KEYCODE_BACK && OnBackKeyLine != 0) return true;
+
+		char c;
+		String theKey = "@";
+		int n ;
+		if (keyCode >= 7 && keyCode <= 16) {
+			n = keyCode - 7;
+			c = Numbers.charAt(n);
+			theKey = Character.toString(c);
+
+		} else if (keyCode >=29 && keyCode <= 54) {
+			n = keyCode -29;
+			c = Chars.charAt(n);
+			theKey = Character.toString(c);
+		} else if (keyCode == 62) {
+			c = ' ';
+			theKey = Character.toString(c);
+		} else if (keyCode >= 19 && keyCode <= 23) {
+			switch (keyCode) {
+			case 19: theKey = "up"; break;
+			case 20: theKey = "down"; break;
+			case 21: theKey = "left"; break;
+			case 22: theKey = "right"; break;
+			case 23: theKey = "go"; break;
+			}
+		} else {
+			theKey = "key " + keyCode;
+		}
+
+		synchronized (this) {
+			InChar.add(theKey);
+		}
+		KeyPressed = true;
+
+		return true;
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {		// Called when the menu key is pressed.
+		super.onCreateOptionsMenu(menu);
+		if (!Settings.getConsoleMenu(this)) { return false; }
+
+		MenuInflater inflater = getMenuInflater();
+		inflater.inflate(R.menu.run, menu);
+		MenuItem item = menu.getItem(1);
+		if (Basic.DoAutoRun) {							// If APK or shortcut, menu action is "Exit", not "Editor"
+			item.setTitle(getString(R.string.exit));
+		}
+		item.setEnabled(false);
+		return true;
+	}
+
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {	// Executed when Menu key is pressed (before onCreateOptionsMenu() above.
+
+		super.onPrepareOptionsMenu(menu);
+		MenuItem item;
+		if (Stop) {										// If program running display with Editor dimmed
+			item = menu.getItem(0);						// Other wise dim stop and undim Editor
+			item.setEnabled(false);
+			item = menu.getItem(1);
+			item.setEnabled(true);
+		}
+		return true;
+	}
+
+	public void MenuStop() {
+		updateConsole("Stopped by user.");				// tell user
+		Stop = true;									// signal main loop to stop
+		OnBackKeyLine = 0;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {	// A menu item is selected
+		switch (item.getItemId()) {
+
+		case R.id.stop:										// User wants to stop execution
+			MenuStop();
+			return true;
+
+		case R.id.editor:									// User pressed Editor
+			if (!Basic.DoAutoRun && SyntaxError) {
+				Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
+			}
+
+			Basic.theRunContext = null;
+			if (mChatService != null) {
+				mChatService.stop();
+				mChatService = null;
+			}
+
+			finish();
+
+		}
+		return true;
+	}
+
+	@Override
+	protected void onResume() {
+		Log.v(LOGTAG, CLASSTAG + " On Resume " + kbShown);
+
+		RunPaused = false;
+		background = false;
+		bgStateChange = true;
+
+//		if (WaitForInput) { theAlertDialog = doInputDialog().show(); } maybe???
+		super.onResume();
+	}
+
+	@Override
+	protected void onPause() {
+		// The Android OS wants me to dismiss dialog while paused so I will
+
+	/*	if (WaitForInput) {
+			theAlertDialog.dismiss();
+			InputDismissed = true;
+		}
+	*/
+		// If there is a Media Player running, pause it and hope
+		// that it works.
+		Log.v(LOGTAG, CLASSTAG + " onPause " + kbShown);
+		if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
+
+	/*	if (theMP != null) {
+			try { theMP.pause(); } catch (IllegalStateException e) {}
+		}
+	*/
+		RunPaused = true;
+
+		super.onPause();
+	}
+
+	@Override
+	protected void onStart() {
+		Log.v(LOGTAG, CLASSTAG + " On Start");
+		super.onStart();
+	}
+
+	@Override
+	protected void onStop() {
+		Log.v(LOGTAG, CLASSTAG + " onStop " + kbShown);
+		System.gc();
+		if (!GRrunning) {
+			background = true;
+			bgStateChange = true;
+//			if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
+		}
+		super.onStop();
+	}
+
+	@Override
+	protected void onRestart() {
+		Log.v(LOGTAG, CLASSTAG + " onRestart");
+		super.onRestart();
+	}
+
+	@Override
+	protected void onDestroy() {
+		Log.v(LOGTAG, CLASSTAG + " On Destroy");
+
+		if (theSensors != null) {
+			theSensors.stop();
+			theSensors = null;
+		}
+
+		if (theGPS != null) {
+			Log.d(LOGTAG, "Stopping GPS from onDestroy");
+			theGPS.stop();
+			theGPS = null;
+		}
+
+		if (theWakeLock != null) {
+			theWakeLock.release();
+			theWakeLock = null;
+		}
+
+		if (theWifiLock != null) {
+			theWifiLock.release();
+			theWifiLock = null;
+		}
+
+		if (headsetBroadcastReceiver != null) {
+			unregisterReceiver(headsetBroadcastReceiver);
+		}
+
+		// 	BitmapListClear();
+
+		super.onDestroy();
+	}
+
+	@Override
+	public void onLowMemory() {
+		updateConsole("Warning: Low Memory");
+	}
+
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		switch (requestCode) {
+			case REQUEST_CONNECT_DEVICE_SECURE:
+				// When DeviceListActivity returns with a device to connect
+				if ((resultCode == Activity.RESULT_OK) && (theBackground != null)) {
+					theBackground.connectDevice(data, bt_Secure);
+				}
+				break;
+			case REQUEST_CONNECT_DEVICE_INSECURE:
+				// When DeviceListActivity returns with a device to connect
+				if ((resultCode == Activity.RESULT_OK) && (theBackground != null)) {
+					theBackground.connectDevice(data, false);
+				}
+				break;
+			case REQUEST_ENABLE_BT:
+				// When the request to enable Bluetooth returns
+				if (resultCode == Activity.RESULT_OK) {
+					// Bluetooth is now enabled, so set up a chat session
+					bt_enabled = 1;
+				} else {
+					bt_enabled = -1;
+				}
+				break;
+			case VOICE_RECOGNITION_REQUEST_CODE:
+				if (resultCode == RESULT_OK){
+					sttResults = new ArrayList<String>();
+					sttResults = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+				}
+				sttDone = true;
+				break;
+		}
+	}
+
+	// ********************************************************************************************
+	// Methods used outside of the Background thread
+
+	private void clearConsole() {
+		synchronized (mConsoleBuffer) {
+			mConsole.clear();
+			mOutput.trimToSize();
+			mOutput.ensureCapacity(MIN_CONSOLE_LINES);
+			mConsole.notifyDataSetChanged();
+		}
+	}
+
+	private void checkpointMessage() {
+		mMessagePending = true;
+		sendMessage(MESSAGE_CHECKPOINT);
+	}
+
+	private void kbHide() {
+		if (GRFront) {
+//			GR.GraphicsImm.toggleSoftInputFromWindow(GR.drawView.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
+			GR.GraphicsImm.hideSoftInputFromWindow(GR.drawView.getWindowToken(), 0);
+			kbShown = false;
+		} else {
+//			IMM.toggleSoftInputFromWindow(lv.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
+			IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
+			kbShown = false;
+		}
+	}
+
+	private void trimArray(ArrayList Array, int start) {
+		int last = Array.size()-1;
+		int k = last;
+		while (k >= start) {
+			Array.remove(k);
+			--k;
+		}
+	}
+
+	private static boolean isVarStartChar(char c) {
+		return ((c >= 'a' && c <= 'z') || c == '_' || c == '@' || c == '#');
+	}
+
+	public static boolean isVarChar(char c) {
+		return (isVarStartChar(c) || (c >= '0' && c <= '9'));
+	}
+
+	// ***************** Dialogs *****************
+
+	private void doInputDialog(Bundle args) {
+		Context context = getContext();
+
+		EditText text = new EditText(context);
+		text.setText(args.getString("default"));
+		if (args.getBoolean("isNumeric")) {
+			text.setInputType(0x00003002);					// Limits keys to signed decimal numbers
+		}
+		String btnLabel = args.getString("button1");
+		if (btnLabel == null) { btnLabel = "Ok"; }
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(context);
+		builder
+			.setView(text)
+			.setCancelable(true)
+			.setTitle(args.getString("title"))				// default null, no title displayed if null or empty
+			.setPositiveButton(btnLabel, null);				// need to override default View click handler to prevent
+															// auto-dismiss, but can't do it until after show()
+
+		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
+				Log.d(LOGTAG, "Input Dialog onCancel");
+				mInputCancelled = true;						// signal read by executeINPUT
+			}
+		});
+
+		AlertDialog dialog = builder.create();
+		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+			public void onDismiss( DialogInterface dialog) {
+				Log.d(LOGTAG, "Input Dialog onDismiss");
+				HaveTextInput = true;						// semaphore used in waitForLOCK
+				synchronized (LOCK) {
+					LOCK.notify();							// release the lock that executeINPUT is waiting for
+				}
+			}
+		});
+		dialog.show();
+		dialog.getButton(DialogInterface.BUTTON_POSITIVE)	// now we can replace the View click listener
+			.setOnClickListener(new InputDialogClickListener(dialog, text, args));	// to prevent auto-dismiss
+	}
+
+	private class InputDialogClickListener implements View.OnClickListener {
+		// Use inner class members so we don't need as many outer class members.
+		private final AlertDialog mmDialog;
+		private final EditText mmText;
+		private final boolean mmIsNumeric;
+		private final int mmVarIndex;
+		public InputDialogClickListener(AlertDialog dialog, EditText text, Bundle args) {
+			mmDialog = dialog;
+			mmText = text;
+			mmIsNumeric = args.getBoolean("isNumeric");		// default false
+			mmVarIndex = args.getInt("varIndex");			// default 0
+		}
+
+		public void onClick(View view) {
+			String theInput = mmText.getText().toString();
+			if (mmIsNumeric) {								// Numeric Input Handling
+				try {
+					double d = Double.parseDouble(theInput.trim());	// have java parse it into a double
+					NumericVarValues.set(mmVarIndex, d);
+				} catch (Exception e) {
+					Log.d(LOGTAG, "Input Dialog bad input");
+					Toaster("Not a number. Try Again.").show();
+					return;
+				}
+			} else {										// String Input Handling
+				StringVarValues.set(mmVarIndex, theInput);
+			}
+			mmDialog.dismiss();
+			Log.d(LOGTAG, "Input Dialog done, positive");
+		}
+	}
+
+	private void doAlertDialog(Bundle args) {
+		Context context = getContext();
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(context);
+		String positive = args.getString("button1");		// default null
+		String neutral = args.getString("button2");
+		String negative = args.getString("button3");
+		String[] list = args.getStringArray("list");
+		AlertDialogClickListener listener = new AlertDialogClickListener();
+
+		builder
+			.setCancelable(true)
+			.setTitle(args.getString("title"));				// default null, no title if null or empty
+		if (positive != null) { builder.setPositiveButton(positive, listener); }
+		if (neutral != null) { builder.setNeutralButton(neutral, listener); }
+		if (negative != null) { builder.setNegativeButton(negative, listener); }
+
+		if (list != null) {
+			builder.setItems(list, new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					mAlertItemID = which + 1;				// convert to 1-based index
+				}
+			});
+		} else {
+			builder.setMessage(args.getString("message"));	// list and message are mutually exclusive
+		}
+
+		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
+				Log.d(LOGTAG, "Alert Dialog onCancel");
+				mAlertItemID = 0;							// no button clicked or item selected
+			}
+		});
+
+		AlertDialog dialog = builder.create();
+		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+			public void onDismiss( DialogInterface dialog) {
+				Log.d(LOGTAG, "Alert Dialog onDismiss");
+				HaveTextInput = true;						// semaphore used in waitForLOCK
+				synchronized (LOCK) {
+					LOCK.notify();							// release the lock that executeINPUT is waiting for
+				}
+			}
+		});
+		dialog.show();
+	}
+
+	private class AlertDialogClickListener implements DialogInterface.OnClickListener {
+		public void onClick(DialogInterface dialog, int buttonID) {
+			Log.d(LOGTAG, "AlertDialog done, button " + buttonID);
+			int id = 0;										// default: no button
+			switch (buttonID) {
+				case DialogInterface.BUTTON_POSITIVE: id = 1; break;
+				case DialogInterface.BUTTON_NEUTRAL:  id = 2; break;
+				case DialogInterface.BUTTON_NEGATIVE: id = 3; break;
+			}
+			mAlertItemID = id;
+		}
+	}
+
+	// ***************** Bluetooth message handler *****************
+
+	public boolean handleBTMessage(Message msg) {
+		switch (msg.what) {
+			case MESSAGE_STATE_CHANGE:
+				bt_state = msg.arg1;
+				break;
+			case MESSAGE_WRITE:
+//				byte[] writeBuf = (byte[]) msg.obj;
+				// construct a string from the buffer
+//				String writeMessage = new String(writeBuf);
+				break;
+			case MESSAGE_READ:
+				byte[] readBuf = (byte[]) msg.obj;
+				String readMessage = "";
+				// construct a string from the valid bytes in the buffer
+//				String readMessage = new String(readBuf, 0, msg.arg1);
+				try {
+					readMessage = new String(readBuf, 0);
+				} catch (Exception e) {
+					errorToConsole("Error: " + e);
+				}
+				readMessage = readMessage.substring(0, msg.arg1);
+				synchronized (BT_Read_Buffer) {
+					if (BT_Read_Buffer.size() == 0) { btReadReady = true; }
+					BT_Read_Buffer.add(readMessage);
+				}
+				break;
+			case MESSAGE_DEVICE_NAME:
+				// save the connected device's name
+				mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
+				break;
+			default:
+				return false;							// message not recognized
+		}
+		return true;									// message handled
+	}
+
+	// ***************** HTML message handler *****************
+
+	public boolean handleHtmlMessage(Message msg) {
+		if ((msg.what == MESSAGE_HTML_OPEN) && (htmlIntent != null)) {
+			startActivityForResult(htmlIntent, BASIC_GENERAL_INTENT);
+		} else if (Web.aWebView != null) {
+			switch (msg.what) {
+			case MESSAGE_GO_BACK:		Web.aWebView.goBack();		break;
+			case MESSAGE_GO_FORWARD:	Web.aWebView.goForward();	break;
+			case MESSAGE_CLEAR_CACHE:	Web.aWebView.clearCache();	break;
+			case MESSAGE_CLEAR_HISTORY:	Web.aWebView.clearHistory();break;
+			case MESSAGE_LOAD_URL:
+				String url = (String)msg.obj;
+				Web.aWebView.webLoadUrl(url);
+				break;
+			case MESSAGE_LOAD_STRING:
+				String[] data = (String[])msg.obj;
+				Web.aWebView.webLoadString(data[0], data[1]);	// baseURL and HTML.Load.String argument
+				break;
+			case MESSAGE_POST:
+				String[] params = (String[])msg.obj;
+				Web.aWebView.webPost(params[0], params[1]);		// URL and data for "POST" request
+				break;
+			default:
+				return false;									// message not recognized
+			}
+		}
+		return true;											// message handled
+	}
+
+	//=====================DEBUGGER DIALOG STUFF========================
+
+	private void DialogSelector(int selection){
+		dbDialogScalars = false;
+		dbDialogArray = false;
+		dbDialogList = false;
+		dbDialogStack = false;
+		dbDialogBundle = false;
+		dbDialogWatch = false;
+		dbDialogConsole = false;
+		dbDialogProgram = false;
+		switch (selection){
+			case 1:
+				dbDialogScalars = true;
+				break;
+			case 2:
+				dbDialogArray = true;
+				break;
+			case 3:
+				dbDialogList = true;
+				break;
+			case 4:
+				dbDialogStack = true;
+				break;
+			case 5:
+				dbDialogBundle = true;
+				break;
+			case 6:
+				dbDialogWatch = true;
+				break;
+			case 7:
+				dbDialogConsole = true;
+				break;
+			default:
+				dbDialogProgram = true;
+				break;
+		}
+	}
+
+	private boolean executeDEBUG_SHOW() {				// trigger do debug dialog
+		if (!Debug) return true;
+		WaitForResume = true;
+		sendMessage(MESSAGE_DEBUG_DIALOG);
+		return true;
+	}
+
+	private String chomp(String str) {
+		return str.substring(0, str.length() - 1);
+	}
+
+	private String quote(String str) {
+		return '\"' + str + '\"';
+	}
+
+	private void doDebugDialog() {
+
+		ArrayList<String> msg = new ArrayList<String>();
+
+		if (!dbDialogProgram) {
+			msg = dbDoFunc();
+			msg.add("Executable Line #:    "
+					+ Integer.toString(ExecutingLineIndex + 1) + '\n'
+					+ chomp(ExecutingLineBuffer.line()));
+		}
+
+		if (dbDialogScalars)
+			msg.addAll(dbDoScalars("  "));
+		if (dbDialogArray)
+			msg.addAll(dbDoArray("  "));
+		if (dbDialogList)
+			msg.addAll(dbDoList("  "));
+		if (dbDialogStack)
+			msg.addAll(dbDoStack("  "));
+		if (dbDialogBundle)
+			msg.addAll(dbDoBundle("  "));
+		if (dbDialogWatch)
+			msg.addAll(dbDoWatch("  "));
+
+		if (dbDialogProgram) {
+			for (int i = 0; i < Basic.lines.size(); ++i) {
+				msg.add(((i == ExecutingLineIndex) ? " >>" : "   ") // mark
+																	// current
+																	// line
+						+ (i + 1) + ": " // one-based line index
+						+ chomp(Basic.lines.get(i).line())); // remove newline
+			}
+		}
+
+		LayoutInflater inflater = getLayoutInflater();
+		View dialogLayout = inflater.inflate(R.layout.debug_dialog_layout, null);
+
+		ListView debugView = (ListView) dialogLayout.findViewById(R.id.debug_list);
+		debugView.setAdapter(new ArrayAdapter<String>(Run.this, R.layout.debug_list_layout, msg));
+		debugView.setVerticalScrollBarEnabled(true);
+		if (dbDialogProgram) {
+			debugView.setSelection(ExecutingLineIndex);
+		}
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(Run.this)
+				.setCancelable(true).setTitle(R.string.debug_name)
+				.setView(dialogLayout);
+
+		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+			public void onCancel(DialogInterface arg0) {
+				DebuggerHalt = true;
+				WaitForResume = false;
+			}
+		});
+
+		builder.setPositiveButton("Resume",
+			new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					WaitForResume = false;
+				}
+			});
+
+		builder.setNeutralButton("Step", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int which) {
+				DebuggerStep = true;
+				WaitForResume = true;
+			}
+		});
+
+		// leave out until the switcher is done.
+		builder.setNegativeButton("View Swap",
+			new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					dbSwap = true;
+				}
+			});
+
+		dbDialog = builder.show();
+		dbDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
+									   WindowManager.LayoutParams.FILL_PARENT);
+	}
+
+	private void doDebugSwapDialog() {
+
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.addAll(Arrays.asList("Program", "Scalars", "Array", "List", "Stack", "Bundle", "Watch"));
+		final String[] names = {
+			"View Program", "View Scalars", "View Array", "View List",
+			"View Stack",   "View Bundle",  "View Watch", "View Console"
+		};
+
+		LayoutInflater inflater = getLayoutInflater();
+		View dialogLayout = inflater.inflate(R.layout.debug_list_s_layout, null);
+		
+		ListView debugView = (ListView)dialogLayout.findViewById(R.id.debug_list_s);
+		debugView.setAdapter(new ArrayAdapter<String>(Run.this, R.layout.simple_list_layout_1, msg));
+		debugView.setVerticalScrollBarEnabled(true);
+		debugView.setClickable(true);
+
+		debugView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				DialogSelector(position);
+				boolean dosel = 
+					(dbDialogArray  && WatchedArray  == -1) ||
+					(dbDialogList   && WatchedList   == -1) ||
+					(dbDialogStack  && WatchedStack  == -1) ||
+					(dbDialogBundle && WatchedBundle == -1);
+				if (dosel) {
+					// if the element has not been defined ask if user wishes to do so.
+					// or at least this is where it will go.
+					// for now, default to view program.
+					DialogSelector(0);
+					position = 0;
+				}
+				String name = (position < names.length) ? names[position] : "";
+				Toaster(name).show();
+			}
+		});
+
+		AlertDialog.Builder builder = new AlertDialog.Builder(Run.this)
+			.setCancelable(true)
+			.setTitle("Select View:")
+			.setView(dialogLayout);
+		
+		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+			public void onCancel(DialogInterface arg0) {
+				WaitForSwap = false;
+			}
+		});
+		
+		builder.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog,int which) {
+				WaitForSwap = false;
+				dbSwap = false;
+			}
+		});
+
+/*  // leave out until the element selector is done.
+		builder.setNeutralButton("Choose Element", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog,int which){
+				WaitForSelect = true;
+			}
+		});
+*/
+		dbSwapDialog = builder.show();
+		dbSwapDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
+										   WindowManager.LayoutParams.FILL_PARENT);
+	}
+
+	private void doDebugSelectDialog() {
+		if (dbSelectDialog != null) { dbSelectDialog.dismiss(); }
+		
+		ArrayList<String> msg = new ArrayList<String>();
+		// TODO: What did Michael have in mind?
+	}
+
+	private ArrayList<String> dbDoWatch(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Watching:");
+
+		int count = VarNames.size();
+		if (!WatchVarIndex.isEmpty()) {
+			int watchcount = WatchVarIndex.size();
+			for (int j = 0; j < watchcount; ++j) {
+				int wvi = WatchVarIndex.get(j);
+				if (wvi < count) {
+					String line = dbDoOneScalar(wvi, prefix);
+					if (line != null) { msg.add(line); }
+				} else {
+					msg.add(Watch_VarNames.get(j) + " = Undefined");
+				}
+			}
+		} else { msg.add("\n" + "Undefined."); }
+		return msg;
+	}
+
+	private ArrayList<String> dbDoFunc() {
+		ArrayList<String> msg = new ArrayList<String>();
+		String msgs = "";
+		if (!FunctionStack.isEmpty()) {
+			Stack<Bundle> tempStack = (Stack<Bundle>) FunctionStack.clone();
+			do {
+				msgs = tempStack.pop().getString("fname") + msgs;
+			} while (!tempStack.isEmpty());
+		} else { msgs += "MainProgram"; }
+		msg.add("In Function: " + msgs);
+		return msg;
+	}
+
+	private ArrayList<String> dbDoScalars(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Scalar Dump");
+		int count = VarNames.size();
+		for (int varNum = 0; varNum < count; ++varNum) {
+			String line = dbDoOneScalar(varNum, prefix);
+			if (line != null) {
+				msg.add(line);
+			}
+		}
+		return msg;
+	}
+
+	private String dbDoOneScalar(int varNum, String prefix) {
+		String var = VarNames.get(varNum);
+		int len = (var == null) ? 0 : var.length();
+		if (len == 0) {
+			return(prefix + "Warning: zero-length variable name");
+		}
+		char last = var.charAt(len - 1);
+		boolean isScalar = (last != '(') && (last != '[');
+		if (isScalar) {
+			boolean isString = (last == '$');
+			String line = prefix + var;
+			Integer Index = VarIndex.get(varNum).intValue();
+			if (Index == null) {
+				line += ": Warning: null variable index";
+			} else {
+				int index = Index.intValue();
+				line += " = "
+					 + (isString ? quote(StringVarValues.get(index))
+								 : NumericVarValues.get(index).toString());
+			}
+			return line;
+		}
+		return null;
+	}
+
+	private ArrayList<String> dbDoArray(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		String var = VarNames.get(WatchedArray);
+		msg.add("Dumping Array " + var + "]");
+
+		ArrayDescriptor array = ArrayTable.get(VarIndex.get(WatchedArray));	// Get the descriptor for this array
+		if (array == null) {
+			msg.add(prefix + "Warning: null array table entry");
+		} else {
+			int length = array.length();						// get the array length
+			int base = array.base();							// and the start of the array in the variable space
+			// ArrayList<Integer> dims = array.dimList();
+			// ArrayList<Integer> sizes = array.arraySizes();
+			// msg.add("dims: " + dims.toString());
+			// msg.add("sizes: " + sizes.toString());
+			boolean isString = var.endsWith("$[");
+			for (int i = 0; i < length; ++i) {
+				msg.add(prefix +
+						(isString ? quote(StringVarValues.get(base + i))
+								  : NumericVarValues.get(base + i).toString()));
+			}
+		}
+		return msg;
+	}
+
+	private ArrayList<String> dbDoList(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Dumping List " + WatchedList);
+
+		if ((WatchedList < 0) || (WatchedList >= theLists.size())) {
+			msg.add(prefix + "List has not been created.");
+			return msg;
+		}
+
+		ArrayList list = theLists.get(WatchedList); // get the list
+		if (list == null) {
+			msg.add(prefix + "Warning: null list variable");
+			return msg;
+		}
+
+		int length = list.size();
+		if (length == 0) {
+			msg.add(prefix + "Empty List");
+		} else {
+			boolean isString = (theListsType.get(WatchedList) == VarType.STR);
+			for (Object item : list) {							// get each item
+				String line;
+				if (item == null) {
+					line = "Warning: null list item";
+				} else {
+					line = item.toString();
+					if (isString) { line = quote(line); }
+				}
+				msg.add(prefix + line);
+			}
+		}
+		return msg;
+	}
+
+	private ArrayList<String> dbDoStack(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Dumping stack " + WatchedStack);
+
+		if ((WatchedStack < 0) || (WatchedStack >= theStacks.size())) {
+			msg.add(prefix + "Stack has not been created.");
+			return msg;
+		}
+
+		Stack stack = theStacks.get(WatchedStack);				// get the stack
+		if (stack == null) {
+			msg.add(prefix + "Warning: null list variable");
+		} else if (stack.isEmpty()) {
+			msg.add(prefix + "Empty Stack");
+		} else {
+			Stack tempStack = (Stack)stack.clone();
+			boolean isString = (theStacksType.get(WatchedStack) == VarType.STR);
+			do {
+				String line;
+				Object item = tempStack.pop();					// get each item
+				if (item == null) {
+					line = "Warning: null stack item";
+				} else {
+					line = item.toString();
+					if (isString) { line = quote(line); }
+				}
+				msg.add(prefix + line);
+			} while (!tempStack.isEmpty());
+		}
+		return msg;
+	}
+
+	private ArrayList<String> dbDoBundle(String prefix) {
+		ArrayList<String> msg = new ArrayList<String>();
+		msg.add("Dumping Bundle " + WatchedBundle);
+
+		if ((WatchedBundle < 0) || (WatchedBundle >= theBundles.size())) {
+			msg.add(prefix + "Bundle has not been created.");
+			return msg;
+		}
+
+		Bundle b = theBundles.get(WatchedBundle);				// get the bundle
+		if (b == null) {
+			msg.add(prefix + "Warning: null bundle variable");
+			return msg;
+		}
+
+		Set<String> set = b.keySet();
+		if (set.size() == 0) {
+			msg.add(prefix + "Empty Bundle");
+			return msg;
+		}
+
+		for (String s : set) {
+			Object o = b.get(s);
+			boolean isNumeric = o instanceof Double;
+			msg.add(prefix + s + ": "
+					+ (isNumeric ? (Double) o : quote((String) o)));
+		}
+		return msg;
+	}
+
+	public boolean handleDebugMessage(Message msg) {
+		switch (msg.what) {
+			case MESSAGE_DEBUG_DIALOG: doDebugDialog();       break;
+			case MESSAGE_DEBUG_SWAP:   doDebugSwapDialog();   break;
+			case MESSAGE_DEBUG_SELECT: doDebugSelectDialog(); break;
+			default:
+				return false;									// message not recognized
+		}
+		return true;											// message handled
+	}
+
+
+/* ****************************** Start of Basic's run program code *******************************
+ * 
+ * The code is organized (?) as follows:
+ * 
+ * The first chunk is the the background task doInBackGround. This runs in a background thread.
+ * It actually controls the running of the program by dispatching each line of code to be executed.
+ * 
+ * The second chunk is a foreground (UI) thread code that receives user interface messages from
+ * doInBackground
+ * 
+ *  The third chunk is the Run Intent entry code. This code initializes things and starts
+ *  running the background task.
+ *  
+ *  The next chunk is the methods that handle asynchronous events generally created by user
+ *  key presses. These methods run in the foreground (UI) task.
+ *  
+ *  The final chunk and the largest part of Run is code that actually executes user program statements.
+ *  This code all runs in the background task.
+ *  
+ */
+
+
+	public class Background extends Thread {
+
+	// The execution of the basic program is done by this background Thread. This is done to keep the UI task
+	// responsive. This method controls Run as it is running in the background.
+
+		private UncaughtExceptionHandler mDefaultExceptionHandler;
+
+		private UncaughtExceptionHandler mUncaughtExceptionHandler =
+			new UncaughtExceptionHandler() {
+				public void uncaughtException(Thread thread, Throwable ex) {
+					if (ex instanceof OutOfMemoryError) {
+						handleHere("Out of memory");
+					} else if (ex instanceof NullPointerException) {
+						PrintShow("Internal error! Please notify developer.",
+								  Log.getStackTraceString(ex));
+						handleHere("Null pointer exception");
+					} else {
+						mDefaultExceptionHandler.uncaughtException(thread, ex);
+					}
+				}
+
+				private void handleHere(String err) {
+					PrintShow(err + ", near line:", ExecutingLineBuffer.line());
+					SyntaxError = true;		// This blocks "Program ended" checks in finishUp()
+					OnErrorLine = 0;		// Don't allow OnError: to catch OOM, it's fatal
+					finishRun();
+				}
+			};
+
+		@Override
+		public void run() {
+
+			InitVars();
+
+//			Basic.Echo = Settings.getEcho(Basic.BasicContext);
+			Echo = false;
+			VarSearchStart = 0;
+			fnRTN = false;
+			setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
+			mDefaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+			Thread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+
+			if (!PreScan()) { 				// The execution starts by scanning the source for labels and read.data
+				sendMessage(MESSAGE_UPDATE_CONSOLE);	// PreScan found error or duplicate label
+			} else {
+				ExecutingLineIndex = 0;					// just in case PreScan ever changes it
+
+				boolean ok = RunLoop();					// run the program in the interpreter
+
+				finishRun();
+				if (ok && runIntent != null) {			// program executed a RUN command
+					Run.this.startActivity(runIntent);	// start new AutoRun
+					Exit = true;						// and force this Run to finish
+				}
+			}
+
+			if (Exit) {
+				finish();								// stop the Run Activity, too
+			}
+		}
+
+		private void finishRun() {			// Called from run() when done running, and from UncaughtExceptionHandler
+
+			Stop = true;		// If Stop is not already set, set it so that menu code can display the right thing
+			PrintLine = "";		// Clear the Print Line buffer
+			PrintLineReady = false;
+			textPrintLine = "";
+
+			OnBackKeyLine = 0;
+
+			if (OnErrorLine == 0 && !SyntaxError && !Exit) {
+				if (!ForNextStack.empty())	{ PrintShow("Program ended with FOR without NEXT"); }
+				if (!WhileStack.empty())	{ PrintShow("Program ended with WHILE without REPEAT"); }
+				if (!DoStack.empty())		{ PrintShow("Program ended with DO without UNTIL"); }
+			}
+			if (mConsoleBuffer.size() != 0) {								// somebody changed the console
+				sendMessage(MESSAGE_UPDATE_CONSOLE);
+			}
+
+			Basic.theRunContext = null;  // Signals that the background task has stopped
+			cleanUp();
+		}
+
+		// Scan the entire program. Find all the labels and read.data statements.
+		// Must set ExecutingLineBuffer for use by called functions, but it will be reloaded when
+		// RunLoop() starts. At present nobody downstream needs to have ExecutingLineIndex set.
+		private boolean PreScan() {
+			final String READ_DATA = BKW_READ_GROUP + BKW_READ_DATA;		// "read.data" command keyword
+			for (int LineNumber = 0; LineNumber < Basic.lines.size(); ++LineNumber) {
+				ExecutingLineBuffer = Basic.lines.get(LineNumber);			// scan one line at a time
+				// ExecutingLineIndex = LineNumber;
+				String line = ExecutingLineBuffer.line();
+
+				int li = line.indexOf(":");									// fast check
+				if ((li <= 0) && (line.charAt(0) != 'r')) { continue; }		// not label or READ.DATA, next line
+
+				String word = getWord(line, 0, "");
+				LineIndex = word.length();
+
+				if (isNext(':')) {											// if word really is a label, store it
+					if (Labels.put(word, LineNumber) != null) {				// if duplicate label
+						Stop = true;										// non-recoverable error
+						return RunTimeError("Duplicate label");
+					}
+					ExecutingLineBuffer.cmd(CMD_LABEL, LineIndex);
+					if (!checkEOL())                   { return false; }
+				}
+				else if (line.startsWith(READ_DATA)) {						// Is not a label. If it is READ.DATA
+					LineIndex = READ_DATA.length();							// set LineIndex just past READ.DATA
+					ExecutingLineBuffer.cmd(CMD_READ_DATA, LineIndex);		// store the command reference
+					if (!executeREAD_DATA())           { return false; }	// parse and store the data list
+					if (!checkEOL())                   { return false; }
+				}
+			}
+			getInterruptLabels();
+			return true;
+		}
+
+		private void getInterruptLabels() {								// check for interrupt labels
+			Integer line;
+			line = Labels.get("onerror");        OnErrorLine   = (line == null) ? 0 : line.intValue();
+			line = Labels.get("onbackkey");      OnBackKeyLine = (line == null) ? 0 : line.intValue();
+			line = Labels.get("onmenukey");      OnMenuKeyLine = (line == null) ? 0 : line.intValue();
+			line = Labels.get("ontimer");        OnTimerLine   = (line == null) ? 0 : line.intValue();
+			line = Labels.get("onkeypress");     OnKeyLine     = (line == null) ? 0 : line.intValue();
+			line = Labels.get("ongrtouch");      OnTouchLine   = (line == null) ? 0 : line.intValue();
+			line = Labels.get("onbtreadready");  OnBTReadLine  = (line == null) ? 0 : line.intValue();
+			line = Labels.get("onbackground");   OnBGLine      = (line == null) ? 0 : line.intValue();
+			line = Labels.get("onconsoletouch"); onCTLine      = (line == null) ? 0 : line.intValue();
+		}
+
+		// The RunLoop() drives the execution of the program. It is called from doInBackground and
+		// recursively from doUserFunction.
+
+		public boolean RunLoop() {
+			boolean flag = true;
+			while (ExecutingLineIndex < Basic.lines.size() && flag && !Stop) {	// keep executing statements until end
+				ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex); 		// next program line
+//				Log.d(LOGTAG, "RunLoop: " + ExecutingLineBuffer.line());
+				LineIndex = 0 ;
+				sTime = SystemClock.uptimeMillis();
+
+        		flag = StatementExecuter();							// execute the next statement
+        															// returns true if no problems executing statement
+        		if (Exit) return flag;								// if Exit skip all other processing
+
+        		if (!flag && (OnErrorLine != 0)) {					// If Error and there is an OnError label
+        			ExecutingLineIndex = OnErrorLine;				// Go to the OnError line
+        			SyntaxError = false;
+        			flag = true;									// and indicate no error
+        		} else
+
+        		if (BackKeyHit && OnBackKeyLine != 0) {
+        				BackKeyHit = doInterrupt(OnBackKeyLine);
+        		} else
+
+        		if (MenuKeyHit && OnMenuKeyLine != 0) {
+        				MenuKeyHit = doInterrupt(OnMenuKeyLine);
+        		} else
+
+        		if (timerExpired && OnTimerLine != 0) {
+        				timerExpired = doInterrupt(OnTimerLine);
+        		} else
+        		
+        		if (KeyPressed && OnKeyLine != 0) {
+        				KeyPressed = doInterrupt(OnKeyLine);
+        		} else
+
+        		if (NewTouch[2] && OnTouchLine != 0) {				// and is not tracked like NewTouch[0] and NewTouch[1]
+        				NewTouch[2] = doInterrupt(OnTouchLine);		// used with onGRtouch.
+        		} else
+
+        		if (btReadReady && OnBTReadLine != 0) {
+        				btReadReady = doInterrupt(OnBTReadLine);
+        		} else
+
+        		if (ConsoleTouched && onCTLine != 0) {
+        				ConsoleTouched = doInterrupt(onCTLine);
+        		} else
+
+        		if (bgStateChange && OnBGLine != 0) {
+        				bgStateChange = doInterrupt(OnBGLine);
+        		}
+
+				if (mConsoleBuffer.size() != 0) {								// somebody changed the console
+					sendMessage(MESSAGE_UPDATE_CONSOLE);
+				}
+
+				// Debugger control
+				// Michael/paulon0n also defined a signal for "Alert dialog var not set called". TODO?
+				while (WaitForResume) {
+					Thread.yield();
+					if (DebuggerHalt) {
+						PrintShow("Execution halted");
+						Stop = true;
+					}
+					if (DebuggerStep) {
+						DebuggerStep = false;
+						sendMessage(MESSAGE_DEBUG_DIALOG);			// signal UI to run debugger dialog again
+						break;
+					}
+					if (dbSwap) {
+						WaitForSwap = true;
+						sendMessage(MESSAGE_DEBUG_SWAP);
+						while (WaitForSwap) {
+							Thread.yield();
+							/*
+							if(dbSelect) {
+								dbSelect = false;
+								WaitForSelect = true;
+								sendMessage(MESSAGE_DEBUG_SELECT);
+								while (WaitForSelect) {
+									Thread.yield();
+								}
+							}
+							*/
+						}
+						dbSwap = false;
+						sendMessage(MESSAGE_DEBUG_DIALOG);			// signal UI to run debugger dialog again
+					}
+				}
+
+				if (fnRTN) {				// fn_rtn signal. If true make RunLoop() return
+					fnRTN = false;			// to doUserFunction
+					break;
+				}
+
+				++ExecutingLineIndex;								// Step to next line
+			}
+			return flag;
+		} // end RunLoop
+
+		private boolean StatementExecuter() {				// Execute one basic line (statement)
+			Command c = ExecutingLineBuffer.cmd();			// use remembered command if possible
+			if (c != null) {
+				LineIndex += ExecutingLineBuffer.offset();
+			} else {
+				c = findCommand(BASIC_cmd);					// get the keyword that may start the line
+				if (c == null) { c = CMD_IMPLICIT; }		// no keyword, assume pseudo LET or CALL
+				ExecutingLineBuffer.cmd(c);					// remember the command to bypass future searches
+			}
+
+			if (!IfElseStack.empty()) {						// if inside IF-ELSE-ENDIF
+				Integer q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
+				if ((q == IEskip1) && (c.id != CID_SKIP_TO_ELSE)
+								   && (c.id != CID_SKIP_TO_ENDIF)) {
+					return true;							// skip unless IF, ELSEIF, ELSE, or ENDIF
+				} else if ((q == IEskip2) && (c.id != CID_SKIP_TO_ENDIF)) {
+					return true;							// skip unless IF or ENDIF
+				}
+			}
+
+			if (Echo) {
+				String line = ExecutingLineBuffer.line();
+				PrintShow(line.substring(0, line.length() - 1));
+			}
+
+			if (!c.run()) { SyntaxError(); return false; }
+			return true;									// Statement executed ok. Return to main looper.
+		}
+
+		private boolean doInterrupt(int gotoLine) {
+			if (interruptResume != -1) return true;		// If we are handling an interrupt then do not cancel this one
+			interruptResume = ExecutingLineIndex;		// Set the resume Line Number
+			ExecutingLineIndex = gotoLine;				// Set the goto line number
+			interruptVarSearchStart = VarSearchStart;	// Save current VarSearchStart
+			VarSearchStart = 0;							// Force to predictable value
+			IfElseStack.push(IEinterrupt);
+			return false;								// Turn off the interrupt
+		}
+
+	private void InitVars() {
+		Log.d(LOGTAG, "InitVars() started");
+
+		OnErrorLine = 0;								// Line number for OnError: label
+		OnBackKeyLine = 0;
+		BackKeyHit = false;
+		OnMenuKeyLine = 0;
+		MenuKeyHit = false;
+		bgStateChange = false;
+		OnBGLine = 0;
+		onCTLine = 0;
+		ConsoleTouched = false;
+		ConsoleLongTouch = false;
+		TouchedConsoleLine = 0;							// first valid line number is 1
+
+		errorMsg = "No error";
+
+		InChar = new ArrayList<String>();
+		KeyPressed = false;
+		OnKeyLine = 0;
+		
+		LineIndex = 0;									// Current displacement into ExecutingLineBuffer's line
+		ExecutingLineBuffer = new ProgramLine("\n");	// Holds the current line being executed
+		ExecutingLineIndex = 0;							// Points to the current line in Basic.lines
+		SEisLE = false;									// If a String expression result is a logical expression
+		
+		GosubStack = new Stack<Integer>();				// Stack used for Gosub/Return
+		ForNextStack = new Stack<ForNext>();			// Stack used for For/Next
+		WhileStack = new Stack<WhileRepeat>();			// Stack used for While/Repeat
+		DoStack = new Stack<Integer>();					// Stack used for Do/Until
+
+		IfElseStack = new Stack <Integer>();			// Stack for IF-ELSE-ENDIF operations
+		GetNumberValue = (double)0;						// Return value from GetNumber()
+		EvalNumericExpressionValue = (double)0;			// Return value from EvalNumericExprssion()
+
+		SyntaxError = false;							// Set true when Syntax Error message has been output
+
+		mMessagePending = false;						// If true, may be messages pending
+		randomizer = null;
+		background = false;
+
+		// debugger ui vars
+		Watch_VarNames = new ArrayList<String>();		// watch list of string names
+		WatchVarIndex = new ArrayList<Integer>();		// watch list of variable indexes
+		dbDialogScalars = false;
+		dbDialogArray = false;
+		dbDialogList = false;
+		dbDialogStack = false;
+		dbDialogBundle = false;
+		dbDialogWatch = false;
+		dbDialogProgram = true;
+		dbConsoleHistory = "";
+		dbConsoleExecute = "";
+		dbConsoleELBI = 0;
+		WatchedArray = -1;
+		WatchedList =-1;
+		WatchedStack =-1;
+		WatchedBundle =-1;
+		dbSwap = false;
+		dbDialog = null;
+		dbSwapDialog = null;
+		dbSelectDialog = null;
+
+		Stop = false;									// Stops program from running
+		Exit = false;									// Exits program and signals caller to exit, too
+		GraphicsPaused = false;							// Signal from GR that it has been paused
+		RunPaused = false;								// Used to control the media player
+		StopDisplay = false;
+		GRFront = false;
+		DisplayStopped = false;
+
+		PrintLine = "";									// Hold the Print line currently being built
+		PrintLineReady = false;							// Signals a line is ready to print or write
+
+		Labels = new HashMap<String, Integer>();		// A list of all labels and associated line numbers
+
+		PossibleKeyWord = "";
+
+		VarNames = new ArrayList<String>() ;				// Each entry has the variable name string
+		VarIndex = new ArrayList<Integer>();				// Each entry is an index into [...]
+		VarNumber = 0;										// An index for both VarNames and NVarValue
+		NumericVarValues = new ArrayList<Double>();			// if a var is a number, the VarIndex is an [...]
+		StringVarValues  = new ArrayList<String>();			// if a var is a string, the VarIndex is an [...]
+		ArrayTable = new ArrayList<ArrayDescriptor>();		// Each DIMed array has an entry in this table
+		StringConstant = "";								// Storage for a string constant
+		theValueIndex = 0;									// The index into the value table for the current var
+		ArrayValueStart = 0;								// Value index for newly created array 
+
+		FunctionTable = new ArrayList<FunctionDefinition>();// Created for each defined function
+		FnDef = null ;										// Set by isUserFunction and used by doUserFunction
+		FunctionStack = new Stack<CallStackFrame>() ;		// State saved through the currently executing functions
+		fnRTN = false;										// Set true by fn.rtn. Cause RunLoop() to return
+		Debug = false;
+
+		VarIsNew = true;									// Signal from getVar() that this var is new
+		VarIsNumeric = true;								// if false, var is a string
+		VarIsInt = false;									// temporary integer status used only by fprint
+		VarIsArray = false;									// if true, var is an array
+		VarIsFunction = false;								// Flag set by parseVar() when var is a user function
+		VarSearchStart = 0;									// Used to limit search for var names to executing function vars
+		interruptVarSearchStart = 0;						// Save VarSearchStart across interrupt
+
+		// ********************************** RUN variables *********************************
+
+		runIntent = null;									// Intent to run from RUN command
+
+		// ******************************* File I/O operation variables ************************
+
+		FileTable = new ArrayList<FileInfo>() ;				// File table list
+
+		// ******************** READ variables *******************************************
+
+		readNext = 0;
+		readData = new ArrayList<Var>();
+
+		// ********************** Font Command variables *********************************
+
+		FontList = new ArrayList<Typeface>();
+		clearFontList();
+
+		// ******************** Input Command variables ********************************
+
+//		mInputDismissed = false;						// This will be used only if we dismiss the dialog in onPause
+
+		// ******************** SQL Variables ******************************************
+
+		DataBases = new ArrayList<SQLiteDatabase>();	// List of created data bases
+		Cursors = new ArrayList<Cursor>();				// List of created data bases
+
+		// ********************************* Variables for text.input command ********************
+
+		TextInputString = "";
+		HaveTextInput = false;
+
+		// ******************************** Graphics Declarations **********************************
+
+		GRclass = null;									// Graphics Intent Class
+		GRopen = false;									// Graphics Open Flag
+		DisplayList = new ArrayList<GR.BDraw>();
+		RealDisplayList = new ArrayList<Integer>();
+		PaintList = new ArrayList<Paint>();
+		BitmapList = new ArrayList<Bitmap>();
+		aPaint = new Paint();
+		GRrunning = false;
+		GRFront = false;
+		Touched = false;
+		OnTouchLine = 0;
+		mShowStatusBar = false;
+
+		// ********************************* Variables for Audio Commands
+
+		theMP = null;
+		theMPList = new ArrayList<MediaPlayer>();
+		theMPNameList = new ArrayList<String>();
+		theMPList.add(null);		// We don't use the [0] element of these Lists
+		theMPNameList.add(null);
+
+		// ******************************* Variables for Sensor Commands **********************************
+
+		theSensors = null;
+
+		theGPS = null;
+
+		theLists = new ArrayList <ArrayList>();
+		ArrayList<ArrayList> aList = new ArrayList <ArrayList>();
+		theLists.add(aList);
+
+		theListsType = new ArrayList<VarType>();
+		theListsType.add(VarType.NOVAR);
+
+		theBundles = new ArrayList<Bundle>();
+		Bundle aBundle = new Bundle();
+		theBundles.add(aBundle);
+
+		theStacks = new ArrayList<Stack>();
+		Stack aStack = new Stack();
+		theStacks.add(aStack);
+
+		theStacksType = new ArrayList<VarType>();
+		theStacksType.add(VarType.NOVAR);
+
+		theClientSocket = null ;
+		clientSocketConnectThread = null;
+		ClientBufferedReader = null;
+		ClientPrintWriter = null;
+
+		newSS = null;
+		serverSocketConnectThread = null;
+		theServerSocket = null ;
+		ServerBufferedReader = null ;
+		ServerPrintWriter = null ;
+
+		clientSocketState = STATE_NONE;
+		serverSocketState = STATE_NONE;
+
+		theTTS = null;
+		ttsInit = false;
+
+		mFTPClient = null;
+		FTPdir = null;
+
+		CameraBitmap = null;
+		CameraDone = true;
+		NumberOfCameras = -1;
+
+		mConnectedDeviceName = null;
+		mOutStringBuffer = null;
+		mChatService = null;
+		btReadReady = false;
+		interruptResume = -1;
+		OnBTReadLine = 0;
+
+		SUoutputStream = null;
+		SUinputStream = null;
+		SUprocess = null;
+		SU_ReadBuffer = null;
+		theSUReader = null;
+
+		theSoundPool = null ;
+
+		headsetState = -1;
+		headsetName = "NA" ;
+		headsetMic = -1;
+
+		htmlIntent = null;
+		htmlOpening = false;
+
+		sttListening = false;
+
+		OnTimerLine = 0;
+		theTimer = null;
+		timerExpired = false;
+
+		theTimeZone = "";
+
+		phoneState = 0;
+		phoneNumber = "";
+		phoneRcvInited = false;
+		mTM = null;
+		mSignalStrength = null;
+
+		Log.d(LOGTAG, "InitVars() done");
+
+	} // end InitVars
+
+	public void cleanUp() {
+		Log.d(LOGTAG, "cleaup() started");
+		if (theMP != null) {
+			try { theMP.stop(); } catch (IllegalStateException e) {}
+			if (theMP != null) theMP.release();
+			theMP = null;
+		}
+
+		if (theSoundPool != null) {
+			theSoundPool.release();
+			theSoundPool = null;
+		}
+
+		if ( Web.aWebView != null) { Web.aWebView.webClose(); }
+	
+		if (theTimer != null) {
+			theTimer.cancel();
+			theTimer = null;
+		}
+
+		ttsStop();
+
+		myVib.cancel();
+
+		if (theMP != null) {
+			theMP.release();
+			theMP = null;
+		}
+		if (theMPList != null) {
+			for (MediaPlayer mp : theMPList) {
+				if (mp != null) { mp.release(); }
+			}
+			theMPList = null;
+			theMPNameList = null;
+		}
+
+		if (theSensors != null) {
+			theSensors.stop();
+			theSensors = null;
+		}
+
+		if (theServerSocket != null) {
+			try { theServerSocket.close(); }
+			catch (Exception e) {}
+			theServerSocket = null;
+		}
+
+		if (clientSocketConnectThread != null) {
+			clientSocketConnectThread.interrupt();
+			clientSocketConnectThread = null;
+		}
+
+		if (serverSocketConnectThread != null) {
+			serverSocketConnectThread.interrupt();
+			serverSocketConnectThread = null;
+		}
+
+		if (newSS != null) {
+			try { newSS.close(); }
+			catch (Exception e) {}
+			newSS = null;
+		}
+
+		if (theClientSocket != null) {
+			try{
+				theClientSocket.close();
+				}catch (Exception e) {
+				}
+				theClientSocket = null;
+			}
+
+		clientSocketState = STATE_NONE;
+		serverSocketState = STATE_NONE;
+
+		audioRecordStop();
+
+		Stop = true;								// make sure the background task stops
+		Basic.theRunContext = null;
+		GraphicsPaused = false;
+		RunPaused = false;
+		mMessagePending = false;
+
+		if (theGPS != null) {
+			Log.d(LOGTAG, "Stopping GPS from cleanUp");
+			theGPS.stop();
+			theGPS = null;
+		}
+
+		if (!Basic.DoAutoRun && SyntaxError) {
+			Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
+		} else Editor.SyntaxErrorDisplacement = -1;
+
+		BitmapListClear();
+
+		if (mChatService != null) {
+				mChatService.stop();
+				mChatService = null;
+			}
+
+		if ( theSUReader != null ) {
+			theSUReader.stop();
+			theSUReader = null;
+		}
+		if (SUprocess != null) {
+			SUprocess.destroy();
+			SUprocess = null;
+		}
+
+		finishActivity(BASIC_GENERAL_INTENT);
+
+		if (mTM != null) {
+			Log.d(LOGTAG, "mTM: unlistening");
+			mTM.listen(PSL, PhoneStateListener.LISTEN_NONE);
+			mTM = null;
+		}
+		mSignalStrength = null;
+	
+		Log.d(LOGTAG, "cleanup() done");
+	} // end cleanup
+
+	// ************************************* Function Tables **************************************
+
+	private final Command[] MF_cmd = new Command[] {	// Map math function names to their functions
+		new Command(MF_SIN)                     { public boolean run() { return executeMF_SIN(); } },
+		new Command(MF_COS)                     { public boolean run() { return executeMF_COS(); } },
+		new Command(MF_TAN)                     { public boolean run() { return executeMF_TAN(); } },
+		new Command(MF_SQR)                     { public boolean run() { return executeMF_SQR(); } },
+		new Command(MF_ABS)                     { public boolean run() { return executeMF_ABS(); } },
+		new Command(MF_RND)                     { public boolean run() { return executeMF_RND(); } },
+		new Command(MF_VAL)                     { public boolean run() { return executeMF_VAL(); } },
+		new Command(MF_LEN)                     { public boolean run() { return executeMF_LEN(); } },
+		new Command(MF_ACOS)                    { public boolean run() { return executeMF_ACOS(); } },
+		new Command(MF_ASIN)                    { public boolean run() { return executeMF_ASIN(); } },
+		new Command(MF_ATAN2)                   { public boolean run() { return executeMF_ATAN2(); } },
+		new Command(MF_CEIL)                    { public boolean run() { return executeMF_CEIL(); } },
+		new Command(MF_FLOOR)                   { public boolean run() { return executeMF_FLOOR(); } },
+		new Command(MF_MOD)                     { public boolean run() { return executeMF_MOD(); } },
+		new Command(MF_LOG)                     { public boolean run() { return executeMF_LOG(); } },
+		new Command(MF_ROUND)                   { public boolean run() { return executeMF_ROUND(); } },
+		new Command(MF_TORADIANS)               { public boolean run() { return executeMF_TORADIANS(); } },
+		new Command(MF_TODEGREES)               { public boolean run() { return executeMF_TODEGREES(); } },
+		new Command(MF_TIME)                    { public boolean run() { return executeMF_TIME(); } },
+		new Command(MF_EXP)                     { public boolean run() { return executeMF_EXP(); } },
+		new Command(MF_IS_IN)                   { public boolean run() { return executeMF_IS_IN(); } },
+		new Command(MF_CLOCK)                   { public boolean run() { return executeMF_CLOCK(); } },
+		new Command(MF_BNOT)                    { public boolean run() { return executeMF_BNOT(); } },
+		new Command(MF_BOR)                     { public boolean run() { return executeMF_BOR(); } },
+		new Command(MF_BAND)                    { public boolean run() { return executeMF_BAND(); } },
+		new Command(MF_BXOR)                    { public boolean run() { return executeMF_BXOR(); } },
+		new Command(MF_GR_COLLISION)            { public boolean run() { return executeMF_GR_COLLISION(); } },
+		new Command(MF_ASCII)                   { public boolean run() { return executeMF_ASCII(); } },
+		new Command(MF_STARTS_WITH)             { public boolean run() { return executeMF_STARTS_WITH(); } },
+		new Command(MF_ENDS_WITH)               { public boolean run() { return executeMF_ENDS_WITH(); } },
+		new Command(MF_HEX)                     { public boolean run() { return executeMF_base(16); } },
+		new Command(MF_OCT)                     { public boolean run() { return executeMF_base(8); } },
+		new Command(MF_BIN)                     { public boolean run() { return executeMF_base(2); } },
+		new Command(MF_SHIFT)                   { public boolean run() { return executeMF_SHIFT(); } },
+		new Command(MF_RANDOMIZE)               { public boolean run() { return executeMF_RANDOMIZE(); } },
+		new Command(MF_BACKGROUND)              { public boolean run() { return executeMF_BACKGROUND(); } },
+		new Command(MF_ATAN)                    { public boolean run() { return executeMF_ATAN(); } },
+		new Command(MF_CBRT)                    { public boolean run() { return executeMF_CBRT(); } },
+		new Command(MF_COSH)                    { public boolean run() { return executeMF_COSH(); } },
+		new Command(MF_HYPOT)                   { public boolean run() { return executeMF_HYPOT(); } },
+		new Command(MF_SINH)                    { public boolean run() { return executeMF_SINH(); } },
+		new Command(MF_POW)                     { public boolean run() { return executeMF_POW(); } },
+		new Command(MF_LOG10)                   { public boolean run() { return executeMF_LOG10(); } },
+		new Command(MF_UCODE)                   { public boolean run() { return executeMF_UCODE(); } },
+		new Command(MF_PI)                      { public boolean run() { return executeMF_PI(); } },
+		new Command(MF_MIN)                     { public boolean run() { return executeMF_MIN(); } },
+		new Command(MF_MAX)                     { public boolean run() { return executeMF_MAX(); } },
+		new Command(MF_INT)                     { public boolean run() { return executeMF_INT(); } },
+		new Command(MF_FRAC)                    { public boolean run() { return executeMF_FRAC(); } },
+		new Command(MF_SGN)                     { public boolean run() { return executeMF_SGN(); } },
+	};
+
+	private final HashMap<String, Command> MF_map = new HashMap<String, Command>(64) {
+		private static final long serialVersionUID = 102L;
+		{
+			for (Command c : MF_cmd) { put(c.name, c); }
+		}};
+
+	private final Command[] SF_cmd = new Command[] {	// Map string function names to their functions
+		new Command(SF_LEFT)                    { public boolean run() { return executeSF_LEFT(); } },
+		new Command(SF_MID)                     { public boolean run() { return executeSF_MID(); } },
+		new Command(SF_RIGHT)                   { public boolean run() { return executeSF_RIGHT(); } },
+		new Command(SF_STR)                     { public boolean run() { return executeSF_STR(); } },
+		new Command(SF_UPPER)                   { public boolean run() { return executeSF_UPPER(); } },
+		new Command(SF_LOWER)                   { public boolean run() { return executeSF_LOWER(); } },
+		new Command(SF_FORMAT_USING)            { public boolean run() { return executeSF_USING(); } },
+		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
+		new Command(SF_USING)                   { public boolean run() { return executeSF_USING(); } },
+		new Command(SF_CHR)                     { public boolean run() { return executeSF_CHR(); } },
+		new Command(SF_REPLACE)                 { public boolean run() { return executeSF_REPLACE(); } },
+		new Command(SF_WORD)                    { public boolean run() { return executeSF_WORD(); } },
+		new Command(SF_INT)                     { public boolean run() { return executeSF_INT(); } },
+		new Command(SF_HEX)                     { public boolean run() { return executeSF_HEX(); } },
+		new Command(SF_OCT)                     { public boolean run() { return executeSF_OCT(); } },
+		new Command(SF_BIN)                     { public boolean run() { return executeSF_BIN(); } },
+		new Command(SF_GETERROR)                { public boolean run() { return executeSF_GETERROR(); } },
+		new Command(SF_VERSION)                 { public boolean run() { return executeSF_VERSION(); } },
+	};
+
+	private final HashMap<String, Command> SF_map = new HashMap<String, Command>(64) {
+		private static final long serialVersionUID = 103L;
+		{
+			for (Command c : SF_cmd) { put(c.name, c); }
+		}};
+
+	// ************************************** Command Tables **************************************
+
+	/* Markers for IF, etc., to facilitate skipping them in StatementExecuter() */
+	private final int CID_SKIP_TO_ELSE  = 1;	// Ok to execute when skipping to ELSE or ENDIF
+	private final int CID_SKIP_TO_ENDIF = 2;	// Ok to execute when skipping to ENDIF
+	/* Other markers to make special-case handling faster */
+	private final int CID_GROUP = 3;
+	private final int CID_OPEN = 4;
+	private final int CID_CLOSE = 5;
+	private final int CID_STATUS = 6;
+	private final int CID_DATALINK = 7;
+
+	/* Special case: what to do if no command keyword at the beginning of the line. */
+	private final Command CMD_IMPLICIT = new Command("")         { public boolean run() { return executeImplicitCommand(); } };
+	private final Command CMD_IMPL_LET = new Command("")         { public boolean run() { return executeLET(0.0); } };
+	/* Label: length is variable, but irrelevant. No command name, so DO NOT put this in a searchable command table. */
+	private final Command CMD_LABEL    = new Command("")         { public boolean run() { return true; } };
+	/* Other special cases where we need a named Command and also a command table entry. */
+	private final Command CMD_CALL     = new Command(BKW_CALL)   { public boolean run() { return executeCALL(); } };
+	private final Command CMD_LET      = new Command(BKW_LET)    { public boolean run() { return executeLET(); } };
+	private final Command CMD_PREINC   = new Command(BKW_PREINC) { public boolean run() { return executeLET(1.0); } };
+	private final Command CMD_PREDEC   = new Command(BKW_PREDEC) { public boolean run() { return executeLET(-1.0); } };
+	private final Command CMD_FOR      = new Command(BKW_FOR)    { public boolean run() { return executeFOR(); } };
+	private final Command CMD_NEXT     = new Command(BKW_NEXT)   { public boolean run() { return executeNEXT(); } };
+	private final Command CMD_WHILE    = new Command(BKW_WHILE)  { public boolean run() { return executeWHILE(); } };
+	private final Command CMD_REPEAT   = new Command(BKW_REPEAT) { public boolean run() { return executeREPEAT(); } };
+	private final Command CMD_DO       = new Command(BKW_DO)     { public boolean run() { return executeDO(); } };
+	private final Command CMD_UNTIL    = new Command(BKW_UNTIL)  { public boolean run() { return executeUNTIL(); } };
+
+	// Map BASIC! command keywords to their execution functions.
+	// The order of this list determines the order of the linear keyword search, which affects performance.
+	private final Command[] BASIC_cmd = new Command[] {
+		CMD_LET,
+		new Command(BKW_IF,     CID_SKIP_TO_ENDIF) { public boolean run() { return executeIF(); } },
+		new Command(BKW_ENDIF,  CID_SKIP_TO_ENDIF) { public boolean run() { return executeENDIF(); } },
+		new Command(BKW_ELSEIF, CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSEIF(); } },
+		new Command(BKW_ELSE,   CID_SKIP_TO_ELSE)  { public boolean run() { return executeELSE(); } },
+		new Command(BKW_PRINT)                  { public boolean run() { return executePRINT(); } },
+		new Command(BKW_PRINT_SHORTCUT)         { public boolean run() { return executePRINT(); } },
+		CMD_FOR,
+		CMD_NEXT,
+		CMD_WHILE,
+		CMD_REPEAT,
+		CMD_DO,
+		CMD_UNTIL,
+		new Command(BKW_F_N_BREAK)              { public boolean run() { return executeF_N_BREAK(); } },
+		new Command(BKW_W_R_BREAK)              { public boolean run() { return executeW_R_BREAK(); } },
+		new Command(BKW_D_U_BREAK)              { public boolean run() { return executeD_U_BREAK(); } },
+		new Command(BKW_F_N_CONTINUE)           { public boolean run() { return executeF_N_CONTINUE(); } },
+		new Command(BKW_W_R_CONTINUE)           { public boolean run() { return executeW_R_CONTINUE(); } },
+		new Command(BKW_D_U_CONTINUE)           { public boolean run() { return executeD_U_CONTINUE(); } },
+		new Command(BKW_SW_GROUP, CID_GROUP)    { public boolean run() { return executeSW(); } },
+		new Command(BKW_FN_GROUP, CID_GROUP)    { public boolean run() { return executeFN(); } },
+		CMD_CALL,
+		new Command(BKW_GOTO)                   { public boolean run() { return executeGOTO(); } },
+		new Command(BKW_GOSUB)                  { public boolean run() { return executeGOSUB(); } },
+		new Command(BKW_RETURN)                 { public boolean run() { return executeRETURN(); } },
+		new Command(BKW_GR_GROUP, CID_GROUP)    { public boolean run() { return executeGR(); } },
+		new Command(BKW_DIM)                    { public boolean run() { return executeDIM(); } },
+		new Command(BKW_UNDIM)                  { public boolean run() { return executeUNDIM(); } },
+		new Command(BKW_ARRAY_GROUP, CID_GROUP) { public boolean run() { return executeARRAY(); } },
+		new Command(BKW_BUNDLE_GROUP,CID_GROUP) { public boolean run() { return executeBUNDLE(); } },
+		new Command(BKW_LIST_GROUP,  CID_GROUP) { public boolean run() { return executeLIST(); } },
+		new Command(BKW_STACK_GROUP, CID_GROUP) { public boolean run() { return executeSTACK(); } },
+		CMD_PREINC,
+		CMD_PREDEC,
+		new Command(BKW_INKEY)                  { public boolean run() { return executeINKEY(); } },
+		new Command(BKW_INPUT)                  { public boolean run() { return executeINPUT(); } },
+		new Command(BKW_DIALOG_GROUP,CID_GROUP) { public boolean run() { return executeDIALOG(); } },
+		new Command(BKW_SELECT)                 { public boolean run() { return executeSELECT(); } },
+		new Command(BKW_TGET)                   { public boolean run() { return executeTGET(); } },
+		new Command(BKW_FILE_GROUP, CID_GROUP)  { public boolean run() { return executeFILE(); } },
+		new Command(BKW_TEXT_GROUP, CID_GROUP)  { public boolean run() { return executeTEXT(); } },
+		new Command(BKW_BYTE_GROUP, CID_GROUP)  { public boolean run() { return executeBYTE(); } },
+		new Command(BKW_READ_GROUP, CID_GROUP)  { public boolean run() { return executeREAD(); } },
+		new Command(BKW_DIR)                    { public boolean run() { return executeDIR(); } },
+		new Command(BKW_MKDIR)                  { public boolean run() { return executeMKDIR(); } },
+		new Command(BKW_RENAME)                 { public boolean run() { return executeRENAME(); } },
+		new Command(BKW_GRABFILE)               { public boolean run() { return executeGRABFILE(); } },
+		new Command(BKW_GRABURL)                { public boolean run() { return executeGRABURL(); } },
+		new Command(BKW_BROWSE)                 { public boolean run() { return executeBROWSE(); } },
+		new Command(BKW_BT_GROUP, CID_GROUP)    { public boolean run() { return executeBT(); } },
+		new Command(BKW_FTP_GROUP, CID_GROUP)   { public boolean run() { return executeFTP(); } },
+		new Command(BKW_HTML_GROUP, CID_GROUP)  { public boolean run() { return executeHTML(); } },
+		new Command(BKW_HTTP_POST)              { public boolean run() { return executeHTTP_POST(); } },
+		new Command(BKW_SOCKET_GROUP,CID_GROUP) { public boolean run() { return executeSOCKET(); } },
+		new Command(BKW_SQL_GROUP, CID_GROUP)   { public boolean run() { return executeSQL(); } },
+		new Command(BKW_GPS_GROUP, CID_GROUP)   { public boolean run() { return executeGPS(); } },
+		new Command(BKW_POPUP)                  { public boolean run() { return executePOPUP(); } },
+		new Command(BKW_SENSORS_GROUP,CID_GROUP){ public boolean run() { return executeSENSORS(); } },
+		new Command(BKW_AUDIO_GROUP, CID_GROUP) { public boolean run() { return executeAUDIO(); } },
+		new Command(BKW_SOUNDPOOL_GROUP,CID_GROUP){ public boolean run() { return executeSOUNDPOOL(); } },
+		new Command(BKW_RINGER_GROUP,CID_GROUP) { public boolean run() { return executeRINGER(); } },
+		new Command(BKW_TONE)                   { public boolean run() { return executeTONE(); } },
+		new Command(BKW_CLIPBOARD_GET)          { public boolean run() { return executeCLIPBOARD_GET(); } },
+		new Command(BKW_CLIPBOARD_PUT)          { public boolean run() { return executeCLIPBOARD_PUT(); } },
+		new Command(BKW_ENCRYPT)                { public boolean run() { return executeENCRYPT(); } },
+		new Command(BKW_DECRYPT)                { public boolean run() { return executeDECRYPT(); } },
+		new Command(BKW_SWAP)                   { public boolean run() { return executeSWAP(); } },
+		new Command(BKW_SPLIT_ALL)              { public boolean run() { return executeSPLIT(-1); } },
+		new Command(BKW_SPLIT)                  { public boolean run() { return executeSPLIT(0); } },
+		new Command(BKW_CLS)                    { public boolean run() { return executeCLS(); } },
+		new Command(BKW_FONT_GROUP, CID_GROUP)  { public boolean run() { return executeFONT(); } },
+		new Command(BKW_CONSOLE_GROUP,CID_GROUP){ public boolean run() { return executeCONSOLE(); } },
+		new Command(BKW_DEBUG_GROUP, CID_GROUP) { public boolean run() { return executeDEBUG(); } },
+		new Command(BKW_DEVICE)                 { public boolean run() { return executeDEVICE(); } },
+		new Command(BKW_ECHO_ON)                { public boolean run() { return executeECHO_ON(); } },
+		new Command(BKW_ECHO_OFF)               { public boolean run() { return executeECHO_OFF(); } },
+		new Command(BKW_KB_TOGGLE)              { public boolean run() { return executeKB_TOGGLE(); } },
+		new Command(BKW_KB_HIDE)                { public boolean run() { return executeKB_HIDE(); } },
+		new Command(BKW_NOTIFY)                 { public boolean run() { return executeNOTIFY(); } },
+		new Command(BKW_RUN)                    { public boolean run() { return executeRUN(); } },
+		new Command(BKW_EMPTY_PROGRAM)          { public boolean run() { return executeEMPTY_PROGRAM(); } },
+		new Command(BKW_SU_GROUP, CID_GROUP)    { public boolean run() { return executeSU(true); } },
+		new Command(BKW_SYSTEM_GROUP,CID_GROUP) { public boolean run() { return executeSU(false); } },
+		new Command(BKW_STT_LISTEN)             { public boolean run() { return executeSTT_LISTEN(); } },
+		new Command(BKW_STT_RESULTS)            { public boolean run() { return executeSTT_RESULTS(); } },
+		new Command(BKW_TTS_GROUP, CID_GROUP)   { public boolean run() { return executeTTS(); } },
+		new Command(BKW_TIMER_GROUP, CID_GROUP) { public boolean run() { return executeTIMER(); } },
+		new Command(BKW_TIMEZONE_GROUP,CID_GROUP){ public boolean run() { return executeTIMEZONE(); } },
+		new Command(BKW_TIME)                   { public boolean run() { return executeTIME(); } },
+		new Command(BKW_VIBRATE)                { public boolean run() { return executeVIBRATE(); } },
+		new Command(BKW_WAKELOCK)               { public boolean run() { return executeWAKELOCK(); } },
+		new Command(BKW_WIFILOCK)               { public boolean run() { return executeWIFILOCK(); } },
+		new Command(BKW_END)                    { public boolean run() { return executeEND(); } },
+		new Command(BKW_EXIT)                   { public boolean run() { Stop = Exit = true; return true; } },
+		new Command(BKW_HOME)                   { public boolean run() { return executeHOME(); } },
+		new Command(BKW_INCLUDE)                { public boolean run() { return true; } },
+		new Command(BKW_PAUSE)                  { public boolean run() { return executePAUSE(); } },
+		new Command(BKW_REM)                    { public boolean run() { return true; } },
+		new Command(BKW_WIFI_INFO)              { public boolean run() { return executeWIFI_INFO(); } },
+		new Command(BKW_HEADSET)                { public boolean run() { return executeHEADSET(); } },
+		new Command(BKW_MYPHONENUMBER)          { public boolean run() { return executeMYPHONENUMBER(); } },
+		new Command(BKW_EMAIL_SEND)             { public boolean run() { return executeEMAIL_SEND(); } },
+		new Command(BKW_PHONE_GROUP, CID_GROUP) { public boolean run() { return executePHONE(); } },
+		new Command(BKW_SMS_GROUP, CID_GROUP)   { public boolean run() { return executeSMS(); } },
+		new Command(BKW_AM_GROUP,CID_GROUP) 	{ public boolean run() { return executeAM(); } },
+
+		new Command(BKW_BACK_RESUME)            { public boolean run() { return executeBACK_RESUME(); } },
+		new Command(BKW_BACKGROUND_RESUME)      { public boolean run() { return executeBACKGROUND_RESUME(); } },
+		new Command(BKW_CONSOLETOUCH_RESUME)    { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
+		new Command(BKW_KEY_RESUME)             { public boolean run() { return executeKEY_RESUME(); } },
+		new Command(BKW_MENUKEY_RESUME)         { public boolean run() { return executeMENUKEY_RESUME(); } },
+
+		new Command(BKW_ONERROR)                { public boolean run() { return true; } },
+		new Command(BKW_ONBACKKEY)              { public boolean run() { return true; } },
+		new Command(BKW_ONBACKGROUND)           { public boolean run() { return true; } },
+		new Command(BKW_ONBTREADREADY)          { public boolean run() { return true; } },
+		new Command(BKW_ONCONSOLETOUCH)         { public boolean run() { return true; } },
+		new Command(BKW_ONGRTOUCH)              { public boolean run() { return true; } },
+		new Command(BKW_ONKEYPRESS)             { public boolean run() { return true; } },
+		new Command(BKW_ONMENUKEY)              { public boolean run() { return true; } },
+		new Command(BKW_ONTIMER)                { public boolean run() { return true; } },
+	}; // BASIC_cmd
+
+	// **************** FN Group - user-defined functions 
+
+	private final Command[] fn_cmd = new Command[] {	// Map user function command keywords to their execution functions
+		new Command(BKW_FN_DEF)         { public boolean run() { return executeFN_DEF(); } },
+		new Command(BKW_FN_RTN)         { public boolean run() { return executeFN_RTN(); } },
+		new Command(BKW_FN_END)         { public boolean run() { return executeFN_END(); } },
+	};
+
+	// **************** SW Group - switch statements 
+
+	private final Command[] sw_cmd = new Command[] {	// Map sw (switch) command keywords to their execution functions
+		new Command(BKW_SW_BEGIN)       { public boolean run() { return executeSW_BEGIN(); } },
+		new Command(BKW_SW_CASE)        { public boolean run() { return executeSW_CASE(); } },
+		new Command(BKW_SW_BREAK)       { public boolean run() { return executeSW_BREAK(); } },
+		new Command(BKW_SW_DEFAULT)     { public boolean run() { return executeSW_DEFAULT(); } },
+		new Command(BKW_SW_END)         { public boolean run() { return executeSW_END(); } },
+	};
+
+	// **************** FILE Group 
+
+	private final Command[] file_cmd = new Command[] {	// Map File command keywords to their execution functions
+		new Command(BKW_FILE_DELETE)    { public boolean run() { return executeDELETE(); } },
+		new Command(BKW_FILE_SIZE)      { public boolean run() { return executeFILE_SIZE(); } },
+		new Command(BKW_FILE_DIR)       { public boolean run() { return executeDIR(); } },
+		new Command(BKW_FILE_MKDIR)     { public boolean run() { return executeMKDIR(); } },
+		new Command(BKW_FILE_RENAME)    { public boolean run() { return executeRENAME(); } },
+		new Command(BKW_FILE_ROOT)      { public boolean run() { return executeFILE_ROOTS(); } },
+		new Command(BKW_FILE_EXISTS)    { public boolean run() { return executeFILE_EXISTS(); } },
+		new Command(BKW_FILE_TYPE)      { public boolean run() { return executeFILE_TYPE(); } }
+	};
+
+	// **************** TEXT Group - text file operations
+
+	private final Command[] text_cmd = new Command[] {	// Map Text I/O command keywords to their execution functions
+		new Command(BKW_TEXT_OPEN)          { public boolean run() { return executeTEXT_OPEN(); } },
+		new Command(BKW_TEXT_CLOSE)         { public boolean run() { return executeTEXT_CLOSE(); } },
+		new Command(BKW_TEXT_READLN)        { public boolean run() { return executeTEXT_READLN(); } },
+		new Command(BKW_TEXT_WRITELN)       { public boolean run() { return executeTEXT_WRITELN(); } },
+		new Command(BKW_TEXT_INPUT)         { public boolean run() { return executeTEXT_INPUT(); } },
+		new Command(BKW_TEXT_POSITION_GET)  { public boolean run() { return executeTEXT_POSITION_GET(); } },
+		new Command(BKW_TEXT_POSITION_SET)  { public boolean run() { return executeTEXT_POSITION_SET(); } },
+		new Command(BKW_TEXT_POSITION_MARK) { public boolean run() { return executeTEXT_POSITION_MARK(); } },
+	};
+
+	// **************** BYTE Group - binary file operations
+
+	private final Command[] byte_cmd = new Command[] {	// Map Byte I/O command keywords to their execution functions
+		new Command(BKW_BYTE_OPEN)          { public boolean run() { return executeBYTE_OPEN(); } },
+		new Command(BKW_BYTE_CLOSE)         { public boolean run() { return executeBYTE_CLOSE(); } },
+		new Command(BKW_BYTE_READ_BYTE)     { public boolean run() { return executeBYTE_READ_BYTE(); } },
+		new Command(BKW_BYTE_WRITE_BYTE)    { public boolean run() { return executeBYTE_WRITE_BYTE(); } },
+		new Command(BKW_BYTE_READ_BUFFER)   { public boolean run() { return executeBYTE_READ_BUFFER(); } },
+		new Command(BKW_BYTE_WRITE_BUFFER)  { public boolean run() { return executeBYTE_WRITE_BUFFER(); } },
+		new Command(BKW_BYTE_COPY)          { public boolean run() { return executeBYTE_COPY(); } },
+		new Command(BKW_BYTE_TRUNCATE)      { public boolean run() { return executeBYTE_TRUNCATE(); } },
+		new Command(BKW_BYTE_POSITION_GET)  { public boolean run() { return executeBYTE_POSITION_GET(); } },
+		new Command(BKW_BYTE_POSITION_SET)  { public boolean run() { return executeBYTE_POSITION_SET(); } },
+		new Command(BKW_BYTE_POSITION_MARK) { public boolean run() { return executeBYTE_POSITION_MARK(); } },
+	};
+
+	// **************** READ Group - READ.DATA
+
+	private final Command CMD_READ_DATA = new Command(BKW_READ_DATA) { public boolean run() { return true; } };
+	private final Command[] read_cmd = new Command[] {	// Map Read command keywords to their execution functions
+										// Do NOT call executeREAD_DATA, that was done in PreScan
+		CMD_READ_DATA,
+		new Command(BKW_READ_NEXT)          { public boolean run() { return executeREAD_NEXT(); } },
+		new Command(BKW_READ_FROM)          { public boolean run() { return executeREAD_FROM(); } },
+	};
+
+	private int readNext = 0;
+	private ArrayList<Var> readData;
+
+	// **************** FONT Group 
+
+	private final Command[] font_cmd = new Command[] {	// Map font command keywords to their execution functions
+			new Command(BKW_FONT_LOAD)              { public boolean run() { return executeFONT_LOAD(); } },
+			new Command(BKW_FONT_DELETE)            { public boolean run() { return executeFONT_DELETE(); } },
+			new Command(BKW_FONT_CLEAR)             { public boolean run() { return executeFONT_CLEAR(); } },
+	};
+
+	// **************** CONSOLE Group 
+
+	private final Command[] Console_cmd = new Command[] {	// Map console command keywords to their execution functions
+		new Command(BKW_CONSOLE_FRONT)          { public boolean run() { return executeCONSOLE_FRONT(); } },
+		new Command(BKW_CONSOLE_SAVE)           { public boolean run() { return executeCONSOLE_DUMP(); } },
+		new Command(BKW_CONSOLE_TITLE)          { public boolean run() { return executeCONSOLE_TITLE(); } },
+		new Command(BKW_CONSOLE_LINE_COUNT)     { public boolean run() { return executeCONSOLE_LINE_COUNT(); } },
+		new Command(BKW_CONSOLE_LINE_TEXT)      { public boolean run() { return executeCONSOLE_LINE_TEXT(); } },
+		new Command(BKW_CONSOLE_LINE_TOUCHED)   { public boolean run() { return executeCONSOLE_LINE_TOUCHED(); } },
+		new Command(BKW_CONSOLE_LINE_NEW)       { public boolean run() { return executeCONSOLE_LINE_NEW(); } },
+		new Command(BKW_CONSOLE_LINE_CHAR)      { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
+	};
+
+	// **************** DIALOG Group 
+
+	private final Command[] Dialog_cmd = new Command[] {	// Map dialog command keywords to their execution functions
+		new Command(BKW_DIALOG_MESSAGE)         { public boolean run() { return executeDIALOG_MESSAGE(); } },
+		new Command(BKW_DIALOG_SELECT)          { public boolean run() { return executeDIALOG_SELECT(); } },
+	};
+
+	// **************** SQL Group - SQLite database operations 
+
+	private final Command[] SQL_cmd = new Command[] {	// Map SQL command keywords to their execution functions
+		new Command(BKW_SQL_OPEN)           { public boolean run() { return execute_sql_open(); } },
+		new Command(BKW_SQL_CLOSE)          { public boolean run() { return execute_sql_close(); } },
+		new Command(BKW_SQL_INSERT)         { public boolean run() { return execute_sql_insert(); } },
+		new Command(BKW_SQL_QUERY_LENGTH)   { public boolean run() { return execute_sql_query_length(); } },
+		new Command(BKW_SQL_QUERY_POSITION) { public boolean run() { return execute_sql_query_position(); } },
+		new Command(BKW_SQL_QUERY)          { public boolean run() { return execute_sql_query(); } },
+		new Command(BKW_SQL_NEXT)           { public boolean run() { return execute_sql_next(); } },
+		new Command(BKW_SQL_DELETE)         { public boolean run() { return execute_sql_delete(); } },
+		new Command(BKW_SQL_UPDATE)         { public boolean run() { return execute_sql_update(); } },
+		new Command(BKW_SQL_EXEC)           { public boolean run() { return execute_sql_exec(); } },
+		new Command(BKW_SQL_RAW_QUERY)      { public boolean run() { return execute_sql_raw_query(); } },
+		new Command(BKW_SQL_DROP_TABLE)     { public boolean run() { return execute_sql_drop_table(); } },
+		new Command(BKW_SQL_NEW_TABLE)      { public boolean run() { return execute_sql_new_table(); } }
+	};
+
+	// **************** GR Group - graphics mode commands 
+
 	private final Command[] GR_cmd = new Command[] {	// Map GR command keywords to their execution functions
 		new Command(BKW_GR_RENDER)                  { public boolean run() { return execute_gr_render(); } },
 		new Command(BKW_GR_MODIFY)                  { public boolean run() { return execute_gr_modify(); } },
@@ -2084,29 +4550,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_TEXT_SETFONT)            { public boolean run() { return execute_gr_text_setfont(); } },
 	};
 
-	// ******************************** Variables for Audio commands ****************************
-
-	private static final String BKW_AUDIO_LOAD = "load";
-	private static final String BKW_AUDIO_PLAY = "play";
-	private static final String BKW_AUDIO_LOOP = "loop";
-	private static final String BKW_AUDIO_STOP = "stop";
-	private static final String BKW_AUDIO_VOLUME = "volume";
-	private static final String BKW_AUDIO_POSITION_CURRENT = "position.current";
-	private static final String BKW_AUDIO_POSITION_SEEK = "position.seek";
-	private static final String BKW_AUDIO_LENGTH = "length";
-	private static final String BKW_AUDIO_RELEASE = "release";
-	private static final String BKW_AUDIO_PAUSE = "pause";
-	private static final String BKW_AUDIO_ISDONE = "isdone";
-	private static final String BKW_AUDIO_RECORD_START = "record.start";
-	private static final String BKW_AUDIO_RECORD_STOP = "record.stop";
-
-	private static final String Audio_KW[] = {			// Command list for Format
-		BKW_AUDIO_LOAD, BKW_AUDIO_PLAY,
-		BKW_AUDIO_LOOP, BKW_AUDIO_STOP, BKW_AUDIO_VOLUME,
-		BKW_AUDIO_POSITION_CURRENT, BKW_AUDIO_POSITION_SEEK,
-		BKW_AUDIO_LENGTH, BKW_AUDIO_RELEASE, BKW_AUDIO_PAUSE,
-		BKW_AUDIO_ISDONE, BKW_AUDIO_RECORD_START, BKW_AUDIO_RECORD_STOP
-	};
+	// **************** AUDIO Group 
 
 	private final Command[] audio_cmd = new Command[] {	// Map audio command keywords to their execution functions
 		new Command(BKW_AUDIO_LOAD)             { public boolean run() { return execute_audio_load(); } },
@@ -2124,24 +4568,7 @@ public class Run extends ListActivity {
 		new Command(BKW_AUDIO_RECORD_STOP)      { public boolean run() { return execute_audio_record_stop(); } },
 	};
 
-	private MediaPlayer theMP = null;
-	private ArrayList<MediaPlayer> theMPList;
-	private ArrayList<String> theMPNameList;
-	private boolean PlayIsDone;
-	private MediaRecorder mRecorder = null;
-
-	// ******************************* Variables for Sensor Commands **********************************
-
-	private static final String BKW_SENSORS_LIST = "list";
-	private static final String BKW_SENSORS_OPEN = "open";
-	private static final String BKW_SENSORS_READ = "read";
-	private static final String BKW_SENSORS_CLOSE = "close";
-	private static final String BKW_SENSORS_ROTATE = "rotate";
-
-	private static final String Sensors_KW[] = {		// Command list for Format
-		BKW_SENSORS_LIST, BKW_SENSORS_OPEN,
-		BKW_SENSORS_READ, BKW_SENSORS_CLOSE, BKW_SENSORS_ROTATE
-	};
+	// **************** SENSORS Group 
 
 	private final Command[] sensors_cmd = new Command[] {	// Map sensor command keywords to their execution functions
 		new Command(BKW_SENSORS_LIST)           { public boolean run() { return execute_sensors_list(); } },
@@ -2151,31 +4578,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SENSORS_ROTATE)         { public boolean run() { return execute_sensors_rotate(); } },
 	};
 
-	private SensorActivity theSensors;
-
-	// ***********************  Variables for GPS Commands  ******************************************
-
-	private static final String BKW_GPS_ALTITUDE = "altitude";
-	private static final String BKW_GPS_LATITUDE = "latitude";
-	private static final String BKW_GPS_LONGITUDE = "longitude";
-	private static final String BKW_GPS_BEARING = "bearing";
-	private static final String BKW_GPS_ACCURACY = "accuracy";
-	private static final String BKW_GPS_SPEED = "speed";
-	private static final String BKW_GPS_PROVIDER = "provider";
-	private static final String BKW_GPS_SATELLITES = "satellites";
-	private static final String BKW_GPS_TIME = "time";
-	private static final String BKW_GPS_LOCATION = "location";
-	private static final String BKW_GPS_STATUS = "status";
-	private static final String BKW_GPS_OPEN = "open";
-	private static final String BKW_GPS_CLOSE = "close";
-
-	private static final String GPS_KW[] = {			// Command list for Format
-		BKW_GPS_ALTITUDE, BKW_GPS_LATITUDE, BKW_GPS_LONGITUDE,
-		BKW_GPS_BEARING, BKW_GPS_ACCURACY, BKW_GPS_SPEED,
-		BKW_GPS_PROVIDER, BKW_GPS_SATELLITES, BKW_GPS_TIME,
-		BKW_GPS_LOCATION, BKW_GPS_STATUS,
-		BKW_GPS_OPEN, BKW_GPS_CLOSE,
-	};
+	// **************** GPS Group
 
 	private final Command[] GPS_cmd = new Command[] {	// Map GPS command keywords to their execution functions
 		new Command(BKW_GPS_ALTITUDE)           { public boolean run() { return execute_gps_num(GpsData.ALTITUDE); } },
@@ -2193,35 +4596,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GPS_CLOSE)              { public boolean run() { return execute_gps_close(); } },
 	};
 
-	private GPS theGPS;
-
-	// ************************* Variables for Array Commands *********************************
-
-	private enum ArrayOrderOps { DoSort, DoShuffle, DoReverse }
-	private enum ArrayMathOps { DoSum, DoAverage, DoMin, DoMax, DoVariance, DoStdDev }
-
-	private static final String BKW_ARRAY_LENGTH = "length";
-	private static final String BKW_ARRAY_LOAD = "load";
-	private static final String BKW_ARRAY_SORT = "sort";
-	private static final String BKW_ARRAY_SUM = "sum";
-	private static final String BKW_ARRAY_AVERAGE = "average";
-	private static final String BKW_ARRAY_REVERSE = "reverse";
-	private static final String BKW_ARRAY_SHUFFLE = "shuffle";
-	private static final String BKW_ARRAY_MIN = "min";
-	private static final String BKW_ARRAY_MAX = "max";
-	private static final String BKW_ARRAY_DELETE = "delete";
-	private static final String BKW_ARRAY_VARIANCE = "variance";
-	private static final String BKW_ARRAY_STD_DEV = "std_dev";
-	private static final String BKW_ARRAY_COPY = "copy";
-	private static final String BKW_ARRAY_SEARCH = "search";
-
-	private static final String Array_KW[] = {			// Command list for Format
-		BKW_ARRAY_LENGTH, BKW_ARRAY_LOAD, BKW_ARRAY_SORT,
-		BKW_ARRAY_SUM, BKW_ARRAY_AVERAGE, BKW_ARRAY_REVERSE,
-		BKW_ARRAY_SHUFFLE, BKW_ARRAY_MIN, BKW_ARRAY_MAX,
-		BKW_ARRAY_DELETE, BKW_ARRAY_VARIANCE, BKW_ARRAY_STD_DEV,
-		BKW_ARRAY_COPY, BKW_ARRAY_SEARCH
-	};
+	// **************** ARRAY Group
 
 	private final Command[] array_cmd = new Command[] {	// Map array command keywords to their execution functions
 		new Command(BKW_ARRAY_LENGTH)           { public boolean run() { return execute_array_length(); } },
@@ -2240,29 +4615,7 @@ public class Run extends ListActivity {
 		new Command(BKW_ARRAY_SEARCH)           { public boolean run() { return execute_array_search(); } },
 	};
 
-	// ************************************ List command variables *********************************
-
-	private static final String BKW_LIST_CREATE = "create";
-	private static final String BKW_LIST_ADD_LIST = "add.list";
-	private static final String BKW_LIST_ADD_ARRAY = "add.array";
-	private static final String BKW_LIST_ADD = "add";
-	private static final String BKW_LIST_REPLACE = "replace";
-	private static final String BKW_LIST_TYPE = "type";
-	private static final String BKW_LIST_GET = "get";
-	private static final String BKW_LIST_CLEAR = "clear";
-	private static final String BKW_LIST_REMOVE = "remove";
-	private static final String BKW_LIST_INSERT = "insert";
-	private static final String BKW_LIST_SIZE = "size";
-	private static final String BKW_LIST_TOARRAY = "toarray";
-	private static final String BKW_LIST_SEARCH = "search";
-
-	private static final String List_KW[] = {			// Command list for Format
-		BKW_LIST_CREATE, BKW_LIST_ADD_LIST,
-		BKW_LIST_ADD_ARRAY, BKW_LIST_ADD, BKW_LIST_REPLACE,
-		BKW_LIST_TYPE, BKW_LIST_GET, BKW_LIST_CLEAR,
-		BKW_LIST_REMOVE, BKW_LIST_INSERT, BKW_LIST_SIZE,
-		BKW_LIST_TOARRAY, BKW_LIST_SEARCH
-	};
+	// **************** LIST Group
 
 	private final Command[] list_cmd = new Command[] {	// Map list command keywords to their execution functions
 		new Command(BKW_LIST_CREATE)            { public boolean run() { return execute_LIST_NEW(); } },
@@ -2280,27 +4633,7 @@ public class Run extends ListActivity {
 		new Command(BKW_LIST_SEARCH)            { public boolean run() { return execute_LIST_SEARCH(); } },
 	};
 
-	public ArrayList<ArrayList> theLists;
-	public ArrayList<VarType> theListsType;
-
-	// ************************************ Bundle Variables ****************************************
-
-	private static final String BKW_BUNDLE_CREATE = "create";
-	private static final String BKW_BUNDLE_PUT = "put";
-	private static final String BKW_BUNDLE_GET = "get";
-	private static final String BKW_BUNDLE_NEXT = "next";
-	private static final String BKW_BUNDLE_TYPE = "type";
-	private static final String BKW_BUNDLE_KEYS = "keys";
-	private static final String BKW_BUNDLE_COPY = "copy";
-	private static final String BKW_BUNDLE_CLEAR = "clear";
-	private static final String BKW_BUNDLE_CONTAIN = "contain";
-	private static final String BKW_BUNDLE_REMOVE = "remove";
-
-	private static final String Bundle_KW[] = {			// Command list for Format
-		BKW_BUNDLE_CREATE, BKW_BUNDLE_PUT, BKW_BUNDLE_GET, BKW_BUNDLE_NEXT,
-		BKW_BUNDLE_TYPE, BKW_BUNDLE_KEYS, BKW_BUNDLE_COPY,
-		BKW_BUNDLE_CLEAR, BKW_BUNDLE_CONTAIN, BKW_BUNDLE_REMOVE
-	};
+	// **************** BUNDLE Group
 
 	private final Command[] bundle_cmd = new Command[] {// Map bundle command keywords to their execution functions
 		new Command(BKW_BUNDLE_CREATE)          { public boolean run() { return execute_BUNDLE_CREATE(); } },
@@ -2315,23 +4648,7 @@ public class Run extends ListActivity {
 		new Command(BKW_BUNDLE_REMOVE)          { public boolean run() { return execute_BUNDLE_REMOVE(); } },
 	};
 
-	private ArrayList<Bundle> theBundles;
-
-	// *********************************** Stack Variables **********************************************
-
-	private static final String BKW_STACK_CREATE = "create";
-	private static final String BKW_STACK_PUSH = "push";
-	private static final String BKW_STACK_POP = "pop";
-	private static final String BKW_STACK_PEEK = "peek";
-	private static final String BKW_STACK_TYPE = "type";
-	private static final String BKW_STACK_ISEMPTY = "isempty";
-	private static final String BKW_STACK_CLEAR = "clear";
-
-	private static final String Stack_KW[] = {			// Command list for Format
-		BKW_STACK_CREATE, BKW_STACK_PUSH, BKW_STACK_POP,
-		BKW_STACK_PEEK, BKW_STACK_TYPE,
-		BKW_STACK_ISEMPTY, BKW_STACK_CLEAR
-	};
+	// **************** STACK Group
 
 	private final Command[] stack_cmd = new Command[] {	// Map stack command keywords to their execution functions
 		new Command(BKW_STACK_CREATE)           { public boolean run() { return execute_STACK_CREATE(); } },
@@ -2343,60 +4660,7 @@ public class Run extends ListActivity {
 		new Command(BKW_STACK_CLEAR)            { public boolean run() { return execute_STACK_CLEAR(); } },
 	};
 
-	private ArrayList<Stack> theStacks;
-	private ArrayList<VarType> theStacksType; 
-
-//  ******************************* Socket Variables **************************************************
-
-	// socket commands
-	private static final String BKW_SOCKET_MYIP = "myip";
-	private static final String BKW_SOCKET_CLIENT_GROUP = "client.";
-	private static final String BKW_SOCKET_SERVER_GROUP = "server.";
-
-	// socket subgroup commands
-	private static final String BKW_SOCKET_CLIENT_IP = "client.ip";
-	private static final String BKW_SOCKET_CLOSE = "close";
-	private static final String BKW_SOCKET_CONNECT = "connect";
-	private static final String BKW_SOCKET_CREATE = "create";
-	private static final String BKW_SOCKET_DISCONNECT = "disconnect";
-	private static final String BKW_SOCKET_READ_FILE = "read.file";
-	private static final String BKW_SOCKET_READ_LINE = "read.line";
-	private static final String BKW_SOCKET_READ_READY = "read.ready";
-	private static final String BKW_SOCKET_SERVER_IP = "server.ip";
-	private static final String BKW_SOCKET_STATUS = "status";
-	private static final String BKW_SOCKET_WRITE_BYTES = "write.bytes";
-	private static final String BKW_SOCKET_WRITE_FILE = "write.file";
-	private static final String BKW_SOCKET_WRITE_LINE = "write.line";
-
-	private static final String Socket_KW[] = {			// Command list for Format
-		BKW_SOCKET_MYIP,
-
-		// SOCKET subgroups - Format can handle only one level of grouping
-		// SOCKET.CLIENT. subgroup
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_CONNECT,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_STATUS,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_READY,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_LINE,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_LINE,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_BYTES,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_CLOSE,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_SERVER_IP,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_READ_FILE,
-		BKW_SOCKET_CLIENT_GROUP + BKW_SOCKET_WRITE_FILE,
-		// SOCKET.SERVER. subgroup
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CREATE,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CONNECT,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_STATUS,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_READY,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_LINE,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_LINE,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_BYTES,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_DISCONNECT,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CLOSE,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_CLIENT_IP,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_READ_FILE,
-		BKW_SOCKET_SERVER_GROUP + BKW_SOCKET_WRITE_FILE,
-	};
+	// **************** SOCKET Group
 
 	private final Command[] Socket_cmd = new Command[] {		// Map Socket command keywords to their execution functions
 		new Command(BKW_SOCKET_CLIENT_GROUP, CID_GROUP) { public boolean run() { return executeSocketClient(); } },
@@ -2432,66 +4696,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SOCKET_WRITE_FILE)      { public boolean run() { return executeSERVER_PUTFILE(); } }
 	};
 
-	// Constants that indicate the current connection state
-	public static final int STATE_NOT_ENABLED = -1;	// channel is not enabled, or server socket not created
-	public static final int STATE_NONE = 0;			// channel is doing nothing (initial state)
-	public static final int STATE_LISTENING = 1;	// now listening for incoming connections
-	public static final int STATE_CONNECTING = 2;	// now initiating an outgoing connection
-	public static final int STATE_CONNECTED = 3;	// now connected to a remote device
-	public static final int STATE_READING = 4;		// now reading from a remote device
-	public static final int STATE_WRITING = 5;		// now writing to a remote device
-
-	private int clientSocketState;
-	private int serverSocketState;
-
-	private Socket theClientSocket;
-	private ClientSocketConnectThread clientSocketConnectThread;
-	private BufferedReader ClientBufferedReader;
-	private PrintWriter ClientPrintWriter;
-
-	private ServerSocket newSS;
-	private ServerSocketConnectThread serverSocketConnectThread;
-	private Socket theServerSocket;
-	private BufferedReader ServerBufferedReader;
-	private PrintWriter ServerPrintWriter;
-
-	// *************************************************** Debug Commands ****************************
-
-	private static final String BKW_DEBUG_ON = "on";
-	private static final String BKW_DEBUG_OFF = "off";
-	private static final String BKW_DEBUG_PRINT = "print";
-	private static final String BKW_DEBUG_ECHO_ON = "echo.on";
-	private static final String BKW_DEBUG_ECHO_OFF = "echo.off";
-	private static final String BKW_DEBUG_DUMP_SCALARS = "dump.scalars";
-	private static final String BKW_DEBUG_DUMP_ARRAY = "dump.array";
-	private static final String BKW_DEBUG_DUMP_LIST = "dump.list";
-	private static final String BKW_DEBUG_DUMP_STACK = "dump.stack";
-	private static final String BKW_DEBUG_DUMP_BUNDLE = "dump.bundle";
-	private static final String BKW_DEBUG_WATCH_CLEAR = "watch.clear";
-	private static final String BKW_DEBUG_WATCH = "watch";
-	private static final String BKW_DEBUG_SHOW_SCALARS = "show.scalars";
-	private static final String BKW_DEBUG_SHOW_ARRAY = "show.array";
-	private static final String BKW_DEBUG_SHOW_LIST = "show.list";
-	private static final String BKW_DEBUG_SHOW_STACK = "show.stack";
-	private static final String BKW_DEBUG_SHOW_BUNDLE = "show.bundle";
-	private static final String BKW_DEBUG_SHOW_WATCH = "show.watch";
-	private static final String BKW_DEBUG_SHOW_PROGRAM = "show.program";
-	private static final String BKW_DEBUG_SHOW = "show";
-	private static final String BKW_DEBUG_CONSOLE = "console";
-	private static final String BKW_DEBUG_COMMANDS = "commands";
-	private static final String BKW_DEBUG_STATS = "stats";
-
-	private static final String Debug_KW[] = {			// Command list for Format
-		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_DEBUG_PRINT, BKW_DEBUG_ECHO_ON,
-		BKW_DEBUG_ECHO_OFF, BKW_DEBUG_DUMP_SCALARS,
-		BKW_DEBUG_DUMP_ARRAY, BKW_DEBUG_DUMP_LIST,
-		BKW_DEBUG_DUMP_STACK, BKW_DEBUG_DUMP_BUNDLE,
-		BKW_DEBUG_WATCH_CLEAR, BKW_DEBUG_WATCH, BKW_DEBUG_SHOW_SCALARS,
-		BKW_DEBUG_SHOW_ARRAY, BKW_DEBUG_SHOW_LIST, BKW_DEBUG_SHOW_STACK,
-		BKW_DEBUG_SHOW_BUNDLE, BKW_DEBUG_SHOW_WATCH, BKW_DEBUG_SHOW_PROGRAM,
-		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE,
-		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS
-	};
+	// **************** DEBUG Group
 
 	private final Command[] debug_cmd = new Command[] {	// Map debug command keywords to their execution functions
 		new Command(BKW_DEBUG_ON)               { public boolean run() { return executeDEBUG_ON(); } },
@@ -2519,20 +4724,7 @@ public class Run extends ListActivity {
 		new Command(BKW_DEBUG_STATS)            { public boolean run() { return executeDEBUG_STATS(); } },
 	};
 
-	private boolean Debug = false;
-	private boolean Echo = false;
-
-	// *********************************************** Text to Speech *******************************
-
-	private static final String BKW_TTS_INIT = "init";
-	private static final String BKW_TTS_SPEAK_TOFILE = "speak.tofile";
-	private static final String BKW_TTS_SPEAK = "speak";
-	private static final String BKW_TTS_STOP = "stop";
-
-	private static final String tts_KW[] = {			// TTS command list for Format
-		BKW_TTS_INIT, BKW_TTS_SPEAK_TOFILE,
-		BKW_TTS_SPEAK, BKW_TTS_STOP
-	};
+	// **************** TTS Group - text-to-speech
 
 	private final Command[] tts_cmd = new Command[] {	// Map TTS command keywords to their execution functions
 		new Command(BKW_TTS_INIT)               { public boolean run() { return executeTTS_INIT(); } },
@@ -2541,27 +4733,7 @@ public class Run extends ListActivity {
 		new Command(BKW_TTS_STOP)               { public boolean run() { return executeTTS_STOP(); } }
 	};
 
-	private TextToSpeechActivity theTTS;
-	public static boolean ttsInit;
-
-	// *********************************************** FTP Client *************************************
-
-	private static final String BKW_FTP_OPEN = "open";
-	private static final String BKW_FTP_CLOSE = "close";
-	private static final String BKW_FTP_DIR = "dir";
-	private static final String BKW_FTP_CD = "cd";
-	private static final String BKW_FTP_GET = "get";
-	private static final String BKW_FTP_PUT = "put";
-	private static final String BKW_FTP_DELETE = "delete";
-	private static final String BKW_FTP_RMDIR = "rmdir";
-	private static final String BKW_FTP_MKDIR = "mkdir";
-	private static final String BKW_FTP_RENAME = "rename";
-
-	private static final String ftp_KW[] = {			// FTP command list for Format
-		BKW_FTP_OPEN, BKW_FTP_CLOSE, BKW_FTP_DIR, BKW_FTP_CD,
-		BKW_FTP_GET, BKW_FTP_PUT, BKW_FTP_DELETE, BKW_FTP_RMDIR,
-		BKW_FTP_MKDIR, BKW_FTP_RENAME
-	};
+	// **************** FTP Group
 
 	private final Command[] ftp_cmd = new Command[] {	// Map FTP command keywords to their execution functions
 		new Command(BKW_FTP_OPEN)               { public boolean run() { return executeFTP_OPEN(); } },
@@ -2576,78 +4748,7 @@ public class Run extends ListActivity {
 		new Command(BKW_FTP_RENAME)             { public boolean run() { return executeFTP_RENAME(); } },
 	};
 
-	public FTPClient mFTPClient = null;
-	public String FTPdir = null;
-
-	// *********************************************** Camera *****************************************
-
-	public static Bitmap CameraBitmap;
-	public static boolean CameraDone;
-	private int CameraNumber;
-	private int NumberOfCameras;			// -1 if we don't know yet
-
-	// ***************************************  Bluetooth  ********************************************
-
-    // Message types sent from the BluetoothChatService
-    public static final int MESSAGE_STATE_CHANGE = MESSAGE_BT_GROUP + 1;
-    public static final int MESSAGE_READ         = MESSAGE_BT_GROUP + 2;
-    public static final int MESSAGE_WRITE        = MESSAGE_BT_GROUP + 3;
-    public static final int MESSAGE_DEVICE_NAME  = MESSAGE_BT_GROUP + 4;
-
-    // Key names received from the BluetoothChatService
-    public static final String DEVICE_NAME = "device_name";
-    public static final String TOAST = "toast";
-
-    // Intent request codes
-    public static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
-    public static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
-    public static final int REQUEST_ENABLE_BT = 3;
-    
-    public static  UUID MY_UUID_SECURE =
-        UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    public static  UUID MY_UUID_INSECURE =
-        UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-
-    
-    public static int bt_enabled = 0;
-    public static int bt_state;
-    public static boolean bt_Secure;
-
-    // Name of the connected device
-    public static String mConnectedDeviceName = null;
-    // Array adapter for the conversation thread
-    public static StringBuffer mOutStringBuffer;
-    // Local Bluetooth adapter
-    public static BluetoothAdapter mBluetoothAdapter = null;
-    // Member object for the chat services
-    public static BluetoothChatService mChatService = null;
-    //
-    public static ArrayList <String> BT_Read_Buffer;
-    public static BluetoothDevice btConnectDevice = null;
-    private boolean btReadReady = false;
-    private int OnBTReadLine = 0;
-
-	private static final String BKW_BT_OPEN = "open";
-	private static final String BKW_BT_CLOSE = "close";
-	private static final String BKW_BT_STATUS = "status";
-	private static final String BKW_BT_CONNECT = "connect";
-	private static final String BKW_BT_DEVICE_NAME = "device.name";
-	private static final String BKW_BT_WRITE = "write";
-	private static final String BKW_BT_READ_READY = "read.ready";
-	private static final String BKW_BT_READ_BYTES = "read.bytes";
-	private static final String BKW_BT_SET_UUID = "set.uuid";
-	private static final String BKW_BT_LISTEN = "listen";
-	private static final String BKW_BT_RECONNECT = "reconnect";
-	private static final String BKW_BT_ONREADREADY_RESUME = "onreadready.resume";
-	private static final String BKW_BT_DISCONNECT = "disconnect";
-
-	private static final String bt_KW[] = {				// Bluetooth command list for Format
-		BKW_BT_OPEN, BKW_BT_CLOSE, BKW_BT_STATUS,
-		BKW_BT_CONNECT, BKW_BT_DEVICE_NAME,
-		BKW_BT_WRITE, BKW_BT_READ_READY, BKW_BT_READ_BYTES,
-		BKW_BT_SET_UUID, BKW_BT_LISTEN, BKW_BT_RECONNECT,
-		BKW_BT_ONREADREADY_RESUME, BKW_BT_DISCONNECT
-	};
+	// **************** BT Group - Bluetooth channel operations
 
 	private final Command[] bt_cmd = new Command[] {	// Map Bluetooth command keywords to their execution functions
 		new Command(BKW_BT_OPEN,   CID_OPEN)    { public boolean run() { return execute_BT_open(); } },
@@ -2665,19 +4766,7 @@ public class Run extends ListActivity {
 		new Command(BKW_BT_DISCONNECT)          { public boolean run() { return execute_BT_disconnect(); } },
 	};
 
-	/**************************************  Superuser and System  ***************************/
-
-	private static final String BKW_SU_OPEN = "open";
-	private static final String BKW_SU_WRITE = "write";
-	private static final String BKW_SU_READ_READY = "read.ready";
-	private static final String BKW_SU_READ_LINE = "read.line";
-	private static final String BKW_SU_CLOSE = "close";
-
-	private static final String su_KW[] = {				// Command list for Format
-		BKW_SU_OPEN, BKW_SU_WRITE, BKW_SU_READ_READY,
-		BKW_SU_READ_LINE, BKW_SU_CLOSE
-	};
-	private static final String[] System_KW = su_KW;	// Command list for Format
+	// **************** SU and SYSTEM Groups - superuser and system commands
 
 	private final Command[] SU_cmd = new Command[] {	// Map SU/System command keywords to their execution functions
 		new Command(BKW_SU_OPEN, CID_OPEN)      { public boolean run() { return execute_SU_open(); } },
@@ -2687,36 +4776,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SU_CLOSE)               { public boolean run() { return execute_SU_close(); } }
 	};
 
-	private boolean isSU = true;						// set true for SU commands, false for System commands
-	private DataOutputStream SUoutputStream;
-	private BufferedReader SUinputStream;
-	private Process SUprocess;
-	private ArrayList <String> SU_ReadBuffer;
-	private SUReader theSUReader = null;
-
-	/***************************************  SOUND POOL  ************************************/
-
-	private static final String BKW_SOUNDPOOL_OPEN = "open";
-	private static final String BKW_SOUNDPOOL_LOAD = "load";
-	private static final String BKW_SOUNDPOOL_PLAY = "play";
-	private static final String BKW_SOUNDPOOL_STOP = "stop";
-	private static final String BKW_SOUNDPOOL_UNLOAD = "unload";
-	private static final String BKW_SOUNDPOOL_PAUSE = "pause";
-	private static final String BKW_SOUNDPOOL_RESUME = "resume";
-	private static final String BKW_SOUNDPOOL_RELEASE = "release";
-	private static final String BKW_SOUNDPOOL_SETVOLUME = "setvolume";
-	private static final String BKW_SOUNDPOOL_SETPRIORITY = "setpriority";
-	private static final String BKW_SOUNDPOOL_SETLOOP = "setloop";
-	private static final String BKW_SOUNDPOOL_SETRATE = "setrate";
-
-	private static final String sp_KW[] = {				// Command list for Format
-		BKW_SOUNDPOOL_OPEN, BKW_SOUNDPOOL_LOAD,
-		BKW_SOUNDPOOL_PLAY, BKW_SOUNDPOOL_STOP,
-		BKW_SOUNDPOOL_UNLOAD, BKW_SOUNDPOOL_PAUSE,
-		BKW_SOUNDPOOL_RESUME, BKW_SOUNDPOOL_RELEASE,
-		BKW_SOUNDPOOL_SETVOLUME, BKW_SOUNDPOOL_SETPRIORITY,
-		BKW_SOUNDPOOL_SETLOOP, BKW_SOUNDPOOL_SETRATE
-	};
+	// **************** SP Group - soundpool
 
 	private final Command[] sp_cmd = new Command[] {	// Map soundpool command keywords to their execution functions
 		new Command(BKW_SOUNDPOOL_OPEN, CID_OPEN)   { public boolean run() { return execute_SP_open(); } },
@@ -2733,59 +4793,16 @@ public class Run extends ListActivity {
 		new Command(BKW_SOUNDPOOL_SETRATE)          { public boolean run() { return execute_SP_setrate(); } },
 	};
 
-	private SoundPool theSoundPool ;
-
-	// *************************************** Ringer Vars ****************************************
-
-	private static final String BKW_RINGER_GET_MODE = "get.mode";
-	private static final String BKW_RINGER_SET_MODE = "set.mode";
-	private static final String BKW_RINGER_GET_VOLUME = "get.volume";
-	private static final String BKW_RINGER_SET_VOLUME = "set.volume";
-
-	private static final String ringer_KW[] = {			// Command list for Format
-		BKW_RINGER_GET_MODE, BKW_RINGER_SET_MODE,
-		BKW_RINGER_GET_VOLUME, BKW_RINGER_SET_VOLUME
-	};
+	// **************** RINGER Group
 
 	private final Command[] ringer_cmd = new Command[] {	// Map ringer command keywords to their execution functions
-			new Command(BKW_RINGER_GET_MODE)    { public boolean run() { return executeRINGER_GET_MODE(); } },
-			new Command(BKW_RINGER_SET_MODE)    { public boolean run() { return executeRINGER_SET_MODE(); } },
-			new Command(BKW_RINGER_GET_VOLUME)  { public boolean run() { return executeRINGER_GET_VOLUME(); } },
-			new Command(BKW_RINGER_SET_VOLUME)  { public boolean run() { return executeRINGER_SET_VOLUME(); } },
+		new Command(BKW_RINGER_GET_MODE)    { public boolean run() { return executeRINGER_GET_MODE(); } },
+		new Command(BKW_RINGER_SET_MODE)    { public boolean run() { return executeRINGER_SET_MODE(); } },
+		new Command(BKW_RINGER_GET_VOLUME)  { public boolean run() { return executeRINGER_GET_VOLUME(); } },
+		new Command(BKW_RINGER_SET_VOLUME)  { public boolean run() { return executeRINGER_SET_VOLUME(); } },
 	};
 
-	private static final int RINGER_UNKNOWN = -1;
-	private static final int RINGER_SILENT = 0;
-	private static final int RINGER_VIBRATE = 1;
-	private static final int RINGER_NORMAL = 2;
-
-	// **************** Headset Vars **************************************
-
-	int headsetState;
-	String headsetName;
-	int headsetMic;
-
-	//******************* html Vars ******************************************
-
-	private static final String BKW_HTML_OPEN = "open";
-	private static final String BKW_HTML_ORIENTATION = "orientation";
-	private static final String BKW_HTML_LOAD_URL = "load.url";
-	private static final String BKW_HTML_LOAD_STRING = "load.string";
-	private static final String BKW_HTML_GET_DATALINK = "get.datalink";
-	private static final String BKW_HTML_CLOSE = "close";
-	private static final String BKW_HTML_GO_BACK = "go.back";
-	private static final String BKW_HTML_GO_FORWARD = "go.forward";
-	private static final String BKW_HTML_CLEAR_CACHE = "clear.cache";
-	private static final String BKW_HTML_CLEAR_HISTORY = "clear.history";
-	private static final String BKW_HTML_POST = "post";
-
-	private static final String html_KW[] = {			// Command list for Format
-		BKW_HTML_OPEN, BKW_HTML_ORIENTATION,
-		BKW_HTML_LOAD_URL, BKW_HTML_LOAD_STRING,
-		BKW_HTML_GET_DATALINK, BKW_HTML_CLOSE, BKW_HTML_GO_BACK,
-		BKW_HTML_GO_FORWARD, BKW_HTML_CLEAR_CACHE,
-		BKW_HTML_CLEAR_HISTORY, BKW_HTML_POST
-	};
+	// **************** HTML Group
 
 	private final Command[] html_cmd = new Command[] {	// Map HTML command keywords to their execution functions
 		new Command(BKW_HTML_OPEN, CID_OPEN)    { public boolean run() { return execute_html_open(); } },
@@ -2802,31 +4819,7 @@ public class Run extends ListActivity {
 		new Command(BKW_HTML_POST)              { public boolean run() { return execute_html_post(); } },
 	};
 
-	// Message types for the HTML commands
-	private static final int MESSAGE_HTML_OPEN     = MESSAGE_HTML_GROUP + 1;
-	private static final int MESSAGE_GO_BACK       = MESSAGE_HTML_GROUP + 2;
-	private static final int MESSAGE_GO_FORWARD    = MESSAGE_HTML_GROUP + 3;
-	private static final int MESSAGE_CLEAR_CACHE   = MESSAGE_HTML_GROUP + 4;
-	private static final int MESSAGE_CLEAR_HISTORY = MESSAGE_HTML_GROUP + 5;
-	private static final int MESSAGE_LOAD_URL      = MESSAGE_HTML_GROUP + 6;
-	private static final int MESSAGE_LOAD_STRING   = MESSAGE_HTML_GROUP + 7;
-	private static final int MESSAGE_POST          = MESSAGE_HTML_GROUP + 8;
-
-	public static ArrayList<String> htmlData_Buffer;
-	private Intent htmlIntent;
-	private boolean htmlOpening;
-
-	public static boolean Notified;
-
-	//********************* SMS Vars ***********************************
-
-	private static final String BKW_SMS_RCV_INIT = "rcv.init";
-	private static final String BKW_SMS_RCV_NEXT = "rcv.next";
-	private static final String BKW_SMS_SEND = "send";
-
-	private static final String SMS_KW[] = {			// Command list for Format
-		BKW_SMS_RCV_INIT, BKW_SMS_RCV_NEXT, BKW_SMS_SEND
-	};
+	// **************** SMS Group - text messages
 
 	private final Command[] sms_cmd = new Command[] {	// Map SMS command keywords to their execution functions
 		new Command(BKW_SMS_RCV_INIT)           { public boolean run() { return executeSMS_RCV_INIT(); } },
@@ -2834,24 +4827,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SMS_SEND)               { public boolean run() { return executeSMS_SEND(); } }
 	};
 
-	public ArrayList<String> smsRcvBuffer;
-
-	// ******************** Speech to text Vars ********************************
-
-	public static final int VOICE_RECOGNITION_REQUEST_CODE = 1234;
-	public static ArrayList <String> sttResults;
-	public static boolean sttListening;
-	public static boolean sttDone;
-
-	// ******************** Timer Variables *******************************
-
-	private static final String BKW_TIMER_SET = "set";
-	private static final String BKW_TIMER_CLEAR = "clear";
-	private static final String BKW_TIMER_RESUME = "resume";
-
-	private static final String Timer_KW[] = {			// Command list for Format
-		BKW_TIMER_SET, BKW_TIMER_CLEAR, BKW_TIMER_RESUME
-	};
+	// **************** TIMER Group
 
 	private final Command[] Timer_cmd = new Command[] {	// Map Timer command keywords to their execution functions
 		new Command(BKW_TIMER_SET)              { public boolean run() { return executeTIMER_SET(); } },
@@ -2859,20 +4835,7 @@ public class Run extends ListActivity {
 		new Command(BKW_TIMER_RESUME)           { public boolean run() { return executeTIMER_RESUME(); } }
 	};
 
-	public int OnTimerLine;
-	public Timer theTimer;
-	public boolean timerExpired;
-	public boolean timerStarting;
-
-	// ******************** TimeZone Variables *******************************
-
-	private static final String BKW_TIMEZONE_SET = "set";
-	private static final String BKW_TIMEZONE_GET = "get";
-	private static final String BKW_TIMEZONE_LIST = "list";
-
-	private static final String TimeZone_KW[] = {		// Command list for Format
-		BKW_TIMEZONE_SET, BKW_TIMEZONE_GET, BKW_TIMEZONE_LIST
-	};
+	// **************** TIMEZONE Group
 
 	private final Command[] TimeZone_cmd = new Command[] {	// Map TimeZone command keywords to their execution functions
 		new Command(BKW_TIMEZONE_SET)           { public boolean run() { return executeTIMEZONE_SET(); } },
@@ -2880,19 +4843,7 @@ public class Run extends ListActivity {
 		new Command(BKW_TIMEZONE_LIST)          { public boolean run() { return executeTIMEZONE_LIST(); } }
 	};
 
-	public String theTimeZone = "";
-
-	//************************ Phone variables ***************************
-
-	private static final String BKW_PHONE_CALL = "call";
-	private static final String BKW_PHONE_DIAL = "dial";
-	private static final String BKW_PHONE_RCV_INIT = "rcv.init";
-	private static final String BKW_PHONE_RCV_NEXT = "rcv.next";
-	private static final String BKW_PHONE_INFO = "info";
-
-	private static final String phone_KW[] = {			// Command list for Format
-		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT, BKW_PHONE_INFO
-	};
+	// **************** PHONE Group
 
 	private final Command[] phone_cmd = new Command[] {	// Map phone command keywords to their execution functions
 		new Command(BKW_PHONE_CALL)             { public boolean run() { return executePHONE_DIAL(Intent.ACTION_CALL); } },
@@ -2902,1250 +4853,78 @@ public class Run extends ListActivity {
 		new Command(BKW_PHONE_INFO)             { public boolean run() { return executePHONE_INFO(); } }
 	};
 
-	public int phoneState = 0;
-	public String phoneNumber = "";
-	public boolean phoneRcvInited = false;
-	public TelephonyManager mTM;
-	public SignalStrength mSignalStrength = null;
-
-	//************************ am variables ******************************
-
-	private static final String BKW_AM_BROADCAST = "broadcast";
-	private static final String BKW_AM_START = "start";
-
-	private static final String am_KW[] = {				// Command list for Format
-		BKW_AM_BROADCAST, BKW_AM_START
-	};
+	// **************** AM Group - activity manager commands
 
 	private final Command[] am_cmd = new Command[] {	// Map am command keywords to their execution functions
 		new Command(BKW_AM_BROADCAST)           { public boolean run() { return executeAM_BROADCAST(); } },
 		new Command(BKW_AM_START)               { public boolean run() { return executeAM_START(); } },
 	};
 
-	// ****************** Headset Broadcast Receiver ***********************
+	//*********************************************************************************************
+	// The methods starting here are the core code for running a Basic program
 
-	public class BroadcastsHandler extends BroadcastReceiver {
-
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			if (intent.getAction().equalsIgnoreCase(Intent.ACTION_HEADSET_PLUG)) {
-				String data = intent.getDataString();
-				Bundle extraData = intent.getExtras();
-
-				headsetState = intent.getIntExtra("state", -1);
-				headsetName = intent.getStringExtra("name");
-				headsetMic = intent.getIntExtra("microphone", -1);
+	// Look for a BASIC! word: [_@#\l]?[_@#\l\d]*
+	private String getWord(String line, int start, String possibleKeyword) {
+		int max = line.length();
+		if (start >= max || start < 0) { return ""; }
+	
+		int li = start;
+		char c = line.charAt(li);
+		if (isVarStartChar(c)) {										// if first character matches
+			do {														// there's a word
+				if (++li >= max) break; 								// done if no more characters
+	
+				if (!possibleKeyword.equals("") &&						// caller wants to stop at keyword
+					line.startsWith(possibleKeyword, li)) { break; }	// THEN, TO, or STEP
+	
+				c = line.charAt(li);									// get next character
 			}
+			while (isVarChar(c));										// and check it, stop if not valid
 		}
-	}
-	private BroadcastsHandler headsetBroadcastReceiver = null;
-
-/*  ***********************************  Start of Basic's run program code **********************
- * 
- * The code is organized (?) as follows:
- * 
- * The first chunk is the the background task doInBackGround. This  runs in a background thread.
- * It actually controls the running of the program by dispatching each line of code to be executed.
- * 
- * The second chunk is a foreground (UI) thread code that receives user interface messages from
- * doInBackground
- * 
- *  The third chunk is the Run Intent entry code. This code initializes things and starts
- *  running the background task.
- *  
- *  The next chunk is the methods that handle asynchronous events generally created by user
- *  key presses. These methods run in the foreground (UI) task.
- *  
- *  The final chunk and the largest part of Run is code that actually executes user program statements.
- *  This code all runs in the background task.
- *  
- */
-
-
-	public class Background extends Thread {
-
-	// The execution of the basic program is done by this background Thread. This is done to keep the UI task
-	// responsive. This method controls Run as it is running in the background.
-
-		private UncaughtExceptionHandler mDefaultExceptionHandler;
-
-		private UncaughtExceptionHandler mUncaughtExceptionHandler =
-			new UncaughtExceptionHandler() {
-				public void uncaughtException(Thread thread, Throwable ex) {
-					if (ex instanceof OutOfMemoryError) {
-						finishRun("Out of memory");
-					} else if (ex instanceof NullPointerException) {
-						publishProgress("Internal error! Please notify developer.");
-						publishProgress(Log.getStackTraceString(ex));
-						finishRun("Null pointer exception");
-					} else {
-						mDefaultExceptionHandler.uncaughtException(thread, ex);
-					}
-				}
-
-				private void finishRun(String err) {
-					publishProgress(err + ", near line:");
-					publishProgress(ExecutingLineBuffer.line());
-					SyntaxError = true;		// This blocks "Program ended" checks in finishUp()
-					OnErrorLine = 0;		// Don't allow OnError: to catch OOM, it's fatal
-					finishUp();
-				}
-			};
-
-		@Override
-		public void run() {
-
-//			Basic.Echo = Settings.getEcho(Basic.BasicContext);
-			Echo = false;
-			VarSearchStart = 0;
-			fnRTN = false;
-			setVolumeControlStream(AudioManager.STREAM_MUSIC);
-
-			mDefaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
-			Thread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
-
-			if (PreScan()) { 				// The execution starts by scanning the source for labels and read.data
-				ExecutingLineIndex = 0;		// Just in case PreScan ever changes it
-				boolean ok = RunLoop();
-				finishUp();
-				if (ok && runIntent != null) {
-					Run.this.startActivity(runIntent);	// start new AutoRun
-					Exit = true;				// and force this Run to finish
-				}
-			} else {						// We get here if PreScan found error or duplicate label
-				for (int i = 0; i < TempOutputIndex; ++i) {			// if new output lines, the send them
-					publishProgress(TempOutput[i]);					// to UI task
-				}
-				TempOutputIndex = 0;
-			}
-			if (Exit) {
-				finish();					// stop the Run Activity, too
-			}
-		}
-
-		private void finishUp() {			// Called from run() when done running, and from UncaughtExceptionHandler
-
-			Stop = true;		// If Stop is not already set, set it so that menu code can display the right thing
-			PrintLine = "";		// Clear the Print Line buffer
-			PrintLineReady = false;
-			textPrintLine = "";
-
-			OnBackKeyLine = 0;
-
-			if (OnErrorLine == 0 && !SyntaxError && !Exit) {
-				if (!ForNextStack.empty())	{ publishProgress("Program ended with FOR without NEXT"); }
-				if (!WhileStack.empty())	{ publishProgress("Program ended with WHILE without REPEAT"); }
-				if (!DoStack.empty())		{ publishProgress("Program ended with DO without UNTIL"); }
-			}
-
-			Basic.theRunContext = null;  // Signals that the background task has stopped
-			cleanUp();
-		}
-
-		private void publishProgress(String... s) {
-			mHandler.obtainMessage(MESSAGE_PUBLISH_PROGRESS, s).sendToTarget();
-		}
-
-		// The RunLoop() drives the execution of the program. It is called from doInBackground and
-		// recursively from doUserFunction.
-
-		public boolean RunLoop() {
-			boolean flag = true;
-			while (ExecutingLineIndex < Basic.lines.size() && flag && !Stop) {	// keep executing statements until end
-				ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex); 		// next program line
-//				Log.d(LOGTAG, "RunLoop: " + ExecutingLineBuffer.line());
-				LineIndex = 0 ;
-				sTime = SystemClock.uptimeMillis();
-
-        		flag = StatementExecuter();							// execute the next statement
-        															// returns true if no problems executing statement
-        		if (Exit) return flag;								// if Exit skip all other processing
-        		
-        		if (!flag && (OnErrorLine != 0)){                   // If Error and there is an OnError label
-        			ExecutingLineIndex = OnErrorLine;               // Go to the OnError line
-        			SyntaxError = false;
-        			flag = true;									// and indicate no error
-        		} else
-        		
-        		if (BackKeyHit && OnBackKeyLine != 0) {
-        				BackKeyHit = doInterrupt(OnBackKeyLine);
-        			
-        		} else
-
-        		if (MenuKeyHit && OnMenuKeyLine != 0) {
-        				MenuKeyHit = doInterrupt(OnMenuKeyLine);
-        			
-        		} else
-
-        		if (timerExpired && OnTimerLine != 0) {
-        				timerExpired = doInterrupt(OnTimerLine);
-        			
-        		} else
-        		
-        		if (KeyPressed && OnKeyLine != 0) {
-        				KeyPressed = doInterrupt(OnKeyLine);
-         			
-        		} else
-
-        		if (NewTouch[2] && OnTouchLine != 0) {							// and is not tracked like NewTouch[0] and NewTouch[1]
-        				NewTouch[2] = doInterrupt(OnTouchLine);					// used with onGRtouch.
-        			
-        		} else
-        			
-        		if (btReadReady && OnBTReadLine != 0) {
-        				btReadReady = doInterrupt(OnBTReadLine);
-        			
-        		} else
-        		
-        		if (ConsoleTouched && onCTLine != 0) {
-        				ConsoleTouched = doInterrupt(onCTLine);
-        			
-        		} else
-
-        		if (bgStateChange && OnBGLine != 0) {
-        				bgStateChange = doInterrupt(OnBGLine);
-        		}
-       		
-        		for (int i=0; i<TempOutputIndex; ++i){				// if new output lines, the send them
-        			publishProgress(TempOutput[i]);					// to UI task
-        			}
-        		TempOutputIndex = 0;
-
-				// Debugger control
-				// Michael/paulon0n also defined a @@J for "Alert dialog var not set called". TODO?
-				while (WaitForResume) {
-					Thread.yield();
-					if (DebuggerHalt) {
-						publishProgress("Execution halted");
-						Stop = true;
-					}
-					if (DebuggerStep) {
-						DebuggerStep = false;
-						sendMessage(MESSAGE_DEBUG_DIALOG);			// signal UI to run debugger dialog again
-						break;
-					}
-					if (dbSwap) {
-						WaitForSwap = true;
-						sendMessage(MESSAGE_DEBUG_SWAP);
-						while (WaitForSwap) {
-							Thread.yield();
-							/*
-							if(dbSelect){
-								dbSelect = false;
-								WaitForSelect = true;
-								sendMessage(MESSAGE_DEBUG_SELECT);
-								while (WaitForSelect) {
-									Thread.yield();
-								}
-							}
-							*/
-						}
-						dbSwap = false;
-						sendMessage(MESSAGE_DEBUG_DIALOG);			// signal UI to run debugger dialog again
-					}
-				}
-
-				if (fnRTN) {				// fn_rtn signal. If true make RunLoop() return
-					fnRTN = false;			// to doUserFunction
-					break;
-				}
-
-				++ExecutingLineIndex;								// Step to next line
-			}
-			return flag;
-		} // end RunLoop
-
-        private void checkpointProgress() {		// give Run methods a way to checkpoint publishProgress
-            ProgressPending = true;
-            publishProgress("@@9");				// signal foreground task to clear ProgressPending
-        }
-
-        private boolean doInterrupt(int gotoLine) {
-        	if (interruptResume != -1) return true;		// If we are handling an interrupt then do not cancel this one
-        	interruptResume = ExecutingLineIndex;		// Set the resume Line Number
-        	ExecutingLineIndex = gotoLine;				// Set the goto line number
-        	interruptVarSearchStart = VarSearchStart;	// Save current VarSearchStart
-        	VarSearchStart = 0;							// Force to predictable value
-        	IfElseStack.push(IEinterrupt);
-        	return false;								// Turn off the interrupt
-        }
-
-    } // End of Background class
-
-	private Context getContext() {
-		return GRFront ? GR.context : this;
+		return line.substring(start, li);
 	}
 
-	// These sendMessage methods are used by Background to send messages to mHandler.
-	// For convenience, there are several combinations of message parameters provided.
-
-	private void sendMessage(int what) {
-		mHandler.obtainMessage(what).sendToTarget();
+	// If the current line starts with a keyword in a command list execute the command.
+	// The "type" is used only to report errors.
+	private boolean executeCommand(Command[] commands, String type) {
+		Command c = findCommand(commands, type);
+		return (c != null) ? c.run() : false;
 	}
 
-	private void sendMessage(int what, Object obj) {			// Use this to send a String or other Object
-		mHandler.obtainMessage(what, obj).sendToTarget();
+	// If the current line starts with a keyword in a command list return the Command object.
+	// If not found return null and set an error. The "type" is used only for the error message.
+	private Command findCommand(Command[] commands, String type) {
+		Command c = findCommand(commands);
+		if (c == null) { RunTimeError("Unknown " + type + " command"); }	// no keyword found
+		return c;
 	}
 
-	private void sendMessage(int what, int arg1, int arg2) {	// Use this to send one or two int arguments
-		mHandler.obtainMessage(what, arg1, arg2).sendToTarget();
+	// If the current line starts with a keyword in a command list return the Command object.
+	// If not found return null.
+	private Command findCommand(Command[] commands) {
+		for (Command c : commands) {								// loop through the command list
+			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) {// if there is a match
+				LineIndex += c.name.length();						// move the line index to end of keyword
+				return c;											// return the Command object
+			}
+		}
+		return null;												// no keyword found
 	}
 
-	// This Handler is in the UI (foreground) Task part of Run.
-	// It gets control when the background task sends a Message.
-
-	private final Handler mHandler = new Handler() {
-		@Override
-		public void handleMessage(Message msg) {
-			switch (msg.what & MESSAGE_GROUP_MASK) {
-			case MESSAGE_DEFAULT_GROUP:
-				switch (msg.what) {
-				case MESSAGE_PUBLISH_PROGRESS:
-					onProgressUpdate((String[])msg.obj);
-					break;
-				}
-				break;
-			case MESSAGE_CONSOLE_GROUP:
-				switch (msg.what) {
-				case MESSAGE_CLEAR_SCREEN:
-					output.clear();
-					break;
-				case MESSAGE_CONSOLE_TITLE:
-					String title = (String)msg.obj;
-					setTitle((title != null) ? title : getResources().getString(R.string.run_name));
-					break;
-				}
-				break;
-			case MESSAGE_DIALOG_GROUP:
-				switch (msg.what) {
-				case MESSAGE_INPUT_DIALOG:
-					doInputDialog((Bundle)msg.obj);
-					break;
-				case MESSAGE_ALERT_DIALOG:
-					doAlertDialog((Bundle)msg.obj);
-					break;
-				case MESSAGE_TOAST:
-					String msgText = (String)msg.obj;
-					Bundle b = msg.getData();
-					int duration = b.getInt("dur", Toast.LENGTH_SHORT);
-					Toast toast = Toaster(msgText, duration);
-					int x = msg.arg1;
-					int y = msg.arg2;
-					toast.setGravity(Gravity.CENTER, x,y);
-					toast.show();
-					break;
-				}
-				break;
-			case MESSAGE_BT_GROUP:
-				handleBTMessage(msg);								// handle Bluetooth Messages
-				break;
-			case MESSAGE_HTML_GROUP:
-				handleHtmlMessage(msg);								// handle HTML Messages
-				break;
-			case MESSAGE_DEBUG_GROUP:
-				handleDebugMessage(msg);							// handle debug Messages
-				break;
-			default:												// unrecognized Message
-				break;												// ignore it
-			}
+	private void Show(String... str) {					// conditionally write an error message to the console
+		if (OnErrorLine == 0) {							// if there is an OnError label, do not show the message.
+			PrintShow(str);
 		}
-	};
+	}
 
-	protected void onProgressUpdate(String... str) {
-
-		for (int i=0; i<str.length; ++i) {								// Check for signals
-			if (str[i].startsWith("@")) {								// Fast check for possible signal
-				if (str[i].startsWith("@@5")) {							// Clear Screen Signal
-        			output.clear();
-        		}else if (str[i].startsWith("@@9")){					// from checkpointProgress
-        			ProgressPending = false;							// progress is published, done waiting
-        		}else if (str[i].startsWith("@@A")){
-        			output.add("");
-        		}else if (str[i].startsWith("@@B")){
-        			char c = str[i].charAt(3);
-        			String s = output.get(output.size()-1) + c;
-        			output.set(output.size()-1, s);
-        		} else {output.add(str[i]);}		// Not a signal, just write msg to screen.
-			} else {output.add(str[i]);}			// Not a signal, just write msg to screen.
-
-			setListAdapter(AA);						// show the output
-			lv.setSelection(output.size()-1);		// set last line as the selected line to scroll
-//			Log.d(LOGTAG, "onProgressUpdate: print <" + str[i] + ">");
-		} // for each string
-	} // onProgressUpdate()
-
-
-	// ********************* Run Entry Point. Called from Editor or AutoRun *******************
-
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
-
-		super.onCreate(savedInstanceState);
-		Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex);
-
-		if (Basic.lines == null) {
-			Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
-			Intent intent = new Intent(getApplicationContext(), Basic.class);
-			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			startActivity(intent);
-			finish();
-			return;
-		}
-
-//		System.gc();
-//		Log.v(LOGTAG, CLASSTAG + " isOld  " + isOld);
-		if (isOld){
-			if (theWakeLock != null){
-				theWakeLock.release();
-			}
-			if (theWifiLock != null){
-				theWifiLock.release();
-			}
-		}
-		theWakeLock = null;
-		theWifiLock = null;
-		isOld = true;
-
-		InitVars();
-//		Log.v(LOGTAG, CLASSTAG + " On Create 2 " + ExecutingLineIndex );
-
-		myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
-															// Establish the output screen
-		TextStyle style = new TextStyle(Basic.defaultTextStyle, Settings.getConsoleTypeface(this));
-		AA = new Basic.ColoredTextAdapter(this, output, style);
-		setListAdapter(AA);
-		lv = getListView();
-		lv.setTextFilterEnabled(false);
-		lv.setSelection(0);
-		lv.setBackgroundColor(AA.getBackgroundColor());
-		if (Settings.getLinedConsole(this)) {
-			lv.setDivider(new ColorDrawable(AA.getLineColor()));		// override default from theme, sometimes it's invisible
-			if (lv.getDividerHeight() < 1) { lv.setDividerHeight(1); }	// make sure the divider shows
-		} else {
-			lv.setDividerHeight(0);							// don't show the divider
-		}
-
-//		IMM.restartInput(lv);
-		executeKB_HIDE();
-		setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		setRequestedOrientation(Settings.getSreenOrientation(this));
-		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-		headsetBroadcastReceiver = new BroadcastsHandler();
-		this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
-
-		Basic.theRunContext = this;
-
-		// Listeners for Console Touch
-
-		lv.setOnItemClickListener(new OnItemClickListener() {
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				if (onCTLine != 0) {
-					TouchedConsoleLine = position + 1;
-					ConsoleLongTouch = false; 
-					ConsoleTouched = true;
+	private void PrintShow(String... strs) {			// write the console
+		synchronized (mConsoleBuffer) {
+			if (strs != null) {
+				for (String str : strs) {
+					mConsoleBuffer.add(str);
 				}
 			}
-		});
-
-		lv.setOnItemLongClickListener(new OnItemLongClickListener() {
-			public boolean  onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-				if (onCTLine != 0) {
-					TouchedConsoleLine = position + 1;
-					ConsoleLongTouch = true; 
-					ConsoleTouched = true;
-					return true;
-				}
-				return false;
-			}
-		});
-
-		theBackground = new Background();						// Start the background task
-		theBackground.start();
-
-	} // end onCreate
-
-	private void InitVars() {
-	Log.d(LOGTAG, "InitVars() started");
-
-    OnErrorLine = 0;							// Line number for OnError: label
-    OnBackKeyLine = 0;
-    BackKeyHit = false;
-    OnMenuKeyLine = 0;
-    MenuKeyHit = false;
-    bgStateChange = false;
-    OnBGLine = 0;
-    onCTLine = 0;
-    ConsoleTouched = false;
-    ConsoleLongTouch = false;
-    TouchedConsoleLine = 0;						// first valid line number is 1
-
-    errorMsg = "No error";
-    
-    InChar = new ArrayList<String>();
-    KeyPressed = false;
-    OnKeyLine = 0;
-
-    LineIndex = 0;									// Current displacement into ExecutingLineBuffer's line
-    ExecutingLineBuffer = new ProgramLine("\n");	// Holds the current line being executed
-    ExecutingLineIndex = 0;							// Points to the current line in Basic.lines
-    SEisLE = false;									// If a String expression result is a logical expression
-
-    GosubStack = new Stack<Integer>();				// Stack used for Gosub/Return
-    ForNextStack = new Stack<ForNext>();			// Stack used for For/Next
-    WhileStack = new Stack<WhileRepeat>();			// Stack used for While/Repeat
-    DoStack = new Stack<Integer>();					// Stack used for Do/Until
-    
-    IfElseStack = new Stack <Integer>();			// Stack for IF-ELSE-ENDIF operations
-    GetNumberValue = (double)0;						// Return value from GetNumber()
-    EvalNumericExpressionValue = (double)0;			// Return value from EvalNumericExprssion()
-
-    output = new ArrayList<String>();				// The output screen text lines
-//    AA = new ArrayAdapter<String>;				// The output screen array adapter
-//    lv = new ListView();							// The output screen list view
-   TempOutput = new String[MaxTempOutput];	// Holds waiting output screen line
-    TempOutputIndex = 0;					// Index to next available TempOutput entry
-
-    theBackground = null;					// Background task ID
-    SyntaxError = false;		        // Set true when Syntax Error message has been output
-
-   ProgressPending = false;
-   randomizer = null;
-   background = false;
-
-	// debugger ui vars
-	Watch_VarNames = new ArrayList<String>();			// watch list of string names
-	WatchVarIndex = new ArrayList<Integer>();			// watch list of variable indexes
-	dbDialogScalars = false;
-	dbDialogArray = false;
-	dbDialogList = false;
-	dbDialogStack = false;
-	dbDialogBundle = false;
-	dbDialogWatch = false;
-	dbDialogProgram = true;
-	dbConsoleHistory = "";
-	dbConsoleExecute = "";
-	dbConsoleELBI = 0;
-	WatchedArray = -1;
-	WatchedList =-1;
-	WatchedStack =-1;
-	WatchedBundle =-1;
-	dbSwap = false;
-	dbDialog = null;
-	dbSwapDialog = null;
-	dbSelectDialog = null;
-
-	Stop = false;										// Stops program from running
-	Exit = false;										// Exits program and signals caller to exit, too
-	GraphicsPaused = false;								// Signal from GR that it has been paused
-	RunPaused = false;									// Used to control the media player
-	StopDisplay = false;
-	GRFront = false;
-	DisplayStopped = false;
-	IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-
-	PrintLine = "";										// Hold the Print line currently being built
-	PrintLineReady = false;								// Signals a line is ready to print or write
-
-	Labels = new HashMap<String, Integer>();			// A list of all labels and associated line numbers
-
-	PossibleKeyWord = "";
-
-	VarNames = new ArrayList<String>() ;				// Each entry has the variable name string
-	VarIndex = new ArrayList<Integer>();				// Each entry is an index into [...]
-	VarNumber = 0;										// An index for both VarNames and NVarValue
-	NumericVarValues = new ArrayList<Double>();			// if a var is a number, the VarIndex is an [...]
-	StringVarValues  = new ArrayList<String>();			// if a var is a string, the VarIndex is an [...]
-	ArrayTable = new ArrayList<ArrayDescriptor>();		// Each DIMed array has an entry in this table
-	StringConstant = "";								// Storage for a string constant
-	theValueIndex = 0;									// The index into the value table for the current var
-	ArrayValueStart = 0;								// Value index for newly created array 
-
-	FunctionTable = new ArrayList<FunctionDefinition>();// Created for each defined function
-	FnDef = null ;										// Set by isUserFunction and used by doUserFunction
-	FunctionStack = new Stack<CallStackFrame>() ;		// State saved through the currently executing functions
-	fnRTN = false;										// Set true by fn.rtn. Cause RunLoop() to return
-	Debug = false;
-
-	VarIsNew = true;									// Signal from getVar() that this var is new
-	VarIsNumeric = true;								// if false, var is a string
-	VarIsInt = false;									// temporary integer status used only by fprint
-	VarIsArray = false;									// if true, var is an array
-	VarIsFunction = false;								// Flag set by parseVar() when var is a user function
-	VarSearchStart = 0;									// Used to limit search for var names to executing function vars
-	interruptVarSearchStart = 0;						// Save VarSearchStart across interrupt
-
-	clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-
-	// ********************************** RUN variables *********************************
-
-	runIntent = null;									// Intent to run from RUN command
-
-	// ******************************* File I/O operation variables ************************
-
-	FileTable = new ArrayList<FileInfo>() ;				// File table list
-
-	// ******************** READ variables *******************************************
-
-	readNext = 0;
-	readData = new ArrayList<Var>();
-
-	// ********************** Font Command variables *********************************
-
-	FontList = new ArrayList<Typeface>();
-	clearFontList();
-
-	// ******************** Input Command variables ********************************
-
-	// mInputDismissed = false;						// This will be used only if we dismiss the dialog in onPause
-
-	// ******************** Popup Command variables ********************************
-
-	ToastMsg = "";
-	ToastX = 0 ;
-	ToastY = 0;
-	ToastDuration = 1;
-
-	// ******************** SQL Variables ******************************************
-
-	DataBases = new ArrayList<SQLiteDatabase>();	// List of created data bases
-	Cursors = new ArrayList<Cursor>();				// List of created data bases
-
-	// ********************************* Variables for text.input command ********************
-
-	TextInputString = "";
-	HaveTextInput = false;
-
-	// ******************************** Graphics Declarations **********************************
-
-	GRclass = null;									// Graphics Intent Class
-	GRopen = false;									// Graphics Open Flag
-	DisplayList = new ArrayList<GR.BDraw>();
-	RealDisplayList = new ArrayList<Integer>();
-	PaintList = new ArrayList<Paint>();
-	BitmapList = new ArrayList<Bitmap>();
-	aPaint = new Paint();
-	GRrunning = false;
-	GRFront = false;
-	Touched = false;
-	OnTouchLine = 0;
-	mShowStatusBar = false;
-
-    // ********************************* Variables for Audio Commands
-
-    theMP = null;
-    theMPList = new ArrayList<MediaPlayer>();
-    theMPNameList = new ArrayList<String>();
-    theMPList.add(null);		// We don't use the [0] element of these Lists
-    theMPNameList.add(null);
-
-	// ******************************* Variables for Sensor Commands **********************************
-
-	theSensors = null;
-
-	theGPS = null;
-
-	theLists = new ArrayList <ArrayList>();
-	ArrayList<ArrayList> aList = new ArrayList <ArrayList>();
-	theLists.add(aList);
-	
-	theListsType = new ArrayList<VarType>();
-	theListsType.add(VarType.NOVAR);
-	
-	theBundles = new ArrayList<Bundle>();
-	Bundle aBundle = new Bundle();
-	theBundles.add(aBundle);
-	
-	theStacks = new ArrayList<Stack>();
-	Stack aStack = new Stack();
-	theStacks.add(aStack);
-	
-	theStacksType = new ArrayList<VarType>();
-	theStacksType.add(VarType.NOVAR);
-	
-	theClientSocket = null ;
-	clientSocketConnectThread = null;
-	ClientBufferedReader = null;
-	ClientPrintWriter = null;
-	
-	newSS = null;
-	serverSocketConnectThread = null;
-	theServerSocket = null ;
-	ServerBufferedReader = null ;
-	ServerPrintWriter = null ;
-
-	clientSocketState = STATE_NONE;
-	serverSocketState = STATE_NONE;
-
-	theTTS = null;
-	ttsInit = false;
-	
-	mFTPClient = null;
-	FTPdir = null;
-	
-	CameraBitmap = null;
-	CameraDone = true;
-	NumberOfCameras = -1;
-
-	mConnectedDeviceName = null;
-    mOutStringBuffer = null;
-    mBluetoothAdapter = null;
-    mChatService = null;
-    btReadReady = false;
-    interruptResume = -1;
-    OnBTReadLine = 0;
-
-	SUoutputStream = null;
-	SUinputStream = null;
-	SUprocess = null;
-	SU_ReadBuffer = null;
-	theSUReader = null;
-
-	theSoundPool = null ;
-
-     headsetState = -1;
-     headsetName = "NA" ;
-     headsetMic = -1;
-     
-     htmlIntent = null;
-     htmlOpening = false;
-     
-     sttListening = false;
-     
-     OnTimerLine = 0;
-     theTimer = null;
-     timerExpired = false;
-
-	theTimeZone = "";
-
-	phoneState = 0;
-	phoneNumber = "";
-	phoneRcvInited = false;
-	mTM = null;
-	mSignalStrength = null;
-
-	Log.d(LOGTAG, "InitVars() done");
-	} // end InitVars
-
-	public void cleanUp() {
-	Log.d(LOGTAG, "cleaup() started");
-	if (theMP != null){
-		try {theMP.stop();} catch (IllegalStateException e){}
-		if (theMP != null) theMP.release();
-		theMP = null;
-	}
-	
-	  if (theSoundPool != null){
-			  theSoundPool.release();
-			  theSoundPool = null;
-		  }
-	  
-	if ( Web.aWebView != null) Web.aWebView.webClose();
-
-	if (theTimer != null) {
-	   theTimer.cancel();
-	   theTimer = null;
-	}
-
-	ttsStop();
-
-	myVib.cancel();
-
-	if (theMP != null) {
-		theMP.release();
-		theMP = null;
-	}
-	if (theMPList != null) {
-		for (MediaPlayer mp : theMPList) {
-			if (mp != null) { mp.release(); }
 		}
-		theMPList = null;
-		theMPNameList = null;
-	}
-
-	if (theSensors != null) {
-		theSensors.stop();
-		theSensors = null;
-	}
-
-	if (theServerSocket != null){
-	try{
-		theServerSocket.close();
-		}catch (Exception e) {
-		}
-	theServerSocket = null;
-	}
-
-	if (clientSocketConnectThread != null) {
-		clientSocketConnectThread.interrupt();
-		clientSocketConnectThread = null;
-	}
-
-	if (serverSocketConnectThread != null) {
-		serverSocketConnectThread.interrupt();
-		serverSocketConnectThread = null;
-	}
-
-	if (newSS != null){
-		try{
-			newSS.close();
-			}catch (Exception e) {
-			}
-			newSS = null;
-		}
-
-	if (theClientSocket != null){
-		try{
-			theClientSocket.close();
-			}catch (Exception e) {
-			}
-			theClientSocket = null;
-		}
-
-	clientSocketState = STATE_NONE;
-	serverSocketState = STATE_NONE;
-
-	audioRecordStop();
-
-	Stop = true;										// make sure the background task stops
-	Basic.theRunContext = null;
-	GraphicsPaused = false;
-	RunPaused = false;
-	ProgressPending = false;
-
-	if (theGPS != null) {
-		Log.d(LOGTAG, "Stopping GPS from cleanUp");
-		theGPS.stop();
-		theGPS = null;
-	}
-
-	if (!Basic.DoAutoRun && SyntaxError){
-		Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
-	} else Editor.SyntaxErrorDisplacement = -1;
-
-	BitmapListClear();
-
-		if (mChatService != null) {
-				mChatService.stop();
-				mChatService = null;
-			}
-
-			if ( theSUReader != null ){
-				theSUReader.stop();
-				theSUReader = null;
-			}
-			if (SUprocess != null) {
-				SUprocess.destroy();
-				SUprocess = null;
-			}
-			
-//			InitVars();   // Why not?
-			
-			finishActivity(BASIC_GENERAL_INTENT);
-
-	if (mTM != null) {
-		Log.d(LOGTAG, "mTM: unlistening");
-		mTM.listen(PSL, PhoneStateListener.LISTEN_NONE);
-		mTM = null;
-	}
-	mSignalStrength = null;
-
-	Log.d(LOGTAG, "cleanup() done");
-	} // end cleanup
-
-
-// The following methods run in the foreground. The are called by asynchronous user events
-// caused by the user pressing a key.
-
-@Override
-public boolean onTouchEvent(MotionEvent event){
-	super.onTouchEvent(event);
-	int action = event.getAction();  // Get action type
-	return false;
-}
-
-	@Override
-	public boolean onKeyDown(int keyCode, KeyEvent event)  {						// The user hit a key
-		// Log.v(LOGTAG, CLASSTAG + " onKeyDown" + keyCode);
-		if (keyCode == KeyEvent.KEYCODE_MENU) {
-			if (OnMenuKeyLine != 0) {
-				MenuKeyHit = true;
-				return true;
-			}
-			if (Basic.isAPK)			// If menu key hit in APK and not trapped by OnMenuKey									
-				return true;			// then tell OS to ignore it
-			
-			return false;				// Let Android create the Run Menu.
-		}
-
-		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-			if (OnBackKeyLine != 0) {
-				BackKeyHit = true;
-				return true;
-			}
-
-			if (Basic.DoAutoRun) Exit = true;	// If AutoRun, back key always means exit
-			if (!Stop) {
-				Stop = true;				// If running a program, stop it
-			}
-			else finish();				// else already stopped, return to the Editor
-			return true;
-		}
-		return super.onKeyDown(keyCode, event);
-	}
-	
-
-	@Override
-	public boolean onKeyUp( int keyCode, KeyEvent event)  {
-		// Log.v(LOGTAG, CLASSTAG + " onKeyUp" + keyCode);
-
-		if (keyCode == KeyEvent.KEYCODE_MENU) {
-			if (OnMenuKeyLine != 0) {
-				MenuKeyHit = true;
-				return true;
-			}
-			if (Basic.isAPK)			// If menu key hit in APK and not trapped by OnMenuKey									
-				return true;			// then tell OS to ignore it
-			
-			return false;				// Let Android create the Run Menu.
-		}
-		
-		if (kbShown)
-			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-
-
-		if (keyCode == KeyEvent.KEYCODE_BACK && OnBackKeyLine != 0) return true;
-	    
-	    
-	    char c;
-	    String theKey = "@";
-	    int n ;
-	    if (keyCode >= 7 && keyCode <= 16){
-	    	n = keyCode - 7;
-	    	c = Numbers.charAt(n);
-	    	theKey = Character.toString(c);
-	    	
-	    }else if (keyCode >=29 && keyCode <= 54){
-	    	n = keyCode -29;
-	    	c = Chars.charAt(n);
-	    	theKey = Character.toString(c);
-	    }else if (keyCode == 62){ 
-	    	c = ' ';
-	    	theKey = Character.toString(c);
-	    }else if (keyCode >= 19 && keyCode <= 23){
-	    	switch (keyCode) {
-	    	case 19: theKey = "up"; break;
-	    	case 20: theKey = "down"; break;
-	    	case 21: theKey = "left"; break;
-	    	case 22: theKey = "right"; break;
-	    	case 23: theKey = "go"; break;
-	    	}
-	    } else {
-	    	theKey = "key " + keyCode;
-	    }
-	    
-	    synchronized (this) {
-	    	InChar.add(theKey);
-	    }
-    	KeyPressed = true;
-
-	    return true;
-	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {		// Called when the menu key is pressed.
-		super.onCreateOptionsMenu(menu);
-		if (!Settings.getConsoleMenu(this)) { return false; }
-
-		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.run, menu);
-		MenuItem item = menu.getItem(1);
-		if (Basic.DoAutoRun) {							// If APK or shortcut, menu action is "Exit", not "Editor"
-			item.setTitle(getString(R.string.exit));
-		}
-		item.setEnabled(false);
-		return true;
-	}
-
-@Override
-public boolean onPrepareOptionsMenu(Menu menu) {   // Executed when Menu key is pressed (before onCreateOptionsMenu() above.
-	
-    super.onPrepareOptionsMenu(menu);
-    MenuItem item;
-    if (Stop){									   // If program running display with Editor dimmed
- 	   item = menu.getItem(0);					   // Other wise dim stop and undim Editor
-	   item.setEnabled(false);
-    	item = menu.getItem(1);
-    	item.setEnabled(true);
-    }
-    return true;
-}
-
-public static void MenuStop() {
-	Show("Stopped by user.");							// Tell user and then
-	Stop = true;										// signal main loop to stop
-	OnBackKeyLine = 0;
-}
-
-@Override
-public  boolean onOptionsItemSelected(MenuItem item) {  // A menu item is selected
-	switch (item.getItemId()) {
-
-	case R.id.stop:										// User wants to stop execution
-		MenuStop();
-		return true;
-
-	case R.id.editor:									// User pressed Editor
-		if (!Basic.DoAutoRun && SyntaxError) {
-			Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
-		}
-
-		Basic.theRunContext = null;
-		if (mChatService != null) {
-			mChatService.stop();
-			mChatService = null;
-		}
-
-		finish();
-
-	}
-	return true;
-}
-
-@Override
-protected void onResume() {
-	Log.v(LOGTAG, CLASSTAG + " On Resume " + kbShown);
-
-	RunPaused = false;
-	background = false;
-	bgStateChange = true;
-//	if (Stop) InitVars();
-
-//	if (WaitForInput) { theAlertDialog = doInputDialog().show(); } maybe???
-	super.onResume();
-}
-
-@Override
-protected void onPause() {
-	// The Android OS wants me to dismiss dialog while paused so I will
-
-/*	if (WaitForInput) {
-		theAlertDialog.dismiss();
-		InputDismissed = true;
-	}
-*/
-	// If there is a Media Player running, pause it and hope
-	// that it works.
-	Log.v(LOGTAG, CLASSTAG + " onPause " + kbShown);
-	if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
-
-/*	if (theMP != null) {
-		try { theMP.pause(); } catch (IllegalStateException e) {}
-	}
-*/
-	RunPaused = true;
-
-	super.onPause();
-}
-
-@Override
-protected void onStart() {
-	Log.v(LOGTAG, CLASSTAG + " On Start");
-//	InitVars();
-	super.onStart();
-}
-
-@Override
-protected void onStop() {
-	Log.v(LOGTAG, CLASSTAG + " onStop " + kbShown);
-	System.gc();
-	if (!GRrunning) {
-		background = true;
-		bgStateChange = true;
-//		if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
-	}
-	super.onStop();
-}
-
-@Override
-protected void onRestart() {
-	Log.v(LOGTAG, CLASSTAG + " onRestart");
-	super.onRestart();
-}
-
-@Override
-protected void onDestroy() {
-	Log.v(LOGTAG, CLASSTAG + " On Destroy");
-
-	if (theSensors != null) {
-		theSensors.stop();
-		theSensors = null;
-	}
-
-	if (theGPS != null) {
-		Log.d(LOGTAG, "Stopping GPS from onDestroy");
-		theGPS.stop();
-		theGPS = null;
-	}
-
-	if (theWakeLock != null) {
-		theWakeLock.release();
-		theWakeLock = null;
-	}
-
-	if (theWifiLock != null) {
-		theWifiLock.release();
-		theWifiLock = null;
-	}
-
-	if (headsetBroadcastReceiver != null) {
-		unregisterReceiver(headsetBroadcastReceiver);
-	}
-
-	// 	BitmapListClear();
-
-	super.onDestroy();
-}
-
-@Override
-public void onLowMemory() {
-	Show("Warning: Low Memory");
-}
-
-//********************** Everything from here to end runs in the background task ***********************
-
-// The methods starting here are the core code for running a Basic program
-
-private static void trimArray(ArrayList Array, int start) {
-	int last = Array.size()-1;
-	int k = last;
-	while (k >= start) {
-		Array.remove(k);
-		--k;
-	}
-}
-
-private static boolean isVarStartChar(char c) {
-	return ((c >= 'a' && c <= 'z') || c == '_' || c == '@' || c == '#');
-}
-
-public static boolean isVarChar(char c) {
-	return (isVarStartChar(c) || (c >= '0' && c <= '9'));
-}
-
-// Look for a BASIC! word: [_@#\l]?[_@#\l\d]*
-public static String getWord(String line, int start, String possibleKeyword) {
-	int max = line.length();
-	if (start >= max || start < 0) { return ""; }
-
-	int li = start;
-	char c = line.charAt(li);
-	if (isVarStartChar(c)) {										// if first character matches
-		do {														// there's a word
-			if (++li >= max) break; 								// done if no more characters
-
-			if (!possibleKeyword.equals("") &&						// caller wants to stop at keyword
-				line.startsWith(possibleKeyword, li)) { break; }	// THEN, TO, or STEP
-
-			c = line.charAt(li);									// get next character
-		}
-		while (isVarChar(c));										// and check it, stop if not valid
-	}
-	return line.substring(start, li);
-}
-
-private void getInterruptLabels() {								// check for interrupt labels
-	Integer line;
-	line = Labels.get("onerror");        OnErrorLine   = (line == null) ? 0 : line.intValue();
-	line = Labels.get("onbackkey");      OnBackKeyLine = (line == null) ? 0 : line.intValue();
-	line = Labels.get("onmenukey");      OnMenuKeyLine = (line == null) ? 0 : line.intValue();
-	line = Labels.get("ontimer");        OnTimerLine   = (line == null) ? 0 : line.intValue();
-	line = Labels.get("onkeypress");     OnKeyLine     = (line == null) ? 0 : line.intValue();
-	line = Labels.get("ongrtouch");      OnTouchLine   = (line == null) ? 0 : line.intValue();
-	line = Labels.get("onbtreadready");  OnBTReadLine  = (line == null) ? 0 : line.intValue();
-	line = Labels.get("onbackground");   OnBGLine      = (line == null) ? 0 : line.intValue();
-	line = Labels.get("onconsoletouch"); onCTLine      = (line == null) ? 0 : line.intValue();
-}
-
-// Scan the entire program. Find all the labels and read.data statements.
-// Must set ExecutingLineBuffer for use by called functions, but it will be reloaded when
-// RunLoop() starts. At present nobody downstream needs to have ExecutingLineIndex set.
-private boolean PreScan() {
-	final String READ_DATA = BKW_READ_GROUP + BKW_READ_DATA;		// "read.data" command keyword
-	for (int LineNumber = 0; LineNumber < Basic.lines.size(); ++LineNumber) {
-		ExecutingLineBuffer = Basic.lines.get(LineNumber);			// scan one line at a time
-		// ExecutingLineIndex = LineNumber;
-		String line = ExecutingLineBuffer.line();
-
-		int li = line.indexOf(":");									// fast check
-		if ((li <= 0) && (line.charAt(0) != 'r')) { continue; }		// not label or READ.DATA, next line
-
-		String word = getWord(line, 0, "");
-		LineIndex = word.length();
-
-		if (isNext(':')) {											// if word really is a label, store it
-			if (Labels.put(word, LineNumber) != null) { return RunTimeError("Duplicate label name"); }
-			ExecutingLineBuffer.cmd(CMD_LABEL, LineIndex);
-			if (!checkEOL())                   { return false; }
-		}
-		else if (line.startsWith(READ_DATA)) {						// Is not a label. If it is READ.DATA
-			LineIndex = READ_DATA.length();							// set LineIndex just past READ.DATA
-			ExecutingLineBuffer.cmd(CMD_READ_DATA, LineIndex);		// store the command reference
-			if (!executeREAD_DATA())           { return false; }	// parse and store the data list
-			if (!checkEOL())                   { return false; }
-		}
-	}
-	getInterruptLabels();
-	return true;
-}
-
-private static void Show(String str){					// Display a Error message on  output screen. Message will be
-														// picked up up in main loop and sent to the UI task.
-  if (str.startsWith("@@")){							// If this an interprocess message
-	  TempOutput[TempOutputIndex]= str;					// send the message
-	  ++TempOutputIndex;
-  } else												// Not an interprocess message
-	if (OnErrorLine == 0){								// If there is an OnError label, not show the message.
-		TempOutput[TempOutputIndex]= str;					
-		++TempOutputIndex;
-	}
-}
-
-private static  void PrintShow(String str){				// Display a PRINT message on output screen. Message will be
-	if (TempOutputIndex >= MaxTempOutput) return;
-	
-	TempOutput[TempOutputIndex]= str;					// picked up up in main loop and sent to the UI task.
-	++TempOutputIndex;
-}
-
-
-	private boolean StatementExecuter() {				// Execute one basic line (statement)
-		Command c = ExecutingLineBuffer.cmd();			// use remembered command if possible
-		if (c != null) {
-			LineIndex += ExecutingLineBuffer.offset();
-		} else {
-			c = findCommand(BASIC_cmd);					// get the keyword that may start the line
-			if (c == null) { c = CMD_IMPLICIT; }		// no keyword, assume pseudo LET or CALL
-			ExecutingLineBuffer.cmd(c);					// remember the command to bypass future searches
-		}
-
-		if (!IfElseStack.empty()) {						// if inside IF-ELSE-ENDIF
-			Integer q = IfElseStack.peek();				// decide if we should skip to ELSE or ENDIF
-			if ((q == IEskip1) && (c.id != CID_SKIP_TO_ELSE)
-							   && (c.id != CID_SKIP_TO_ENDIF)) {
-				return true;							// skip unless IF, ELSEIF, ELSE, or ENDIF
-			} else if ((q == IEskip2) && (c.id != CID_SKIP_TO_ENDIF)) {
-				return true;							// skip unless IF or ENDIF
-			}
-		}
-
-		if (Echo) {
-			String line = ExecutingLineBuffer.line();
-			PrintShow(line.substring(0, line.length() - 1));
-		}
-
-		if (!c.run()) { SyntaxError(); return false; }
-		return true;									// Statement executed ok. Return to main looper.
 	}
 
 	private void SyntaxError() {						// Called to output Syntax Error Message
@@ -4158,7 +4937,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 
 		// If graphics is opened then the user will not be able to see error messages
-		// Provide a Haptic notice
+		// Provide a haptic notice
 
 		if (GRopen) {
 			lv.performHapticFeedback(2, 1);
@@ -4171,8 +4950,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	private boolean RunTimeError(String... msgs) {
-		Show(msgs[0]);								// Display error message
-		Show(ExecutingLineBuffer.line());			// Display offending line
+		String line = ExecutingLineBuffer.line();
+		if (line.endsWith("\n")) { line = chomp(line); }
+		Show(msgs[0], line);						// Display error message and offending line
+
 		for (int i = 1; i < msgs.length; ++i) {		// Display any supplemental text
 			Show(msgs[i]);
 		}
@@ -4204,133 +4985,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private void writeErrorMsg(Exception e) {
 		writeErrorMsg("Error:", e);
 	}
-
-	private boolean nextLine() {				// Move to beginning of next line
-		if (++ExecutingLineIndex < Basic.lines.size()) {	// if not at end of program
-			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
-			LineIndex = 0;
-			return true;
-		}
-		--ExecutingLineIndex;				// No next line
-		return false;
-	}
-
-	private boolean isEOL(){
-		return (LineIndex >= ExecutingLineBuffer.length()) ||
-				(ExecutingLineBuffer.line().charAt(LineIndex) == '\n');
-	}
-
-	private boolean checkEOL(){
-		if (isEOL()) return true;
-		String ec = ExecutingLineBuffer.line().substring(LineIndex);
-		RunTimeError("Extraneous characters in line: " + ec);
-		return false;
-	}
-
-	private boolean isNext(char c) {		// Check the current character
-		if ((LineIndex < ExecutingLineBuffer.length()) &&	// if it is as expected...
-			(ExecutingLineBuffer.line().charAt(LineIndex) == c)) {
-			++LineIndex;									// ... increment the character pointer
-			return true;
-		}
-		return false;
-	}
-
-	private boolean getStringArg() {		// Get and validate a string
-		return (evalStringExpression()			// Get the string expression
-			&& !SEisLE							// Okay if not logical expression
-			&& (StringConstant != null));		//      and not null
-		// Leaves evaluation result in StringConstant
-	}
-
-	private boolean getArgAsNum() {			// Get and validate a numeric expression
-		if (!evalNumericExpression()) {		// or string that evaluates to a number
-			if (SyntaxError || !getStringArg()) { return false; }
-			try { EvalNumericExpressionValue = Double.valueOf(StringConstant); }
-			catch (NumberFormatException e) { return false; }
-		}
-		return true;							// return value in EvalNumericExpressionValue
-	}
-
-	// Get optional arguments, where all are variables, not expressions.
-	// types: 1 numeric, 2 string, 3 either
-	// Type 3 coming in is overwritten to type of variable found on command line.
-	private boolean getOptVars(byte[] type, int[] index) {
-
-		if (isEOL()) return true;							// no arguments
-		int nArgs = type.length;
-		if (nArgs != index.length) return false;			// array lengths must match
-
-		boolean isComma = true;
-		for (int arg = 0; arg < nArgs; ++arg) {
-			if (isComma) {
-				isComma = isNext(',');
-				if (!isComma) {
-					if (!getVar()) return false;
-					byte vType = (byte)(VarIsNumeric ? 1 : 2);
-					if ((vType & type[arg]) == 0) return false;	// type mismatch
-					type[arg] = vType;
-					index[arg] = theValueIndex;
-					isComma = isNext(',');
-				}
-			}
-		}
-		return (!isComma && checkEOL());
-	} // getOptVars
-
-	// Get optional arguments, where all are expressions, not variables.
-	// types: 1 numeric, 2 string, 3 either
-	// Type 3 coming in is overwritten to type of expression found on command line.
-	private boolean getOptExprs(byte[] type, Double[] nVal, String[] sVal) {
-
-		if (isEOL()) return true;							// no arguments
-		int nArgs = type.length;
-		if (nArgs != nVal.length) return false;				// array lengths must match
-		if (nArgs != sVal.length) return false;				// array lengths must match
-
-		boolean isComma = true;
-		for (int arg = 0; arg < nArgs; ++arg) {
-			int typ = type[arg];
-			if (isComma) {
-				isComma = isNext(',');
-				if (!isComma) {
-					if (typ != 2) {							// try numeric expression
-						if (!evalNumericExpression()) {
-							if (typ == 1) return false;		// required numeric
-							typ = 2;						// actual type is string
-						} else {
-							if (typ == 3) { typ = 1; }		// actual type is numeric
-							nVal[arg] = EvalNumericExpressionValue;
-						}
-					}
-					if (typ == 2) {							// try string expression
-						if (!getStringArg()) return false;
-						sVal[arg] = StringConstant;
-					}
-					isComma = isNext(',');
-				}
-			}
-		}
-		return (!isComma && checkEOL());
-	} // getOptExprs(byte[], Double[], Sring[])
-
-	// Like getOptExprs, but limited to integer arguments.
-	private boolean getOptExprs(int[] iVal) {
-		if (isEOL()) return true;							// no arguments
-		int nArgs = iVal.length;
-		boolean isComma = true;
-		for (int arg = 0; arg < nArgs; ++arg) {
-			if (isComma) {
-				isComma = isNext(',');
-				if (!isComma) {
-					if (!evalNumericExpression()) return false;
-					iVal[arg] = EvalNumericExpressionValue.intValue();
-					isComma = isNext(',');
-				}
-			}
-		}
-		return (!isComma && checkEOL());
-	} // getOptExprs(int[])
 
 	// ************************* start of getVar() and its derivatives ****************************
 
@@ -4572,6 +5226,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// ************************************* end of getVar() **************************************
 
+	// ********************************** The Expression Parsers **********************************
+
 	private boolean getNumber() {						// Get a number if there is one
 		char c = 0;
 		String line = ExecutingLineBuffer.line();
@@ -4653,109 +5309,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		return fn;
 	}
-
-	private boolean executeImplicitCommand() {			// no keyword at beginning of line
-		int LI = LineIndex;
-		String var = parseVar(USER_FN_OK);					// look for a variable or function name
-		if (var == null) return false;
-
-		LineIndex = LI;										// rewind the LineIndex for re-parse
-		Command cmd = VarIsFunction ? CMD_CALL : CMD_IMPL_LET; // implicit CALL or LET (no preinc/dec)
-		ExecutingLineBuffer.cmd(cmd, 0);					// remember for next time the line is executed
-		return cmd.run();
-	}
-
-	private double incdec() {
-		double result = 0.0;
-		if      (ExecutingLineBuffer.startsWith(OP_INC, LineIndex)) { LineIndex += 2; result = 1.0; }
-		else if (ExecutingLineBuffer.startsWith(OP_DEC, LineIndex)) { LineIndex += 2; result = -1.0; }
-		return result;
-	}
-
-	private boolean executeLET() {						// Execute LET (an assignment statement)
-		/*
-		 * This is the entry point for use when the command keyword "LET" is present.
-		 */
-		double preVal = incdec();							// check for pre-increment/decrement
-		// Remember the result so, if the line is executed again,
-		// it will go directly to the executeLET(double) with the right pre-inc/dec val.
-		Command cmd = (preVal == 0) ? CMD_IMPL_LET : ((preVal > 0.0) ? CMD_PREINC : CMD_PREDEC);
-		int length = CMD_LET.name.length() + cmd.name.length();
-		ExecutingLineBuffer.cmd(cmd, length);
-		return executeLET(preVal);
-	}
-
-	private boolean executeLET(double nval) {			// Execute LET (an assignment statement)
-		/*
-		 * This is the execution function for commands BKW_LET, BKW_PREDEC, and BKW_PREINC,
-		 * and it is also called from executeImplicitCommand() for implied LET commands.
-		 * A bare variable is an implied LET case, but pre-decrement and pre-increment with
-		 * no LET are treated as explicit BKW_PREDEC and BKW_PREINC commands.
-		 */
-		boolean islval = (nval == 0.0);						// assignable only if no inc/dec
-
-		if (!getVar()) return false;						// get or create the variable to assign a value to
-		int varNumber = theValueIndex;						// variable to assign to
-
-		if (VarIsNumeric) {
-			double postincdec = incdec();					// check for post-increment/decrement
-			if (postincdec != 0) { nval += postincdec; islval = false; }
-		} else if (!islval) return false;					// can't inc/dec a string
-
-		if (isEOL()) {										// no more to do, may have created variable
-			if (VarIsNumeric && (nval != 0.0)) {			// pre/post inc/dec of numeric variable
-				double value = nval + NumericVarValues.get(varNumber);
-				NumericVarValues.set(varNumber, value);
-			}
-			return true;
-		}
-		else if (!islval) return false;						// can't be label or assignment if already inc/dec
-		else if (isNext(':')) return checkEOL();			// if label, must end line
-
-		// Implementation note: this should probably be put in a Java enum type. (TODO)
-		int op = ASSIGN;
-		String sval = "";
-		if (!isNext('=')) {									// require some kind of assignment operator
-			// NOTE: The lvalue before assignment is the ORIGINAL value of the variable,
-			// not the value as modified by and '++' or '--' in the rvalue expression.
-			if (VarIsNumeric) { nval += NumericVarValues.get(varNumber); }
-			else              { sval  = StringVarValues.get(varNumber); }
-			if (ExecutingLineBuffer.startsWith("+=", LineIndex))			{ op = PLUS; }
-			else if (VarIsNumeric) {
-				if (ExecutingLineBuffer.startsWith("-=", LineIndex)) 		{ op = MINUS; }
-				else if (ExecutingLineBuffer.startsWith("*=", LineIndex))	{ op = MUL; }
-				else if (ExecutingLineBuffer.startsWith("/=", LineIndex))	{ op = DIV; }
-				else if (ExecutingLineBuffer.startsWith("^=", LineIndex))	{ op = EXP; }
-				else if (ExecutingLineBuffer.startsWith("&=", LineIndex))	{ op = AND; }
-				else if (ExecutingLineBuffer.startsWith("|=", LineIndex))	{ op = OR; }
-				else return false;
-			} else return false;
-			LineIndex += 2;
-		}
-
-		if (VarIsNumeric) {									// if var is number then 
-			if (!evalNumericExpression()) { return false; }	// evaluate following numeric expression
-			if (op != ASSIGN) {
-				double val = EvalNumericExpressionValue;
-				switch (op) {								// apply the required operation
-					case PLUS:  nval += val; break;
-					case MINUS: nval -= val; break;
-					case MUL:   nval *= val; break;
-					case DIV:   nval /= val; break;
-					case EXP:   nval = Math.pow(nval, val); break;
-					case AND:   nval = ((nval != 0) && (val != 0)) ? 1.0 : 0.0;
-					case OR:    nval = ((nval != 0) || (val != 0)) ? 1.0 : 0.0;
-				}
-				EvalNumericExpressionValue = nval;
-			}
-			NumericVarValues.set(varNumber, EvalNumericExpressionValue); // assign result to the numeric var
-		} else {											// var is string
-			if (!getStringArg()) { return false; }			// evaluate the string expression
-			if (op == PLUS) { StringConstant = sval + StringConstant; }
-			StringVarValues.set(varNumber, StringConstant); // assign result to the string var
-		}
-		return checkEOL();
-	} // executeLET
 
 	private boolean evalToPossibleKeyword(String keyword) {	// use with midline keywords THEN, TO, STEP
 		// Evaluate a numeric expression, terminated either by EOL or by the given possible keyword.
@@ -5216,13 +5769,134 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return flag;
 	}
 
-	// ************************************** Math Functions **************************************
+	// ******************************* Statement Parsing Utilities ********************************
 
-	private boolean doMathFunction(Command cmd) {
-		// If the function exists, run it, and make verify that the closing ')' is present.
-		// Function value is returned in EvalNumericExpressionValue.
-		return (cmd != null) && cmd.run() && isNext(')');
+	private boolean nextLine() {				// Move to beginning of next line
+		if (++ExecutingLineIndex < Basic.lines.size()) {	// if not at end of program
+			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
+			LineIndex = 0;
+			return true;
+		}
+		--ExecutingLineIndex;				// No next line
+		return false;
 	}
+
+	private boolean isEOL(){
+		return (LineIndex >= ExecutingLineBuffer.length()) ||
+				(ExecutingLineBuffer.line().charAt(LineIndex) == '\n');
+	}
+
+	private boolean checkEOL(){
+		if (isEOL()) return true;
+		String ec = ExecutingLineBuffer.line().substring(LineIndex);
+		RunTimeError("Extraneous characters in line: " + ec);
+		return false;
+	}
+
+	private boolean isNext(char c) {		// Check the current character
+		if ((LineIndex < ExecutingLineBuffer.length()) &&	// if it is as expected...
+			(ExecutingLineBuffer.line().charAt(LineIndex) == c)) {
+			++LineIndex;									// ... increment the character pointer
+			return true;
+		}
+		return false;
+	}
+
+	private boolean getStringArg() {		// Get and validate a string
+		return (evalStringExpression()			// Get the string expression
+			&& !SEisLE							// Okay if not logical expression
+			&& (StringConstant != null));		//      and not null
+		// Leaves evaluation result in StringConstant
+	}
+
+	private boolean getArgAsNum() {			// Get and validate a numeric expression
+		if (!evalNumericExpression()) {		// or string that evaluates to a number
+			if (SyntaxError || !getStringArg()) { return false; }
+			try { EvalNumericExpressionValue = Double.valueOf(StringConstant); }
+			catch (NumberFormatException e) { return false; }
+		}
+		return true;							// return value in EvalNumericExpressionValue
+	}
+
+	// Get optional arguments, where all are variables, not expressions.
+	// types: 1 numeric, 2 string, 3 either
+	// Type 3 coming in is overwritten to type of variable found on command line.
+	private boolean getOptVars(byte[] type, int[] index) {
+
+		if (isEOL()) return true;							// no arguments
+		int nArgs = type.length;
+		if (nArgs != index.length) return false;			// array lengths must match
+
+		boolean isComma = true;
+		for (int arg = 0; arg < nArgs; ++arg) {
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (!getVar()) return false;
+					byte vType = (byte)(VarIsNumeric ? 1 : 2);
+					if ((vType & type[arg]) == 0) return false;	// type mismatch
+					type[arg] = vType;
+					index[arg] = theValueIndex;
+					isComma = isNext(',');
+				}
+			}
+		}
+		return (!isComma && checkEOL());
+	} // getOptVars
+
+	// Get optional arguments, where all are expressions, not variables.
+	// types: 1 numeric, 2 string, 3 either
+	// Type 3 coming in is overwritten to type of expression found on command line.
+	private boolean getOptExprs(byte[] type, Double[] nVal, String[] sVal) {
+
+		if (isEOL()) return true;							// no arguments
+		int nArgs = type.length;
+		if (nArgs != nVal.length) return false;				// array lengths must match
+		if (nArgs != sVal.length) return false;				// array lengths must match
+
+		boolean isComma = true;
+		for (int arg = 0; arg < nArgs; ++arg) {
+			int typ = type[arg];
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (typ != 2) {							// try numeric expression
+						if (!evalNumericExpression()) {
+							if (typ == 1) return false;		// required numeric
+							typ = 2;						// actual type is string
+						} else {
+							if (typ == 3) { typ = 1; }		// actual type is numeric
+							nVal[arg] = EvalNumericExpressionValue;
+						}
+					}
+					if (typ == 2) {							// try string expression
+						if (!getStringArg()) return false;
+						sVal[arg] = StringConstant;
+					}
+					isComma = isNext(',');
+				}
+			}
+		}
+		return (!isComma && checkEOL());
+	} // getOptExprs(byte[], Double[], Sring[])
+
+	// Like getOptExprs, but limited to integer arguments.
+	private boolean getOptExprs(int[] iVal) {
+		if (isEOL()) return true;							// no arguments
+		int nArgs = iVal.length;
+		boolean isComma = true;
+		for (int arg = 0; arg < nArgs; ++arg) {
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (!evalNumericExpression()) return false;
+					iVal[arg] = EvalNumericExpressionValue.intValue();
+					isComma = isNext(',');
+				}
+			}
+		}
+		return (!isComma && checkEOL());
+	} // getOptExprs(int[])
 
 	private double[] getArgsDD() {								// get two numeric arguments (doubles)
 		if (!evalNumericExpression())	{ return null; }
@@ -5294,6 +5968,14 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		String s2 = StringConstant;
 		String[] args = {s1, s2};
 		return args;
+	}
+
+	// ************************************** Math Functions **************************************
+
+	private boolean doMathFunction(Command cmd) {
+		// If the function exists, run it, and make verify that the closing ')' is present.
+		// Function value is returned in EvalNumericExpressionValue.
+		return (cmd != null) && cmd.run() && isNext(')');
 	}
 
 	private boolean executeMF_SIN() {
@@ -6195,47 +6877,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	// *********************************** end String Functions ***********************************
 
-	private boolean executeDIM() {									// DIM
-																		// Execute a DIM Comman
-		do {									// Multiple Arrays can be DIMed in one DIM statement separated by commas
-			String var = getVarAndType();								// get the array name var
-			if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
-			if (!VarIsNew)						{ return RunTimeError(EXPECT_NEW_ARRAY); }
-			if (isNext(']')) 					{ return false; }		// must have dimension(s)
-			boolean avt = VarIsNumeric;									// preserve the array's type
-
-			ArrayList<Integer> dimValues = new ArrayList<Integer>();	// a list to hold the array dimension values
-			do {														// get each index value
-				if (!evalNumericExpression())	{ return false; }
-				dimValues.add(EvalNumericExpressionValue.intValue());	// and add it to the list
-			} while (isNext(','));
-			if (!isNext(']'))					{ return false; }		// must have closing bracket
-
-			if (!BuildBasicArray(var, avt, dimValues)) { return false; }// no error, build the array
-
-		} while (isNext(','));											// continue while there are arrays to be DIMed
-		return checkEOL();												// then done
-	}
-
-	private boolean executeUNDIM() {
-		do {									// Multiple Arrays can be UNDIMed in one Statement separated by commas
-			if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
-			if (!isNext(']'))								{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
-			if (!VarIsNew) {											// if DIMed, UNDIM it
-				// Clear the variable name so it can't be used to access this array any more.
-				// Mark the array invalid in case any other variable is looking at it.
-				VarNames.set(VarNumber, " ");
-				ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber));
-				array.invalidate();
-			}
-		} while (isNext(','));											// continue while there are arrays to be UNDIMed
-
-		return checkEOL();
-	}
-
 	// ************************************* array utilities **************************************
 
-	private boolean BuildBasicArray(String var, boolean IsNumeric, ArrayList<Integer> DimList){
+	private boolean BuildBasicArray(String var, boolean IsNumeric, ArrayList<Integer> DimList) {
 
 		// Build a basic array attached to a new variable.
 		// Makes a descriptor with information about the array and puts it into the array table.
@@ -6392,7 +7036,150 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	// ************************************* end array utilities **************************************
+	// *********************************** end array utilities ************************************
+
+	// ************************************* Command Methods **************************************
+
+	private boolean executeImplicitCommand() {			// no keyword at beginning of line
+		int LI = LineIndex;
+		String var = parseVar(USER_FN_OK);					// look for a variable or function name
+		if (var == null) return false;
+
+		LineIndex = LI;										// rewind the LineIndex for re-parse
+		Command cmd = VarIsFunction ? CMD_CALL : CMD_IMPL_LET; // implicit CALL or LET (no preinc/dec)
+		ExecutingLineBuffer.cmd(cmd, 0);					// remember for next time the line is executed
+		return cmd.run();
+	}
+
+	private double incdec() {
+		double result = 0.0;
+		if      (ExecutingLineBuffer.startsWith(OP_INC, LineIndex)) { LineIndex += 2; result = 1.0; }
+		else if (ExecutingLineBuffer.startsWith(OP_DEC, LineIndex)) { LineIndex += 2; result = -1.0; }
+		return result;
+	}
+
+	private boolean executeLET() {						// Execute LET (an assignment statement)
+		/*
+		 * This is the entry point for use when the command keyword "LET" is present.
+		 */
+		double preVal = incdec();							// check for pre-increment/decrement
+		// Remember the result so, if the line is executed again,
+		// it will go directly to the executeLET(double) with the right pre-inc/dec val.
+		Command cmd = (preVal == 0) ? CMD_IMPL_LET : ((preVal > 0.0) ? CMD_PREINC : CMD_PREDEC);
+		int length = CMD_LET.name.length() + cmd.name.length();
+		ExecutingLineBuffer.cmd(cmd, length);
+		return executeLET(preVal);
+	}
+
+	private boolean executeLET(double nval) {			// Execute LET (an assignment statement)
+		/*
+		 * This is the execution function for commands BKW_LET, BKW_PREDEC, and BKW_PREINC,
+		 * and it is also called from executeImplicitCommand() for implied LET commands.
+		 * A bare variable is an implied LET case, but pre-decrement and pre-increment with
+		 * no LET are treated as explicit BKW_PREDEC and BKW_PREINC commands.
+		 */
+		boolean islval = (nval == 0.0);						// assignable only if no inc/dec
+
+		if (!getVar()) return false;						// get or create the variable to assign a value to
+		int varNumber = theValueIndex;						// variable to assign to
+
+		if (VarIsNumeric) {
+			double postincdec = incdec();					// check for post-increment/decrement
+			if (postincdec != 0) { nval += postincdec; islval = false; }
+		} else if (!islval) return false;					// can't inc/dec a string
+
+		if (isEOL()) {										// no more to do, may have created variable
+			if (VarIsNumeric && (nval != 0.0)) {			// pre/post inc/dec of numeric variable
+				double value = nval + NumericVarValues.get(varNumber);
+				NumericVarValues.set(varNumber, value);
+			}
+			return true;
+		}
+		else if (!islval) return false;						// can't be label or assignment if already inc/dec
+		else if (isNext(':')) return checkEOL();			// if label, must end line
+
+		// Implementation note: this should probably be put in a Java enum type. (TODO)
+		int op = ASSIGN;
+		String sval = "";
+		if (!isNext('=')) {									// require some kind of assignment operator
+			// NOTE: The lvalue before assignment is the ORIGINAL value of the variable,
+			// not the value as modified by and '++' or '--' in the rvalue expression.
+			if (VarIsNumeric) { nval += NumericVarValues.get(varNumber); }
+			else              { sval  = StringVarValues.get(varNumber); }
+			if (ExecutingLineBuffer.startsWith("+=", LineIndex))			{ op = PLUS; }
+			else if (VarIsNumeric) {
+				if (ExecutingLineBuffer.startsWith("-=", LineIndex)) 		{ op = MINUS; }
+				else if (ExecutingLineBuffer.startsWith("*=", LineIndex))	{ op = MUL; }
+				else if (ExecutingLineBuffer.startsWith("/=", LineIndex))	{ op = DIV; }
+				else if (ExecutingLineBuffer.startsWith("^=", LineIndex))	{ op = EXP; }
+				else if (ExecutingLineBuffer.startsWith("&=", LineIndex))	{ op = AND; }
+				else if (ExecutingLineBuffer.startsWith("|=", LineIndex))	{ op = OR; }
+				else return false;
+			} else return false;
+			LineIndex += 2;
+		}
+
+		if (VarIsNumeric) {									// if var is number then 
+			if (!evalNumericExpression()) { return false; }	// evaluate following numeric expression
+			if (op != ASSIGN) {
+				double val = EvalNumericExpressionValue;
+				switch (op) {								// apply the required operation
+					case PLUS:  nval += val; break;
+					case MINUS: nval -= val; break;
+					case MUL:   nval *= val; break;
+					case DIV:   nval /= val; break;
+					case EXP:   nval = Math.pow(nval, val); break;
+					case AND:   nval = ((nval != 0) && (val != 0)) ? 1.0 : 0.0;
+					case OR:    nval = ((nval != 0) || (val != 0)) ? 1.0 : 0.0;
+				}
+				EvalNumericExpressionValue = nval;
+			}
+			NumericVarValues.set(varNumber, EvalNumericExpressionValue); // assign result to the numeric var
+		} else {											// var is string
+			if (!getStringArg()) { return false; }			// evaluate the string expression
+			if (op == PLUS) { StringConstant = sval + StringConstant; }
+			StringVarValues.set(varNumber, StringConstant); // assign result to the string var
+		}
+		return checkEOL();
+	} // executeLET
+
+	private boolean executeDIM() {									// DIM
+																		// Execute a DIM Comman
+		do {									// Multiple Arrays can be DIMed in one DIM statement separated by commas
+			String var = getVarAndType();								// get the array name var
+			if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+			if (!VarIsNew)						{ return RunTimeError(EXPECT_NEW_ARRAY); }
+			if (isNext(']')) 					{ return false; }		// must have dimension(s)
+			boolean avt = VarIsNumeric;									// preserve the array's type
+
+			ArrayList<Integer> dimValues = new ArrayList<Integer>();	// a list to hold the array dimension values
+			do {														// get each index value
+				if (!evalNumericExpression())	{ return false; }
+				dimValues.add(EvalNumericExpressionValue.intValue());	// and add it to the list
+			} while (isNext(','));
+			if (!isNext(']'))					{ return false; }		// must have closing bracket
+
+			if (!BuildBasicArray(var, avt, dimValues)) { return false; }// no error, build the array
+
+		} while (isNext(','));											// continue while there are arrays to be DIMed
+		return checkEOL();												// then done
+	}
+
+	private boolean executeUNDIM() {
+		do {									// Multiple Arrays can be UNDIMed in one Statement separated by commas
+			if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
+			if (!isNext(']'))								{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+			if (!VarIsNew) {											// if DIMed, UNDIM it
+				// Clear the variable name so it can't be used to access this array any more.
+				// Mark the array invalid in case any other variable is looking at it.
+				VarNames.set(VarNumber, " ");
+				ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber));
+				array.invalidate();
+			}
+		} while (isNext(','));											// continue while there are arrays to be UNDIMed
+
+		return checkEOL();
+	}
 
 	private boolean executePRINT() {
 		if (!buildPrintLine(PrintLine, "")) return false;	// build up the print line in StringConstant
@@ -6401,7 +7188,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			return true;								// and wait for next Print command
 		}
 		PrintLine = "";									// clear the accumulated print line
-		PrintShow(StringConstant);						// then output the line
+		PrintShow(StringConstant);						// output the line
 		return true;
 	}
 
@@ -6935,8 +7722,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 					errorMsg = err;
 					ExecutingLineIndex = OnErrorLine;
 				} else {									// tell user we are stopping
-					PrintShow(err);
-					PrintShow("Execution halted");
+					PrintShow(err, "Execution halted");
 					Stop = true;							// and stop executing
 				}
 			}
@@ -6951,79 +7737,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 				try { LOCK.wait(); }
 				catch (InterruptedException e) { HaveTextInput = true; }
 			}
-		}
-	}
-
-	private void doInputDialog(Bundle args) {
-		Context context = getContext();
-
-		EditText text = new EditText(context);
-		text.setText(args.getString("default"));
-		if (args.getBoolean("isNumeric")) {
-			text.setInputType(0x00003002);					// Limits keys to signed decimal numbers
-		}
-		String btnLabel = args.getString("button1");
-		if (btnLabel == null) { btnLabel = "Ok"; }
-
-		AlertDialog.Builder builder = new AlertDialog.Builder(context);
-		builder
-			.setView(text)
-			.setCancelable(true)
-			.setTitle(args.getString("title"))				// default null, no title displayed if null or empty
-			.setPositiveButton(btnLabel, null);				// need to override default View click handler to prevent
-															// auto-dismiss, but can't do it until after show()
-
-		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface dialog) {
-				Log.d(LOGTAG, "Input Dialog onCancel");
-				mInputCancelled = true;						// signal read by executeINPUT
-			}
-		});
-
-		AlertDialog dialog = builder.create();
-		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-			public void onDismiss( DialogInterface dialog) {
-				Log.d(LOGTAG, "Input Dialog onDismiss");
-				HaveTextInput = true;						// semaphore used in waitForLOCK
-				synchronized (LOCK) {
-					LOCK.notify();							// release the lock that executeINPUT is waiting for
-				}
-			}
-		});
-		dialog.show();
-		dialog.getButton(DialogInterface.BUTTON_POSITIVE)	// now we can replace the View click listener
-			.setOnClickListener(new InputDialogClickListener(dialog, text, args));	// to prevent auto-dismiss
-	}
-
-	private class InputDialogClickListener implements View.OnClickListener {
-		// Use inner class members so we don't need as many outer class members.
-		private final AlertDialog mmDialog;
-		private final EditText mmText;
-		private final boolean mmIsNumeric;
-		private final int mmVarIndex;
-		public InputDialogClickListener(AlertDialog dialog, EditText text, Bundle args) {
-			mmDialog = dialog;
-			mmText = text;
-			mmIsNumeric = args.getBoolean("isNumeric");		// default false
-			mmVarIndex = args.getInt("varIndex");			// default 0
-		}
-
-		public void onClick(View view) {
-			String theInput = mmText.getText().toString();
-			if (mmIsNumeric) {								// Numeric Input Handling
-				try {
-					double d = Double.parseDouble(theInput.trim());	// have java parse it into a double
-					NumericVarValues.set(mmVarIndex, d);
-				} catch (Exception e) {
-					Log.d(LOGTAG, "Input Dialog bad input");
-					Toaster("Not a number. Try Again.").show();
-					return;
-				}
-			} else {										// String Input Handling
-				StringVarValues.set(mmVarIndex, theInput);
-			}
-			mmDialog.dismiss();
-			Log.d(LOGTAG, "Input Dialog done, positive");
 		}
 	}
 
@@ -7074,66 +7787,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		NumericVarValues.set(varIndex, (double)mAlertItemID);
 		return true;
-	}
-
-	private void doAlertDialog(Bundle args) {
-		Context context = getContext();
-
-		AlertDialog.Builder builder = new AlertDialog.Builder(context);
-		String positive = args.getString("button1");		// default null
-		String neutral = args.getString("button2");
-		String negative = args.getString("button3");
-		String[] list = args.getStringArray("list");
-		AlertDialogClickListener listener = new AlertDialogClickListener();
-
-		builder
-			.setCancelable(true)
-			.setTitle(args.getString("title"));				// default null, no title if null or empty
-		if (positive != null) { builder.setPositiveButton(positive, listener); }
-		if (neutral != null) { builder.setNeutralButton(neutral, listener); }
-		if (negative != null) { builder.setNegativeButton(negative, listener); }
-
-		if (list != null) {
-			builder.setItems(list, new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog, int which) {
-					mAlertItemID = which + 1;				// convert to 1-based index
-				}
-			});
-		} else {
-			builder.setMessage(args.getString("message"));	// list and message are mutually exclusive
-		}
-
-		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface dialog) {
-				Log.d(LOGTAG, "Alert Dialog onCancel");
-				mAlertItemID = 0;							// no button clicked or item selected
-			}
-		});
-
-		AlertDialog dialog = builder.create();
-		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-			public void onDismiss( DialogInterface dialog) {
-				Log.d(LOGTAG, "Alert Dialog onDismiss");
-				HaveTextInput = true;						// semaphore used in waitForLOCK
-				synchronized (LOCK) {
-					LOCK.notify();							// release the lock that executeINPUT is waiting for
-				}
-			}
-		});
-		dialog.show();
-	}
-
-	private class AlertDialogClickListener implements DialogInterface.OnClickListener {
-		public void onClick(DialogInterface dialog, int buttonID) {
-			Log.d(LOGTAG, "AlertDialog done, button " + buttonID);
-			int id = 0;										// default: no button
-			switch (buttonID) {
-				case DialogInterface.BUTTON_POSITIVE: id = 1; break;
-				case DialogInterface.BUTTON_NEUTRAL:  id = 2; break;
-				case DialogInterface.BUTTON_NEGATIVE: id = 3; break;
-			}
-			mAlertItemID = id;
-		}
 	}
 
 	private boolean executeDIALOG_SELECT() {				// Show a Dialog with a selection list
@@ -7318,24 +7971,26 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	private boolean executeDEBUG_STATS() {
 		if (Debug) {
-			ActivityManager actvityManager = (ActivityManager)this.getSystemService(ACTIVITY_SERVICE);
-			PrintShow("Mem class  : " + actvityManager.getMemoryClass());
-			PrintShow("# labels   : " + Labels.size());
-			PrintShow("# variables: " + VarNames.size());
-			PrintShow("  numeric  : " + NumericVarValues.size());
-			PrintShow("  string   : " + StringVarValues.size());
-			PrintShow("  arrays   : " + ArrayTable.size());
-			PrintShow("  lists    : " + plusBase(theLists.size()));		// item 0 always present but not accessible
-			PrintShow("  stacks   : " + plusBase(theStacks.size()));	// item 0 always present but not accessible
-			PrintShow("  bundles  : " + plusBase(theBundles.size()));	// item 0 always present but not accessible
-			PrintShow("  functions: " + FunctionTable.size());
-			PrintShow("    nested : " + FunctionStack.size());
-			PrintShow("  fonts    : " + plusBase(FontList.size()));		// item 0 always present but not accessible
-			PrintShow("  paints   : " + plusBase(PaintList.size()));	// item 0 present after GR.Open but not accessible
-			PrintShow("  bitmaps  : " + plusBase(BitmapList.size()));	// item 0 present after GR.Open but not accessible
-			PrintShow("DL size    : " + plusBase(DisplayList.size()));	// item 0 present after GR.Open but not accessible
-			PrintShow("RealDL size: " + plusBase(RealDisplayList.size()));// item 0 present after GR.Open but not accessible
-			PrintShow("InKey count: " + InChar.size());
+			ActivityManager actvityManager = (ActivityManager)Run.this.getSystemService(ACTIVITY_SERVICE);
+			PrintShow(
+				"Mem class  : " + actvityManager.getMemoryClass(),
+				"# labels   : " + Labels.size(),
+				"# variables: " + VarNames.size(),
+				"  numeric  : " + NumericVarValues.size(),
+				"  string   : " + StringVarValues.size(),
+				"  arrays   : " + ArrayTable.size(),
+				"  lists    : " + plusBase(theLists.size()),	// item 0 always present but not accessible
+				"  stacks   : " + plusBase(theStacks.size()),	// item 0 always present but not accessible
+				"  bundles  : " + plusBase(theBundles.size()),	// item 0 always present but not accessible
+				"  functions: " + FunctionTable.size(),
+				"    nested : " + FunctionStack.size(),
+				"  fonts    : " + plusBase(FontList.size()),	// item 0 always present but not accessible
+				"  paints   : " + plusBase(PaintList.size()),	// item 0 present after GR.Open but not accessible
+				"  bitmaps  : " + plusBase(BitmapList.size()),	// item 0 present after GR.Open but not accessible
+				"DL size    : " + plusBase(DisplayList.size()),	// item 0 present after GR.Open but not accessible
+				"RealDL size: " + plusBase(RealDisplayList.size()),// item 0 present after GR.Open but not accessible
+				"InKey count: " + InChar.size()
+			);
 		}
 		return true;
 	}
@@ -7528,415 +8183,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-			private void DialogSelector(int selection){
-				dbDialogScalars = false;
-				dbDialogArray = false;
-				dbDialogList = false;
-				dbDialogStack = false;
-				dbDialogBundle = false;
-				dbDialogWatch = false;
-				dbDialogConsole = false;
-				dbDialogProgram = false;
-				switch (selection){
-				  case 1:
-					  dbDialogScalars = true;
-					  break;
-					case 2:
-				  	dbDialogArray = true;
-					  break;
-					case 3:
-					  dbDialogList = true;
-				  	break;
-					case 4:
-				  	dbDialogStack = true;
-				  	break;
-					case 5:
-				  	dbDialogBundle = true;
-					  break;
-					case 6:
-					  dbDialogWatch = true;
-					  break;
-					case 7:
-				  	dbDialogConsole = true;
-				  	break;
-					default:
-					  dbDialogProgram = true;
-						break;
-				}
-			}
-
-	private boolean executeDEBUG_SHOW() {				// trigger do debug dialog
-		if (!Debug) return true;
-		WaitForResume = true;
-		sendMessage(MESSAGE_DEBUG_DIALOG);
-		return true;
-	}
-
-	private String chomp(String str) {
-		return str.substring(0, str.length() - 1);
-	}
-
-	private String quote(String str) {
-		return '\"' + str + '\"';
-	}
-
-	private void doDebugDialog() {
-
-		ArrayList<String> msg = new ArrayList<String>();
-
-		if (!dbDialogProgram) {
-			msg = dbDoFunc();
-			msg.add("Executable Line #:    " + Integer.toString(ExecutingLineIndex + 1)
-					+ '\n' + chomp(ExecutingLineBuffer.line()));
-		}
-
-		if (dbDialogScalars) msg.addAll(dbDoScalars("  "));
-		if (dbDialogArray)   msg.addAll(dbDoArray("  "));
-		if (dbDialogList)    msg.addAll(dbDoList("  "));
-		if (dbDialogStack)   msg.addAll(dbDoStack("  "));
-		if (dbDialogBundle)  msg.addAll(dbDoBundle("  "));
-		if (dbDialogWatch)   msg.addAll(dbDoWatch("  "));
- 
-		if (dbDialogProgram) {
-			for (int i = 0; i < Basic.lines.size(); ++i) {
-				msg.add(((i == ExecutingLineIndex) ? " >>" : "   ")	// mark current line
-						+ (i + 1) + ": "							// one-based line index
-						+ chomp(Basic.lines.get(i).line()));		// remove newline
-			}
-		}
-
-		LayoutInflater inflater = getLayoutInflater();
-		View dialogLayout = inflater.inflate(R.layout.debug_dialog_layout, null);
-
-		ListView debugView = (ListView)dialogLayout.findViewById(R.id.debug_list); 
-		debugView.setAdapter(new ArrayAdapter<String>(this, R.layout.debug_list_layout, msg));
-		debugView.setVerticalScrollBarEnabled(true);
-		if (dbDialogProgram) { debugView.setSelection(ExecutingLineIndex); }
-
-		AlertDialog.Builder builder = new AlertDialog.Builder(this)
-			.setCancelable(true)
-			.setTitle(R.string.debug_name)
-			.setView(dialogLayout);
-
-		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface arg0) {
-				DebuggerHalt = true;
-				WaitForResume = false;
-			}
-		});
-
-		builder.setPositiveButton("Resume", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog,int which) {
-				WaitForResume = false;
-			}
-		});
-
-		builder.setNeutralButton("Step", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog,int which){
-				DebuggerStep = true;
-				WaitForResume = true;
-			}
-		});
-
-		// leave out until the switcher is done.
-		builder.setNegativeButton("View Swap",new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog,int which) {
-				dbSwap = true;
-			}
-		});
-
-		dbDialog = builder.show();
-		dbDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
-									   WindowManager.LayoutParams.FILL_PARENT);
-	}
-
-	private void doDebugSwapDialog() {
-
-		ArrayList<String> msg = new ArrayList<String>();
-		msg.addAll(Arrays.asList("Program", "Scalars", "Array", "List", "Stack", "Bundle", "Watch"));
-		final String[] names = {
-			"View Program", "View Scalars", "View Array", "View List",
-			"View Stack",   "View Bundle",  "View Watch", "View Console"
-		};
-
-		LayoutInflater inflater = getLayoutInflater();
-		View dialogLayout = inflater.inflate(R.layout.debug_list_s_layout, null);
-
-		ListView debugView = (ListView)dialogLayout.findViewById(R.id.debug_list_s);
-		debugView.setAdapter(new ArrayAdapter<String>(this, R.layout.simple_list_layout_1, msg));
-		debugView.setVerticalScrollBarEnabled(true);
-		debugView.setClickable(true);
-
-		debugView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				DialogSelector(position);
-				boolean dosel = 
-					(dbDialogArray  && WatchedArray  == -1) ||
-					(dbDialogList   && WatchedList   == -1) ||
-					(dbDialogStack  && WatchedStack  == -1) ||
-					(dbDialogBundle && WatchedBundle == -1);
-				if (dosel) {
-					// if the element has not been defined ask if user wishes to do so.
-					// or at least this is where it will go.
-					// for now, default to view program.
-					DialogSelector(0);
-					position = 0;
-				}
-				String name = (position < names.length) ? names[position] : "";
-				Toaster(name).show();
-			}
-		});
-
-		AlertDialog.Builder builder = new AlertDialog.Builder(this)
-			.setCancelable(true)
-			.setTitle("Select View:")
-			.setView(dialogLayout);
-
-		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface arg0) {
-				WaitForSwap = false;
-			}
-		});
-
-		builder.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog,int which) {
-				WaitForSwap = false;
-				dbSwap = false;
-			}
-		});
-
-		/*  // leave out until the element selector is done.
-		builder.setNeutralButton("Choose Element", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog,int which){
-				WaitForSelect = true;
-			}
-		});
-		*/
-
-		dbSwapDialog = builder.show();
-		dbSwapDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
-										   WindowManager.LayoutParams.FILL_PARENT);
-	}
-
-	private Toast Toaster(CharSequence msg) {			// default: short, high toast
-		Toast toast = Toaster(msg, Toast.LENGTH_SHORT);
-		toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 50);
-		return toast;
-	}
-
-	private Toast Toaster(CharSequence msg, int duration) {
-		Toast toast = Toast.makeText(this, msg, duration);
-		return toast;
-	}
-
-	private void doDebugSelectDialog() {
-		if (dbSelectDialog != null) { dbSelectDialog.dismiss(); }
-
-		ArrayList<String> msg = new ArrayList<String>();
-		// TODO: What did Michael have in mind?
-	}
-
-	private ArrayList<String> dbDoWatch(String prefix) {
-		ArrayList<String> msg = new ArrayList<String>();
-		msg.add("Watching:");
-
-		int count = VarNames.size();
-		if (!WatchVarIndex.isEmpty()) {
-			int watchcount = WatchVarIndex.size();
-			for (int j = 0; j < watchcount; ++j) {
-				int wvi = WatchVarIndex.get(j);
-				if (wvi < count) {
-					String line = dbDoOneScalar(wvi, prefix);
-					if (line != null) { msg.add(line); }
-				} else {
-					msg.add(Watch_VarNames.get(j) + " = Undefined");
-				}
-			}
-		} else { msg.add("\n" + "Undefined."); }
-		return msg;
-	}
-
-	private ArrayList<String> dbDoFunc() {
-		ArrayList<String> msg = new ArrayList<String>();
-		String msgs = "";
-		if (!FunctionStack.isEmpty()) {
-			Stack<Bundle> tempStack = (Stack<Bundle>) FunctionStack.clone();
-			do {
-				msgs = tempStack.pop().getString("fname") + msgs;
-			} while (!tempStack.isEmpty());
-		} else { msgs += "MainProgram"; }
-		msg.add("In Function: " + msgs);
-		return msg;
-	}
-
-	private ArrayList<String> dbDoScalars(String prefix) {
-		ArrayList<String> msg = new ArrayList<String>();
-		msg.add("Scalar Dump");
-		int count = VarNames.size();
-		for (int varNum = 0; varNum < count; ++varNum) {
-			String line = dbDoOneScalar(varNum, prefix);
-			if (line != null) { msg.add(line); }
-		}
-		return msg;
-	}
-
-	private String dbDoOneScalar(int varNum, String prefix) {
-		String var = VarNames.get(varNum);
-		int len = (var == null) ? 0 : var.length();
-		if (len == 0) {
-			return(prefix + "Warning: zero-length variable name");
-		}
-		char last = var.charAt(len - 1);
-		boolean isScalar = (last != '(') && (last != '[');
-		if (isScalar) {
-			boolean isString = (last == '$');
-			String line = prefix + var;
-			Integer Index = VarIndex.get(varNum).intValue();
-			if (Index == null) {
-				line += ": Warning: null variable index";
-			} else {
-				int index = Index.intValue();
-				line += " = "
-					 + (isString ? quote(StringVarValues.get(index))
-								 : NumericVarValues.get(index).toString());
-			}
-			return line;
-		}
-		return null;
-	}
-
-	private ArrayList<String> dbDoArray(String prefix) {
-		ArrayList<String> msg = new ArrayList<String>();
-		String var = VarNames.get(WatchedArray);
-		msg.add("Dumping Array " + var + "]");
-
-		ArrayDescriptor array = ArrayTable.get(VarIndex.get(WatchedArray));	// Get the descriptor for this array
-		if (array == null) {
-			msg.add(prefix + "Warning: null array table entry");
-		} else {
-			int length = array.length();						// get the array length
-			int base = array.base();							// and the start of the array in the variable space
-			// ArrayList<Integer> dims = array.dimList();
-			// ArrayList<Integer> sizes = array.arraySizes();
-			// msg.add("dims: " + dims.toString());
-			// msg.add("sizes: " + sizes.toString());
-			boolean isString = var.endsWith("$[");
-			for (int i = 0; i < length; ++i) {
-				msg.add(prefix +
-						(isString ? quote(StringVarValues.get(base + i))
-								  : NumericVarValues.get(base + i).toString()));
-			}
-		}
-		return msg;
-	}
-
-	private ArrayList<String> dbDoList(String prefix) {
-		ArrayList<String> msg = new ArrayList<String>();
-		msg.add("Dumping List " + WatchedList);
-
-		if ((WatchedList < 0) || (WatchedList >= theLists.size())) {
-			msg.add(prefix + "List has not been created.");
-			return msg;
-		}
-
-		ArrayList list = theLists.get(WatchedList);				// get the list
-		if (list == null) {
-			msg.add(prefix + "Warning: null list variable");
-			return msg;
-		}
-
-		int length = list.size();
-		if (length == 0) {
-			msg.add(prefix + "Empty List");
-		} else {
-			boolean isString = (theListsType.get(WatchedList) == VarType.STR);
-			for (Object item : list) {							// get each item
-				String line;
-				if (item == null) {
-					line = "Warning: null list item";
-				} else {
-					line = item.toString();
-					if (isString) { line = quote(line); }
-				}
-				msg.add(prefix + line);
-			}
-		}
-		return msg;
-	}
-
-	private ArrayList<String> dbDoStack(String prefix) {
-		ArrayList<String> msg = new ArrayList<String>();
-		msg.add("Dumping stack " + WatchedStack);
-
-		if ((WatchedStack < 0) || (WatchedStack >= theStacks.size())) {
-			msg.add(prefix + "Stack has not been created.");
-			return msg;
-		}
-
-		Stack stack = theStacks.get(WatchedStack);				// get the stack
-		if (stack == null) {
-			msg.add(prefix + "Warning: null list variable");
-		} else if (stack.isEmpty()) {
-			msg.add(prefix + "Empty Stack");
-		} else {
-			Stack tempStack = (Stack)stack.clone();
-			boolean isString = (theStacksType.get(WatchedStack) == VarType.STR);
-			do {
-				String line;
-				Object item = tempStack.pop();					// get each item
-				if (item == null) {
-					line = "Warning: null stack item";
-				} else {
-					line = item.toString();
-					if (isString) { line = quote(line); }
-				}
-				msg.add(prefix + line);
-			} while (!tempStack.isEmpty());
-		}
-		return msg;
-	}
-
-	private ArrayList<String> dbDoBundle(String prefix) {
-		ArrayList<String> msg = new ArrayList<String>();
-		msg.add("Dumping Bundle " + WatchedBundle);
-
-		if ((WatchedBundle < 0) || (WatchedBundle >= theBundles.size())) {
-			msg.add(prefix + "Bundle has not been created.");
-			return msg;
-		}
-
-		Bundle b = theBundles.get(WatchedBundle);				// get the bundle
-		if (b == null) {
-			msg.add(prefix + "Warning: null bundle variable");
-			return msg;
-		}
-
-		Set<String> set = b.keySet();
-		if (set.size() == 0) {
-			msg.add(prefix + "Empty Bundle");
-			return msg;
-		}
-
-		for (String s : set) {
-			Object o = b.get(s);
-			boolean isNumeric = o instanceof Double;
-			msg.add(prefix + s + ": " +
-					(isNumeric ? (Double)o : quote((String)o)));
-		}
-		return msg;
-	}
-
-	public boolean handleDebugMessage(Message msg) {
-		switch (msg.what) {
-		case MESSAGE_DEBUG_DIALOG: doDebugDialog();       break;
-		case MESSAGE_DEBUG_SWAP:   doDebugSwapDialog();   break;
-		case MESSAGE_DEBUG_SELECT: doDebugSelectDialog(); break;
-		default:
-			return false;										// message not recognized
-		}
-		return true;											// message handled
-	}
-
 	// ********************************** User-Defined Functions **********************************
 
 	private boolean executeFN() {									// Get User-defined Function (FN) command keyword if it is there
@@ -8094,7 +8340,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 						if (!typeIsNumeric) {							// if parm is string
 							if (!evalStringExpression()) {				// get the string value
 								return RunTimeError("Parameter type mismatch at:");
-							}else{
+							} else {
 								VarIndex.add(StringVarValues.size());	// Put the string value into the
 								StringVarValues.add(StringConstant);	// string var values table
 								VarNames.add(pName);					// and add the var name
@@ -8131,7 +8377,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		// The function body is executed in a recursive call to RunLoop().
 		// FN.RTN or FN.END will signal RunLoop to exit, returning pass/fail state of the function here.
-		return theBackground.RunLoop();
+		return RunLoop();
 		// Note that the part of RunLoop after StatementExecuter runs twice,
 		// once after FN.RTN/END and again now, when this method exits.
 	} // doUserFunction
@@ -8440,7 +8686,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		Intent intent = new Intent(this, TextInput.class);
+		Intent intent = new Intent(Run.this, TextInput.class);
 		if (title != null) { intent.putExtra("title", title); }
 		HaveTextInput = false;
 		startActivityForResult(intent, BASIC_GENERAL_INTENT);
@@ -8561,7 +8807,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		Intent intent = new Intent(this, TGet.class);
+		Intent intent = new Intent(Run.this, TGet.class);
 		if (title != null) { intent.putExtra("title", title); }
 		HaveTextInput = false;
 		startActivityForResult(intent, BASIC_GENERAL_INTENT);
@@ -9557,7 +9803,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 	public boolean executeCLS() {							// Clear Screen
 		if (!checkEOL()) return false;
-		PrintShow("@@5");										// signal UI task
+		sendMessage(MESSAGE_CLEAR_CONSOLE);				// tell the UI Task to clear the Console
 		return true;
 	}
 
@@ -9640,7 +9886,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		ItemSelected = false;
 		SelectLongClick = false;
 
-		Intent intent = new Intent(this, Select.class);
+		Intent intent = new Intent(Run.this, Select.class);
 		if (title != null) { intent.putExtra(Select.EXTRA_TITLE, title); }
 		if (msg != null)   { intent.putExtra(Select.EXTRA_MSG, msg); }
 		intent.putStringArrayListExtra(Select.EXTRA_LIST, selectList);
@@ -9730,17 +9976,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	private boolean executeKB_HIDE() {
 		if (!checkEOL()) return false;
 		Log.v(LOGTAG, CLASSTAG + " KBHIDE " + kbShown);
-
-		  if (GRFront) {
-//			  GR.GraphicsImm.toggleSoftInputFromWindow(GR.drawView.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
-			  GR.GraphicsImm.hideSoftInputFromWindow(GR.drawView.getWindowToken(), 0);
-		      kbShown = false;
-		      }
-		  else {
-//			  IMM.toggleSoftInputFromWindow(lv.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
-			  IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
-			  kbShown = false;
-		  }
+		kbHide();
 		return true;
 	}
 
@@ -10736,7 +10972,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		DisplayList = null;											// to keep GR.DrawView from trying to draw
 
-		GRclass = new Intent(this, GR.class);						// Set up parameters for the Graphics Activity
+		GRclass = new Intent(Run.this, GR.class);						// Set up parameters for the Graphics Activity
 		GRclass.putExtra(GR.EXTRA_SHOW_STATUSBAR, showStatusBar);
 		GRclass.putExtra(GR.EXTRA_ORIENTATION, orientation);
 		GRclass.putExtra(GR.EXTRA_BACKGROUND_COLOR, backgroundColor);
@@ -12236,7 +12472,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 	}
 
 	@SuppressLint("NewApi")											// Uses value from API 9
-	private static int getNumberOfCameras() {
+	private int getNumberOfCameras() {
 
 		int cameraCount;
 		int level = Build.VERSION.SDK_INT;
@@ -12310,7 +12546,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		CameraBitmap = null;
 		CameraDone = false;
-		Intent cameraIntent = new Intent(this, CameraView.class);		// Start the Camera
+		Intent cameraIntent = new Intent(Run.this, CameraView.class);		// Start the Camera
 		cameraIntent.putExtra(CameraView.EXTRA_PICTURE_MODE, pictureMode);
 		cameraIntent.putExtra(CameraView.EXTRA_CAMERA_NUMBER, CameraNumber);
 		cameraIntent.putExtra(CameraView.EXTRA_FLASH_MODE, flashMode);
@@ -12791,7 +13027,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			if (!checkEOL()) { return false; }							// line must end with ']'
 
 			if (theSensors == null) {
-				theSensors = new SensorActivity(this);
+				theSensors = new SensorActivity(Run.this);
 			}
 			ArrayList<String> census = theSensors.takeCensus();
 			int nSensors = census.size();						// If no sensors reported.....
@@ -12805,7 +13041,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 
 		private boolean execute_sensors_open(){
 			if (theSensors == null) {
-				theSensors = new SensorActivity(this);
+				theSensors = new SensorActivity(Run.this);
 			}
 
 			if (isEOL()) { return false; }
@@ -12965,7 +13201,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (theGPS != null) return true;					// already opened
 
 		try {
-			theGPS = new GPS(this, minTime, minDistance);	// start GPS
+			theGPS = new GPS(Run.this, minTime, minDistance);	// start GPS
 		} catch (Exception e) {
 			writeErrorMsg(e);
 			errorCode = 0.0;
@@ -14466,30 +14702,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	private class ServerSocketConnectThread extends Thread {
-		public void run() {
-			try {
-				theServerSocket = newSS.accept();
-				ServerBufferedReader = new BufferedReader(new InputStreamReader(theServerSocket.getInputStream()));
-				ServerPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theServerSocket.getOutputStream())), true);
-				serverSocketState = STATE_CONNECTED;
-			} catch (Exception e) {
-				serverSocketState = STATE_NONE;
-			} finally {
-				serverSocketConnectThread = null;							// null global reference to itself
-			}
-			Log.d(LOGTAG, "serverSocketConnectThread exit, state " + serverSocketState);
-		}
-
-		@Override
-		public void interrupt() {
-			if (serverSocketState == STATE_LISTENING) {						// in case SERVER_DISCONNECT interrupts thread
-				serverSocketState = STATE_NONE;								// change state or SERVER_STATUS will report LISTENING
-			}
-			super.interrupt();
-		}
-	}
-
 	private boolean executeCLIENT_CONNECT() {
 
 		if (!getStringArg()) return false;									// get the server address
@@ -14517,39 +14729,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			}
 		}
 		return true;
-	}
-
-	private class ClientSocketConnectThread extends Thread {
-		private final String mAddress;
-		private final int mPort;
-
-		public ClientSocketConnectThread(String address, int port) {
-			super();
-			mAddress = address;
-			mPort = port;
-		}
-
-		public void run() {
-			try {
-				theClientSocket = new Socket(mAddress, mPort);
-				ClientBufferedReader = new BufferedReader(new InputStreamReader(theClientSocket.getInputStream()));
-				ClientPrintWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(theClientSocket.getOutputStream())), true);
-				clientSocketState = STATE_CONNECTED;
-			} catch (Exception e) {
-				clientSocketState = STATE_NONE;
-			} finally {
-				clientSocketConnectThread = null;							// null global reference to itself
-			}
-			Log.d(LOGTAG, "clientSocketConnectThread exit, state " + clientSocketState);
-		}
-
-		@Override
-		public void interrupt() {
-			if (clientSocketState == STATE_CONNECTING) {					// in case CLIENT_CLOSE interrupts thread
-				clientSocketState = STATE_NONE;								// change state or CLIENT_STATUS will report CONNECTING
-			}
-			super.interrupt();
-		}
 	}
 
 	private boolean executeSERVER_STATUS() {
@@ -14793,9 +14972,9 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;														// Success
 	}
 
-	private static boolean streamCopy(BufferedInputStream bis, DataOutputStream dos, int bufferSize,
-										long timeoutTime)		// time in ms, 0 means no timeout check
-										throws IOException {
+	private boolean streamCopy(BufferedInputStream bis, DataOutputStream dos, int bufferSize,
+								long timeoutTime)		// time in ms, 0 means no timeout check
+								throws IOException {
 		IOException ex = null;
 		ByteArrayBuffer byteArray = new ByteArrayBuffer(bufferSize);
 		int current = 0;
@@ -15234,9 +15413,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 			} catch (Exception e) {
 				return RunTimeError(e);
 			}
-			for (String r : response) {
-				PrintShow(r);
-			}
+			PrintShow(response);
 			return true;
 	}
 
@@ -15366,265 +15543,184 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return (++arg == nArgs);							// sanity-check arg count
 	} // execute_BT_status
 
-	private synchronized boolean execute_BT_open() {
+	private boolean execute_BT_open() {
 
-			  if (mBluetoothAdapter == null) {
-		            RunTimeError("Bluetooth is not available");
-		            return false;
-		        }
+		if (mBluetoothAdapter == null) {
+			return RunTimeError("Bluetooth is not available");
+		}
 
-		    	bt_Secure = true;												// this flag will be used when starting 
-		    	if (evalNumericExpression()) {									// the accept thread in BlueTootChatService
-		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
-		    	}
-		    	if (!checkEOL()) { return false; }
+		bt_Secure = true;												// this flag will be used when starting 
+		if (evalNumericExpression()) {									// the accept thread in BlueTootChatService
+			if (EvalNumericExpressionValue == 0) { bt_Secure = false; }
+		}
+		if (!checkEOL()) { return false; }
 
-		      bt_enabled = mBluetoothAdapter.isEnabled() ? 1 : 0;				// Is BT enabled?
-		      if (bt_enabled == 0) {
-		        bt_state = STATE_NOT_ENABLED;									// Enable BT
-		        if (GRopen) {
-		        	GR.doEnableBT = true;
-          		  	GR.drawView.postInvalidate();									// Start GR drawing.
-		        }else {
-		        	Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-		        	startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-		        }
-	            while (bt_enabled == 0)											// Wait until enabled
-	            	Thread.yield();
-	            
-	            if (bt_enabled == -1){											// Enable failed
-	            	RunTimeError("Bluetooth Not Enabled");
-	            	return false;
-	            }
-	          }
+		bt_enabled = mBluetoothAdapter.isEnabled() ? 1 : 0;				// Is BT enabled?
+		if (bt_enabled == 0) {
+			bt_state = STATE_NOT_ENABLED;								// Enable BT
+			if (GRopen) {
+				GR.doEnableBT = true;
+				GR.drawView.postInvalidate();							// Start GR drawing.
+			} else {
+				Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+				startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+			}
+			while (bt_enabled == 0)										// Wait until enabled
+				Thread.yield();
 
-	            bt_state = STATE_NONE;
-	            btConnectDevice = null;
-            	mOutStringBuffer = new StringBuffer("");
-            	BT_Read_Buffer = new ArrayList<String>();
+			if (bt_enabled == -1) {										// Enable failed
+				return RunTimeError("Bluetooth Not Enabled");
+			}
+		}
 
-				mChatService = new BluetoothChatService(this, mHandler);		// Starts the accept thread
-				mChatService.start(bt_Secure);
-
-		        return true;
-
+		synchronized (BT_Read_Buffer) {
+			bt_state = STATE_NONE;
+			btConnectDevice = null;
+			mOutStringBuffer = new StringBuffer("");
+			BT_Read_Buffer.clear();
+	
+			mChatService = new BluetoothChatService(Run.this, mHandler);	// Starts the accept thread
+			mChatService.start(bt_Secure);
+		}
+		return true;
 	}
 
-		  private boolean execute_BT_close(){
-			  if (mChatService != null) mChatService.stop();
-			  return checkEOL();
-		  }
-		  
-		    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-		        switch (requestCode) {
-		        case REQUEST_CONNECT_DEVICE_SECURE:
-		            // When DeviceListActivity returns with a device to connect
-		            if (resultCode == Activity.RESULT_OK) {
-		                connectDevice(data, bt_Secure);
-		            }
-		            break;
-		        case REQUEST_CONNECT_DEVICE_INSECURE:
-		            // When DeviceListActivity returns with a device to connect
-		            if (resultCode == Activity.RESULT_OK) {
-		                connectDevice(data, false);
-		            }
-		            break;
-		        case REQUEST_ENABLE_BT:
-		            // When the request to enable Bluetooth returns
-		            if (resultCode == Activity.RESULT_OK) {
-		                // Bluetooth is now enabled, so set up a chat session
-		            	bt_enabled = 1;
-		            } else {
-		                bt_enabled = -1;
-		            }
-		            break;
-		        case VOICE_RECOGNITION_REQUEST_CODE:
-		        	if (resultCode == RESULT_OK){
-		    	        sttResults = new ArrayList<String>();
-		        		sttResults = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-		        	}
-		        	sttDone = true;
-		        	break;
-		        }
-		    }
-		    
-		    public boolean handleBTMessage(Message msg) {
-		        switch (msg.what) {
-		            case MESSAGE_STATE_CHANGE:
-		            	bt_state = msg.arg1;
-		                break;
-		            case MESSAGE_WRITE:
-//		                byte[] writeBuf = (byte[]) msg.obj;
-		                // construct a string from the buffer
-//		                String writeMessage = new String(writeBuf);
-		                break;
-		            case MESSAGE_READ:
-		                byte[] readBuf = (byte[]) msg.obj;
-		                String readMessage = "";
-		                // construct a string from the valid bytes in the buffer
-//		                String readMessage = new String(readBuf, 0, msg.arg1);
-		                try {
-		                 readMessage = new String(readBuf, 0);
-		                } catch (Exception e){
-		                	Show ("Error: " + e);
-		                }
-		                readMessage = readMessage.substring(0, msg.arg1);
-		                synchronized (this){
-		                	if (BT_Read_Buffer.size() == 0) btReadReady = true;
-		                	BT_Read_Buffer.add(readMessage);
-		                }
-		                break;
-		            case MESSAGE_DEVICE_NAME:
-		                // save the connected device's name
-		                mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
-		                break;
-		            default:
-		                return false;							// message not recognized
-		        }
-		        return true;									// message handled
-		    }
-		    
-		    public void connectDevice(Intent data, boolean secure) {
-		    	
-		        String address = data.getExtras()
-		            .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
-		        btConnectDevice = null;
-		        try {
-		        	btConnectDevice = mBluetoothAdapter.getRemoteDevice(address);
-			        if ( btConnectDevice != null) mChatService.connect(btConnectDevice, secure);
-		        }
-		        catch (Exception e){ 
-		        	RunTimeError("Connect error: " + e);
-		        }
-		    }
-		    
-		    private boolean execute_BT_connect(){
-		    	bt_Secure = true;
-		    	if (evalNumericExpression()) {
-		    		if (EvalNumericExpressionValue == 0) bt_Secure = false;
-		    	}
-		    	if (!checkEOL()) { return false; }
-		    	
-		        if (GRopen) {
-		        	GR.startConnectBT = true;
-          		  	GR.drawView.postInvalidate();									// Start GR drawing.
-		        }else {
-		        	Intent serverIntent = null;
-		        	serverIntent = new Intent(this, DeviceListActivity.class);
-		        	if (serverIntent == null){
-		        		RunTimeError("Error selecting device");
-		        		return false;
-		        	}
-		        	if (bt_Secure) {
-		        		startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
-		        	}else {
-		        		startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
-		        	}
-		        }
-		    		return true;
-		    }
-		    
-		    private boolean execute_BT_disconnect(){
-		    	if (!checkEOL()) { return false; }
-		    	mChatService.disconnect();
-		    	return true;
-		    }
-		    
-		    private boolean execute_BT_reconnect(){
-		    	if (!checkEOL()) { return false; }
-		    	if (btConnectDevice == null) {
-		    		RunTimeError("Not previously connected");
-		    		return false;
-		    	}
-		    	mChatService.connect(btConnectDevice, bt_Secure);
-		    	return true;
-		    }
-		    
-		    private boolean execute_BT_listen(){
-		    	if (!checkEOL()) { return false; }
-//		    	mChatService.start();
-		    	return true;
-		    }
-		    
-		    private boolean execute_BT_device_name(){
-		        if (bt_state != STATE_CONNECTED) {
-		            RunTimeError("Bluetooth not connected");
-		            return false;
-		        }
-		    	
-		    	if (!getSVar() || !checkEOL()) return false;
-		    	StringVarValues.set(theValueIndex, mConnectedDeviceName);
-		    	return true;
-		    }
-		    
-		    private boolean execute_BT_write(){
-		        if (bt_state != STATE_CONNECTED) {
-		            RunTimeError("Bluetooth not connected");
-		            return true;                                // Deliberately not making error fatal
-		        }
-		        
-				if (!buildPrintLine("", "\n")) return false;	// build up the text line in StringConstant
+	private boolean execute_BT_close() {
+		if (mChatService != null) mChatService.stop();
+		return checkEOL();
+	}
 
-		        // Check that there's actually something to send
-		        if (StringConstant.length() > 0) {
-		            // Get the message bytes and tell the BluetoothChatService to write
-		        	byte[] send = new byte[StringConstant.length()];
-					for (int k=0; k<StringConstant.length(); ++k){
-						send[k] = (byte)StringConstant.charAt(k);
-					}
+	public void connectDevice(Intent data, boolean secure) {
 
-		            mChatService.write(send);
-		        }
-		    	return true;
-		    }
+		String address = data.getExtras().getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+		btConnectDevice = null;
+		try {
+			btConnectDevice = mBluetoothAdapter.getRemoteDevice(address);
+			if ( btConnectDevice != null) mChatService.connect(btConnectDevice, secure);
+		}
+		catch (Exception e) {
+			RunTimeError("Connect error: " + e);
+		}
+	}
 
-		    private boolean execute_BT_read_ready(){
-		    	if (!getNVar() || !checkEOL()) return false;
-		    	double d = 0;
-		    	if (bt_state == STATE_CONNECTED) {
-		    		synchronized (this){
-		    		d = (double)BT_Read_Buffer.size();
-		    		}
-		    	}
-		    	NumericVarValues.set(theValueIndex, d );
-		    	return true;
-		    	
-		    }
+	private boolean execute_BT_connect() {
+		bt_Secure = true;
+		if (evalNumericExpression()) {
+			if (EvalNumericExpressionValue == 0) { bt_Secure = false; }
+		}
+		if (!checkEOL()) { return false; }
+
+		if (GRopen) {
+			GR.startConnectBT = true;
+			GR.drawView.postInvalidate();					// Start GR drawing.
+		} else {
+			Intent serverIntent = null;
+			try { serverIntent = new Intent(Run.this, DeviceListActivity.class); }
+			catch (Exception ex) { return RunTimeError("Error selecting device"); }
+
+			int requestCode = (bt_Secure) ? REQUEST_CONNECT_DEVICE_SECURE : REQUEST_CONNECT_DEVICE_INSECURE;
+			startActivityForResult(serverIntent, requestCode);
+		}
+		return true;
+	}
+
+	private boolean execute_BT_disconnect() {
+		if (!checkEOL()) { return false; }
+		mChatService.disconnect();
+		return true;
+	}
+
+	private boolean execute_BT_reconnect() {
+		if (!checkEOL()) { return false; }
+		if (btConnectDevice == null) {
+			return RunTimeError("Not previously connected");
+		}
+		mChatService.connect(btConnectDevice, bt_Secure);
+		return true;
+	}
+
+	private boolean execute_BT_listen() {
+		if (!checkEOL()) { return false; }
+//		mChatService.start();
+		return true;
+	}
+
+	private boolean execute_BT_device_name(){
+		if (bt_state != STATE_CONNECTED) {
+			return RunTimeError("Bluetooth not connected");
+		}
+
+		if (!getSVar() || !checkEOL()) return false;
+		StringVarValues.set(theValueIndex, mConnectedDeviceName);
+		return true;
+	}
+
+	private boolean execute_BT_write() {
+		if (bt_state != STATE_CONNECTED) {
+			RunTimeError("Bluetooth not connected");
+			return true;								// Deliberately not making error fatal
+		}
+
+		if (!buildPrintLine("", "\n")) return false;	// build up the text line in StringConstant
+
+		// Check that there's actually something to send
+		if (StringConstant.length() > 0) {
+			// Get the message bytes and tell the BluetoothChatService to write
+			byte[] send = new byte[StringConstant.length()];
+			for (int k=0; k<StringConstant.length(); ++k){
+				send[k] = (byte)StringConstant.charAt(k);
+			}
+
+			mChatService.write(send);
+		}
+		return true;
+	}
+
+	private boolean execute_BT_read_ready() {
+		if (!getNVar() || !checkEOL()) return false;
+		int count = 0;
+		if (bt_state == STATE_CONNECTED) {
+			synchronized (BT_Read_Buffer) {
+				count = BT_Read_Buffer.size();
+			}
+		}
+		NumericVarValues.set(theValueIndex, (double)count);
+		return true;
+	}
 
 	private boolean execute_BT_readReady_Resume() {
 		return doResume("No Bluetooth Read Ready Interrupt");
 	}
 
-		    private boolean execute_BT_read_bytes(){
-		    	
-		        if (bt_state != STATE_CONNECTED) {
-		            RunTimeError("Bluetooth not connected");
-		            return false;
-		        }
-		        
-		        String msg = "";
-		        if (bt_state == STATE_CONNECTED) {
-		        	synchronized (this){
-		        		int index = BT_Read_Buffer.size();
-		        		if (index > 0 ){
-		        			msg = BT_Read_Buffer.get(0);
-		        			BT_Read_Buffer.remove(0);
-		        		}
-		        	}
-		        }
-		        
-		        if (!getSVar() || !checkEOL()) return false;
-		        StringVarValues.set(theValueIndex, msg);
-		        
-		    	return true;
-		    }
-		    
-		    private boolean execute_BT_set_uuid(){
-		    	if (!evalStringExpression() || !checkEOL()) return false;
-		    	UUID MY_UUID_SECURE = UUID.fromString(StringConstant);
-		    	UUID MY_UUID_INSECURE = UUID.fromString(StringConstant);
-		    	return true;
-		    }
+	private boolean execute_BT_read_bytes() {
+
+		if (bt_state != STATE_CONNECTED) {
+			return RunTimeError("Bluetooth not connected");
+		}
+
+		String msg = "";
+		if (bt_state == STATE_CONNECTED) {
+			synchronized (BT_Read_Buffer) {
+				int index = BT_Read_Buffer.size();
+				if (index > 0) {
+					msg = BT_Read_Buffer.get(0);
+					BT_Read_Buffer.remove(0);
+				}
+			}
+		}
+
+		if (!getSVar() || !checkEOL()) return false;
+		StringVarValues.set(theValueIndex, msg);
+
+		return true;
+	}
+
+	private boolean execute_BT_set_uuid() {
+		if (!evalStringExpression() || !checkEOL()) return false;
+		UUID MY_UUID_SECURE = UUID.fromString(StringConstant);
+		UUID MY_UUID_INSECURE = UUID.fromString(StringConstant);
+		return true;
+	}
 
 	// *********************************** Superuser and System ***********************************
 
@@ -15632,7 +15728,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Command c = findCommand(SU_cmd, (isSU ? "SU" : "System"));
 		if (c != null) {
 			if (SUprocess == null) {
-				if (c.id == CID_OPEN) this.isSU = isSU;
+				if (c.id == CID_OPEN) Run.this.isSU = isSU;
 				else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
 			}
 			return c.run();									// run the function and report back
@@ -15821,11 +15917,11 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (!getNVar()) return false;							// variable to hold the number of lines
 		if (!checkEOL()) return false;
 
-		theBackground.checkpointProgress();						// allow any pending Console activity to complete
-		while (ProgressPending) { Thread.yield(); }				// wait for checkpointProgress semaphore to clear
+		checkpointMessage();									// allow any pending Console activity to complete
+		while (mMessagePending) { Thread.yield(); }				// wait for checkpointMessage semaphore to clear
 
-		int count = output.size();								// number of lines written to console
-		NumericVarValues.set(theValueIndex, (double)count);
+		double count = mConsole.getCount();						// number of lines written to console
+		NumericVarValues.set(theValueIndex, count);
 		return true;
 	}
 
@@ -15837,8 +15933,8 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (--lineNum < 0) {									// convert from 1-based user index to 0-based Java index
 			return RunTimeError("Line number must be >= 1");
 		}
-		int max = output.size();								// number of lines written to console
-		String lineText = (lineNum < max) ? output.get(lineNum) : "";
+		int max = mConsole.getCount();							// number of lines written to console
+		String lineText = (lineNum < max) ? mConsole.getItem(lineNum) : "";
 		StringVarValues.set(theValueIndex, lineText);
 		return true;
 	}
@@ -15865,13 +15961,13 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return doResume("Console not touched");
 	}
 
-	private boolean executeCONSOLE_DUMP(){
+	private boolean executeCONSOLE_DUMP() {
 
 		if (!getStringArg() || !checkEOL()) { return false; }	// Only parameter is the filename
 		String theFileName = StringConstant;
 
-		theBackground.checkpointProgress();						// allow any pending Console activity to complete
-		while (ProgressPending) { Thread.yield(); }				// wait for checkpointProgress semaphore to clear
+		checkpointMessage();									// allow any pending Console activity to complete
+		while (mMessagePending) { Thread.yield(); }				// wait for checkpointMessage semaphore to clear
 
 		File file = new File(Basic.getDataPath(theFileName));
 		try {
@@ -15886,8 +15982,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		FileWriter writer = null;
 		try {
 			writer = new FileWriter(file, false);				// open the filewriter for the SD Card
-			for (String line : output) {
-				writer.write(line + "\n");
+			synchronized (mConsoleBuffer) {
+				for (String line : mOutput) {
+					writer.write(line + "\n");
+				}
 			}
 			writer.flush();
 			writer.close();
@@ -15899,27 +15997,27 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	  private boolean executeCONSOLE_FRONT(){
-		  Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-		  startActivity(Basic.theProgramRunner);
-		  GRFront = false;
+	private boolean executeCONSOLE_FRONT() {
+		Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
+		startActivity(Basic.theProgramRunner);
+		GRFront = false;
 
-		  return true;
-	  }
+		return true;
+	}
 
-	  private boolean executeCONSOLE_LINE_NEW(){
-		  Show("@@A");
-		  return true;
-	  }
+	private boolean executeCONSOLE_LINE_NEW() {
+		PrintShow("");
+		return true;
+	}
 
-	  private boolean executeCONSOLE_LINE_CHAR(){
-		  if (!evalStringExpression()) return false;
-		  char c = StringConstant.charAt(0);
-		  Show("@@B" + c);
-		  return true;
-	  }
+	private boolean executeCONSOLE_LINE_CHAR() {
+		if (!evalStringExpression()) return false;
+		char c = StringConstant.charAt(0);
+		sendMessage(MESSAGE_CONSOLE_LINE_CHAR, (int)c, 0);
+		return true;
+	}
 
-	// *************************************** Ringer Vars ****************************************
+	// ************************************* Ringer Commands **************************************
 
 	private boolean executeRINGER() {							// Get RINGER command keyword if it is there
 		return executeCommand(ringer_cmd, "Ringer");			// and execute the command
@@ -16367,7 +16465,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		if (phoneRcvInited) return true;
 		phoneRcvInited = true;
 
-		mTM = (TelephonyManager)this.getSystemService(Context.TELEPHONY_SERVICE);
+		mTM = (TelephonyManager)Run.this.getSystemService(Context.TELEPHONY_SERVICE);
 		mTM.listen(PSL, PhoneStateListener.LISTEN_CALL_STATE
 						+ PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
 
@@ -16634,7 +16732,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		if (!checkEOL()) return false;
 
-		htmlIntent = new Intent(this, Web.class);			// Intent variable used to tell if opened
+		htmlIntent = new Intent(Run.this, Web.class);		// Intent variable used to tell if opened
 		htmlIntent.putExtra(Web.EXTRA_SHOW_STATUSBAR, showStatusBar);
 		htmlIntent.putExtra(Web.EXTRA_ORIENTATION, orientation);
 		Web.aWebView = null;								// Will be set in Web.java
@@ -16778,34 +16876,6 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		return true;
 	}
 
-	public boolean handleHtmlMessage(Message msg) {
-		if ((msg.what == MESSAGE_HTML_OPEN) && (htmlIntent != null)) {
-			startActivityForResult(htmlIntent, BASIC_GENERAL_INTENT);
-		} else if (Web.aWebView != null) {
-			switch (msg.what) {
-			case MESSAGE_GO_BACK:		Web.aWebView.goBack();		break;
-			case MESSAGE_GO_FORWARD:	Web.aWebView.goForward();	break;
-			case MESSAGE_CLEAR_CACHE:	Web.aWebView.clearCache();	break;
-			case MESSAGE_CLEAR_HISTORY:	Web.aWebView.clearHistory();break;
-			case MESSAGE_LOAD_URL:
-				String url = (String)msg.obj;
-				Web.aWebView.webLoadUrl(url);
-				break;
-			case MESSAGE_LOAD_STRING:
-				String[] data = (String[])msg.obj;
-				Web.aWebView.webLoadString(data[0], data[1]);	// baseURL and HTML.Load.String argument
-				break;
-			case MESSAGE_POST:
-				String[] params = (String[])msg.obj;
-				Web.aWebView.webPost(params[0], params[1]);		// URL and data for "POST" request
-				break;
-			default:
-				return false;									// message not recognized
-			}
-		}
-		return true;											// message handled
-	}
-
 	// *************************************** Run Command ****************************************
 
 	private boolean executeRUN() {
@@ -16837,7 +16907,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		bb.putString("data", data);
 		bb.putBoolean("RUN", true);											// tell AutoRun this is a RUN command
 
-		runIntent = new Intent(this, AutoRun.class);
+		runIntent = new Intent(Run.this, AutoRun.class);
 		runIntent.putExtras(bb);
 
 		Stop = true;				// "Stop" would allow interrupt handling
@@ -16881,9 +16951,10 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		Notification notification = new Notification(R.drawable.icon, msg, System.currentTimeMillis());
 
 		// The PendingIntent will launch activity if the user selects this notification
-		PendingIntent contentIntent = PendingIntent.getActivity(this, REQUEST_CODE, new Intent(this, HandleNotify.class), 0);
+		PendingIntent contentIntent = PendingIntent.getActivity(Run.this, REQUEST_CODE,
+													new Intent(Run.this, HandleNotify.class), 0);
 
-		notification.setLatestEventInfo(this, title, subtitle, contentIntent);
+		notification.setLatestEventInfo(Run.this, title, subtitle, contentIntent);
 		notification.flags = Notification.FLAG_AUTO_CANCEL;
 
 		manager.notify(NOTIFICATION_ID, notification);
@@ -17098,5 +17169,7 @@ private static  void PrintShow(String str){				// Display a PRINT message on out
 		}
 		return false;
 	}
+
+} // End of Background
 
 } // End of Run

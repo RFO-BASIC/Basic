@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -44,10 +44,15 @@ import android.widget.EditText;
 public class TGet extends Activity {
 	private EditText theTextView;							// The EditText TextView
 	private int PromptIndex;
+	private final Run mRun;
 	private String theText;
 
 	private boolean lockReleased;			// safety valve so interpreter doesn't get hung if this
 											// instance is destroyed without first releasing the LOCK
+
+	public TGet(Run runner) {
+		mRun = runner;						// reference to the program runner and console
+	}
 
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event)  {
@@ -80,7 +85,7 @@ public class TGet extends Activity {
 		switch (item.getItemId()) {
 
 		case R.id.stop:										// User wants to stop execution
-			Run.MenuStop();									// Tell program runner (and user) it happened
+			mRun.MenuStop();								// Tell program runner (and user) it happened
 
 			returnText("");									// Tell TGet command it happened
 															// and end TGet Activity
@@ -88,27 +93,29 @@ public class TGet extends Activity {
 		return true;
 	}
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-       super.onCreate(savedInstanceState);
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
 
-       this.setContentView(R.layout.tget);					// Layouts xmls exist for both landscape or portrait modes
+		this.setContentView(R.layout.tget);					// Layouts xmls exist for both landscape or portrait modes
 
-       Intent intent = getIntent();
-       String title = intent.getStringExtra("title");
-       if (title != null) setTitle(title);
+		Intent intent = getIntent();
+		String title = intent.getStringExtra("title");
+		if (title != null) setTitle(title);
 
 		lockReleased = false;
 
-       theTextView = (EditText) findViewById(R.id.the_text);	// The text display area
+		theTextView = (EditText) findViewById(R.id.the_text);	// The text display area
 
-       theText = "";
-       for (int i = 0; i < Run.output.size(); ++ i) {
-    	   theText = theText + Run.output.get(i) + '\n';
-       }
+		theText = "";
+		synchronized (mRun.mConsole) {
+			for (int i = 0; i < mRun.mConsole.getCount(); ++ i) {
+				theText = theText + mRun.mConsole.getItem(i) + '\n';
+			}
+		}
 
-       theText = theText + Run.TextInputString ;
-       PromptIndex = theText.length();
+		theText = theText + Run.TextInputString ;
+		PromptIndex = theText.length();
 
        theTextView.setText(theText);							// The Editor's display text
        theTextView.setTypeface(Typeface.MONOSPACE);
