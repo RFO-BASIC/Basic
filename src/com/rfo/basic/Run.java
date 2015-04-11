@@ -2198,7 +2198,6 @@ public class Run extends ListActivity {
 	public int OnTimerLine;
 	public Timer theTimer;
 	public boolean timerExpired;
-	public boolean timerStarting;
 
 	// ******************** TimeZone Variables *******************************
 
@@ -2469,7 +2468,6 @@ public class Run extends ListActivity {
 
 	private void InitRunVars() {							// init vars needed for Run
 		IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-		myVib = (Vibrator) this.getSystemService(VIBRATOR_SERVICE);
 		clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		theBackground = null;								// Background task ID
@@ -3427,23 +3425,20 @@ public class Run extends ListActivity {
 
 /* ****************************** Start of Basic's run program code *******************************
  * 
+ * BASIC! program runner -- the BASIC! interpreter -- runs in a background thread.
  * The code is organized (?) as follows:
  * 
- * The first chunk is the the background task doInBackGround. This runs in a background thread.
- * It actually controls the running of the program by dispatching each line of code to be executed.
+ * The first chunk is the code that initializes the interpreter and then controls
+ * the running of the program by dispatching each line of code to be executed.
  * 
- * The second chunk is a foreground (UI) thread code that receives user interface messages from
- * doInBackground
+ * The second chunk is a set of Command tables that holds the function and command names.
  * 
- *  The third chunk is the Run Intent entry code. This code initializes things and starts
- *  running the background task.
- *  
- *  The next chunk is the methods that handle asynchronous events generally created by user
- *  key presses. These methods run in the foreground (UI) task.
- *  
- *  The final chunk and the largest part of Run is code that actually executes user program statements.
- *  This code all runs in the background task.
- *  
+ * The third chunk is made up of parsing methods. They identify the command on each line and call
+ * its execution method. The execution methods call the parsing methods to identify variables and
+ * evaluate expressions.
+ * 
+ * The final and largest part of Background is code that actually executes user program statements.
+ * 
  */
 
 
@@ -3978,15 +3973,10 @@ public class Run extends ListActivity {
 		}
 
 		if ( Web.aWebView != null) { Web.aWebView.webClose(); }
-	
-		if (theTimer != null) {
-			theTimer.cancel();
-			theTimer = null;
-		}
 
+		cancelTimer();
 		ttsStop();
-
-		myVib.cancel();
+		cancelVibrator();
 
 		if (theMP != null) {
 			theMP.release();
@@ -6446,9 +6436,8 @@ public class Run extends ListActivity {
 		if (length > 0) {
 			int count = EvalNumericExpressionValue.intValue();
 			if (count < 0) {
-				if (Math.abs(count) < length) {
-					str = str.substring(0, length + count);
-				} else { str = ""; }
+				count += length;
+				str = (count <= 0) ? "" : str.substring(0, count);
 			} else if (count < length) {
 				str = str.substring(0, count);
 			}
@@ -6468,9 +6457,7 @@ public class Run extends ListActivity {
 		if (length > 0) {
 			int count = EvalNumericExpressionValue.intValue();
 			if (count < 0) {
-				if (Math.abs(count) < length) {
-					str = str.substring(Math.abs(count));
-				} else { str = ""; }
+				str = (count <= 0) ? "" : str.substring(-count);
 			} else if (count < length) {
 				str = str.substring(length - count);
 			}
@@ -6492,20 +6479,26 @@ public class Run extends ListActivity {
 		if (isNext(',')) {								// If there is a count, get it
 			if (!evalNumericExpression()) { return false; }
 			count = EvalNumericExpressionValue.intValue();
-			if (count < 0) { return RunTimeError("Count < 0"); }
 		} else {
 			count = length;								// Default count is whole string
 		}
 		if (!isNext(')')) { return false; }				// Function must end with ')'
 
 		if (length > 0) {
-			if (start > length) { str = ""; }
-			else {
-				if (--start < 0) { start = 0; }			// Change 1-based index to 0-based
-				count += start;							// Change count to end index
-				if (count > length) { count = length; }
-				str = str.substring(start, count);
+			if (--start < 0) { start = 0; }				// change 1-based index to 0-based
+			else if (start >= length) { start = length; }
+			int end;									// 0-based end index
+			if (count > 0) {
+				end = start + count;
+				if (end > length) { end = length; }
+			} else {
+				end = start + 1;
+				if (end > length) { end = length; }
+				start = end + count;
+				if (start < 0) { start = 0; }
 			}
+			if ((count == 0) || (start >= length)) { str = ""; }
+			else if ((start > 0) || (end < length)) { str = str.substring(start, end); }
 		}
 		StringConstant = str;
 		return true;
@@ -10211,10 +10204,25 @@ public class Run extends ListActivity {
 			Pattern[i] = NumericVarValues.get(base + i).longValue();
 		}
 
-		if (repeat > 0) myVib.cancel();
-		else myVib.vibrate(Pattern, repeat);						// Do the vibrate
-
+		try {
+			if (myVib == null) {									// if no vibrator, go get it
+				myVib = (Vibrator)Run.this.getSystemService(VIBRATOR_SERVICE);
+			}
+			if (repeat > 0) myVib.cancel();
+			else myVib.vibrate(Pattern, repeat);					// Do the vibrate
+		} catch (SecurityException ex) {
+			Log.d(LOGTAG, "SecurityException on VIBRATE: do you have android.permission.VIBRATE in your Manifest?");
+			myVib = null;
+			return RunTimeError("Your app is not permitted to use VIBRATE.");
+		}
 		return true;
+	}
+
+	private void cancelVibrator() {
+		if (myVib != null) {
+			myVib.cancel();
+			myVib = null;
+		}
 	}
 
 	private boolean executeDEVICE() {
@@ -17061,44 +17069,33 @@ public class Run extends ListActivity {
 
 		if (!evalNumericExpression()) return false;
 		long interval = EvalNumericExpressionValue.longValue();
-		if (interval < 100) {
-			return RunTimeError("Interval Must Be >= 100");
-		}
-
+		if (interval < 1) { interval = 1; }				// Disallow negative or zero
 		if (!checkEOL()) return false;
 
 		TimerTask tt = new TimerTask() {
 			public void run() {
-				// Delegate to the same runnable each time.
-				toRunRepeatedly.run();
+				timerExpired= true;
 			}
 		};
 
 		timerExpired= false;
-		timerStarting = true;
 		theTimer = new Timer();
-		theTimer.scheduleAtFixedRate(tt, 100, interval);
+		theTimer.scheduleAtFixedRate(tt, interval, interval);
 
 		return true;
 	}
 
-	Runnable toRunRepeatedly = new Runnable() {
-		public void run() {
-			if (timerStarting)
-				timerStarting = false;
-			else
-				timerExpired= true;
-		}
-	};
-
 	private boolean executeTIMER_CLEAR() {
 		if (!checkEOL()) return false;
+		cancelTimer();
+		return true;
+	}
 
+	private void cancelTimer() {
 		if (theTimer != null) {
 			theTimer.cancel();
 			theTimer = null;
 		}
-		return true;
 	}
 
 	private boolean executeTIMER_RESUME() {
