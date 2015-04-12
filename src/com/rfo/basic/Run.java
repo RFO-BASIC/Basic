@@ -209,6 +209,7 @@ public class Run extends ListActivity {
 //	Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer.line());
 
 	public static Object LOCK = new Object();
+	public static boolean mWaitForLock;
 
 	// ********************* Message types for the Handler *********************
 
@@ -1144,8 +1145,8 @@ public class Run extends ListActivity {
 
 															// The output screen text lines
 	final private static int MIN_CONSOLE_LINES = 100;		// starting capacity of mConsole
-	public final ArrayList<String> mOutput = new ArrayList<String>(MIN_CONSOLE_LINES);
-	public final ArrayList<String> mConsoleBuffer = new ArrayList<String>();	// carries output from Background to UI
+	private final ArrayList<String> mOutput = new ArrayList<String>(MIN_CONSOLE_LINES);
+	private final ArrayList<String> mConsoleBuffer = new ArrayList<String>();	// carries output from Background to UI
 
 	public Basic.ColoredTextAdapter mConsole;				// The output screen array adapter
 	private ListView lv;									// The output screen list view
@@ -1442,7 +1443,6 @@ public class Run extends ListActivity {
 	// ********************************* Variables for text.input command **********************
 
 	public static String TextInputString = "";
-	public static boolean HaveTextInput;
 
 	// ******************************** Graphics Declarations **********************************
 
@@ -2361,10 +2361,19 @@ public class Run extends ListActivity {
 	private void updateConsole(String... strs) {
 
 		synchronized (mConsoleBuffer) {
+			boolean notified = false;
 			if (mConsoleBuffer.size() != 0) {			// if any lines
 				mConsole.addAll(mConsoleBuffer);		// write each line to screen
 				mConsoleBuffer.clear();
-			} else { mConsole.notifyDataSetChanged(); }
+				notified = true;
+			}
+			if ((strs != null) && (strs.length != 0)) {
+				for (String str : strs) {
+					mConsole.add(str);
+				}
+				notified = true;
+			}
+			if (!notified) { mConsole.notifyDataSetChanged(); }
 			// setListAdapter(AA);						// show the output
 			lv.setSelection(mConsole.getCount() - 1);	// set last line as the selected line to scroll
 		}
@@ -2838,7 +2847,7 @@ public class Run extends ListActivity {
 		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
 			public void onDismiss( DialogInterface dialog) {
 				Log.d(LOGTAG, "Input Dialog onDismiss");
-				HaveTextInput = true;						// semaphore used in waitForLOCK
+				mWaitForLock = false;						// semaphore used in waitForLOCK
 				synchronized (LOCK) {
 					LOCK.notify();							// release the lock that executeINPUT is waiting for
 				}
@@ -2919,7 +2928,7 @@ public class Run extends ListActivity {
 		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
 			public void onDismiss( DialogInterface dialog) {
 				Log.d(LOGTAG, "Alert Dialog onDismiss");
-				HaveTextInput = true;						// semaphore used in waitForLOCK
+				mWaitForLock = false;						// semaphore used in waitForLOCK
 				synchronized (LOCK) {
 					LOCK.notify();							// release the lock that executeINPUT is waiting for
 				}
@@ -3846,7 +3855,6 @@ public class Run extends ListActivity {
 		// ********************************* Variables for text.input command ********************
 
 		TextInputString = "";
-		HaveTextInput = false;
 
 		// ******************************** Graphics Declarations **********************************
 
@@ -7693,7 +7701,7 @@ public class Run extends ListActivity {
 		b.putString("default", inputDefault);
 		b.putString("button1", "Ok");
 		b.putInt("varIndex", varIndex);
-		HaveTextInput = false;
+		mWaitForLock = true;
 		mInputCancelled = false;
 		sendMessage(MESSAGE_INPUT_DIALOG, b);				// signal UI to start the dialog
 
@@ -7726,9 +7734,9 @@ public class Run extends ListActivity {
 	private void waitForLOCK() {
 		synchronized (LOCK) {
 			Log.d(LOGTAG, "set LOCK wait");
-			while (!HaveTextInput) {
+			while (mWaitForLock) {
 				try { LOCK.wait(); }
-				catch (InterruptedException e) { HaveTextInput = true; }
+				catch (InterruptedException e) { mWaitForLock = false; }
 			}
 		}
 	}
@@ -7773,7 +7781,7 @@ public class Run extends ListActivity {
 			b.putString(btnKey[i], btn[i]);
 		}
 
-		HaveTextInput = false;
+		mWaitForLock = true;
 		sendMessage(MESSAGE_ALERT_DIALOG, b);				// signal UI to start the dialog
 
 		waitForLOCK();										// wait for the user to exit the Dialog
@@ -7791,7 +7799,7 @@ public class Run extends ListActivity {
 		selectList.toArray(array);
 		args.putStringArray("list", array);
 
-		HaveTextInput = false;
+		mWaitForLock = true;
 		sendMessage(MESSAGE_ALERT_DIALOG, args);				// signal UI to start the dialog
 
 		waitForLOCK();										// wait for the user to exit the Dialog
@@ -8681,7 +8689,7 @@ public class Run extends ListActivity {
 
 		Intent intent = new Intent(Run.this, TextInput.class);
 		if (title != null) { intent.putExtra("title", title); }
-		HaveTextInput = false;
+		mWaitForLock = true;
 		startActivityForResult(intent, BASIC_GENERAL_INTENT);
 
 		waitForLOCK();														// Wait for signal from TextInput.java thread
@@ -8800,15 +8808,25 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
+		checkpointMessage();							// allow any pending Console activity to complete
+		while (mMessagePending) { Thread.yield(); }		// wait for checkpointMessage semaphore to clear
+
 		Intent intent = new Intent(Run.this, TGet.class);
-		if (title != null) { intent.putExtra("title", title); }
-		HaveTextInput = false;
+		if (title != null) { intent.putExtra(TGet.TITLE, title); }
+		synchronized (mConsoleBuffer) {
+			intent.putStringArrayListExtra(TGet.CONSOLE_TEXT, mOutput);
+		}
+		mWaitForLock = true;
 		startActivityForResult(intent, BASIC_GENERAL_INTENT);
 
-		waitForLOCK();														// Wait for signal from TGet.java thread
+		waitForLOCK();									// wait for signal from TGet.java thread
 
-		PrintShow(Prompt + TextInputString);
-		StringVarValues.set(saveValueIndex, TextInputString);
+		if (TGet.mMenuStop) {							// user selected Stop from TGet menu
+			MenuStop();
+		} else {
+			PrintShow(Prompt + TextInputString);
+			StringVarValues.set(saveValueIndex, TextInputString);
+		}
 		return true;
 	}
 

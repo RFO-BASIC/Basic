@@ -26,8 +26,6 @@ Copyright (C) 2010 - 2015 Paul Laughton
 
 package com.rfo.basic;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -79,7 +77,7 @@ import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.KeySpec;
 
 
-public class Basic extends Activity  {
+public class Basic extends Activity {
 
 	private static final String LOGTAG = "Basic";
 	private static final String CLASSTAG = Basic.class.getSimpleName();

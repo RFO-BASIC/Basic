@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -57,28 +57,28 @@ public class TextInput extends Activity {
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-       super.onCreate(savedInstanceState);
+		super.onCreate(savedInstanceState);
 
-       setContentView(R.layout.text_input);	// Layout xmls exist for both landscape and portrait modes
+		setContentView(R.layout.text_input);	// Layout xmls exist for both landscape and portrait modes
 
-       Intent intent = getIntent();
-       String title = intent.getStringExtra("title");
-       if (title != null) setTitle(title);
+		Intent intent = getIntent();
+		String title = intent.getStringExtra("title");
+		if (title != null) { setTitle(title); }
 
 		lockReleased = false;
 
-       finishedButton = (Button) findViewById(R.id.finished_button);		// The buttons
+		finishedButton = (Button) findViewById(R.id.finished_button);		// The buttons
 
-       theTextView = (EditText) findViewById(R.id.the_text);				// The text display area
-       theTextView.setText(Run.TextInputString);							// The Editor's display text
-       theTextView.setTypeface(Typeface.MONOSPACE);
-       theTextView.setSelection(Run.TextInputString.length());
+		theTextView = (EditText) findViewById(R.id.the_text);				// The text display area
+		theTextView.setText(Run.TextInputString);							// The Editor's display text
+		theTextView.setTypeface(Typeface.MONOSPACE);
+		theTextView.setSelection(Run.TextInputString.length());
 
-       Basic.TextStyle style = Basic.defaultTextStyle;						// Get text color from Settings
-       theTextView.setTextColor(style.mTextColor);
-       theTextView.setBackgroundColor(style.mBackgroundColor);
+		Basic.TextStyle style = Basic.defaultTextStyle;						// Get text color from Settings
+		theTextView.setTextColor(style.mTextColor);
+		theTextView.setBackgroundColor(style.mBackgroundColor);
 
-       theTextView.setTextSize(1, Settings.getFont(this));
+		theTextView.setTextSize(1, Settings.getFont(this));
 
 		finishedButton.setOnClickListener(new OnClickListener() {			// **** Done Button ****
 
@@ -95,7 +95,7 @@ public class TextInput extends Activity {
 		if (lockReleased) return;
 
 		synchronized (Run.LOCK) {
-			Run.HaveTextInput = true;
+			Run.mWaitForLock = false;
 			lockReleased = true;
 			Run.LOCK.notify();								// release the lock that Run is waiting for
 		}
