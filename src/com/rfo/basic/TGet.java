@@ -77,6 +77,8 @@ public class TGet extends Activity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {			// Called when the menu key is pressed.
 		super.onCreateOptionsMenu(menu);
+		if (!Settings.getConsoleMenu(this)) { return false; }
+
 		getMenuInflater().inflate(R.menu.run, menu);		// Same menu as Run...
 		menu.removeItem(R.id.editor);						// ... except no "Editor" item
 		return true;

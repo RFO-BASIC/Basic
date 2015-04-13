@@ -109,7 +109,7 @@ This file is part of BASIC! for Android
     <CheckBoxPreference
         android:key="console_menu"
         android:title="Console Menu"
-        android:summary="Display Console Menu"
+        android:summary="Display Menu in Console and TGet"
         android:defaultValue="true" />
 
     <CheckBoxPreference
