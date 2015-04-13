@@ -2607,18 +2607,14 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-	public void MenuStop() {
-		updateConsole("Stopped by user.");				// tell user
-		Stop = true;									// signal main loop to stop
-		OnBackKeyLine = 0;
-	}
-
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {	// A menu item is selected
 		switch (item.getItemId()) {
 
 		case R.id.stop:										// User wants to stop execution
-			MenuStop();
+			updateConsole("Stopped by user.");				// tell user
+			Stop = true;									// signal main loop to stop
+			OnBackKeyLine = 0;								// menu-selected stop is not trappable
 			return true;
 
 		case R.id.editor:									// User pressed Editor
@@ -4050,9 +4046,9 @@ public class Run extends ListActivity {
 			theGPS = null;
 		}
 
-		if (!Basic.DoAutoRun && SyntaxError) {
-			Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
-		} else Editor.SyntaxErrorDisplacement = -1;
+		if (!SyntaxError || Basic.DoAutoRun) {		// if no error or no Editor
+			Editor.SyntaxErrorDisplacement = -1;	// clear error highlighting, if any
+		}
 
 		BitmapListClear();
 
@@ -4957,6 +4953,8 @@ public class Run extends ListActivity {
 		}
 
 		SyntaxError = true;
+		Editor.SyntaxErrorDisplacement = ExecutingLineIndex + 1;
+
 		writeErrorMsg(msgs[0]);
 		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
 		return false;						// Always return false as convenience for caller
@@ -5383,7 +5381,7 @@ public class Run extends ListActivity {
 			theValueStack.push(GetNumberValue);					// push the number
 		}
 		else if ((cmd = getFunction(MF_map)) != null) {			// Try Math Function
-			if (!doMathFunction(cmd)) return false;				// Math Function failed
+			if (!doMathFunction(cmd)) { SyntaxError(); return false; }
 			theValueStack.push(EvalNumericExpressionValue);		// Push the result of the function
 		}
 		else if (evalStringExpression()) {						// Try String Logical Expression
@@ -5391,7 +5389,7 @@ public class Run extends ListActivity {
 			theValueStack.push(EvalNumericExpressionValue);
 		}
 		else if (isUserFunction(true, TYPE_NUMERIC)) {			// Try User Function
-			if (!doUserFunction()) return false;
+			if (!doUserFunction()) { SyntaxError(); return false; }
 			FnDef = savedFnDef;
 			theValueStack.push(EvalNumericExpressionValue);
 		}
@@ -5763,7 +5761,7 @@ public class Run extends ListActivity {
 			Command cmd = getFunction(SF_map);
 			flag = (cmd != null) && cmd.run();					// value returned in StringConstant
 		}
-		if (!flag) { LineIndex = LI; }
+		if (!flag) { LineIndex = LI; SyntaxError(); }
 		return flag;
 	}
 
@@ -6147,7 +6145,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeMF_LEN() {					// LEN(s$
-		if (!getStringArg()) { return false; }			// Get and check the string expression
+		if (!getStringArg()) return false;				// Get and check the string expression
 		double d1 = StringConstant.length();			// then get its length
 		EvalNumericExpressionValue = d1;
 		return true;
@@ -6173,7 +6171,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeMF_VAL() {					// VAL(s$
-		if (!getStringArg()) { return false; }			// Get and check the string expression
+		if (!getStringArg()) return false;				// Get and check the string expression
 		StringConstant = StringConstant.trim();
 		if (StringConstant.length() == 0) {
 			return RunTimeError("VAL of empty string is not valid");
@@ -6203,10 +6201,10 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeMF_ASCII() {
-		if (!getStringArg()) { return false; }			// Get and check the string expression
+		if (!getStringArg()) return false;				// Get and check the string expression
 		int len = StringConstant.length();
 		int index = getIndexArg(len);					// get 1-based string index, 0 if error
-		if (--index < 0) { return false; }				// convert to 0-based index
+		if (--index < 0) return false;					// convert to 0-based index
 
 		EvalNumericExpressionIntValue = (len == 0) ? 256L : (StringConstant.charAt(index) & 0x00FF);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
@@ -6215,10 +6213,10 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeMF_UCODE() {
-		if (!getStringArg()) { return false; }			// Get and check the string expression
+		if (!getStringArg()) return false;				// Get and check the string expression
 		int len = StringConstant.length();
 		int index = getIndexArg(len);					// get 1-based string index, 0 if error
-		if (--index < 0) { return false; }				// convert to 0-based index
+		if (--index < 0) return false;					// convert to 0-based index
 
 		EvalNumericExpressionIntValue = (len == 0) ? 0x10000L : StringConstant.charAt(index);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
@@ -6229,15 +6227,13 @@ public class Run extends ListActivity {
 	private boolean executeMF_MOD() {					// MOD( d1,d2
 		double[] args = getArgsDD();
 		if (args == null) return false;
-		if (args[1] == 0.0) {
-			return RunTimeError("DIVIDE BY ZERO AT:");
-		}
+		if (args[1] == 0.0) { return RunTimeError("DIVIDE BY ZERO AT:"); }
 		EvalNumericExpressionValue = (args[0] % args[1]);
 		return true;
 	}
 
 	private boolean executeMF_BNOT() {
-		if (!evalNumericExpression())	{ return false; }
+		if (!evalNumericExpression()) return false;
 		long arg = EvalNumericExpressionValue.longValue();
 		EvalNumericExpressionIntValue = ~arg;
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
@@ -6342,7 +6338,7 @@ public class Run extends ListActivity {
 			EvalNumericExpressionIntValue = System.currentTimeMillis();
 		} else {													// Otherwise, get user-supplied time
 			Time time = theTimeZone.equals("") ? new Time() : new Time(theTimeZone);
-			if (!parseTimeArgs(time)) { return false; }
+			if (!parseTimeArgs(time)) return false;
 			EvalNumericExpressionIntValue = time.toMillis(true);
 		}
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
@@ -6359,7 +6355,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeMF_base(int base) {			// BIN, OCT, or HEX, depending on the base parameter
-		if (!getStringArg()) { return false; }			// Get and check the string expression
+		if (!getStringArg()) return false;				// Get and check the string expression
 		try {
 			EvalNumericExpressionIntValue = new BigInteger(StringConstant, base).longValue();
 			EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
@@ -6434,11 +6430,11 @@ public class Run extends ListActivity {
 	// Each string function must check for the closing parenthesis (')').
 
 	private boolean executeSF_LEFT() {													// LEFT$
-		if (!getStringArg()) { return false; }
+		if (!getStringArg())			return false;
 		String str = StringConstant;
-		if (!isNext(',')) { return false; }
-		if (!evalNumericExpression()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 
 		int length = str.length();
 		if (length > 0) {
@@ -6455,11 +6451,11 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeSF_RIGHT() {													// RIGHT$
-		if (!getStringArg()) { return false; }
-		if (!isNext(',')) { return false; }
+		if (!getStringArg())			return false;
+		if (!isNext(','))				return false;
 		String str = StringConstant;
-		if (!evalNumericExpression()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!evalNumericExpression())	return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 
 		int length = str.length();
 		if (length > 0) {
@@ -6475,22 +6471,22 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeSF_MID() {													// MID$
-		if (!getStringArg()) { return false; }			// Get the string
+		if (!getStringArg())			return false;	// Get the string
 		String str = StringConstant;
 		int length = str.length();
 
-		if (!isNext(',')) { return false; }
-		if (!evalNumericExpression()) { return false; }	// Get the start index
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;	// Get the start index
 		int start = EvalNumericExpressionValue.intValue();
 		int count;
 
 		if (isNext(',')) {								// If there is a count, get it
-			if (!evalNumericExpression()) { return false; }
+			if (!evalNumericExpression()) return false;
 			count = EvalNumericExpressionValue.intValue();
 		} else {
 			count = length;								// Default count is whole string
 		}
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!isNext(')'))				return false;	// Function must end with ')'
 
 		if (length > 0) {
 			if (--start < 0) { start = 0; }				// change 1-based index to 0-based
@@ -6513,18 +6509,18 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeSF_WORD() {													// WORD$
-		if (!getStringArg()) { return false; }			// string to split
+		if (!getStringArg())			return false;	// string to split
 		String SearchString = StringConstant;
 
-		if (!isNext(',')) { return false; }
-		if (!evalNumericExpression()) { return false; }	// which word to return
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;	// which word to return
 		int wordIndex = EvalNumericExpressionValue.intValue();
 
 		String r[] = doSplit(SearchString, 0);			// get regex arg, if any, and split the string.
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!isNext(')'))				return false;	// Function must end with ')'
 
 		int length = r.length;							// get the number of strings generated
-		if (length == 0) { return false; }				// error in doSplit()
+		if (length == 0)				return false;	// error in doSplit()
 
 		wordIndex--;									// convert to 0-based index
 		for (int i = 0; (i < length) && (r[i].length() == 0); ++i) {
@@ -6535,53 +6531,53 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeSF_STR() {													// STR$
-		if (!evalNumericExpression()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!evalNumericExpression())	return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		StringConstant = String.valueOf(EvalNumericExpressionValue);
 		return true;
 	}
 
 	private boolean executeSF_UPPER() {													// UPPER$
-		if (!getStringArg()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!getStringArg())			return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		StringConstant = StringConstant.toUpperCase(Locale.getDefault());
 		return true;
 	}
 
 	private boolean executeSF_LOWER() {													// LOWER$
-		if (!getStringArg()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!getStringArg())			return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		StringConstant = StringConstant.toLowerCase(Locale.getDefault());
 		return true;
 	}
 
 	private boolean executeSF_FORMAT() {												// FORMAT$
-		if (!getStringArg()) { return false; }			// get the pattern string
+		if (!getStringArg())			return false;	// get the pattern string
 		String str = StringConstant;
 
-		if (!isNext(',')) { return false; }
-		if (!evalNumericExpression()) { return false; }	// Get the number to format
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;	// Get the number to format
+		if (!isNext(')'))				return false;	// Function must end with ')'
 
 		return Format(str, EvalNumericExpressionValue);	// and then do the format
 	}
 
 	private boolean executeSF_USING() {
 		Locale locale;
-		if (isNext(',')) { StringConstant = ""; }	// force default Locale
+		if (isNext(',')) { StringConstant = ""; }		// force default Locale
 		else {
-			if (!getStringArg()) return false;		// get user-specified Locale
-			if (!isNext(',')) return false;
+			if (!getStringArg())		return false;	// get user-specified Locale
+			if (!isNext(','))			return false;
 		}
 		locale = parseLocale(StringConstant);
 		if (locale == null) { return RunTimeError("Unknown locale " + StringConstant); }
 
-		if (!getStringArg()) return false;			// get format string
+		if (!getStringArg())			return false;	// get format string
 		String fmt = StringConstant;
 
-		Object[] args = getUsingArgs();				// get data to format
-		if (args == null) return false;				// error getting args
-		if (!isNext(')')) return false;				// Function must end with ')'
+		Object[] args = getUsingArgs();					// get data to format
+		if (args == null)				return false;	// error getting args
+		if (!isNext(')'))				return false;	// Function must end with ')'
 
 		try {
 			StringConstant = String.format(locale, fmt, args);
@@ -6595,74 +6591,74 @@ public class Run extends ListActivity {
 	private boolean executeSF_CHR() {													// CHR$
 		StringBuilder sb = new StringBuilder();
 		do {
-			if (!evalNumericExpression()) { return false; }
+			if (!evalNumericExpression()) return false;
 			sb.append((char)EvalNumericExpressionValue.intValue());
 		} while (isNext(','));
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		StringConstant = sb.toString();
 		return true;
 	}
 
 	private boolean executeSF_VERSION() {												// VERSION$
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		StringConstant = getString(R.string.version);
 		return true;
 	}
 
 	private boolean executeSF_GETERROR() {												// GETERROR$
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		StringConstant = (errorMsg != null) ? errorMsg : "unknown";
 		return true;
 	}
 
 	private boolean executeSF_REPLACE() {												// REPLACE$
-		if (!getStringArg()) { return false; }
+		if (!getStringArg())			return false;
 		String target = StringConstant;
 
-		if (!isNext(',')) { return false; }
-		if (!getStringArg()) { return false; }
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;
 		String argument = StringConstant;
 
-		if (!isNext(',')) { return false; }
-		if (!getStringArg()) { return false; }
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;
 		String replacment = StringConstant;
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!isNext(')'))				return false;	// Function must end with ')'
 
 		if (argument == null || replacment == null) {
 			return RunTimeError("Invalid string");
 		}
-		
+
 		StringConstant = target.replace(argument, replacment);
 		return true;
 	}
 
 	private boolean executeSF_INT() {													// INT$
-		if (!evalNumericExpression()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!evalNumericExpression())	return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		long val = EvalNumericExpressionValue.longValue();
 		StringConstant = Long.toString(val);
 		return true;
 	}
 
 	private boolean executeSF_HEX() {													// HEX$
-		if (!evalNumericExpression()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!evalNumericExpression())	return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		long val = EvalNumericExpressionValue.longValue();
 		StringConstant = Long.toHexString(val);
 		return true;
 	}
 
 	private boolean executeSF_OCT() {													// OCT$
-		if (!evalNumericExpression()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!evalNumericExpression())	return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		long val = EvalNumericExpressionValue.longValue();
 		StringConstant = Long.toOctalString(val);
 		return true;
 	}
 
 	private boolean executeSF_BIN() {													// BIN$
-		if (!evalNumericExpression()) { return false; }
-		if (!isNext(')')) { return false; }				// Function must end with ')'
+		if (!evalNumericExpression())	return false;
+		if (!isNext(')'))				return false;	// Function must end with ')'
 		long val = EvalNumericExpressionValue.longValue();
 		StringConstant = Long.toBinaryString(val);
 		return true;
@@ -6670,24 +6666,24 @@ public class Run extends ListActivity {
 
 	private boolean parseTimeArgs(Time time) {						// Convert time parameters to Time object fields
 		int year, month, day, hour, minute, second;					// Requires six parameters,
-		if (!getArgAsNum()) return false;							// either numeric or string containing a number
+		if (!getArgAsNum())					return false;			// either numeric or string containing a number
 		year = EvalNumericExpressionValue.intValue();				// Year$
-		if (!isNext(',') || !getArgAsNum()) return false;
+		if (!isNext(',') || !getArgAsNum())	return false;
 		month = EvalNumericExpressionValue.intValue() - 1;			// Month$ (convert to 0-index)
-		if (!isNext(',') || !getArgAsNum()) return false;
+		if (!isNext(',') || !getArgAsNum())	return false;
 		day = EvalNumericExpressionValue.intValue();				// Day$
-		if (!isNext(',') || !getArgAsNum()) return false;
+		if (!isNext(',') || !getArgAsNum())	return false;
 		hour = EvalNumericExpressionValue.intValue();				// Hour$
-		if (!isNext(',') || !getArgAsNum()) return false;
+		if (!isNext(',') || !getArgAsNum())	return false;
 		minute = EvalNumericExpressionValue.intValue();				// Minute$
-		if (!isNext(',') || !getArgAsNum()) return false;
+		if (!isNext(',') || !getArgAsNum())	return false;
 		second = EvalNumericExpressionValue.intValue();				// Second$
 		time.set(second, minute, hour, day, month, year);
 		return true;
 	}
 
 	private Locale parseLocale(String localeStr) {
-		if ((localeStr == null) || (localeStr.length() == 0)) return Locale.getDefault();
+		if ((localeStr == null) || (localeStr.length() == 0)) { return Locale.getDefault(); }
 		Locale locale;
 		String[] f = localeStr.split("_");
 		switch (f.length) {
@@ -6708,9 +6704,9 @@ public class Run extends ListActivity {
 			} else {
 				if (getStringArg()) {
 					args.add(StringConstant);			// field is string
-				} else if (VarIsFunction) { return null; }
+				} else if (VarIsFunction) return null;
 			}
-			if (SyntaxError) { return null; }
+			if (SyntaxError) return null;
 		}
 		return args.toArray();
 	}
@@ -6735,145 +6731,141 @@ public class Run extends ListActivity {
 		int VdecimalIndex = 0;
 		
 																			// First find pattern string decimal index
-		for (i=0; i< Fstring.length(); ++i){
-			if (Fstring.charAt(i)== '.'){
-				if (FhasDecimal){SyntaxError(); return false;}				// if more than one decimal, error
+		for (i = 0; i < Fstring.length(); ++i) {
+			if (Fstring.charAt(i)== '.') {
+				if (FhasDecimal) 			return false;					// if more than one decimal, error
 				FhasDecimal = true;
 				FdecimalIndex = i;
 			}
 		}
-		if (!FhasDecimal){													// If no decimal in pattern
-			FdecimalIndex = i+1;											// set decimal index past end of pattern
-			}else {															// else move index past the decimal
-				++FdecimalIndex;
-				}
+		if (!FhasDecimal) {													// If no decimal in pattern
+			FdecimalIndex = i + 1;											// set decimal index past end of pattern
+		} else {															// else move index past the decimal
+			++FdecimalIndex;
+		}
 																			// Split the pattern string
 		FWstring = Fstring.substring(0, FdecimalIndex-1);									// FW is whole number part (includes decimal)
 		if (FhasDecimal) {FDstring = Fstring.substring(FdecimalIndex, Fstring.length());}	// FD is decimal string
 
-		for (i=0; i<FDstring.length(); ++i){								// insure FD only has # chars
-			if (FDstring.charAt(i) != '#'){SyntaxError(); return false;}
+		for (i = 0; i < FDstring.length(); ++i) {							// insure FD only has # chars
+			if (FDstring.charAt(i) != '#')	return false;
 		}
 
-		for (i=0; i< Vstring.length(); ++i){								// Scan the number string for its decimal index
+		for (i=0; i< Vstring.length(); ++i) {								// Scan the number string for its decimal index
 			if (Vstring.charAt(i)== '.'){
-				if (VhasDecimal){SyntaxError(); return false;}				// more than one decimal should never happen
+				if (VhasDecimal)			return false;					// more than one decimal should never happen
 				VhasDecimal = true;
 				VdecimalIndex = i;											// Set the value decimal index
 			}
 		}
-		if (!VhasDecimal){													// If value has not decimal (should never happen)
-			VdecimalIndex = i+1;
-			}else {
-				++VdecimalIndex;											// move the decimal index past the decimal
-				}
+		if (!VhasDecimal) {													// If value has not decimal (should never happen)
+			VdecimalIndex = i + 1;
+		} else {
+			++VdecimalIndex;												// move the decimal index past the decimal
+		}
 																			// Split the value string
 		VWstring = Vstring.substring(0, VdecimalIndex-1);										// VW is whole number part (includes decimal)
-		if (VhasDecimal) {VDstring = Vstring.substring(VdecimalIndex, Vstring.length());}		// VD is the decimal part 
+		if (VhasDecimal) { VDstring = Vstring.substring(VdecimalIndex, Vstring.length()); }		// VD is the decimal part 
+
 																			// Build the decimal part of the output string
 		Temp = "";
-        if (FDstring.length()>0){Temp = ".";}								// If any pattern for decimal, output the decimal
-        
-        for (i=0; i<FDstring.length(); ++i){								// Copy Decimal digits to output as long as there
-        	if (FDstring.charAt(i) != '#'){SyntaxError(); return false;}	// are pattern # chars. If run out of digits before
-        	if (i<VDstring.length()){										// pattern digits, output 0 characters			
-        		Temp = Temp + VDstring.charAt(i);
-        	}else{
-        		Temp = Temp + "0";
-        	}
-        }
-        VDstring = Temp;													// Save the Decimal Value output string
-        
-        Temp = "";
-        int FWI = FWstring.length();
-        int VWI = VWstring.length();
-        																	// Now work on the floating pattern
-        
-        String FloatChar = " ";												// Initialize float charcter to none
-        if (FWI >0 &&														// If there is a float character
-        	FWstring.charAt(0)!= '#' &&
-        	FWstring.charAt(0)!= '%'){
-        	FloatChar = Character.toString(FWstring.charAt(0));				// then move it to FloatChar
-        	FWstring = FWstring.substring(1,FWI);
-        	--FWI;
-        	}
-        
-        String Header = "";													// Initialize Header to empty
-        Header=Header + FloatChar;											// add the float char to the header
-        if (Fvalue<0){														// if value < 0 output minus sign
-        	Header = Header + "-";											// else execute space
-        }else{																// note: reverse order will be unreversed later
-        	Header = Header + " ";
-        }
+		if (FDstring.length() > 0) { Temp = "."; }							// If any pattern for decimal, output the decimal
 
-        																	// Now work on the whole number par
-        StringConstant = "";
-       if ( FWI ==0 && VWI >0 ){					// No Whole format characters and Whole Value characters remain
-        	if (VWstring.charAt(0) != '0'){			// and the Whole character is not '0'
-        		StringConstant = "*" + VDstring;	// then show error
-        		return true;
-        	}
-            if (Fvalue<0){											// No whole number format chars and not whole number digits
-            	StringConstant = StringConstant + "-";				// If the decimal digits are < 0, output minus
-            }else{
-            	StringConstant = StringConstant + " ";				// otherwise output blank
-            }
-            StringConstant = StringConstant+FloatChar+VDstring;		// Build result for decimal digits with no whole number
-        	return true;											// done
-        }
-       												// We have whole format chars and whole value digits
-        --FWI;
-        --VWI;
-        boolean blanks = true;
-        while (FWI >=0){                                  							// While there are format characters
-        	c = FWstring.charAt(FWI);					  							// get the format character
-        	switch (c){
+		for (i = 0; i < FDstring.length(); ++i) {							// Copy Decimal digits to output as long as there
+			if (FDstring.charAt(i) != '#')	return false;					// are pattern # chars. If run out of digits before
+			if (i < VDstring.length()) {									// pattern digits, output 0 characters			
+				Temp += VDstring.charAt(i);
+			} else {
+				Temp += "0";
+			}
+		}
+		VDstring = Temp;													// Save the Decimal Value output string
 
-        	case '#':									  							// format charcter = #
-        		blanks = true;
-        		if (VWI >= 0){
-        			if (VWI == 0 && VWstring.charAt(VWI) == '0'){ Temp = Temp + " ";} // if there are no more digits, output space
-        			else {Temp = Temp + Character.toString(VWstring.charAt(VWI));}    // else output the digit
-        			--VWI;															  // go to the next digit
-        		}else if (VWI == -1){												  // No digits left, if we just ran out, output the header
-        				Temp = Temp + Header + " ";									  //output the header
-        				--VWI;
-        				}else {
-        					Temp = Temp + " ";											// output space
-        					}
-        		break;
+		Temp = "";
+		int FWI = FWstring.length();
+		int VWI = VWstring.length();
+																			// Now work on the floating pattern
+
+		String FloatChar = " ";												// Initialize float charcter to none
+		if ((FWI > 0) &&													// If there is a float character
+			(FWstring.charAt(0) != '#') &&
+			(FWstring.charAt(0) != '%')) {
+			FloatChar = Character.toString(FWstring.charAt(0));				// then move it to FloatChar
+			FWstring = FWstring.substring(1,FWI);
+			--FWI;
+		}
+
+		String Header = "";													// Initialize Header to empty
+		Header += FloatChar;												// add the float char to the header
+		Header += (Fvalue < 0) ? "-" : " ";									// if value < 0 output minus sign else space
+																			// note: reverse order will be unreversed later
+
+																	// Now work on the whole number par
+		StringConstant = "";
+		if ((FWI == 0) && (VWI > 0)) {								// No Whole format characters and Whole Value characters remain
+			if (VWstring.charAt(0) != '0') {						// and the Whole character is not '0'
+				StringConstant = "*" + VDstring;					// then show error
+			} else {												// No whole number format chars and not whole number digits
+				StringConstant += (Fvalue < 0) ? "-" : " ";			// If the decimal digits are < 0 output minus else blank
+				StringConstant += FloatChar + VDstring;				// Build result for decimal digits with no whole number
+			}
+			return true;											// done
+		}
+
+																	// We have whole format chars and whole value digits
+		--FWI;
+		--VWI;
+		boolean blanks = true;
+		while (FWI >= 0) {															// While there are format characters
+			c = FWstring.charAt(FWI);					  							// get the format character
+			switch (c) {
+
+			case '#':									  							// format charcter = #
+				blanks = true;
+				if (VWI >= 0) {
+					if ((VWI == 0) && (VWstring.charAt(VWI) == '0')) { Temp += " ";}// if there are no more digits, output space
+					else { Temp += Character.toString(VWstring.charAt(VWI)); }		// else output the digit
+					--VWI;															// go to the next digit
+				} else if (VWI == -1) {												// No digits left, if we just ran out, output the header
+					Temp += Header + " ";											// output the header
+					--VWI;
+				} else {
+					Temp += " ";													// output space
+				}
+				break;
  
-        	case '%':																	// format charcter = %
-        		blanks = false;
-        		if (VWI >= 0){
-        			Temp = Temp + Character.toString(VWstring.charAt(VWI));  			// if more digits, output it
-        			--VWI;
-        		}else
-        			{Temp = Temp + "0";}									 			// else output 0
-        		break;
+			case '%':																// format charcter = %
+				blanks = false;
+				if (VWI >= 0) {
+					Temp += Character.toString(VWstring.charAt(VWI));				// if more digits, output it
+					--VWI;
+				} else {
+					Temp += "0";													// else output 0
+				}
+				break;
 
-        	default:														 			// format character not # or %
-        		if (blanks){												 			// if doing blanks
-        		if (VWI>=0){Temp = Temp + c;}								 			// if more digits, output char
-        		else if (VWI == -1) {Temp = Temp + Header + " "; --VWI;}	 			// if just now ran out,
-        																	 			// output header and blank
-        		else { Temp = Temp + " ";}									 			// else just a blank
-        		} else{ Temp = Temp + c;									 			// not blanks, output the char
-        		}
-        	}
-        	--FWI;
-        }
+			default:																// format character not # or %
+				if (blanks) {														// if doing blanks
+					if      (VWI >= 0) 	{ Temp += c; }								// if more digits, output char
+					else if (VWI == -1)	{ Temp += Header + " "; --VWI; }			// if just now ran out, output header and blank
+					else				{ Temp += " "; }							// else just a blank
+				} else {
+					Temp += c;														// not blanks, output the char
+				}
+			}
+			--FWI;
+		}
 
-        if (VWI == -1) { Temp += Header; }							// add the header to the end of the whole number
+		if (VWI == -1) { Temp += Header; }							// add the header to the end of the whole number
 
-        Temp = new StringBuilder(Temp).reverse().toString();		// now reverse the whole thing
+		Temp = new StringBuilder(Temp).reverse().toString();		// now reverse the whole thing
 
-        StringConstant = Temp + VDstring;
-        if (VWI >= 0) {												// If value decimal digits remain
-        	StringConstant = "**" + StringConstant;					// show the error in place of the header
-        }
+		StringConstant = Temp + VDstring;
+		if (VWI >= 0) {												// If value decimal digits remain
+			StringConstant = "**" + StringConstant;					// show the error in place of the header
+		}
 
-        return true;												// and we are done
+		return true;												// and we are done
 	}
 
 	// *********************************** end String Functions ***********************************
@@ -6954,43 +6946,34 @@ public class Run extends ListActivity {
 		ArrayList<Integer> dims = array.dimList();
 		ArrayList<Integer> sizes = array.arraySizes();
 
-		if (dims.size() != indices.size()) {			// insure index count = dim count
-			RunTimeError(
-					"Indices count(" +
-					indices.size()+
-					") not same as dimension count ("+
-					dims.size()+
-					") at:");
-			return false;
+		int nDims = dims.size();
+		int nIndices = indices.size();
+		if (nDims != nIndices) {						// insure index count = dim count
+			return RunTimeError("Expected " + nDims +
+								" ind" + ((nDims == 1) ? "ex" : "ices") +
+								" but found " + nIndices + ":");
 		}
 
 		int offset = 0;
 
-		for (int i = 0; i < indices.size(); ++i) {
+		for (int i = 0; i < nIndices; ++i) {
 			int p = indices.get(i);						// p = index for this call
 			int q = dims.get(i);						// q = DIMed value for this index
 			int r = sizes.get(i);						// r = size for this index
-			if (p>q){
-				RunTimeError("Index #"+
-						(i+1) +
-						" (" +
-						p +
-						") exceeds dimension (" +
-						q +
-						") at:");						// insure Index <= DIMed index
-				return false;
+			if (p > q) {								// insure index <= DIMed limit
+				return RunTimeError("Index #"+ (i+1) + " (" + p +
+									") exceeds dimension (" + q +
+									") at:");
 			}
-			if (p<=0){									// insure index >= 1
-				RunTimeError("Index must be >=1 at:");
-				return false;
+			if (p <= 0) {								// insure index >= 1
+				return RunTimeError("Index must be >=1 at:");
 			}
 			offset = offset + (p-1)*r;					// calculate offset
 		}
-		
+
 		int base = array.base();						// base + offset gives
 		theValueIndex = base + offset;					// displacement into value table for
 		return true;									// index combination
-		
 	}
 
 	private boolean getIndexPair(Integer[] pair) {					// get contents of [] from command line
@@ -7211,7 +7194,7 @@ public class Run extends ListActivity {
 			if (evalNumericExpression()) {
 				printLine.append(EvalNumericExpressionValue);	// convert to string
 			} else
-			if (evalStringExpression()) {
+			if (!SyntaxError && evalStringExpression()) {
 				printLine.append(StringConstant);				// field is string
 			} else {
 				if (!SyntaxError) checkEOL();		// report junk at EOL unless prior error
@@ -8273,8 +8256,7 @@ public class Run extends ListActivity {
 	private boolean executeCALL() {
 		boolean isOk = false;
 		if (isUserFunction(false, false)) {					// don't check type
-			isOk = doUserFunction();
-			isOk &= checkEOL();
+			isOk = doUserFunction() && checkEOL();
 		}
 		return isOk;
 	}
@@ -8822,7 +8804,9 @@ public class Run extends ListActivity {
 		waitForLOCK();									// wait for signal from TGet.java thread
 
 		if (TGet.mMenuStop) {							// user selected Stop from TGet menu
-			MenuStop();
+			PrintShow("Stopped by user.");				// tell user
+			Stop = true;								// signal main loop to stop
+			OnBackKeyLine = 0;							// menu-selected stop is not trappable
 		} else {
 			PrintShow(Prompt + TextInputString);
 			StringVarValues.set(saveValueIndex, TextInputString);
