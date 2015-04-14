@@ -2359,19 +2359,16 @@ public class Run extends ListActivity {
 	private void updateConsole(String... strs) {
 
 		synchronized (mConsoleBuffer) {
-			boolean notified = false;
 			if (mConsoleBuffer.size() != 0) {			// if any lines
-				mConsole.addAll(mConsoleBuffer);		// write each line to screen
+				mOutput.addAll(mConsoleBuffer);			// write each line to screen
 				mConsoleBuffer.clear();
-				notified = true;
 			}
 			if ((strs != null) && (strs.length != 0)) {
 				for (String str : strs) {
-					mConsole.add(str);
+					mOutput.add(str);
 				}
-				notified = true;
 			}
-			if (!notified) { mConsole.notifyDataSetChanged(); }
+			mConsole.notifyDataSetChanged();
 			// setListAdapter(AA);						// show the output
 			lv.setSelection(mConsole.getCount() - 1);	// set last line as the selected line to scroll
 		}
