@@ -65,6 +65,9 @@ public class GR extends Activity {
 	public static final String EXTRA_ORIENTATION = "orientation";
 	public static final String EXTRA_BACKGROUND_COLOR = "background";
 
+	public static Object LOCK = new Object();
+	public static boolean waitForLock = false;
+
 	public static Context context;
 	public static DrawView drawView;
 	public static Bitmap screenBitmap = null;
@@ -73,6 +76,7 @@ public class GR extends Activity {
 //	public static double TouchY[] = {0,0};
 	public static float scaleX = 1f;
 	public static float scaleY = 1f;
+	public static boolean Running = false;
 	public static Boolean Rendering = false;	// Boolean (not boolean) so it has a lock
 	public static boolean NullBitMap = false;
 	public static InputMethodManager GraphicsImm ;
@@ -466,7 +470,10 @@ public class GR extends Activity {
 
 	@Override
 	protected void onDestroy() {
-		Run.GRrunning = false;
+		Running = false;
+		if (waitForLock) {
+			releaseLOCK();								// don't leave GR.command hanging
+		}
 		Run.GraphicsPaused = false;
 		super.onDestroy();
 		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onDestroy");
@@ -579,6 +586,14 @@ public class GR extends Activity {
             Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " VR Done");
         }
     }
+
+	private void releaseLOCK() {
+		synchronized (LOCK) {
+			Log.d(LOGTAG, "releaseLOCK");
+			waitForLock = false;
+			LOCK.notify();								// release GR.OPEN or .CLOSE if it is waiting
+		}
+	}
 
     public void connectDevice(Intent data, boolean secure) {
 
@@ -717,11 +732,14 @@ public class GR extends Activity {
 			}
 
 			synchronized (Rendering) {
-				Run.GRrunning = true;
+				Running = true;
 				if (Run.DisplayList == null) {
 					if (Rendering) {					// lost context?
-						throw new RuntimeException("GR.onDraw: null DisplayList");
+						String msg = "GR.onDraw: null DisplayList";
+						Log.e(LOGTAG, msg);
+						throw new RuntimeException(msg);
 					} else {
+						releaseLOCK();					// release GR.OPEN if it is waiting
 						return;							// nothing to render
 					}
 				}
@@ -779,6 +797,7 @@ public class GR extends Activity {
 				case Null:
 					break;
 				case Close:
+					releaseLOCK();						// release GR.CLOSE if it is waiting
 					finish();
 					break;
 				case Circle:

@@ -1402,7 +1402,6 @@ public class Run extends ListActivity {
 	// ******************** Variables for the SELECT Command ***********************
 
 	public static int SelectedItem;							// The index of the selected item
-	public static boolean ItemSelected;						// Signal from Select.java saying an item has been selected 
 	public static boolean SelectLongClick;					// True if long click
 
 	// ******************** SQL Variables ******************************************
@@ -1456,7 +1455,6 @@ public class Run extends ListActivity {
 	public static ArrayList<Bitmap> BitmapList;
 	private Paint aPaint;
 
-	public static boolean GRrunning;
 	public static boolean Touched;
 	public static double TouchX[] = {0,0,0};
 	public static double TouchY[] = {0,0,0};
@@ -2679,7 +2677,7 @@ public class Run extends ListActivity {
 	protected void onStop() {
 		Log.v(LOGTAG, CLASSTAG + " onStop " + kbShown);
 		System.gc();
-		if (!GRrunning) {
+		if (!GR.Running) {
 			background = true;
 			bgStateChange = true;
 //			if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
@@ -3464,6 +3462,7 @@ public class Run extends ListActivity {
 								  Log.getStackTraceString(ex));
 						handleHere("Null pointer exception");
 					} else {
+						Log.e(LOGTAG, Log.getStackTraceString(ex));
 						mDefaultExceptionHandler.uncaughtException(thread, ex);
 					}
 				}
@@ -3861,7 +3860,6 @@ public class Run extends ListActivity {
 		PaintList = new ArrayList<Paint>();
 		BitmapList = new ArrayList<Bitmap>();
 		aPaint = new Paint();
-		GRrunning = false;
 		GRFront = false;
 		Touched = false;
 		OnTouchLine = 0;
@@ -7724,6 +7722,16 @@ public class Run extends ListActivity {
 		}
 	}
 
+	private void waitForGrLOCK() {
+		synchronized (GR.LOCK) {
+			Log.d(LOGTAG, "set GR.LOCK wait");
+			while (GR.waitForLock) {
+				try { GR.LOCK.wait(); }
+				catch (InterruptedException e) { GR.waitForLock = false; }
+			}
+		}
+	}
+
 	// ************************************** Dialog Commands *************************************
 
 	private boolean executeDIALOG() {						// Get Dialog command keyword if it is there
@@ -8804,6 +8812,7 @@ public class Run extends ListActivity {
 		waitForLOCK();									// wait for signal from TGet.java thread
 
 		if (TGet.mMenuStop) {							// user selected Stop from TGet menu
+														// code copied from onOptionsItemSelected
 			PrintShow("Stopped by user.");				// tell user
 			Stop = true;								// signal main loop to stop
 			OnBackKeyLine = 0;							// menu-selected stop is not trappable
@@ -9878,8 +9887,8 @@ public class Run extends ListActivity {
 		String msg = args.getString("message");						// default null
 
 		SelectedItem = 0;											// intialize return values
-		ItemSelected = false;
 		SelectLongClick = false;
+		mWaitForLock = true;
 
 		Intent intent = new Intent(Run.this, Select.class);
 		if (title != null) { intent.putExtra(Select.EXTRA_TITLE, title); }
@@ -9887,13 +9896,9 @@ public class Run extends ListActivity {
 		intent.putStringArrayListExtra(Select.EXTRA_LIST, selectList);
 		startActivityForResult(intent, BASIC_GENERAL_INTENT);
 
-		synchronized (LOCK) {
-			while (!ItemSelected) {
-				try { LOCK.wait(); }								// Wait for signal from Selected.java thread
-				catch (InterruptedException e) { ItemSelected = true; }
-			}
-		}															// Put the item selected into the return var
-		NumericVarValues.set(args.getInt("returnVarIndex"), (double) SelectedItem);
+		waitForLOCK();												// Wait for signal from Selected.java thread
+
+		NumericVarValues.set(args.getInt("returnVarIndex"), (double)SelectedItem);
 
 		int isLongClickValueIndex = args.getInt("longClickVarIndex", -1);
 		if (isLongClickValueIndex != -1) {
@@ -10988,9 +10993,11 @@ public class Run extends ListActivity {
 		GRclass.putExtra(GR.EXTRA_BACKGROUND_COLOR, backgroundColor);
 
 		GraphicsPaused = false;										// Set up the signals
-		GRrunning = false;
+		GR.Running = false;
+		GR.waitForLock = true;
 		startActivityForResult(GRclass, BASIC_GENERAL_INTENT);		// Start the Graphics Activity
-		while (!GRrunning) Thread.yield();							// Do not continue until GR signals it is running
+
+		waitForGrLOCK();											// Do not continue until GR signals it is running
 
 		drawintoCanvas = null;
 		DisplayListClear();
@@ -11032,10 +11039,14 @@ public class Run extends ListActivity {
 			if (GR.Rendering) return true;
 			GR.Rendering = true;
 		}
+		GR.waitForLock = true;
 
 		GR.drawView.postInvalidate();								// Start the draw so the command will get executed.
 		GRopen = false;
 		GRFront = false;
+
+		waitForGrLOCK();
+
 		return true;
 	}
 
