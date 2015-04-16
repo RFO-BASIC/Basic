@@ -5732,7 +5732,7 @@ public class Run extends ListActivity {
 			return false;
 		}
 
-		// Try string variable
+																// Try string variable
 		String var = getVarAndType();							// top half of getVar()
 		if (var != null) {
 			if (VarIsNumeric) {
@@ -5746,18 +5746,23 @@ public class Run extends ListActivity {
 		}
 		LineIndex = LI;
 
-		boolean flag = false;
 		FunctionDefinition savedFnDef = FnDef;
 		if (isUserFunction(true, TYPE_STRING)) {				// Try User Function
-			flag = doUserFunction();
+			boolean ok = doUserFunction();
+			if (!ok) { LineIndex = LI; SyntaxError(); }
 			FnDef = savedFnDef;
-		} else {
-			LineIndex = LI;										// Try String Functions
-			Command cmd = getFunction(SF_map);
-			flag = (cmd != null) && cmd.run();					// value returned in StringConstant
+			return ok;
 		}
-		if (!flag) { LineIndex = LI; SyntaxError(); }
-		return flag;
+		LineIndex = LI;
+
+		Command cmd = getFunction(SF_map);
+		if (cmd != null) {
+			boolean ok = cmd.run();
+			if (!ok) { LineIndex = LI; SyntaxError(); }
+			return ok;
+		}
+		LineIndex = LI;
+		return false;
 	}
 
 	// ******************************* Statement Parsing Utilities ********************************
