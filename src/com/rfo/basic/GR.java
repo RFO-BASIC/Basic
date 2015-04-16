@@ -831,9 +831,9 @@ public class GR extends Activity {
 					int pLength = array.length();
 					float[] pixels = new float[pLength];
 					for (int j = 0; j < pLength; ++j) {
-						pixels[j] = Run.NumericVarValues.get(pBase + j).floatValue() + fx1;
+						pixels[j] = (float)Run.Vars.get(pBase + j).nval() + fx1;
 						++j;
-						pixels[j] = Run.NumericVarValues.get(pBase + j).floatValue() + fy1;
+						pixels[j] = (float)Run.Vars.get(pBase + j).nval() + fy1;
 					}
 					canvas.drawPoints(pixels, thePaint);
 					break;
