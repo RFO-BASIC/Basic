@@ -3082,14 +3082,20 @@ public class Run extends ListActivity {
 
 			public Var(double val) {
 				mType = VarType.NUM;
-				mStrVal = null;
 				mNumVal = val;
+				mStrVal = null;
 			}
 
 			public Var(String val) {
 				mType = VarType.STR;
-				mStrVal = val;
 				mNumVal = 0.0;
+				mStrVal = val;
+			}
+
+			public Var(Var src) {
+				mType = src.type();
+				mNumVal = (mType == VarType.NUM) ? src.nval() : 0.0; 
+				mStrVal = (mType == VarType.STR) ? src.sval() : null;
 			}
 
 			public VarType type() { return mType; }
@@ -3173,17 +3179,29 @@ public class Run extends ListActivity {
 		// *********************** FunctionParameter class ************************
 
 		private class FunctionParameter {
-			private String mName;
-			private VarType mType;
-			private boolean mIsArray;
+			private final String mName;					// parameter name
+			private final Var mVar;						// parameter type and value
+			private final boolean mIsArray;
+			private boolean mIsGlobal = false;
+			private int mVarIndex = -1;					// for global and array params
 
 			public FunctionParameter(String name, VarType type, boolean isArray) {
-				mName = name; mType = type; mIsArray = isArray;
+				mName = name; mIsArray = isArray;
+				switch (type) {
+					case NUM: mVar = new Var(0.0); break;
+					case STR: mVar = new Var(""); break;
+					default: mVar = null; break;
+				}
 			}
 
+			public void global(boolean isGlobal) { mIsGlobal = isGlobal; }
+			public void varIndex(int index) { mVarIndex = index; }
+
 			public String name() { return mName; }
-			public VarType type() { return mType; }
+			public Var var() { return mVar; }
 			public boolean isArray() { return mIsArray; }
+			public boolean isGlobal() { return mIsGlobal; }
+			public int varIndex() { return mVarIndex; };
 		}
 
 		// *********************** FunctionDefinition class ***********************
@@ -7795,63 +7813,67 @@ public class Run extends ListActivity {
 		int pCount = FnDef.nParms();									// The number of parameters
 		int i = 0;
 		if (pCount != 0) {												// For each parameter
+			ArrayList<FunctionParameter> parms = FnDef.parms();
 			do {
 				if (i >= pCount) {										// Insure no more parms than defined
 					return RunTimeError("Calling parameter count exceeds defined parameter count");
 				}
 
 				boolean isGlobal = isNext('&');							// optional for scalars, ignored for arrays
-				FunctionParameter parm = FnDef.parms().get(i);
-				String pName = parm.name();
-				boolean typeIsNumeric = parm.type().isNumeric();
+				FunctionParameter parm = parms.get(i);
+				parm.global(isGlobal);
+				boolean typeIsNumeric = parm.var().type().isNumeric();
 				if (parm.isArray()) {									// if this parm is an array
 					if (getArrayVarForRead() == null) return false;		// get the array name var
+					parm.varIndex(VarIndex.get(VarNumber));				// copy array table pointer
 					if (!isNext(']')) {									// must be no indices
 						return RunTimeError(EXPECT_ARRAY_NO_INDEX);
 					} else  if (typeIsNumeric != VarIsNumeric) {		// insure type (string or number) match
 						return RunTimeError("Array parameter type mismatch at:");
 					}
-
-					VarNames.add(pName);								// and add the var name
-					VarIndex.add(VarIndex.get(VarNumber));				// copy array table pointer to the new array.
 				} // end array
-				else {
-					if (isGlobal) {
-						String vName = getVarAndType();					// if this is a Global Var
-						if (vName == null)			return false;		// then must be var not expression
-						if (VarIsNew) { return RunTimeError("Call by reference vars must be predefined"); }
-						if (typeIsNumeric != VarIsNumeric) {			// insure type (string or number) match
-							return RunTimeError("Global parameter type mismatch at:");
-						}
-						if (!getVarValue(vName))	return false;		// bottom half of getVar()
-
-						VarNames.add(pName);							// add the called var name to the var name table
-						VarIndex.add(theValueIndex);					// but give it the value index of the calling var
-					} // end global
-					else {
-						Var var;
-						if (!typeIsNumeric) {							// if parm is string
-							if (!evalStringExpression()) {				// get the string value
-								return RunTimeError("Parameter type mismatch at:");
-							} else {
-								var = new Var(StringConstant);			// put the value in a new string var
-							}
-						} else {
-							if (!evalNumericExpression()) {				// if parm is number get the numeric value
-								return RunTimeError("Parameter type mismatch at:");
-							} else {
-								var = new Var(EvalNumericExpressionValue);	// put the value in a new numeric var
-							}
-						}
-						VarIndex.add(Vars.size());						// Put the new var into
-						Vars.add(var);									// the var values table
-						VarNames.add(pName);							// and add the var name
+				else if (isGlobal) {
+					String vName = getVarAndType();						// if this is a Global Var
+					if (vName == null)				return false;		// then must be var not expression
+					if (VarIsNew) { return RunTimeError("Call by reference vars must be predefined"); }
+					if (typeIsNumeric != VarIsNumeric) {				// insure type (string or number) match
+						return RunTimeError("Global parameter type mismatch at:");
 					}
-				} // end scalar
+					if (!getVarValue(vName))		return false;		// bottom half of getVar()
+					parm.varIndex(theValueIndex);						// give it the value index of the calling var
+				} // end global
+				else {
+					Var var = parm.var();
+					if (!typeIsNumeric) {								// if parm is string
+						if (!evalStringExpression()) {					// get the string value
+							return RunTimeError("Parameter type mismatch at:");
+						} else {
+							var.val(StringConstant);					// put the value in parm's var
+						}
+					} else {
+						if (!evalNumericExpression()) {					// if parm is number get the numeric value
+							return RunTimeError("Parameter type mismatch at:");
+						} else {
+							var.val(EvalNumericExpressionValue);		// put the value in parm's var
+						}
+					}
+				} // end non-global
 
-				++i;										//  Keep going while calling parms exist
+				++i;													//  Keep going while calling parms exist
 
 			} while ( isNext(','));
+			// Now that all new variables have been created in main name space,
+			// start the function name space with the function parameter names.
+			sVarNames = VarNames.size();
+			for (FunctionParameter parm : parms) {
+				if (!parm.isArray() && !parm.isGlobal()) {
+					VarIndex.add(Vars.size());							// new scalar
+					Vars.add(new Var(parm.var()));
+				} else {
+					VarIndex.add(parm.varIndex());						// array or global scalar
+				}
+				VarNames.add(parm.name());
+			}
 		} // end if
 
 		if (i != pCount) { return RunTimeError("Too few calling parameters at:"); }
