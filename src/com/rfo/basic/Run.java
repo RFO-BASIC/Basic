@@ -2310,7 +2310,7 @@ public class Run extends ListActivity {
 
 			if (Basic.DoAutoRun) Exit = true;	// If AutoRun, back key always means exit
 			if (!Stop) {
-				Stop = true;				// If running a program, stop it
+				Stop = true;			// If running a program, stop it
 			}
 			else finish();				// else already stopped, return to the Editor
 			return true;
@@ -3872,7 +3872,7 @@ public class Run extends ListActivity {
 				mChatService = null;
 			}
 
-		if ( theSUReader != null ) {
+		if (theSUReader != null) {
 			theSUReader.stop();
 			theSUReader = null;
 		}
@@ -11941,14 +11941,15 @@ public class Run extends ListActivity {
 		if (ltrb == null) return false;
 		b.ltrb(ltrb);
 
+		int RegionOp = 0;
 		if (isNext(',')) {
 			if (!evalNumericExpression()) return false;
-			int RegionOp = EvalNumericExpressionValue.intValue();
+			RegionOp = EvalNumericExpressionValue.intValue();
 			if (RegionOp < 0 || RegionOp > 5) {
 				return RunTimeError("Region Operator not 0 to 5");
 			}
-			b.clipOp(RegionOp);
 		}
+		b.clipOp(RegionOp);
 		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
