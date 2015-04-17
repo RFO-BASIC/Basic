@@ -1256,10 +1256,9 @@ public class Run extends ListActivity {
 	public static ArrayList<Bitmap> BitmapList;
 	private Paint aPaint;
 
-	public static boolean Touched;
-	public static double TouchX[] = {0,0,0};
-	public static double TouchY[] = {0,0,0};
-	public static boolean NewTouch[] = {false, false, false};
+	public static double TouchX[] = new double[3];
+	public static double TouchY[] = new double[3];
+	public static boolean NewTouch[] = new boolean[3];
 	private int OnTouchLine;
 
 	private boolean GRFront;
@@ -3678,7 +3677,10 @@ public class Run extends ListActivity {
 		BitmapList = new ArrayList<Bitmap>();
 		aPaint = new Paint();
 		GRFront = false;
-		Touched = false;
+		for (int i = 0; i < NewTouch.length; ++i) {
+			TouchX[i] = TouchY[i] = -1;
+			NewTouch[i] = false;
+		}
 		OnTouchLine = 0;
 		mShowStatusBar = false;
 
@@ -11086,8 +11088,10 @@ public class Run extends ListActivity {
 		if (!checkEOL()) return false;
 
 		flagVar.val(NewTouch[p] ? 1.0 : 0.0);						// return touched flag as numerical value
-		xVar.val(TouchX[p]);
-		yVar.val(TouchY[p]);
+		if (NewTouch[2]) {											// if ever touched
+			xVar.val(TouchX[p]);									// then report the last touch
+			yVar.val(TouchY[p]);
+		}
 		return true;
 	}
 
@@ -11105,7 +11109,7 @@ public class Run extends ListActivity {
 		if (!checkEOL()) return false;
 
 		boolean flag = false;
-		if (NewTouch[p]) {											// if touched
+		if (NewTouch[p]) {											// if currently being touched
 			flag = (TouchX[p] >= left && TouchX[p] <= right &&		// true iff touch was in bounding rect
 					TouchY[p] >= top  && TouchY[p] <= bottom);
 //			GR.NewTouch[p] = false;									// set not touched

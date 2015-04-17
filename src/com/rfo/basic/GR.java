@@ -676,35 +676,31 @@ public class GR extends Activity {
 			return dm.densityDpi;
 		}
 
-        public boolean onTouchEvent(MotionEvent event){
-        	super.onTouchEvent(event);
-        	int action = event.getAction();  // Get action type
+		public boolean onTouchEvent(MotionEvent event) {
+			super.onTouchEvent(event);
+			int action = event.getAction() & MotionEvent.ACTION_MASK;	// Get action type, mask off index field
+			int numPointers = event.getPointerCount();
 
-        	for (int i = 0; i < event.getPointerCount(); i++){
-        		if ( i > 1 ) break;
-            	int pid = event.getPointerId(i);
-            	if (pid > 1) break;
-//        		Log.v(GR.LOGTAG, " " + i + ","+pid+"," + action);
-        		Run.TouchX[pid] = (double)event.getX(i);
-        		Run.TouchY[pid] = (double)event.getY(i);
-        		if (action == MotionEvent.ACTION_DOWN ||
-        			action == MotionEvent.ACTION_POINTER_DOWN) {
-        			Run.NewTouch[pid] = true;
-        			Run.NewTouch[2] = true;
-        			Run.Touched = true;
-        		}
-        		else if	(action == MotionEvent.ACTION_MOVE){
-            		Run.NewTouch[pid] = true;
-            	} else if (action == MotionEvent.ACTION_UP ||
-            		action == MotionEvent.ACTION_POINTER_UP ||
-            		action == 6 ||
-            		action == 262) {
-            		Run.NewTouch[pid] = false;
-            	}
-        	}
-
-        	return true;
-        }
+			for (int i = 0; i < numPointers; i++) {
+				int pid = event.getPointerId(i);
+				if (pid > 1)  { continue; }				// currently, we allow only two pointers
+//				Log.v(GR.LOGTAG, " " + i + "," + pid + "," + action);
+				Run.TouchX[pid] = (double)event.getX(i);
+				Run.TouchY[pid] = (double)event.getY(i);
+				if (action == MotionEvent.ACTION_DOWN ||
+					action == MotionEvent.ACTION_POINTER_DOWN) {
+					Run.NewTouch[pid] = true;			// which pointer (0 or 1), cleared on UP
+					Run.NewTouch[2] = true;				// either pointer, not cleared on UP
+				}
+				else if	(action == MotionEvent.ACTION_MOVE) {
+					Run.NewTouch[pid] = true;
+				} else if (action == MotionEvent.ACTION_UP ||
+					action == MotionEvent.ACTION_POINTER_UP) {
+					Run.NewTouch[pid] = false;
+				}
+			}
+			return true;
+		}
 
 		public Paint newPaint(Paint fromPaint) {
 			Typeface tf = fromPaint.getTypeface();
