@@ -178,6 +178,7 @@ public class TGet extends Activity {
 			Run.LOCK.notify();								// release the lock that Run is waiting for
 		}
 		finish();
+		overridePendingTransition(0, 0);
 	}
 
 	@Override

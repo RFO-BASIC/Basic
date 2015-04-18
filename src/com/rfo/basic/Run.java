@@ -1018,10 +1018,7 @@ public class Run extends ListActivity {
 
 	public static boolean Stop = false;					// Stops program from running
 	public static boolean Exit = false;					// Exits program and signals caller to exit, too
-	public static boolean GraphicsPaused = false;		// Signal from GR that it has been paused
 	public static boolean RunPaused = false;			// Used to control the media player
-	public static boolean StopDisplay = false;
-	public static boolean DisplayStopped = false;
 	private String PrintLine = "";						// Hold the Print line currently being built
 	private String textPrintLine = "";					// Hold the TextPrint line currently being built
 	private boolean PrintLineReady = false;				// Signals a line is ready to print or write
@@ -3600,11 +3597,8 @@ public class Run extends ListActivity {
 
 		Stop = false;									// Stops program from running
 		Exit = false;									// Exits program and signals caller to exit, too
-		GraphicsPaused = false;							// Signal from GR that it has been paused
 		RunPaused = false;								// Used to control the media player
-		StopDisplay = false;
 		GRFront = false;
-		DisplayStopped = false;
 
 		PrintLine = "";									// Hold the Print line currently being built
 		PrintLineReady = false;							// Signals a line is ready to print or write
@@ -3853,7 +3847,6 @@ public class Run extends ListActivity {
 
 		Stop = true;								// make sure the background task stops
 		Basic.theRunContext = null;
-		GraphicsPaused = false;
 		RunPaused = false;
 		mMessagePending = false;
 
@@ -7540,7 +7533,7 @@ public class Run extends ListActivity {
 
 	private void waitForLOCK() {
 		synchronized (LOCK) {
-			Log.d(LOGTAG, "set LOCK wait");
+//			Log.d(LOGTAG, "set LOCK wait");
 			while (mWaitForLock) {
 				try { LOCK.wait(); }
 				catch (InterruptedException e) { mWaitForLock = false; }
@@ -7550,7 +7543,7 @@ public class Run extends ListActivity {
 
 	private void waitForGrLOCK() {
 		synchronized (GR.LOCK) {
-			Log.d(LOGTAG, "set GR.LOCK wait");
+//			Log.d(LOGTAG, "set GR.LOCK wait");
 			while (GR.waitForLock) {
 				try { GR.LOCK.wait(); }
 				catch (InterruptedException e) { GR.waitForLock = false; }
@@ -8328,6 +8321,7 @@ public class Run extends ListActivity {
 		while (mMessagePending) { Thread.yield(); }		// wait for checkpointMessage semaphore to clear
 
 		Intent intent = new Intent(Run.this, TGet.class);
+		intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
 		if (title != null) { intent.putExtra(TGet.TITLE, title); }
 		synchronized (mConsoleBuffer) {
 			intent.putStringArrayListExtra(TGet.CONSOLE_TEXT, mOutput);
@@ -10323,8 +10317,10 @@ public class Run extends ListActivity {
 			return;
 		}
 
-		RealDisplayList.add(DisplayList.size());
-		DisplayList.add(b);
+		synchronized (DisplayList) {
+			RealDisplayList.add(DisplayList.size());
+			DisplayList.add(b);
+		}
 	}
 
 	private boolean execute_gr_bitmap_drawinto_start() {
@@ -10371,35 +10367,30 @@ public class Run extends ListActivity {
 		return paint;
 	}
 
-	private void DisplayListClear() {
-//		StopDisplay = true;											// Sigmal GR to stop display
+	private void DisplayListClear(GR.Type type) {
 //		try {Thread.sleep(500);}catch(InterruptedException e) {}	// Give GR some time to do it
 //		BitmapList.clear();
 //		BitmapList.add(null);										// Set Zero entry as null
 
-		if (DisplayList == null)									// Clear the Display List
-		{
-			DisplayList = new ArrayList<GR.BDraw>();
-			RealDisplayList = new ArrayList<Integer>();
-		} else {
-			DisplayList.clear();
+		Log.d(LOGTAG, "DisplayListClear");
+		synchronized (DisplayList) {
+			DisplayList.clear();									// Clear the Display List
 			RealDisplayList.clear();
+
+			PaintList.clear();										// and the Paint list
+			PaintList.add(aPaint);									// Add dummy element 0
+
+			aPaint = initPaint(newPaint(aPaint), 255, 0, 0, 0);		// Create a new Paint object
+			PaintList.add(aPaint);									// Add to the Paint List as element 1
+
+			GR.BDraw b = new GR.BDraw(type);						// Create a new Display list
+			DisplayListAdd(b);										// with specified first entry
 		}
-		PaintList.clear();											// and the Paint list
-		PaintList.add(aPaint);										// Add dummy element 0
-
-		aPaint = initPaint(newPaint(aPaint), 255, 0, 0, 0);			// Create a new Paint object
-		PaintList.add(aPaint);										// Add to the Paint List as element 1
-
-		GR.BDraw b = new GR.BDraw(GR.Type.Null);					// Create a new Display list
-		DisplayListAdd(b);											// with a null entry
-
-//		StopDisplay = false;										// Tell GR it can start displaying again
 	}
 
 	private void BitmapListClear() {
 		if (BitmapList != null) {
-			for (int i = 0; i <BitmapList.size(); ++i) {
+			for (int i = 0; i < BitmapList.size(); ++i) {
 				Bitmap bitmap = BitmapList.get(i);
 				if (bitmap != null) {
 					bitmap.recycle();
@@ -10459,14 +10450,15 @@ public class Run extends ListActivity {
 		RealDisplayList.clear();
 		RealDisplayList.add(0);										// First entry points to null object
 
-		for (int i = 0; i < length; ++i) {							// Copy the bundle pointers 
-			int id = (int)Vars.get(base + i).nval();
-			if (id < 0 || id >= DisplayList.size()) {
-				return RunTimeError("Invalid Object Number");
+		synchronized (DisplayList) {
+			for (int i = 0; i < length; ++i) {						// Copy the object pointers 
+				int id = (int)Vars.get(base + i).nval();
+				if (id < 0 || id >= DisplayList.size()) {
+					return RunTimeError("Invalid Object Number");
+				}
+				RealDisplayList.add(id);
 			}
-			RealDisplayList.add(id);
 		}
-
 		return true;
 	}
 
@@ -10491,27 +10483,26 @@ public class Run extends ListActivity {
 								b;
 		mShowStatusBar = (showStatusBar != 0);						// record choice for GR.StatusBar command
 
-		DisplayList = null;											// to keep GR.DrawView from trying to draw
+		synchronized (DisplayList) {
+			drawintoCanvas = null;
+			DisplayListClear(GR.Type.Open);
+			BitmapListClear();
+			BitmapList.add(null);									// Set Zero entry as null
 
-		GRclass = new Intent(Run.this, GR.class);						// Set up parameters for the Graphics Activity
+			aPaint = initPaint(new Paint(), a, r, g, b);			// Create a new Paint object
+			PaintList.add(aPaint);									// Add to the Paint List as element 2
+		}
+
+		GRclass = new Intent(Run.this, GR.class);					// Set up parameters for the Graphics Activity
 		GRclass.putExtra(GR.EXTRA_SHOW_STATUSBAR, showStatusBar);
 		GRclass.putExtra(GR.EXTRA_ORIENTATION, orientation);
 		GRclass.putExtra(GR.EXTRA_BACKGROUND_COLOR, backgroundColor);
 
-		GraphicsPaused = false;										// Set up the signals
-		GR.Running = false;
+		GR.Running = false;											// Set up the signals
 		GR.waitForLock = true;
 		startActivityForResult(GRclass, BASIC_GENERAL_INTENT);		// Start the Graphics Activity
 
 		waitForGrLOCK();											// Do not continue until GR signals it is running
-
-		drawintoCanvas = null;
-		DisplayListClear();
-		BitmapListClear();
-		BitmapList.add(null);										// Set Zero entry as null
-
-		aPaint = initPaint(new Paint(), a, r, g, b);				// Create a new Paint object
-		PaintList.add(aPaint);										// Add to the Paint List as element 2
 
 		background = false;
 		GRopen = true;												// Set some more signals
@@ -10536,22 +10527,21 @@ public class Run extends ListActivity {
 	private boolean execute_gr_close() {
 		if (!checkEOL()) return false;
 
-		DisplayListClear();											// Clear the existing display list
-
-		GR.BDraw b = new GR.BDraw(GR.Type.Close);					// Create a new display list object
-		DisplayListAdd(b);											// which commands GR.java to close
-
+		synchronized (DisplayList) {
+			DisplayListClear(GR.Type.Close);						// Create a new display list
+		}															// which commands GR.java to close
+//		Log.d(LOGTAG, "GR.Close, Rendering " + GR.Rendering);
 		synchronized (GR.Rendering) {
 			if (GR.Rendering) return true;
 			GR.Rendering = true;
 		}
-		GR.waitForLock = true;
 
+		GR.waitForLock = true;
 		GR.drawView.postInvalidate();								// Start the draw so the command will get executed.
+		waitForGrLOCK();
+
 		GRopen = false;
 		GRFront = false;
-
-		waitForGrLOCK();
 
 		return true;
 	}
@@ -10564,15 +10554,16 @@ public class Run extends ListActivity {
 			return false;
 		}
 
+//		Log.d(LOGTAG, "GR.Render, Rendering " + GR.Rendering);
 		synchronized (GR.Rendering) {
 			if (GR.Rendering) return true;
 			GR.Rendering = true;
 		}
 
 		GR.NullBitMap = false;
-
+		GR.waitForLock = true;
 		GR.drawView.postInvalidate();								// Start GR drawing.
-		while (GR.Rendering) { Thread.yield(); }
+		waitForGrLOCK();
 
 		if (GR.NullBitMap) {
 			GR.NullBitMap = false;
@@ -10642,8 +10633,10 @@ public class Run extends ListActivity {
 	// Common processing for the end of a command that creates a graphical object.
 	private boolean createGrObj_finish(GR.BDraw b, int varIndex) {
 		if (!checkEOL()) return false;
-		Vars.get(varIndex).val(DisplayList.size());					// save the object index into the var
-		DisplayListAdd(b);											// add the object to the Display List
+		synchronized (DisplayList) {
+			Vars.get(varIndex).val(DisplayList.size());				// save the object index into the var
+			DisplayListAdd(b);										// add the object to the Display List
+		}
 		return true;
 	}
 
@@ -10835,7 +10828,7 @@ public class Run extends ListActivity {
 	private boolean execute_gr_cls() {
 		if (!checkEOL()) return false;
 
-		DisplayListClear();
+		DisplayListClear(GR.Type.Null);
 		return true;
 	}
 
@@ -10939,16 +10932,17 @@ public class Run extends ListActivity {
 		if (obj < 0) return false;
 		if (!checkEOL()) return false;
 
-		GR.BDraw b = DisplayList.get(obj);							// get Group Object
-		if (b.type() != GR.Type.Group) { return false; }			// make sure it's a group
-		ArrayList<Double> list = b.list();							// retrive the list
+		synchronized (DisplayList) {
+			GR.BDraw b = DisplayList.get(obj);						// get Group Object
+			if (b.type() != GR.Type.Group) { return false; }		// make sure it's a group
+			ArrayList<Double> list = b.list();						// retrive the list
 
-		RealDisplayList.clear();
-		RealDisplayList.add(0);										// first entry points to null object
-		for (Double id : list) {									// copy the group list to the Display List
-			RealDisplayList.add(id.intValue());
+			RealDisplayList.clear();
+			RealDisplayList.add(0);									// first entry points to null object
+			for (Double id : list) {								// copy the group list to the Display List
+				RealDisplayList.add(id.intValue());
+			}
 		}
-
 		return true;
 	}
 
@@ -11634,6 +11628,7 @@ public class Run extends ListActivity {
 		if (!checkEOL()) return false;
 
 		int mode = EvalNumericExpressionValue.intValue();
+//		Log.d(LOGTAG, "GR.Orientation " + mode);
 		GR.drawView.setOrientation(mode);
 		return true;
 	}
@@ -11776,9 +11771,8 @@ public class Run extends ListActivity {
 
 	// After it's done with the Bitmap, caller should call destroyDrawingCache()
 	private Bitmap getTheBitmap() {
-		synchronized (GR.Rendering) {
+		synchronized (GR.drawView) {
 			GR.drawView.setDrawingCacheEnabled(true);
-			GR.Rendering = true;									// buildDrawingCache() renders
 			GR.drawView.buildDrawingCache();						// Build the cache
 			return GR.drawView.getDrawingCache();					// get the bitmap
 		}

@@ -120,6 +120,7 @@ public class GR extends Activity {
 		RotateEnd("rotate.end",		new String[0]),
 		Clip("clip",				new String[]
 				{ "left", "right", "top", "bottom", "RO" } ),
+		Open("open",				new String[0]),
 		Close("close",				new String[0]);
 
 		private final String mType;
@@ -141,8 +142,6 @@ public class GR extends Activity {
 			return false;
 		}
 	}
-
-//  Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " String Var Value =  ");
 
 	// ********************* BASIC! Drawable Object class *********************
 	// Objects go on the Display List. Not related to Android's Drawable class.
@@ -402,7 +401,7 @@ public class GR extends Activity {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
-//		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " On Create  ");
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " On Create " + this.toString());
 		super.onCreate(savedInstanceState);
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -417,6 +416,11 @@ public class GR extends Activity {
 		getWindow().setFlags(showStatusBar, showStatusBar);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 
+		scaleX = 1.0f;
+		scaleY = 1.0f;
+		Brightness = -1;
+		Rendering = false;
+
 		drawView = new DrawView(this);
 		setContentView(drawView);
 		drawView.requestFocus();
@@ -425,16 +429,11 @@ public class GR extends Activity {
 		drawView.setOrientation(orientation);		// Set orientation, get screen height and width
 
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
-
-		scaleX = 1.0f;
-		scaleY = 1.0f;
-		Brightness = -1;
-		Rendering = false;
 	}
 
 	@Override
 	protected void onPause() {
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onPause ");
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onPause");
 		Run.background = true;
 		Run.bgStateChange = true;
 		super.onPause();
@@ -453,7 +452,7 @@ public class GR extends Activity {
 	}
 
 	protected void onStop() {
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStop ");
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStop");
 		Run.background = true;
 		Run.bgStateChange = true;
 		super.onStop();
@@ -461,7 +460,7 @@ public class GR extends Activity {
 
 	@Override
 	protected void onResume() {
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onResume ");
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onResume");
 		Run.background = false;
 		Run.bgStateChange = true;
 		context = this;
@@ -470,48 +469,50 @@ public class GR extends Activity {
 
 	@Override
 	protected void onDestroy() {
-		Running = false;
-		if (waitForLock) {
-			releaseLOCK();								// don't leave GR.command hanging
+		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onDestroy " + this.toString());
+		// if a new instance has started, don't let this one mess it up
+		if (context == this) {
+			Running = false;
+			if (waitForLock) {
+				releaseLOCK();							// don't leave GR.command hanging
+			}
 		}
-		Run.GraphicsPaused = false;
 		super.onDestroy();
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onDestroy");
 	}
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)  {
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event)  {
 
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyDown " + keyCode);
+//		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyDown " + keyCode);
 
-    	if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP) || (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
-    	  return super.onKeyDown(keyCode, event);
-    	}
+		if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP) || (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+			return super.onKeyDown(keyCode, event);
+		}
 
-        return true;
-    }
-    
+		return true;
+	}
+
 	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit a key
 
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyUp " + keyCode);
+//		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyUp " + keyCode);
 
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
+		if (keyCode == KeyEvent.KEYCODE_BACK) {
 
-            Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " BACK KEY HIT");
+			Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " BACK KEY HIT");
 
-        	if (Run.OnBackKeyLine != 0){
-        		Run.BackKeyHit = true;
-        		return true;
-        	}
+			if (Run.OnBackKeyLine != 0){
+				Run.BackKeyHit = true;
+				return true;
+			}
 
-        	Run.GRopen = false;
-        	Run.Stop = true;
-        	if (Basic.DoAutoRun) {
-        		 Run.Exit = true;			// Signal Run to exit immediately and silently
-        	}
-        	finish();
-        	return true;
-        }
+			Run.GRopen = false;
+			Run.Stop = true;
+			if (Basic.DoAutoRun) {
+				Run.Exit = true;			// Signal Run to exit immediately and silently
+			}
+			finish();
+			return true;
+		}
 
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			if (Run.OnMenuKeyLine != 0) {
@@ -589,7 +590,7 @@ public class GR extends Activity {
 
 	private void releaseLOCK() {
 		synchronized (LOCK) {
-			Log.d(LOGTAG, "releaseLOCK");
+//			Log.d(LOGTAG, "releaseLOCK");
 			waitForLock = false;
 			LOCK.notify();								// release GR.OPEN or .CLOSE if it is waiting
 		}
@@ -649,7 +650,7 @@ public class GR extends Activity {
 		}
 
 		synchronized public void setOrientation(int orientation) {	// Convert and apply orientation setting
-//			Log.v(GR.LOGTAG, "Set orientation " + orientation);
+			Log.v(GR.LOGTAG, "Set orientation " + orientation);
 			switch (orientation) {
 				default:
 				case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
@@ -711,7 +712,7 @@ public class GR extends Activity {
 
 		@Override
 		synchronized public void onDraw(Canvas canvas) {
-//			Log.d(LOGTAG,"onDraw " + getWidth() + " x " + getHeight());
+//			Log.d(LOGTAG,"onDraw, Rendering " + Rendering);
 			if (doEnableBT) {							// If this activity is running
 				enableBT();								// Bluetooth must be enabled here
 				doEnableBT = false;
@@ -727,18 +728,10 @@ public class GR extends Activity {
 				doSTT = false;
 			}
 
-			synchronized (Rendering) {
-				Running = true;
-				if (Run.DisplayList == null) {
-					if (Rendering) {					// lost context?
-						String msg = "GR.onDraw: null DisplayList";
-						Log.e(LOGTAG, msg);
-						throw new RuntimeException(msg);
-					} else {
-						releaseLOCK();					// release GR.OPEN if it is waiting
-						return;							// nothing to render
-					}
-				}
+			if ((Run.RealDisplayList == null) || (Run.DisplayList == null)) {
+				String msg = "GR.onDraw: null DisplayList";
+				Log.e(LOGTAG, msg);
+				throw new RuntimeException(msg);		// lost context?
 			}
 
 			// float scale = getResources().getDisplayMetrics().density;
@@ -752,20 +745,26 @@ public class GR extends Activity {
 				Brightness = -1;						// do it only once
 			}
 
-			if (Run.RealDisplayList != null) {
+			synchronized (Run.DisplayList) {
 				for (int di : Run.RealDisplayList) {
-					if (Run.DisplayList != null) {
-						if (di >= Run.DisplayList.size()) return;
-						BDraw b = Run.DisplayList.get(di);
-						doDraw(canvas, b);
+					if (di >= Run.DisplayList.size()) continue;
+					BDraw b = Run.DisplayList.get(di);
+					if (!doDraw(canvas, b)) {
+						finish();
+						break;
 					}
 				}
 			}
 
-			Rendering = false;
+			synchronized (GR.Rendering) {
+				if (Rendering) {
+					Rendering = false;
+					releaseLOCK();
+				}
+			}
 		}
 
-		public void doDraw(Canvas canvas, BDraw b) {
+		public boolean doDraw(Canvas canvas, BDraw b) {
 //			Log.v(GR.LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
 
 			float fx1;
@@ -781,8 +780,8 @@ public class GR extends Activity {
 			if ((b != null) && b.isVisible()) {
 				type = b.type();
 				int pIndex = b.paint();
-				if (Run.PaintList.size() == 0) return;
-				if (pIndex < 1 || pIndex >= Run.PaintList.size()) return;
+				if (Run.PaintList.size() == 0)						return true;
+				if (pIndex < 1 || pIndex >= Run.PaintList.size())	return true;
 				thePaint = newPaint(Run.PaintList.get(pIndex));
 				int alpha = b.alpha();
 				if (alpha < 256) thePaint.setAlpha(alpha);
@@ -792,10 +791,16 @@ public class GR extends Activity {
 				case Group:
 				case Null:
 					break;
-				case Close:
-					releaseLOCK();						// release GR.CLOSE if it is waiting
-					finish();
+				case Open:
+					synchronized (GR.Rendering) {
+						Running = true;					// flag for GR.Open
+						Rendering = true;				// so onDraw will release LOCK
+					}
 					break;
+				case Close:
+					Running = false;
+					return false;
+
 				case Circle:
 					canvas.drawCircle(b.x(),b.y(),b.radius(), thePaint);
 					break;
@@ -879,6 +884,7 @@ public class GR extends Activity {
 				default:
 					break;
 			}
+			return true;
 		} // doDraw()
 
 	} // class DrawView
