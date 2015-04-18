@@ -2188,7 +2188,7 @@ public class Run extends ListActivity {
 	public void onCreate(Bundle savedInstanceState) {
 
 		super.onCreate(savedInstanceState);
-		Log.v(LOGTAG, CLASSTAG + " On Create " + ExecutingLineIndex);
+		Log.v(LOGTAG, CLASSTAG + " onCreate " + ExecutingLineIndex);
 
 		if (Basic.lines == null) {
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
@@ -2431,7 +2431,7 @@ public class Run extends ListActivity {
 
 	@Override
 	protected void onResume() {
-		Log.v(LOGTAG, CLASSTAG + " On Resume " + kbShown);
+		Log.v(LOGTAG, CLASSTAG + " onResume " + kbShown);
 
 		RunPaused = false;
 		background = false;
@@ -2466,7 +2466,7 @@ public class Run extends ListActivity {
 
 	@Override
 	protected void onStart() {
-		Log.v(LOGTAG, CLASSTAG + " On Start");
+		Log.v(LOGTAG, CLASSTAG + " onStart");
 		super.onStart();
 	}
 
@@ -2490,7 +2490,7 @@ public class Run extends ListActivity {
 
 	@Override
 	protected void onDestroy() {
-		Log.v(LOGTAG, CLASSTAG + " On Destroy");
+		Log.v(LOGTAG, CLASSTAG + " onDestroy");
 
 		if (theSensors != null) {
 			theSensors.stop();
@@ -3781,7 +3781,7 @@ public class Run extends ListActivity {
 	} // end InitVars
 
 	public void cleanUp() {
-		Log.d(LOGTAG, "cleaup() started");
+		Log.d(LOGTAG, "cleanUp() started");
 		if (theMP != null) {
 			try { theMP.stop(); } catch (IllegalStateException e) {}
 			if (theMP != null) theMP.release();
@@ -3892,7 +3892,7 @@ public class Run extends ListActivity {
 		}
 		mSignalStrength = null;
 	
-		Log.d(LOGTAG, "cleanup() done");
+		Log.d(LOGTAG, "cleanUp() done");
 	} // end cleanup
 
 	// ************************************* Function Tables **************************************
@@ -12286,23 +12286,26 @@ public class Run extends ListActivity {
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 //		AudioManager audioSM = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
 
-		if (!getNVar())					return false;					// Get the Player Number Var
+		if (!getNVar())					return false;		// get the Player Number variable
 		Var var = Vars.get(theValueIndex);
 		if (!isNext(','))				return false;
 
-		if (!getStringArg())			return false;					// Get the file path
+		if (!getStringArg())			return false;		// get the file path
 		if (!checkEOL())				return false;
 
-		String fileName = StringConstant;								// The filename as given by the user
+		String fileName = StringConstant;					// the filename as given by the user
 		MediaPlayer aMP = getMP(fileName);
 
-		if (aMP == null) { return RunTimeError(fileName + " Not Found at:"); }
-		aMP.setAudioStreamType(AudioManager.STREAM_MUSIC);
-		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		if (aMP == null) {
+			var.val(0);										// indicate error with 0 in Player Number var
+		} else {
+			aMP.setAudioStreamType(AudioManager.STREAM_MUSIC);
+			setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-		var.val(theMPList.size());
-		theMPList.add(aMP);
-		theMPNameList.add(fileName);
+			var.val(theMPList.size());						// indicate success with list index in Player Number var
+			theMPList.add(aMP);
+			theMPNameList.add(fileName);
+		}
 		return true;
 	}
 
@@ -15668,7 +15671,6 @@ public class Run extends ListActivity {
 						if (afd != null) { try { afd.close(); } catch (IOException e) { } }
 					}
 				}
-				if (SoundID == 0)		return false;
 			}
 		}
 		var.val(SoundID);
