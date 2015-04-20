@@ -938,6 +938,7 @@ public class Run extends ListActivity {
 
     public static final int BASIC_GENERAL_INTENT = 255;
     private Random randomizer;
+    private boolean mInterpreterRunning;
     public static boolean background = false;
     private String errorMsg;
     private boolean kbShown = false;
@@ -2305,7 +2306,7 @@ public class Run extends ListActivity {
 			}
 
 			if (Basic.DoAutoRun) Exit = true;	// If AutoRun, back key always means exit
-			if (!Stop) {
+			if (mInterpreterRunning) {
 				Stop = true;			// If running a program, stop it
 			}
 			else finish();				// else already stopped, return to the Editor
@@ -3535,6 +3536,8 @@ public class Run extends ListActivity {
 	private void InitVars() {
 		Log.d(LOGTAG, "InitVars() started");
 
+		mInterpreterRunning = true;
+
 		OnErrorLine = 0;								// Line number for OnError: label
 		OnBackKeyLine = 0;
 		BackKeyHit = false;
@@ -3884,7 +3887,9 @@ public class Run extends ListActivity {
 			mTM = null;
 		}
 		mSignalStrength = null;
-	
+
+		mInterpreterRunning = false;
+
 		Log.d(LOGTAG, "cleanUp() done");
 	} // end cleanup
 
