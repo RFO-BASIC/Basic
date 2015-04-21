@@ -11797,10 +11797,12 @@ public class Run extends ListActivity {
 		if (argb == null) return false;								// error getting variables
 		if (!checkEOL()) return false;
 
+		if (b == null) { return RunTimeError("Bitmap was deleted"); }
+
 		int w = b.getWidth();										// get the image width
 		int h = b.getHeight();										// get the image height
 		if (x < 0 || x >= w || y < 0 || y >= h) {
-			return RunTimeError("x or y exceeds size of screen");
+			return RunTimeError("x or y exceeds size of bitmap");
 		}
 
 		int pixel = (b == null) ? 0 : b.getPixel(x, y);				// get the pixel from the bitmap
@@ -11894,9 +11896,6 @@ public class Run extends ListActivity {
 		int bitmapPtr = getBitmapArg();								// get the bitmap number
 		if (bitmapPtr < 0) return false;
 		Bitmap SrcBitMap = BitmapList.get(bitmapPtr);				// get the bitmap
-		if (SrcBitMap == null) {
-			return RunTimeError("Bitmap was deleted");
-		}
 		if (!isNext(',')) return false;
 
 		if (!getStringArg()) return false;							// get the filename
@@ -11906,11 +11905,13 @@ public class Run extends ListActivity {
 		if (isNext(',')) {											// if there is an optional quality parm
 			if (!evalNumericExpression()) return false;				// evaluate it
 			quality = EvalNumericExpressionValue.intValue();
-			if (quality < 0 || quality > 100) {
-				return RunTimeError("Quality must be between 0 and 100");
-			}
 		}
 		if (!checkEOL()) return false;
+
+		if (SrcBitMap == null) { return RunTimeError("Bitmap was deleted"); }
+		if (quality < 0 || quality > 100) {
+			return RunTimeError("Quality must be between 0 and 100");
+		}
 
 		boolean retval = writeBitmapToFile(SrcBitMap, fn, quality);
 		SrcBitMap = null;
