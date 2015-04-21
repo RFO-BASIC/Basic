@@ -78,6 +78,7 @@ This file is part of BASIC! for Android
 <string name="format">Format</string>
 <string name="clear">Clear</string>
 <string name="load_run">Load and Run</string>
+<string name="save_run">Save and Run</string>
 <string name="settings">Preferences</string>
 <string name="spawn">Create Application</string>
 <string name="help">Commands</string>

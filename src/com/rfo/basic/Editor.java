@@ -482,6 +482,10 @@ public class Editor extends Activity {
 				}
 				return(true);
 
+			case R.id.save_run:								// SAVE and RUN
+				saveFile(Action.RUN);							// Run the program after saving it
+				return(true);
+
 			case R.id.format:								// FORMAT
 				if (mText == null) {
 					throw new RuntimeException("Editor: attempt to Format with null mText");

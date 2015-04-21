@@ -330,7 +330,7 @@ public class Run extends ListActivity {
 	// **************************** FileInfo class ****************************
 	// Records information about an open file. Objects go in the FileTable.
 
-	public static class FileInfo {
+	public static abstract class FileInfo {
 		protected final int mMode;
 		protected final boolean mIsText;
 		protected boolean mIsEOF;
@@ -342,7 +342,7 @@ public class Run extends ListActivity {
 		public FileInfo(int mode, boolean isText) {
 			mMode = mode;
 			mIsText = isText;
-			mIsEOF = false;
+			mIsEOF = (mMode == FMW);					// initially at bof if reading, eof if writing/appending
 			mIsClosed = false;
 			mPosition = 1;
 		}
@@ -385,6 +385,11 @@ public class Run extends ListActivity {
 			try { stream.close(); return ex; }
 			catch ( IOException e ) { return (ex == null) ? e : ex; }
 		}
+
+		protected IOException flush(IOException ex) {			// default implementation is a no-op
+			return ex;											// can invoke on read types
+		}
+		protected abstract IOException close(IOException ex);
 	} // class FileInfo
 
 	public static class TextWriterInfo extends FileInfo {
@@ -1082,6 +1087,15 @@ public class Run extends ListActivity {
 
 	// ******************************* File I/O operation variables ************************
 
+	// for both TEXT and BYTE
+	private static final String BKW_OPEN = "open";
+	private static final String BKW_CLOSE = "close";
+	private static final String BKW_EOF = "eof";
+	private static final String BKW_POSITION_GET = "position.get";
+	private static final String BKW_POSITION_SET = "position.set";
+	private static final String BKW_POSITION_MARK = "position.mark";
+
+	// for FILE
 	private static final String BKW_FILE_DELETE = "delete";
 	private static final String BKW_FILE_SIZE = "size";
 	private static final String BKW_FILE_DIR = "dir";
@@ -1103,44 +1117,34 @@ public class Run extends ListActivity {
 
 	// ********************************* TEXT I/O variables *********************************
 
-	private static final String BKW_TEXT_OPEN = "open";
-	private static final String BKW_TEXT_CLOSE = "close";
 	private static final String BKW_TEXT_READLN = "readln";
 	private static final String BKW_TEXT_WRITELN = "writeln";
 	private static final String BKW_TEXT_INPUT = "input";
-	private static final String BKW_TEXT_POSITION_GET = "position.get";
-	private static final String BKW_TEXT_POSITION_SET = "position.set";
-	private static final String BKW_TEXT_POSITION_MARK = "position.mark";
 
 	private static final String text_KW[] = {			// Command list for Format
-		BKW_TEXT_OPEN, BKW_TEXT_CLOSE,
+		BKW_OPEN, BKW_CLOSE,  BKW_EOF,
 		BKW_TEXT_READLN, BKW_TEXT_WRITELN,
 		BKW_TEXT_INPUT,
-		BKW_TEXT_POSITION_GET, BKW_TEXT_POSITION_SET,
-		BKW_TEXT_POSITION_MARK,
+		BKW_POSITION_GET, BKW_POSITION_SET,
+		BKW_POSITION_MARK,
 	};
 
 	// ******************************* BYTE I/O variables *******************************
 
-	private static final String BKW_BYTE_OPEN = "open";
-	private static final String BKW_BYTE_CLOSE = "close";
 	private static final String BKW_BYTE_READ_BYTE = "read.byte";
 	private static final String BKW_BYTE_WRITE_BYTE = "write.byte";
 	private static final String BKW_BYTE_READ_BUFFER = "read.buffer";
 	private static final String BKW_BYTE_WRITE_BUFFER = "write.buffer";
 	private static final String BKW_BYTE_COPY = "copy";
 	private static final String BKW_BYTE_TRUNCATE = "truncate";
-	private static final String BKW_BYTE_POSITION_GET = "position.get";
-	private static final String BKW_BYTE_POSITION_SET = "position.set";
-	private static final String BKW_BYTE_POSITION_MARK = "position.mark";
 
 	private static final String byte_KW[] = {			// Command list for Format
-		BKW_BYTE_OPEN, BKW_BYTE_CLOSE,
+		BKW_OPEN, BKW_CLOSE, BKW_EOF,
 		BKW_BYTE_READ_BYTE, BKW_BYTE_WRITE_BYTE,
 		BKW_BYTE_READ_BUFFER, BKW_BYTE_WRITE_BUFFER,
 		BKW_BYTE_COPY, BKW_BYTE_TRUNCATE,
-		BKW_BYTE_POSITION_GET, BKW_BYTE_POSITION_SET,
-		BKW_BYTE_POSITION_MARK,
+		BKW_POSITION_GET, BKW_POSITION_SET,
+		BKW_POSITION_MARK,
 	};
 
 	// ******************** READ variables *******************************************
@@ -4158,42 +4162,43 @@ public class Run extends ListActivity {
 
 	private final Command[] file_cmd = new Command[] {	// Map File command keywords to their execution functions
 		new Command(BKW_FILE_DELETE)    { public boolean run() { return executeDELETE(); } },
-		new Command(BKW_FILE_SIZE)      { public boolean run() { return executeFILE_SIZE(); } },
 		new Command(BKW_FILE_DIR)       { public boolean run() { return executeDIR(); } },
+		new Command(BKW_EOF)            { public boolean run() { return executeFILE_EOF(); } },
+		new Command(BKW_FILE_EXISTS)    { public boolean run() { return executeFILE_EXISTS(); } },
 		new Command(BKW_FILE_MKDIR)     { public boolean run() { return executeMKDIR(); } },
 		new Command(BKW_FILE_RENAME)    { public boolean run() { return executeRENAME(); } },
-		new Command(BKW_FILE_ROOT)      { public boolean run() { return executeFILE_ROOTS(); } },
-		new Command(BKW_FILE_EXISTS)    { public boolean run() { return executeFILE_EXISTS(); } },
+		new Command(BKW_FILE_ROOT)      { public boolean run() { return executeFILE_ROOT(); } },
+		new Command(BKW_FILE_SIZE)      { public boolean run() { return executeFILE_SIZE(); } },
 		new Command(BKW_FILE_TYPE)      { public boolean run() { return executeFILE_TYPE(); } }
 	};
 
 	// **************** TEXT Group - text file operations
 
 	private final Command[] text_cmd = new Command[] {	// Map Text I/O command keywords to their execution functions
-		new Command(BKW_TEXT_OPEN)          { public boolean run() { return executeTEXT_OPEN(); } },
-		new Command(BKW_TEXT_CLOSE)         { public boolean run() { return executeTEXT_CLOSE(); } },
+		new Command(BKW_OPEN)               { public boolean run() { return executeTEXT_OPEN(); } },
+		new Command(BKW_CLOSE)              { public boolean run() { return executeTEXT_CLOSE(); } },
 		new Command(BKW_TEXT_READLN)        { public boolean run() { return executeTEXT_READLN(); } },
 		new Command(BKW_TEXT_WRITELN)       { public boolean run() { return executeTEXT_WRITELN(); } },
 		new Command(BKW_TEXT_INPUT)         { public boolean run() { return executeTEXT_INPUT(); } },
-		new Command(BKW_TEXT_POSITION_GET)  { public boolean run() { return executeTEXT_POSITION_GET(); } },
-		new Command(BKW_TEXT_POSITION_SET)  { public boolean run() { return executeTEXT_POSITION_SET(); } },
-		new Command(BKW_TEXT_POSITION_MARK) { public boolean run() { return executeTEXT_POSITION_MARK(); } },
+		new Command(BKW_POSITION_GET)       { public boolean run() { return executeTEXT_POSITION_GET(); } },
+		new Command(BKW_POSITION_SET)       { public boolean run() { return executeTEXT_POSITION_SET(); } },
+		new Command(BKW_POSITION_MARK)      { public boolean run() { return executeTEXT_POSITION_MARK(); } },
 	};
 
 	// **************** BYTE Group - binary file operations
 
 	private final Command[] byte_cmd = new Command[] {	// Map Byte I/O command keywords to their execution functions
-		new Command(BKW_BYTE_OPEN)          { public boolean run() { return executeBYTE_OPEN(); } },
-		new Command(BKW_BYTE_CLOSE)         { public boolean run() { return executeBYTE_CLOSE(); } },
+		new Command(BKW_OPEN)               { public boolean run() { return executeBYTE_OPEN(); } },
+		new Command(BKW_CLOSE)              { public boolean run() { return executeBYTE_CLOSE(); } },
 		new Command(BKW_BYTE_READ_BYTE)     { public boolean run() { return executeBYTE_READ_BYTE(); } },
 		new Command(BKW_BYTE_WRITE_BYTE)    { public boolean run() { return executeBYTE_WRITE_BYTE(); } },
 		new Command(BKW_BYTE_READ_BUFFER)   { public boolean run() { return executeBYTE_READ_BUFFER(); } },
 		new Command(BKW_BYTE_WRITE_BUFFER)  { public boolean run() { return executeBYTE_WRITE_BUFFER(); } },
 		new Command(BKW_BYTE_COPY)          { public boolean run() { return executeBYTE_COPY(); } },
 		new Command(BKW_BYTE_TRUNCATE)      { public boolean run() { return executeBYTE_TRUNCATE(); } },
-		new Command(BKW_BYTE_POSITION_GET)  { public boolean run() { return executeBYTE_POSITION_GET(); } },
-		new Command(BKW_BYTE_POSITION_SET)  { public boolean run() { return executeBYTE_POSITION_SET(); } },
-		new Command(BKW_BYTE_POSITION_MARK) { public boolean run() { return executeBYTE_POSITION_MARK(); } },
+		new Command(BKW_POSITION_GET)       { public boolean run() { return executeBYTE_POSITION_GET(); } },
+		new Command(BKW_POSITION_SET)       { public boolean run() { return executeBYTE_POSITION_SET(); } },
+		new Command(BKW_POSITION_MARK)      { public boolean run() { return executeBYTE_POSITION_MARK(); } },
 	};
 
 	// **************** READ Group - READ.DATA
@@ -8109,18 +8114,8 @@ public class Run extends ListActivity {
 		if (!fInfo.isText()) { return RunTimeError("File not opened for text"); }
 		if (fInfo.isClosed()) return true;							// Already closed
 
-		int FileMode = fInfo.mode();
-		if (FileMode == FMR) {										// Close file open for read
-			IOException e = ((TextReaderInfo)fInfo).close(null);
-			if (e != null) return RunTimeError(e);
-		}
-		else if (FileMode == FMW) {									// close file open for write
-			TextWriterInfo twInfo = (TextWriterInfo)fInfo;
-			IOException e = twInfo.close(twInfo.flush(null));
-			if (e != null) return RunTimeError(e);
-		} else {
-			return RunTimeError("File not opened for read or write");
-		}
+		IOException e = fInfo.close(fInfo.flush(null));				// flush is no-op on read types
+		if (e != null) return RunTimeError(e);
 		return true;
 	}
 
@@ -8134,14 +8129,14 @@ public class Run extends ListActivity {
 		Var var = Vars.get(theValueIndex);							// to hold the data
 		if (!checkEOL()) return false;
 
-		TextReaderInfo fInfo = (TextReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadTextAttributes(fInfo)) return false;			// Check runtime errors
 
 		String data = null;
 		if (fInfo.isEOF()) {										// If already eof don't read
 			data = "EOF";											// but force returned data to "EOF"
 		} else {
-			BufferedReader buf = fInfo.mTextReader;
+			BufferedReader buf = ((TextReaderInfo)fInfo).mTextReader;
 			try { data = buf.readLine(); }							// Read a line
 			catch (IOException e) { return RunTimeError("I/O error at:"); }
 			if (data == null) {
@@ -8169,10 +8164,10 @@ public class Run extends ListActivity {
 		textPrintLine = "";											// clear the accumulated text print line
 
 		if (!checkFile(FileNumber)) return false;					// Check runtime errors
-		TextWriterInfo fInfo = (TextWriterInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkWriteTextAttributes(fInfo)) return false;			// Check runtime errors
 
-		FileWriter writer = fInfo.mTextWriter;
+		FileWriter writer =  ((TextWriterInfo)fInfo).mTextWriter;
 		try { writer.write(StringConstant); }						// Oh, and write the line
 		catch (IOException e) { return RunTimeError("I/O error at"); }
 
@@ -8225,12 +8220,12 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
-		TextReaderInfo fInfo = (TextReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadTextAttributes(fInfo)) return false;			// Check runtime errors
 
-		BufferedReader buf = fInfo.mTextReader;
 		long pnow = fInfo.position();
 		boolean eof = fInfo.isEOF();
+		BufferedReader buf = ((TextReaderInfo)fInfo).mTextReader;
 
 		if (pto < pnow) {
 			try { buf.reset(); }									// back to mark, exception if mark invalid
@@ -8291,14 +8286,14 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
-		TextReaderInfo fInfo = (TextReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadTextAttributes(fInfo)) return false;			// check runtime errors
 
 		if (markLimit < 0) {
 			markLimit = fInfo.markLimit();							// retrieve mark limit from fInfo 
 		}
 
-		BufferedReader buf = fInfo.mTextReader;
+		BufferedReader buf = ((TextReaderInfo)fInfo).mTextReader;
 		try { buf.mark(markLimit); }								// set the mark
 		catch (IOException e) { return RunTimeError("I/O error at:"); }
 
@@ -8450,18 +8445,8 @@ public class Run extends ListActivity {
 		if (fInfo.isText()) { return RunTimeError("File not opened for byte"); }
 		if (fInfo.isClosed()) return true;							// Already closed
 
-		int FileMode = fInfo.mode();
-		if (FileMode == FMR) {										// close file open for read
-			IOException e = ((ByteReaderInfo)fInfo).close(null);
-			if (e != null) return RunTimeError(e);
-		}
-		else if (FileMode == FMW) {									// close file open for write
-			ByteWriterInfo bwInfo = (ByteWriterInfo)fInfo;
-			IOException e = bwInfo.close(bwInfo.flush(null));
-			if (e != null) return RunTimeError(e);
-		} else {
-			return RunTimeError("File not opened for read or write");
-		}
+		IOException e = fInfo.close(fInfo.flush(null));				// flush is no-op on read types
+		if (e != null) return RunTimeError(e);
 		return true;
 	}
 
@@ -8474,12 +8459,12 @@ public class Run extends ListActivity {
 		if (!evalStringExpression()) return false;					// Second parm is the destination file name
 		if (!checkEOL()) return false;
 
-		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// Check runtime errors
 
 		if (fInfo.isEOF()) { return RunTimeError("Attempt to read beyond the EOF at:"); }
 
-		BufferedInputStream bis = fInfo.mByteReader;
+		BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
 
 		String theFileName = StringConstant;
 		File file = new File(Basic.getDataPath(theFileName));
@@ -8537,12 +8522,12 @@ public class Run extends ListActivity {
 		if (!getNVar()) return false;								// Second parm is the return data var
 		if (!checkEOL()) return false;
 
-		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// Check runtime errors
 
 		int data = -1;
 		if (!fInfo.isEOF()) {								// If already eof don't read
-			BufferedInputStream bis = fInfo.mByteReader;
+			BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
 			try { data = bis.read(); }						// Read a byte
 			catch (Exception e) { return RunTimeError(e); }
 			if (data < 0) {
@@ -8569,12 +8554,12 @@ public class Run extends ListActivity {
 		Var var = Vars.get(theValueIndex);
 		if (!checkEOL()) return false;
 
-		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// Check runtime errors
 
 		String buff = "";
 		if (!fInfo.isEOF()) {										// If already eof don't read
-			BufferedInputStream bis = fInfo.mByteReader;
+			BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
 			byte[] byteArray = new byte[byteCount];
 			int count = 0;
 			try { count = bis.read(byteArray, 0, byteCount); }		// Read the bytes
@@ -8610,10 +8595,10 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
-		ByteWriterInfo fInfo = (ByteWriterInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkWriteByteAttributes(fInfo)) return false;			// Check runtime errors
 
-		FileOutputStream fos = fInfo.mByteWriter;
+		FileOutputStream fos = ((ByteWriterInfo)fInfo).mByteWriter;
 		try {
 			if (OutputIsByte) {
 				fos.write(b);								// Oh, and write the byte
@@ -8641,10 +8626,10 @@ public class Run extends ListActivity {
 		if (!evalStringExpression()) return false;
 		if (!checkEOL()) return false;
 
-		ByteWriterInfo fInfo = (ByteWriterInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkWriteByteAttributes(fInfo)) return false;			// Check runtime errors
 
-		FileOutputStream fos = fInfo.mByteWriter;
+		FileOutputStream fos = ((ByteWriterInfo)fInfo).mByteWriter;
 		int len = StringConstant.length();
 		try {
 			for (int k = 0; k < len; ++k) {							// Write the buffer
@@ -8668,10 +8653,10 @@ public class Run extends ListActivity {
 		long length = EvalNumericExpressionValue.longValue();
 		if (!checkEOL()) return false;
 
-		ByteWriterInfo fInfo = (ByteWriterInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkWriteByteAttributes(fInfo)) return false;			// Check runtime errors
 
-		try { fInfo.truncateFile(length); }
+		try { ((ByteWriterInfo)fInfo).truncateFile(length); }
 		catch (IOException ex) { return RunTimeError(ex); }
 		return true;
 	}
@@ -8689,10 +8674,10 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
-		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// Check runtime errors
 
-		BufferedInputStream bis = fInfo.mByteReader;
+		BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
 		long pnow = fInfo.position();
 		boolean eof = fInfo.isEOF();
 
@@ -8763,14 +8748,14 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
-		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;			// check runtime errors
 
 		if (markLimit < 0) {
 			markLimit = fInfo.markLimit();							// retrieve mark limit from fInfo 
 		}
 
-		BufferedInputStream bis = fInfo.mByteReader;
+		BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
 		bis.mark(markLimit);										// set the mark
 
 		fInfo.markCurrentPosition(markLimit);						// update the fInfo
@@ -8840,6 +8825,21 @@ public class Run extends ListActivity {
 
 	private boolean executeFILE() {							// Get File command keyword if it is there
 		return executeCommand(file_cmd, "File");
+	}
+
+	private boolean executeFILE_EOF() {
+		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
+		int FileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkFile(FileNumber)) return false;					// Check runtime errors
+
+		if (!isNext(',') || !getNVar()) return false;				// Second parm is the logical (numeric) variable
+		Var var = Vars.get(theValueIndex);							// to hold the return value
+		if (!checkEOL()) return false;
+
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		boolean eof = fInfo.isClosed() || fInfo.isEOF();			// if closed or eof return true, else false
+		var.val(eof ? 1.0 : 0.0);									// return boolean as numeric
+		return true;
 	}
 
 	private boolean executeFILE_EXISTS() {
@@ -9014,7 +9014,7 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-	private boolean executeFILE_ROOTS() {
+	private boolean executeFILE_ROOT() {
 		if (!getSVar())					return false;
 		Var var = Vars.get(theValueIndex);
 
@@ -14436,12 +14436,12 @@ public class Run extends ListActivity {
 		int FileNumber = (int)var.nval();
 		if (!checkReadFile(FileNumber))	return false;						// Check runtime errors
 
-		ByteReaderInfo fInfo = (ByteReaderInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);							// Get the file info
 		if (!checkReadByteAttributes(fInfo)) return false;					// Check runtime errors
 
 		if (fInfo.isEOF()) { return RunTimeError("Attempt to read beyond the EOF at:"); }
 
-		BufferedInputStream bis = fInfo.mByteReader;
+		BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
 		int bufferSize = 1024*16;
 		try {
 			OutputStream os = socket.getOutputStream();
@@ -14470,10 +14470,10 @@ public class Run extends ListActivity {
 		int FileNumber = EvalNumericExpressionValue.intValue();
 		if (!checkFile(FileNumber))		return false;						// Check runtime errors
 
-		ByteWriterInfo fInfo = (ByteWriterInfo)FileTable.get(FileNumber);	// Get the file info
+		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkWriteByteAttributes(fInfo)) return false;					// Check runtime errors
 
-		DataOutputStream dos = fInfo.getDOS();
+		DataOutputStream dos = ((ByteWriterInfo)fInfo).getDOS();
 		if (dos == null) { return RunTimeError("Error writing file"); }
 		int bufferSize = 1024*512;
 		try {
