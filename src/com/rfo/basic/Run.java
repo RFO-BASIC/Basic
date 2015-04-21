@@ -920,11 +920,14 @@ public class Run extends ListActivity {
 	private static final String SF_INT = "int$(";
 	private static final String SF_LEFT = "left$(";
 	private static final String SF_LOWER = "lower$(";
+	private static final String SF_LTRIM = "ltrim$(";
 	private static final String SF_MID = "mid$(";
 	private static final String SF_OCT = "oct$(";
 	private static final String SF_REPLACE = "replace$(";
 	private static final String SF_RIGHT = "right$(";
+	private static final String SF_RTRIM = "rtrim$(";
 	private static final String SF_STR = "str$(";
+	private static final String SF_TRIM = "trim$(";
 	private static final String SF_UPPER = "upper$(";
 	private static final String SF_USING = "using$(";
 	private static final String SF_VERSION = "version$(";
@@ -933,13 +936,17 @@ public class Run extends ListActivity {
 	public static final String StringFunctions[] = {
 		SF_LEFT, SF_MID, SF_RIGHT,
 		SF_STR, SF_UPPER, SF_LOWER,
+		SF_TRIM, SF_LTRIM, SF_RTRIM,
 		SF_USING, SF_FORMAT, SF_FORMAT_USING,
 		SF_CHR, SF_REPLACE, SF_WORD,
 		SF_INT, SF_HEX, SF_OCT, SF_BIN,
 		SF_GETERROR, SF_VERSION,
 	};
 
-    // *****************************   Various execution control variables *********************
+	private static final int LEFT = 1;					// control bits for SF_TRIM
+	private static final int RIGHT = 2;
+
+	// *****************************   Various execution control variables *********************
 
     public static final int BASIC_GENERAL_INTENT = 255;
     private Random randomizer;
@@ -3965,6 +3972,9 @@ public class Run extends ListActivity {
 		new Command(SF_STR)                     { public boolean run() { return executeSF_STR(); } },
 		new Command(SF_UPPER)                   { public boolean run() { return executeSF_UPPER(); } },
 		new Command(SF_LOWER)                   { public boolean run() { return executeSF_LOWER(); } },
+		new Command(SF_TRIM)                    { public boolean run() { return executeSF_TRIM(LEFT | RIGHT); } },
+		new Command(SF_LTRIM)                   { public boolean run() { return executeSF_TRIM(LEFT); } },
+		new Command(SF_RTRIM)                   { public boolean run() { return executeSF_TRIM(RIGHT); } },
 		new Command(SF_FORMAT_USING)            { public boolean run() { return executeSF_USING(); } },
 		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
 		new Command(SF_USING)                   { public boolean run() { return executeSF_USING(); } },
@@ -6331,6 +6341,39 @@ public class Run extends ListActivity {
 			}
 			if ((count == 0) || (start >= length)) { str = ""; }
 			else if ((start > 0) || (end < length)) { str = str.substring(start, end); }
+		}
+		StringConstant = str;
+		return true;
+	}
+
+	private String ltrim(String str, String trim) {			// remove 
+		if ((str == null) || str.equals("")) return "";
+		if ((trim == null) || trim.equals("")) return str;
+		if (!trim.startsWith("^")) { trim = "^" + trim; }
+		return str.replaceFirst(trim, "");
+	}
+
+	private String rtrim(String str, String trim) {
+		if ((str == null) || str.equals("")) return "";
+		if ((trim == null) || trim.equals("")) return str;
+		if (!trim.endsWith("$")) { trim += "$"; }
+		return str.replaceFirst(trim, "");
+	}
+
+	private boolean executeSF_TRIM(int what) {											// TRIM$
+														// use LEFT, RIGHT, or LEFT|RIGHT for what arg
+		if (!getStringArg())			return false;
+		String str = StringConstant;
+		String trim = "\\s+";							// default: trim whitespace
+		if (isNext(',')) {
+			if (!getStringArg())		return false;
+			trim = StringConstant;
+		}
+		if (!isNext(')'))				return false;	// Function must end with ')'
+
+		if (trim != "") {
+			if ((what & LEFT) != 0)  { str = ltrim(str, trim); }
+			if ((what & RIGHT) != 0) { str = rtrim(str, trim); }
 		}
 		StringConstant = str;
 		return true;
