@@ -6299,7 +6299,7 @@ public class Run extends ListActivity {
 		if (length > 0) {
 			int count = EvalNumericExpressionValue.intValue();
 			if (count < 0) {
-				str = (count <= 0) ? "" : str.substring(-count);
+				str = (-count >= length) ? "" : str.substring(-count);
 			} else if (count < length) {
 				str = str.substring(length - count);
 			}
