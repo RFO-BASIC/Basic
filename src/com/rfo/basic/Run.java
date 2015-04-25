@@ -593,6 +593,8 @@ public class Run extends ListActivity {
 	private static final String BKW_INCLUDE = "include";
 	private static final String BKW_INKEY = "inkey$";
 	private static final String BKW_INPUT = "input";
+	private static final String BKW_JOIN = "join";
+	private static final String BKW_JOIN_ALL = "join.all";
 	private static final String BKW_KB_HIDE = "kb.hide";
 	private static final String BKW_KB_TOGGLE = "kb.toggle";
 	private static final String BKW_KEY_RESUME = "key.resume";
@@ -603,15 +605,15 @@ public class Run extends ListActivity {
 	private static final String BKW_MYPHONENUMBER = "myphonenumber";
 	private static final String BKW_NEXT = "next";
 	private static final String BKW_NOTIFY = "notify";
-	private static final String BKW_ONBACKGROUND = "onbackground";
-	private static final String BKW_ONBACKKEY = "onbackkey";
-	private static final String BKW_ONBTREADREADY = "onbtreadready";
-	private static final String BKW_ONCONSOLETOUCH = "onconsoletouch";
-	private static final String BKW_ONERROR = "onerror";
-	private static final String BKW_ONGRTOUCH = "ongrtouch";
-	private static final String BKW_ONKEYPRESS = "onkeypress";
-	private static final String BKW_ONMENUKEY = "onmenukey";
-	private static final String BKW_ONTIMER = "ontimer";
+	private static final String BKW_ONBACKGROUND = "onbackground:";
+	private static final String BKW_ONBACKKEY = "onbackkey:";
+	private static final String BKW_ONBTREADREADY = "onbtreadready:";
+	private static final String BKW_ONCONSOLETOUCH = "onconsoletouch:";
+	private static final String BKW_ONERROR = "onerror:";
+	private static final String BKW_ONGRTOUCH = "ongrtouch:";
+	private static final String BKW_ONKEYPRESS = "onkeypress:";
+	private static final String BKW_ONMENUKEY = "onmenukey:";
+	private static final String BKW_ONTIMER = "ontimer:";
 	private static final String BKW_PAUSE = "pause";
 	private static final String BKW_PHONE_GROUP = "phone.";
 	private static final String BKW_POPUP = "popup";
@@ -688,7 +690,8 @@ public class Run extends ListActivity {
 		BKW_RINGER_GROUP, BKW_TONE,
 		BKW_CLIPBOARD_GET, BKW_CLIPBOARD_PUT,
 		BKW_ENCRYPT, BKW_DECRYPT, BKW_SWAP,
-		BKW_SPLIT_ALL, BKW_SPLIT, BKW_CLS,
+		BKW_SPLIT_ALL, BKW_SPLIT,
+		BKW_JOIN_ALL, BKW_JOIN, BKW_CLS,
 		BKW_FONT_GROUP, BKW_CONSOLE_GROUP, BKW_DEBUG_GROUP,
 		BKW_DEVICE, BKW_ECHO_ON, BKW_ECHO_OFF,
 		BKW_KB_TOGGLE, BKW_KB_HIDE,
@@ -705,7 +708,8 @@ public class Run extends ListActivity {
 		BKW_BACK_RESUME, BKW_BACKGROUND_RESUME,
 		BKW_CONSOLETOUCH_RESUME,
 		BKW_KEY_RESUME, BKW_MENUKEY_RESUME,
-		BKW_ONERROR,
+
+		BKW_ONERROR,											// Interrupt labels are listed for formatter, but have no Command objects
 		BKW_ONBACKKEY, BKW_ONBACKGROUND, BKW_ONBTREADREADY,
 		BKW_ONCONSOLETOUCH, BKW_ONGRTOUCH,
 		BKW_ONKEYPRESS, BKW_ONMENUKEY, BKW_ONTIMER,
@@ -4096,6 +4100,8 @@ public class Run extends ListActivity {
 		new Command(BKW_SWAP)                   { public boolean run() { return executeSWAP(); } },
 		new Command(BKW_SPLIT_ALL)              { public boolean run() { return executeSPLIT(-1); } },
 		new Command(BKW_SPLIT)                  { public boolean run() { return executeSPLIT(0); } },
+		new Command(BKW_JOIN_ALL)               { public boolean run() { return executeJOIN(true); } },
+		new Command(BKW_JOIN)                   { public boolean run() { return executeJOIN(false); } },
 		new Command(BKW_CLS)                    { public boolean run() { return executeCLS(); } },
 		new Command(BKW_FONT_GROUP, CID_GROUP)  { public boolean run() { return executeFONT(); } },
 		new Command(BKW_CONSOLE_GROUP,CID_GROUP){ public boolean run() { return executeCONSOLE(); } },
@@ -4137,17 +4143,7 @@ public class Run extends ListActivity {
 		new Command(BKW_BACKGROUND_RESUME)      { public boolean run() { return executeBACKGROUND_RESUME(); } },
 		new Command(BKW_CONSOLETOUCH_RESUME)    { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
 		new Command(BKW_KEY_RESUME)             { public boolean run() { return executeKEY_RESUME(); } },
-		new Command(BKW_MENUKEY_RESUME)         { public boolean run() { return executeMENUKEY_RESUME(); } },
-
-		new Command(BKW_ONERROR)                { public boolean run() { return true; } },
-		new Command(BKW_ONBACKKEY)              { public boolean run() { return true; } },
-		new Command(BKW_ONBACKGROUND)           { public boolean run() { return true; } },
-		new Command(BKW_ONBTREADREADY)          { public boolean run() { return true; } },
-		new Command(BKW_ONCONSOLETOUCH)         { public boolean run() { return true; } },
-		new Command(BKW_ONGRTOUCH)              { public boolean run() { return true; } },
-		new Command(BKW_ONKEYPRESS)             { public boolean run() { return true; } },
-		new Command(BKW_ONMENUKEY)              { public boolean run() { return true; } },
-		new Command(BKW_ONTIMER)                { public boolean run() { return true; } },
+		new Command(BKW_MENUKEY_RESUME)         { public boolean run() { return executeMENUKEY_RESUME(); } }
 	}; // BASIC_cmd
 
 	// **************** FN Group - user-defined functions 
@@ -4902,7 +4898,7 @@ public class Run extends ListActivity {
 	private String getArrayVarForRead() {				// get the array var as a previously-dimensioned array
 														// returns the var name, null if error or no var
 		int LI = LineIndex;
-		String var = getVarAndType();					// type must match expected type
+		String var = getVarAndType();
 		if (validArrayVarForRead(var)) { return var; }	// no error, return name, array index is in theValueIndex
 		LineIndex = LI;
 		return null;									// error, theVarIndex is not valid
@@ -5731,6 +5727,24 @@ public class Run extends ListActivity {
 		}
 		return (!isComma && checkEOL());
 	} // getOptExprs(int[])
+
+	// Like getOptExprs, but limited to String arguments.
+	private boolean getOptExprs(String[] sVal) {
+		if (isEOL()) return true;							// no arguments
+		int nArgs = sVal.length;
+		boolean isComma = true;
+		for (int arg = 0; arg < nArgs; ++arg) {
+			if (isComma) {
+				isComma = isNext(',');
+				if (!isComma) {
+					if (!getStringArg()) return false;
+					sVal[arg] = StringConstant;
+					isComma = isNext(',');
+				}
+			}
+		}
+		return (!isComma && checkEOL());
+	} // getOptExprs(String[])
 
 	private double[] getArgsDD() {								// get two numeric arguments (doubles)
 		if (!evalNumericExpression())	{ return null; }
@@ -9519,6 +9533,47 @@ public class Run extends ListActivity {
 			RunTimeError(REString + " is invalid argument at");
 		}
 		return r;
+	}
+
+	private boolean executeJOIN(boolean keepAll) {					// opposite of SPLIT
+																	// if keepAll is true, keep empty array elements 
+		String vName = getArrayVarForRead();						// get the array to join
+		if (VarIsNumeric) { return RunTimeError(EXPECT_STRING_ARRAY); }
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = new Integer[2];
+		if (!getIndexPair(p))			return false;				// Get values inside [], if any
+
+		if (!isNext(','))				return false;
+		if (!getSVar())					return false;				// get the string variable to hold the result
+		Var var = Vars.get(theValueIndex);
+
+		String args[] = { "", "" };									// optional separator and wrapper
+		if (isNext(',')) {											// any optional args?
+			if (!getOptExprs(args)) return false;					// get the optional args
+		}
+		if (!checkEOL())				return false;
+
+		if (!getArraySegment(arrayTableIndex, p)) return false;		// get array base and length
+		int base = p[0].intValue();
+		int length = p[1].intValue();
+
+		String sep = args[0];
+		String wrap = args[1];
+		StringBuilder result = new StringBuilder(wrap);				// start with wrapper
+		boolean doSep = false;
+		for (int i = 0; i < length; ++i) {
+			String s = Vars.get(base + i).sval();					// get each array element
+			if ((s.length() == 0) && !keepAll) continue;			// skip empty strings if told to do so
+
+			if (doSep) { result.append(sep); }						// separator before all but first substring
+			result.append(s);										// append substring
+			doSep = true;
+		}
+		result.append(wrap);										// end with wrapper
+		var.val(result.toString());
+
+		return true;
 	}
 
 	private boolean executeKB_TOGGLE() {

@@ -50,7 +50,7 @@ public class Format extends ListActivity {
 	private static final char BACKSLASH   = '\\';
 	private static final char LEFT_QUOTE  = '\u201C';
 	private static final char RIGHT_QUOTE = '\u201D';
-	private static final char NBSP        = '\uC2A0';
+	private static final char NBSP        = '\u00A0';
 	private static final char COMMENT 	  = '%';
 
 	private Background theBackground;					// Background task ID

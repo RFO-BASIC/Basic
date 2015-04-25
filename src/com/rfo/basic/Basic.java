@@ -98,7 +98,7 @@ public class Basic extends Activity {
 	private static String basePath = "";
 
 	public static ArrayList<Run.ProgramLine> lines;			// Program lines for execution
-	public static String whitespace = " \t\uC2A0";			// space, tab, and UTF-8 encoding of html &nbsp
+	public static String whitespace = " \t\u00A0";			// space, tab, and UTF-8 encoding of html &nbsp
 
 	public static String ProgramFileName;					// Set when program loaded or saved
 
