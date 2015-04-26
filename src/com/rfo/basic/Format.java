@@ -229,6 +229,7 @@ public class Format extends ListActivity {
 				} else {
                     String end = aLine.substring(k+1);
                     String reg = ".*THEN" + any_ws;
+                    String reg2 = reg + "%.*"; 
                     if ( !aLine.startsWith("ELSE") &&				// If no colon (single command) and no ELSE/ELSEIF
 						(end.matches(reg) || end.matches(reg2)) ) {	// and ending THEN,
 						indent_delta++;								// indent
