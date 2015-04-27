@@ -30,7 +30,6 @@ package com.rfo.basic;
 
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Stack;
 
 import android.app.ListActivity;
 import android.os.AsyncTask;
@@ -45,13 +44,15 @@ public class Format extends ListActivity {
 
 	private static final String LOGTAG = "Run";
 
-	private static final char ASCII_SPACE = ' ';
-	private static final char ASCII_QUOTE = '\"';
-	private static final char BACKSLASH   = '\\';
-	private static final char LEFT_QUOTE  = '\u201C';
-	private static final char RIGHT_QUOTE = '\u201D';
-	private static final char NBSP        = '\u00A0';
-	private static final char COMMENT 	  = '%';
+	public static final char ASCII_SPACE = ' ';
+	public static final char ASCII_QUOTE = '\"';
+	public static final char BACKSLASH   = '\\';
+	public static final char LEFT_QUOTE  = '\u201C';
+	public static final char RIGHT_QUOTE = '\u201D';
+	public static final char NBSP        = '\u00A0';
+	public static final char COMMENT     = '%';
+	public static final String QUOTES     = "" + ASCII_QUOTE + LEFT_QUOTE + RIGHT_QUOTE;
+	public static final String WHITESPACE = " \t\u00A0";// space, tab, and html &nbsp
 
 	private Background theBackground;					// Background task ID
 	private ArrayAdapter<String> AA;
@@ -157,7 +158,7 @@ public class Format extends ListActivity {
 
         private String ProcessIndents(String aLine) {							// Do the indenting
         	String temp = "";													// temp will contain the indent spaces
-			String any_ws = "["+Basic.whitespace+"]*";
+			String any_ws = "["+WHITESPACE+"]*";
 			boolean debug=false;
         	
         	aLine = aLine.replaceFirst(any_ws, "");					// Remove leading blanks
@@ -168,7 +169,7 @@ public class Format extends ListActivity {
         	String theLine = "";
         	for (int i = 0; i < xLine.length(); ++i) {				// remove all white spaces
         		char c = xLine.charAt(i);
-        		if (Basic.whitespace.indexOf(c) == -1) theLine = theLine + c;
+        		if (WHITESPACE.indexOf(c) == -1) theLine = theLine + c;
         	}
 
         	int indent_delta = 0;									// Necessary for multi-commands per line
@@ -283,7 +284,7 @@ public class Format extends ListActivity {
 
     	for (current = start; current < aLine.length(); ++current) {
     		char c = aLine.charAt(current);
-    		if (Basic.whitespace.indexOf(c) == -1) break;
+    		if (WHITESPACE.indexOf(c) == -1) break;
     	}
     	return current - start;
     }
@@ -304,8 +305,8 @@ public class Format extends ListActivity {
 		actualLine = "";
 		int colon = aLine.indexOf(":");
 		while (colon >= 0) {									// Continue to treat multi-commands per line
-			if (aLine.substring(colon).matches(":["+Basic.whitespace+"]*") ||
-				aLine.substring(colon).matches(":["+Basic.whitespace+"]*%.*")
+			if (aLine.substring(colon).matches(":["+WHITESPACE+"]*") ||
+				aLine.substring(colon).matches(":["+WHITESPACE+"]*%.*")
 				) {												// Break if ':' at end of line (label)
 				break;
 			}
