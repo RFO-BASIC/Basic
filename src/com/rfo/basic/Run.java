@@ -3319,18 +3319,18 @@ public class Run extends ListActivity {
 			mDefaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
 			Thread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
 
-			if (!PreScan()) {				// The execution starts by scanning the source for labels and read.data
+			boolean ok = PreScan();						// The execution starts by scanning the source for labels and read.data
+			if (!ok) {
 				sendMessage(MESSAGE_UPDATE_CONSOLE);	// PreScan found error or duplicate label
 			} else {
 				ExecutingLineIndex = 0;					// just in case PreScan ever changes it
+				ok = RunLoop();							// run the program in the interpreter
+			}
 
-				boolean ok = RunLoop();					// run the program in the interpreter
-
-				finishRun();
-				if (ok && runIntent != null) {			// program executed a RUN command
-					Run.this.startActivity(runIntent);	// start new AutoRun
-					Exit = true;						// and force this Run to finish
-				}
+			finishRun();
+			if (ok && runIntent != null) {				// program executed a RUN command
+				Run.this.startActivity(runIntent);		// start new AutoRun
+				Exit = true;							// and force this Run to finish
 			}
 
 			if (Exit) {
