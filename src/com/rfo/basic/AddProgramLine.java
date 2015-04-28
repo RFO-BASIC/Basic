@@ -91,7 +91,7 @@ public class AddProgramLine {
 				stmt += "\n";								// end the line with newline
 				lineCharCounts.add(charCount);				// add char count to array of char counts
 				Basic.lines.add(new Run.ProgramLine(stmt));	// add statement to Basic.lines
-				Log.d(LOGTAG, "Program line:" + stmt);
+				// Log.d(LOGTAG, "Program line:" + stmt);
 			}
 		} else {											// not a complete statement, save it for later
 			mMerge = parts[0].substring(0, parts[0].length() - 1);	// delete the '~' continuation character
@@ -106,7 +106,7 @@ public class AddProgramLine {
 			stmt = "endif\n";							// complete it now
 			lineCharCounts.add(charCount);
 			Basic.lines.add(new Run.ProgramLine(stmt));
-			Log.d(LOGTAG, "Program line:" + stmt);
+			// Log.d(LOGTAG, "Program line:" + stmt);
 			mIfState = IfState.NONE;
 		}
 	}
