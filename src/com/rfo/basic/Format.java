@@ -337,6 +337,8 @@ public class Format extends ListActivity {
 				}
 			}
 		}
+		actualLine = actualLine.replaceAll("ELSE["+WHITESPACE+"]*IF", "ELSEIF");
+		actualLine = actualLine.replaceAll("END["+WHITESPACE+"]*IF", "ENDIF");
         // Todo: treat special case of line continuation character: IF cond ~\nTHEN command1~\nELSE command2
 
     	for (int i = 0; i < Run.MathFunctions.length; ++i) {										// Process math functions

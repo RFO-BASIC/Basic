@@ -2614,7 +2614,7 @@ public class Run extends ListActivity {
 	}
 
 	private static boolean isVarStartChar(char c) {
-		return ((c >= 'a' && c <= 'z') || c == '_' || c == '@' || c == '#');
+		return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '@' || c == '#');
 	}
 
 	public static boolean isVarChar(char c) {
