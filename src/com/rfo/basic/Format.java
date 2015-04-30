@@ -429,6 +429,10 @@ public class Format extends ListActivity {
 		return sb.toString();
     }
 
+	private static boolean isVarChar(char c) {
+		return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '@' || c == '#');
+	}
+
     public static int FindKeyWord(String kw, String line, int start) {	// Find instance of keyword, not quoted nor
 		int k = line.indexOf(kw, start);								// commented nor embedded in a variable name
 		if (k < 0) { return -1; }									// no instances of this keyword - quick exit
@@ -447,8 +451,8 @@ public class Format extends ListActivity {
 				if ((q1 < 0) || (k < q1)) {							// keyword is not in the quoted substring
 					if ((ct >= 0) && (ct < k))						// there is a valid comment mark before the keyword (not
 						return -1;									// in a quote) -> invalid (commented) keyword
-					boolean embedded = (!Run.isVarChar(kw.charAt(0))) ? false	// embedded if preceding character
-						: ((k > 0) && Run.isVarChar(line.charAt(k - 1)));		// is part of a variable name
+					boolean embedded = (!isVarChar(kw.charAt(0))) ? false	// embedded if preceding character
+						: ((k > 0) && isVarChar(line.charAt(k - 1)));		// is part of a variable name
 					if (!embedded) {
 						return k;									// this is a valid keyword, not quoted/commented/embedded
 					}
