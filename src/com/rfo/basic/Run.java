@@ -2613,14 +2613,6 @@ public class Run extends ListActivity {
 		}
 	}
 
-	private static boolean isVarStartChar(char c) {
-		return ((c >= 'a' && c <= 'z') || c == '_' || c == '@' || c == '#');
-	}
-
-	public static boolean isVarChar(char c) {
-		return (isVarStartChar(c) || (c >= '0' && c <= '9'));
-	}
-
 	private static String chomp(String str) {
 		return str.substring(0, str.length() - 1);
 	}
@@ -4686,23 +4678,27 @@ public class Run extends ListActivity {
 	//*********************************************************************************************
 	// The methods starting here are the core code for running a Basic program
 
+	// Variable names consist of letters, digits, and these non-alphanumeric characters.
+	private final static String varChars = "_@#";
+
 	// Look for a BASIC! word: [_@#\l]?[_@#\l\d]*
 	private String getWord(String line, int start, String possibleKeyword) {
 		int max = line.length();
 		if (start >= max || start < 0) { return ""; }
-	
+		boolean isPossibleKeyword = (possibleKeyword.length() != 0);
+
 		int li = start;
 		char c = line.charAt(li);
-		if (isVarStartChar(c)) {										// if first character matches
+		if ((c >= 'a' && c <= 'z') || (varChars.indexOf(c) >= 0)) {	// if first character matches
 			do {														// there's a word
 				if (++li >= max) break;									// done if no more characters
-	
-				if (!possibleKeyword.equals("") &&						// caller wants to stop at keyword
+
+				if (isPossibleKeyword &&								// caller wants to stop at keyword
 					line.startsWith(possibleKeyword, li)) { break; }	// THEN, TO, or STEP
-	
+
 				c = line.charAt(li);									// get next character
-			}
-			while (isVarChar(c));										// and check it, stop if not valid
+			}															// and check it, stop if not valid
+			while ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (varChars.indexOf(c) >= 0));
 		}
 		return line.substring(start, li);
 	}

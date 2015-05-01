@@ -36,6 +36,8 @@ import static com.rfo.basic.Format.WHITESPACE;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.util.Log;
 
@@ -47,15 +49,21 @@ public class AddProgramLine {
 	private static String KW_THEN = "then";
 	private static String KW_ELSE = "else";
 	private static String KW_END = "end";
-	private static String KW_SQL_UPDATE = "sql.update";
 
 	// Regular expressions
 	private static final String WS_REGEX			= "[" + WHITESPACE + "]*";
 	private static final String IGNORED_LEAD_REGEX	= "[" + WHITESPACE + ":]*";		// ignore leading characters whitespace & colon
 	// ENDIF, optional leading/trailing whitespace, optional whitespace between END and IF
 	private static final String ENDIF_REGEX			= ".*" + WS_REGEX + KW_END + WS_REGEX + KW_IF + WS_REGEX;
+	// Optional whitespace around the "." of certain keywords
+	private static final String ARRAY_LOAD_REGEX	= "^array" + WS_REGEX + "\\." + WS_REGEX + "load(.*)";
+	private static final Pattern ARRAY_LOAD_PATTERN	= Pattern.compile(ARRAY_LOAD_REGEX);
+	private static final String LIST_ADD_REGEX		= "^list" + WS_REGEX + "\\." + WS_REGEX + "add(.*)";
+	private static final Pattern LIST_ADD_PATTERN	= Pattern.compile(LIST_ADD_REGEX);
+	private static final String SQL_UPDATE_REGEX	= "^sql" + WS_REGEX + "\\." + WS_REGEX + "update.*";
+	private static final Pattern SQL_UPDATE_PATTERN = Pattern.compile(SQL_UPDATE_REGEX, Pattern.CASE_INSENSITIVE);
 
-	private static final String[] SPECIAL_COMMANDS = { "array.load", "list.add" };	// special when looking at ~ continuation
+	private static final Pattern[] SPECIAL_COMMANDS = { ARRAY_LOAD_PATTERN, LIST_ADD_PATTERN };	// special when looking at ~ continuation
 
 	private enum IfState { NONE, THEN, ELSE };			// states when converting single-line IF/THEN/ELSE to IF/THEN/ELSE/ENDIF.
 	private IfState mIfState = IfState.NONE;
@@ -94,7 +102,9 @@ public class AddProgramLine {
 				// Log.d(LOGTAG, "Program line:" + stmt);
 			}
 		} else {											// not a complete statement, save it for later
-			mMerge = parts[0].substring(0, parts[0].length() - 1);	// delete the '~' continuation character
+			mMerge = parts[0]
+					.substring(0, parts[0].length() - 1)	// delete the '~' continuation character
+					.trim();								// and any whitespace next to it
 			parts[0] = "";
 		}
 		if (parts[1].length() != 0) {
@@ -201,8 +211,8 @@ public class AddProgramLine {
 				break;
 			} else if (c == ':') {							// complete statement in sb
 				if  ( firstColon &&
-					  ( (sb.indexOf(KW_SQL_UPDATE) == 0) ||	// unless command is SQL.Update
-					    ((mMerge != null) && (mMerge.startsWith(KW_SQL_UPDATE)))
+					  ( (SQL_UPDATE_PATTERN.matcher(line).matches()) ||	// unless command is SQL.Update
+					    ((mMerge != null) && (SQL_UPDATE_PATTERN.matcher(mMerge).matches()))
 					  )
 					) {
 					// If SQL.Update, assume first : is part of the command, even if it isn't.
@@ -323,8 +333,10 @@ public class AddProgramLine {
 
 		StringBuilder sb = new StringBuilder(base);
 		for (int i = 0; i < SPECIAL_COMMANDS.length; ++i) {
-			if (base.startsWith(SPECIAL_COMMANDS[i]) &&				// command allows continuable data
-				(base.length() > SPECIAL_COMMANDS[i].length()) ) {	// the command is not alone on the line
+			Matcher m = SPECIAL_COMMANDS[i].matcher(base);
+			if (m.matches() &&										// command allows continuable data
+				(m.group(1).length() != 0))							// the command is not alone on the line
+			{
 				char lastChar = sb.charAt(sb.length() - 1);
 				char nextChar = addition.charAt(0);
 				if (lastChar != ',' && nextChar != ',') {			// no comma between adjacent parameters
