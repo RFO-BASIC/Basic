@@ -1994,6 +1994,8 @@ public class Run extends ListActivity {
 	// ******************** Speech to text Vars ********************************
 
 	public static final int VOICE_RECOGNITION_REQUEST_CODE = 1234;
+	private static String sttDefaultPrompt;
+	private static String sttPrompt;
 	public static ArrayList <String> sttResults;
 	public static boolean sttListening;
 	public static boolean sttDone;
@@ -2195,6 +2197,15 @@ public class Run extends ListActivity {
 		}
 	}
 
+	// TODO: Move this to Background when Background is put in its own class file
+	public static Intent buildVoiceRecognitionIntent() {
+		if (sttPrompt == null) { sttPrompt = sttDefaultPrompt; }
+		Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+		intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+				RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+		intent.putExtra(RecognizerIntent.EXTRA_PROMPT, sttPrompt);
+		return intent;
+	}
 
 	// ************************************* Run Entry Point **************************************
 	// Called by Android runtime when Run is launched from Editor or AutoRun
@@ -3768,6 +3779,8 @@ public class Run extends ListActivity {
 		htmlIntent = null;
 		htmlOpening = false;
 
+		sttDefaultPrompt = getString(R.string.stt_prompt);
+		sttPrompt = null;
 		sttListening = false;
 
 		OnTimerLine = 0;
@@ -8307,6 +8320,7 @@ public class Run extends ListActivity {
 		synchronized (mConsoleBuffer) {
 			intent.putStringArrayListExtra(TGet.CONSOLE_TEXT, mOutput);
 		}
+		TGet.mMenuStop = false;
 		mWaitForLock = true;
 		startActivityForResult(intent, BASIC_GENERAL_INTENT);
 
@@ -16549,7 +16563,13 @@ public class Run extends ListActivity {
 	// ********************************* Speech-to-Text Commands **********************************
 
 	private boolean executeSTT_LISTEN() {
-		if (!checkEOL()) return false;
+		if (isEOL()) {
+			sttPrompt = sttDefaultPrompt;
+		} else {
+			if (!getStringArg()) return false;
+			sttPrompt = StringConstant;
+			if (!checkEOL()) return false;
+		}
 
 		PackageManager pm = getPackageManager();
 		List<ResolveInfo> activities = pm.queryIntentActivities(
@@ -16560,42 +16580,32 @@ public class Run extends ListActivity {
 
 		sttListening = true;
 		sttDone = false;
-		if (GRopen)
+		if (GRopen) {
 			GR.doSTT = true;
-		else
-			startVoiceRecognitionActivity();
+		} else {
+			Intent intent = Run.buildVoiceRecognitionIntent();
+			startActivityForResult(intent, VOICE_RECOGNITION_REQUEST_CODE);
+		}
 		return true;
 	}
 
 	private boolean executeSTT_RESULTS() {
-		if (!getNVar()) return false;
-		Var var = Vars.get(theValueIndex);
-		if (!checkEOL()) return false;
-
 		if (!sttListening) {
 			return RunTimeError("STT_LISTEN not executed.");
 		}
+		int listIndex = getListArg(VarType.STR);		// reuse old list or create new one
+		if (listIndex < 0) return false;
+		if (!checkEOL()) return false;
+
 		while (!sttDone) Thread.yield();
 		sttListening = false;
 
-		int theIndex = theLists.size();
 		if (sttResults == null) {
 			sttResults = new ArrayList <String>();
 			sttResults.add("Recognition Cancelled");
 		}
-		theLists.add(sttResults);
-		theListsType.add(VarType.STR);
-
-		var.val(theIndex);								// Return the list pointer
+		theLists.set(listIndex, sttResults);			// give the list of results to the user
 		return true;
-	}
-
-	private void startVoiceRecognitionActivity() {
-		Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-		intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-				RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-		intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "BASIC! Speech To Text");
-		startActivityForResult(intent, VOICE_RECOGNITION_REQUEST_CODE);
 	}
 
 	// ************************************** Timer Commands **************************************

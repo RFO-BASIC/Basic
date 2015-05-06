@@ -554,8 +554,8 @@ public class GR extends Activity {
 	    return true;
 	}
 
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        switch (requestCode) {
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		switch (requestCode) {
         case Run.REQUEST_CONNECT_DEVICE_SECURE:
             // When DeviceListActivity returns with a device to connect
             if (resultCode == Activity.RESULT_OK) {
@@ -578,15 +578,14 @@ public class GR extends Activity {
             }
             break;
 
-        case Run.VOICE_RECOGNITION_REQUEST_CODE:
-        	if (resultCode == RESULT_OK){
-    	        Run.sttResults = new ArrayList<String>();
-        		Run.sttResults = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-        	}
-        	Run.sttDone = true;
-            Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " VR Done");
-        }
-    }
+		case Run.VOICE_RECOGNITION_REQUEST_CODE:
+			if (resultCode == RESULT_OK) {
+				Run.sttResults = new ArrayList<String>();
+				Run.sttResults = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+			}
+			Run.sttDone = true;
+		}
+	}
 
 	private void releaseLOCK() {
 		synchronized (LOCK) {
@@ -622,16 +621,6 @@ public class GR extends Activity {
         	}
         }
 
-    }
-
-    public void startVoiceRecognitionActivity() {
-        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " VR Start" + Process.myTid());
-
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "BASIC! Speech To Text");
-        startActivityForResult(intent, Run.VOICE_RECOGNITION_REQUEST_CODE);
     }
 
     public void enableBT() {
@@ -724,7 +713,8 @@ public class GR extends Activity {
 			}
 
 			if (doSTT) {
-				startVoiceRecognitionActivity();
+				Intent intent = Run.buildVoiceRecognitionIntent();
+				startActivityForResult(intent, Run.VOICE_RECOGNITION_REQUEST_CODE);
 				doSTT = false;
 			}
 

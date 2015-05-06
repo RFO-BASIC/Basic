@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -251,50 +251,35 @@ public class Web extends Activity {
     	public void webPost(String URL, String htmlPostString){
     		engine.postUrl(URL, EncodingUtils.getBytes(htmlPostString, "BASE64"));
     	}
-
-
-    }
-    
-    //******************************** Intercept dataLink calls ***********************
-    
-    public class JavaScriptInterface {
-
-        @JavascriptInterface
-        public void dataLink(String data) {
-        	if (data.equals("STT")) {
-        		startVoiceRecognitionActivity();
-        	}
-        	doAddData.addData("DAT", data);
-
-        }
-    }
-    
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        switch (requestCode) {
-        case Run.VOICE_RECOGNITION_REQUEST_CODE:
-        	if (resultCode == RESULT_OK){
-    	        Run.sttResults = new ArrayList<String>();
-        		Run.sttResults = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-        	}
-        	Run.sttDone = true;
-            Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " VR Done");
-        }
-    }
-    
-    public void startVoiceRecognitionActivity() {
-        Run.sttListening = true;
-        Run.sttDone = false;
-
-        Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " VR Start" + Process.myTid());
-
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "BASIC! Speech To Text");
-        startActivityForResult(intent, Run.VOICE_RECOGNITION_REQUEST_CODE);
     }
 
-    
+	//******************************** Intercept dataLink calls ***********************
+
+	public class JavaScriptInterface {
+
+		@JavascriptInterface
+		public void dataLink(String data) {
+			if (data.equals("STT")) {
+				Intent intent = Run.buildVoiceRecognitionIntent();
+				Run.sttListening = true;
+				Run.sttDone = false;
+				startActivityForResult(intent, Run.VOICE_RECOGNITION_REQUEST_CODE);
+			}
+			doAddData.addData("DAT", data);
+		}
+	}
+
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		switch (requestCode) {
+		case Run.VOICE_RECOGNITION_REQUEST_CODE:
+			if (resultCode == RESULT_OK) {
+				Run.sttResults = new ArrayList<String>();
+				Run.sttResults = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+			}
+			Run.sttDone = true;
+		}
+	}
+
     //**************************  Local method to put data into the Run read data link queue
     
     public class AddData{
