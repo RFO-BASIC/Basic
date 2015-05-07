@@ -139,7 +139,7 @@ public class Settings extends PreferenceActivity {
 	}
 
 	   @Override
-	   public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key pressed
+	   public boolean onKeyUp(int keyCode, KeyEvent event) {						// If back key pressed
 		    if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
 		       finish();
 		       return false;
@@ -179,7 +179,7 @@ public class Settings extends PreferenceActivity {
 		return Large_font;
 	}
 
-	public static int  getLOadapter(Context context){
+	public static int  getLOadapter(Context context) {
 		String font = PreferenceManager.getDefaultSharedPreferences(context)
 				.getString("font_pref", "Medium");
 
@@ -188,7 +188,7 @@ public class Settings extends PreferenceActivity {
 		return R.layout.simple_list_layout_l;
 	}
 
-	public static Typeface getConsoleTypeface(Context context){
+	public static Typeface getConsoleTypeface(Context context) {
 		String font = PreferenceManager.getDefaultSharedPreferences(context)
 				.getString("csf_pref", "MS");
 
@@ -198,27 +198,47 @@ public class Settings extends PreferenceActivity {
 		return Typeface.MONOSPACE;
 	}
 
-	public static boolean getConsoleMenu(Context context){
+	public static boolean getConsoleMenu(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean("console_menu", true);
 	}
 
-	public static boolean getLinedConsole(Context context){
+	public static boolean getLinedConsole(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean("lined_console", true);
 	}
 
-	public static boolean getLinedEditor(Context context){
+	public static boolean getLinedEditor(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean("lined_editor", true);
 	}
 
-	public static boolean getEditorLineWrap(Context context){
+	public static boolean getEditorRunOnActionBar(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("editor_menu_run_on_action_bar", false);
+	}
+
+	public static boolean getEditorLoadOnActionBar(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("editor_menu_load_on_action_bar", false);
+	}
+
+	public static boolean getEditorSaveOnActionBar(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("editor_menu_save_on_action_bar", false);
+	}
+
+	public static boolean getEditorExitOnActionBar(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("editor_menu_exit_on_action_bar", false);
+	}
+
+	public static boolean getEditorLineWrap(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean("wrap_editor", true);
 	}
 
-	public static boolean getAutoIndent(Context context){
+	public static boolean getAutoIndent(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean("autoindent", false);
 	}
@@ -253,7 +273,7 @@ public class Settings extends PreferenceActivity {
 		return colors;
 	}
 
-	public static int getSreenOrientation(Context context){
+	public static int getSreenOrientation(Context context) {
 		String SO = PreferenceManager.getDefaultSharedPreferences(context)
 				.getString("so_pref", "0");
 

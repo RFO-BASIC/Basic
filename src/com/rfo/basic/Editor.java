@@ -30,6 +30,7 @@ package com.rfo.basic;
 import java.io.File;
 import java.io.FileWriter;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -40,6 +41,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.InputFilter;
 import android.util.AttributeSet;
@@ -66,15 +68,16 @@ public class Editor extends Activity {
 
 	public static String DisplayText = "REM Start of BASIC! Program\n";
 	public static int SyntaxErrorDisplacement = -1;
-	
+
 	public static int selectionStart;
 	public static int selectionEnd;
 	public static final String Name = "BASIC! Program Editor - ";
 	public static int InitialProgramSize;				// Used to determine if program has changed
 	public static boolean Saved = true;
-	
+
+	private Menu mMenu = null;
 	private enum Action { NONE, CLEAR, LOAD, RUN, LOAD_RUN, EXIT }
-	
+
 	public static class LinedEditText extends EditText {	// Part of the edit screen setup
 		private Rect mRect;
 		private Paint mPaint;
@@ -360,6 +363,11 @@ public class Editor extends Activity {
 		} else {
 			setTitle(Name + Basic.ProgramFileName);
 
+			if (mMenu != null) {
+				menuItemsToActionBar(mMenu);
+				onPrepareOptionsMenu(mMenu);
+			}
+
 			mText.getPreferences(this);
 			int SO = Settings.getSreenOrientation(this);
 			setRequestedOrientation(SO);
@@ -429,7 +437,35 @@ public class Editor extends Activity {
 		super.onCreateOptionsMenu(menu);					// set up and display the Menu
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.main, menu);
+		mMenu = menu;
+		menuItemsToActionBar(menu);
 		return true;
+	}
+
+	@SuppressLint({ "NewApi", "InlinedApi" })
+	private void menuItemsToActionBar(Menu menu) {
+		if (menu == null) return;
+		if (Build.VERSION.SDK_INT < 11) return;
+
+		MenuItem item = menu.findItem(R.id.run);
+		int action = Settings.getEditorRunOnActionBar(this)
+				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
+		item.setShowAsAction(action);
+
+		item = menu.findItem(R.id.load);
+		action = Settings.getEditorLoadOnActionBar(this)
+				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
+		item.setShowAsAction(action);
+
+		item = menu.findItem(R.id.save);
+		action = Settings.getEditorSaveOnActionBar(this)
+				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
+		item.setShowAsAction(action);
+
+		item = menu.findItem(R.id.exit);
+		action = Settings.getEditorExitOnActionBar(this)
+				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
+		item.setShowAsAction(action);
 	}
 
 	@Override
