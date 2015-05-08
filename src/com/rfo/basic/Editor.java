@@ -52,6 +52,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Scroller;
 import android.widget.Toast;
@@ -78,12 +79,14 @@ public class Editor extends Activity {
 	private Menu mMenu = null;
 	private enum Action { NONE, CLEAR, LOAD, RUN, LOAD_RUN, EXIT }
 
+	// ****************** Class for drawing Lined Edit Text *******************
+
 	public static class LinedEditText extends EditText {	// Part of the edit screen setup
 		private Rect mRect;
 		private Paint mPaint;
 		private boolean mLinesSetting;						// Lines preference setting for onDraw
 		private boolean mLineWrapSetting;					// Line-wrap preference setting
-		
+
 		private Scroller mScroller;							// The scroller object
 		private VelocityTracker mVelocityTracker;			// The velocity tracker
 		private int mScrollY = 0;							// The current scroll location
@@ -92,10 +95,6 @@ public class Editor extends Activity {
 		private int mFlingV;								// Minimum velocity for fling
 		public static int sHeight;							// Screen height minus the crap at top
 		public static boolean didMove;						// Determines if super called on UP
-
-
-// ************** Methods for drawing Lined Edit Text ****************8         
-
 
 		public LinedEditText(Context context, AttributeSet attrs) {
 			super(context, attrs);
@@ -135,15 +134,15 @@ public class Editor extends Activity {
 			super.onDraw(canvas);
 		}
 
-		// *************  Methods for scrolling *****************************8
+		// ********************** Methods for scrolling ***********************
 
 		public void InitScroller(Context context) {
-			mScroller = new Scroller(context);       // Get a scroller object
-			mScrollY = 0 ;   					    // Set beginning of program as top of screen.
-//			mMinScroll = getLineHeight ()/2;	        // Set minimum scroll distance
-			mMinScroll = 1;	        // Set minimum scroll distance
+			mScroller = new Scroller(context);					// Get a scroller object
+			mScrollY = 0;										// Set beginning of program as top of screen.
+//			mMinScroll = getLineHeight ()/2;					// Set minimum scroll distance
+			mMinScroll = 1;										// Set minimum scroll distance
 
-			mFlingV = 750;                         // Minimum fling velocity
+			mFlingV = 750;										// Minimum fling velocity
 //			mScroller.setFriction((float) 10);
 		}
 
@@ -181,19 +180,19 @@ public class Editor extends Activity {
 						if (mScrollY > 0) {						// and we are not at top of text
 							int m = mScrollY - mMinScroll;		// Do not go beyond top of text
 							if (m < 0) {
-								m = mScrollY; 
+								m = mScrollY;
 							} else m = mMinScroll;
 
 							scrollBy(0, -m);					// Scroll the text up
 						}
-					} else 
+					} else
 					if (deltaY > 0) {							// The user finger is moving up
 						int max = getLineCount() * getLineHeight() - sHeight;	// Set max up value
 						if (mScrollY < max - mMinScroll) {
 							scrollBy(0, mMinScroll);			// Scroll up
 						}
 					}
-//             postInvalidate();
+//					postInvalidate();
 					break;
 
 				case MotionEvent.ACTION_UP:						// User finger lifted up
@@ -221,7 +220,7 @@ public class Editor extends Activity {
 		@Override
 		public void computeScroll() {					// Called while flinging to execute a fling step
 			if (mScroller.computeScrollOffset()) {
-				mScrollY = mScroller.getCurrY();		// Get where we should scroll to 
+				mScrollY = mScroller.getCurrY();		// Get where we should scroll to
 				scrollTo(0, mScrollY);					// and do it
 				postInvalidate();						// the redraw the sreem
 			}
@@ -237,16 +236,16 @@ public class Editor extends Activity {
 			mLinesSetting = Settings.getLinedEditor(context);
 			mLineWrapSetting = Settings.getEditorLineWrap(context);
 		}
-    }
+	}
 
-// ************************* End of LinedEdit Class  ****************************** //
+	// ************************ End of LinedEdit Class ************************
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 
-		super.onCreate(savedInstanceState);                 // Setup and the display the text to be edited
+		super.onCreate(savedInstanceState);						// Setup and the display the text to be edited
 
-		if (Basic.BasicContext == null) {							         // If we have lost context then
+		if (Basic.BasicContext == null) {						// If we have lost context then
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Restarting BASIC!.");
 			Intent intent = new Intent(getApplicationContext(), Basic.class);
 			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -254,7 +253,7 @@ public class Editor extends Activity {
 			finish();
 			return;
 		}
-		Run.Exit = false; 			// Clear this in case it was set last time BASIC! exited.
+		Run.Exit = false; 										// Clear this in case it was set last time BASIC! exited.
 
 		/*
 		 * Open up the view.
@@ -335,9 +334,9 @@ public class Editor extends Activity {
             }
 
             theText = fText + "\n" + blanks + eText;								// Put together the final text
-            mText.setText(theText);													// and set the selection after the blanks							
+            mText.setText(theText);													// and set the selection after the blanks
             mText.setSelection(fText.length() + 1 + blanks.length(), fText.length() + 1 + blanks.length());
-        	return true;									
+        	return true;
         }
 
 
@@ -389,11 +388,11 @@ public class Editor extends Activity {
 				}
 
 				if (start >= 0 && end >= 0 && start <= end &&				// make sure values are not crash bait
-						 end <= mText.length()) {		// Note: if RUN command, DisplayText does not match mText. TODO: FIX THIS?
+					end <= mText.length()) {								// Note: if RUN command, DisplayText does not match mText. TODO: FIX THIS?
 					mText.setSelection(start, end);							// Set the selection
 				}
 				mText.setCursorVisible(true);
-				SyntaxErrorDisplacement = -1;							// Reset the value
+				SyntaxErrorDisplacement = -1;								// Reset the value
 			}
 		}
 
@@ -489,14 +488,14 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.save:									// SAVE
-				saveFile(Action.NONE);						// Just do it; no action needed after Save
+				askNameSaveFile(Action.NONE);				// Just do it; no action needed after Save
 				return true;
 
 			case R.id.clear:								// CLEAR
-				if (Saved) {									// If program has been saved
-					clearProgram();								// then clear the Editor
+				if (Saved) {								// If program has been saved
+					clearProgram();							// then clear the Editor
 				} else {
-					doSaveDialog(Action.CLEAR);					// Ask if the user wants to save before clearing
+					doSaveDialog(Action.CLEAR);				// Ask if the user wants to save before clearing
 				}
 				return(true);
 
@@ -511,16 +510,25 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.load_run:								// LOAD and RUN
-				if (Saved) {									// If program has been saved
-					loadFile(true);								// then load the program, and run it
+				if (Saved) {								// If program has been saved
+					loadFile(true);							// then load the program, and run it
 				} else {
-					doSaveDialog(Action.LOAD_RUN);				// Ask if the user wants to save before clearing
+					doSaveDialog(Action.LOAD_RUN);			// Ask if the user wants to save before clearing
 				}
-				return(true);
+				return true;
 
 			case R.id.save_run:								// SAVE and RUN
-				saveFile(Action.RUN);							// Run the program after saving it
-				return(true);
+				String fname = Basic.ProgramFileName;
+				if (Saved) {
+					Run();									// no change, just run the program
+				} else if (fname.equals("")) {				// if no file name...
+					askNameSaveFile(Action.RUN);			// ... get a name, save the program and run it
+				} else {									// else have a file name
+					writeTheFile(Basic.ProgramFileName);	// save the program, overwriting existing file
+					Basic.toaster(this, "Saved " + fname);	// notify the user
+					Run();									// run the program
+				}
+				return true;
 
 			case R.id.format:								// FORMAT
 				if (mText == null) {
@@ -530,7 +538,7 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.delete:								// DELETE
-				DisplayText = mText.getText().toString();		// get the text being displayed
+				DisplayText = mText.getText().toString();	// get the text being displayed
 
 				// First make sure that the SD Card is present and can be written to
 
@@ -563,12 +571,12 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.exit:									// EXIT
-				if (Saved) {									// If program has been saved
-					finish();									// exit immediately
+				if (Saved) {								// If program has been saved
+					finish();								// exit immediately
 				} else {
-					doSaveDialog(Action.EXIT);					// Ask if the user wants to save before exiting
+					doSaveDialog(Action.EXIT);				// Ask if the user wants to save before exiting
 				}
-				return(true);
+				return true;
 
 			default:
 				return true;
@@ -576,13 +584,13 @@ public class Editor extends Activity {
 	}
 
 	private void doSaveDialog(final Action afterSave) {
-		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setMessage("Current Program Not Saved!")
-			.setCancelable(true)										// Do not allow user to BACK key out of the dialog
+		AlertDialog.Builder alert = new AlertDialog.Builder(this);
+		alert.setMessage("Current Program Not Saved!")
+			.setCancelable(true)										// Allow user to BACK key out of the dialog
 
 			.setPositiveButton("Save", new DialogInterface.OnClickListener() {		// User says to save first
 				public void onClick(DialogInterface dialog, int id) {
-					saveFile(afterSave);								// Tell the saver what to do after the save is done
+					askNameSaveFile(afterSave);							// Tell the saver what to do after the save is done
 				}
 			})
 
@@ -592,23 +600,22 @@ public class Editor extends Activity {
 				}
 			})
 
-			.setOnCancelListener(new DialogInterface.OnCancelListener(){
+			.setOnCancelListener(new DialogInterface.OnCancelListener() {
 				public void onCancel(DialogInterface arg0) {			// User has canceled save
 					return;												// done
 				}
 			});
 
-		AlertDialog alert = builder.create();
 		alert.show();
  	}
 
 
 	private void doFormatDialog() {
-		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setMessage("Format your program?")
+		AlertDialog.Builder alert = new AlertDialog.Builder(this);
+		alert.setMessage("Format your program?")
 			.setCancelable(true)
 
-			.setPositiveButton("Format", new DialogInterface.OnClickListener() {		// User says to do the format
+			.setPositiveButton("Format", new DialogInterface.OnClickListener() {	// User says to do the format
 				public void onClick(DialogInterface dialog, int id) {
 					DisplayText = mText.getText().toString();
 					startActivity(new Intent(Editor.this, Format.class));			// Start the format activity
@@ -616,19 +623,18 @@ public class Editor extends Activity {
 				}
 			})
 
-			.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {		// User says to cancel
+			.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {	// User says to cancel
 				public void onClick(DialogInterface dialog, int id) {
 					return;
 				}
 			})
 
-			.setOnCancelListener(new DialogInterface.OnCancelListener(){
+			.setOnCancelListener(new DialogInterface.OnCancelListener() {
 				public void onCancel(DialogInterface arg0) {			// User has canceled format
 					return;												// done
 				}
 			});
 
-		AlertDialog alert = builder.create();
 		alert.show();
 	}
 
@@ -675,22 +681,22 @@ public class Editor extends Activity {
 		mText.setText(DisplayText);
 	}
 
-    private void saveFile(final Action afterSave) {
+	private void askNameSaveFile(final Action afterSave) {
 
-        final AlertDialog.Builder alert = new AlertDialog.Builder(this);          // Get the filename from user
+		final AlertDialog.Builder alert = new AlertDialog.Builder(this);		// Get the filename from user
 		final EditText input = new EditText(this);
-		input.setText(Basic.ProgramFileName);                         // If the program has a name
+		input.setText(Basic.ProgramFileName);							// If the program has a name
 		// put it in the dialog box
 		alert.setView(input);
-		alert.setCancelable(true);									// Allow the dialog to be canceled
+		alert.setCancelable(true);										// Allow the dialog to be canceled
 		alert.setTitle("Save As..");
-		alert.setOnCancelListener(new DialogInterface.OnCancelListener(){
+		alert.setOnCancelListener(new DialogInterface.OnCancelListener() {
 				public void onCancel(DialogInterface arg0) {			// User has canceled save
 					return;												// done
 				}
 			});
 
-		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  //Have a filename
+		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {	//Have a filename
 				public void onClick(DialogInterface dialog, int whichButton) {
 					String theFilename = input.getText().toString().trim();
 
@@ -716,53 +722,52 @@ public class Editor extends Activity {
 					writeTheFile(theFilename);								// Now go write the file
 					doAfterSave(afterSave);									// and finish what was interrupted by Save dialog
 				}});
+
 		alert.show();
-    }
+	}
 
-    private void writeTheFile(String theFileName) { 	
+	private void writeTheFile(String theFileName) {
 
-        String DirPart = "";
-        if (theFileName.contains("/")) {                     // if name contains a path seperator 
+		String DirPart = "";
+		if (theFileName.contains("/")) {							// if name contains a path separator
 
-        	int k = theFileName.length() - 1;
-        	char c;
-        	do {                                            // Find the rightmost /
-        		c = theFileName.charAt(k);
-        		--k;
-        	} while (c != '/') ;
-        	++k;
+			int k = theFileName.length() - 1;
+			char c;
+			do {													// Find the rightmost /
+				c = theFileName.charAt(k);
+				--k;
+			} while (c != '/') ;
+			++k;
 
-        	if (k == theFileName.length() - 1) {					    // form of xxx/ (no filename given)
-        		Basic.toaster(this, theFileName + "is an invalid filename");	// tell user
-        		DirPart = "";
-        		theFileName = "invalid_file_name";
-        	} else if (k > 0) {											// form "xxx/yyy"
-        		DirPart = theFileName.substring(0, k);				// the dir part includes the /
-        		theFileName = theFileName.substring(k + 1);           // the filename is the yyy part
-        	} else {												// from "/yyy"
-        		theFileName = theFileName.substring(k + 1);           // the filename is the yyy part
-        	}
-        }
+			if (k == theFileName.length() - 1) {					// form of xxx/ (no filename given)
+				Basic.toaster(this, theFileName + "is an invalid filename");	// tell user
+				DirPart = "";
+				theFileName = "invalid_file_name";
+			} else if (k > 0) {										// form "xxx/yyy"
+				DirPart = theFileName.substring(0, k);				// the dir part includes the /
+				theFileName = theFileName.substring(k + 1);			// the filename is the yyy part
+			} else {												// form "/yyy"
+				theFileName = theFileName.substring(k + 1);			// the filename is the yyy part
+			}
+		}
 
-        if (theFileName.length() < 5) {								// if the filename does not 
-        	theFileName = theFileName + ".bas";						// have the .bas extension
-        } else {														// then add it.
-        	int x = theFileName.length() - 4;
-        	String s = theFileName.substring(x);
-        	if (!s.equals(".bas")) {
-        		theFileName = theFileName + ".bas";
-        	}
-        }
+		if (theFileName.length() < 5) {								// if the filename does not
+			theFileName = theFileName + ".bas";						// have the .bas extension
+		} else {													// then add it.
+			int x = theFileName.length() - 4;
+			String s = theFileName.substring(x);
+			if (!s.equals(".bas")) {
+				theFileName = theFileName + ".bas";
+			}
+		}
 		// now we can start the write process
 
-
-		{														// Write to SD Card
-			// First insure the SD Card is available and writable 
+			// First ensure the SD Card is available and writable
 
 			if (!Basic.checkSDCARD('w')) {											// If can't use SD card, pop up some
 				Basic.toaster(this, "External Storage not available or not writeable.");	// toast,
 			} else {
-				//Write to SD Card
+				// Write to SD Card
 				File sdDir = new File(Basic.getBasePath());
 				if (sdDir.exists() && sdDir.canWrite()) {
 					if (Basic.SD_ProgramPath.equals("Sample_Programs") || Basic.SD_ProgramPath.equals("/Sample_Programs")) {
@@ -809,8 +814,6 @@ public class Editor extends Activity {
 				}
 			}
 
-		}
-
 		Basic.ProgramFileName = theFileName;				// Set new Program file name
 		setTitle(Name + Basic.ProgramFileName);
 		InitialProgramSize = mText.length();				// Reset initial program size
@@ -839,69 +842,68 @@ public class Editor extends Activity {
 		}
 	}
 
-    private void doBaseDriveChange(){
+	private void doBaseDriveChange() {
 		Settings.changeBaseDrive = false;
- 
+
 		String newBaseDrive = Settings.getBaseDrive(this);
-    	
-    	if (newBaseDrive.equals("none")) return;
-    	if (newBaseDrive.equals(Basic.getBasePath())) return;
-    	
-    	AlertDialog.Builder alt_bld = new AlertDialog.Builder(this);		// using a dialog box.
 
-    	alt_bld.setMessage("When BASIC! restarts the new Base Drive will be used.\n\n" + 
-    					  "Restart BASIC! Now\n" +
-    					  "or Wait and restart BASIC! yourself.")					
-    	.setCancelable(false)												// Do not allow user BACK key out of dialog
+		if (newBaseDrive.equals("none")) return;
+		if (newBaseDrive.equals(Basic.getBasePath())) return;
 
-// The click listeners ****************************
-    	.setPositiveButton("Restart Now", new DialogInterface.OnClickListener() {
+		AlertDialog.Builder alt_bld = new AlertDialog.Builder(this);		// using a dialog box.
 
-    	public void onClick(DialogInterface dialog, int id) {				
-    																		// Action for 'Restart Now' Button
-        	dialog.cancel();
-        	Intent restart = new Intent(Basic.BasicContext, Basic.class);
-        	startActivity(restart);
-        	finish();
+		alt_bld.setMessage("When BASIC! restarts the new Base Drive will be used.\n\n" +
+							"Restart BASIC! Now\n" +
+							"or Wait and restart BASIC! yourself.")
+		.setCancelable(false)												// Do not allow user BACK key out of dialog
 
-   	}
-    	})
-    	.setNegativeButton("Wait", new DialogInterface.OnClickListener() {
-    	public void onClick(DialogInterface dialog, int id) {
-    																		// Action for 
-        	dialog.cancel();
-        	waitMessage();    	}
-    	});
-// End of Click Listeners ****************************************
-    	
-    	AlertDialog alert = alt_bld.create();								// Display the dialog
-    	alert.setTitle("Base Drive Changed");
-    	alert.show();
-    }
+		// The click listeners ****************************
 
-    private void waitMessage(){
-    	AlertDialog.Builder alt_bld = new AlertDialog.Builder(this);		// using a dialog box.
+		.setPositiveButton("Restart Now", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int id) {
+				dialog.cancel();
+				Intent restart = new Intent(Basic.BasicContext, Basic.class);
+				startActivity(restart);
+				finish();
+			}
+		})
 
-    	alt_bld.setMessage("When ready to resart with new base drive:\n\n " + 
-    						"Tap Menu -> Exit and then\n" +
-    						"Restart BASIC!")					
-    	.setCancelable(false)												// Do not allow user BACK key out of dialog
-    	
-// The click listeners ****************************
-    	.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+		.setNegativeButton("Wait", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int id) {
+				dialog.cancel();
+				waitMessage();
+			}
+		});
 
-    	public void onClick(DialogInterface dialog, int id) {				
-    		dialog.cancel();																// Action for "OK" Button
-        	return;
+		// End of click listeners ****************************************
 
-    		}
-    	});
-    	
-// End of Click Listeners ****************************************
-    	
-    	AlertDialog alert = alt_bld.create();								// Display the dialog
-    	alert.setTitle("Restart Later");
-    	alert.show();
-    }
+		AlertDialog alert = alt_bld.create();								// Display the dialog
+		alert.setTitle("Base Drive Changed");
+		alert.show();
+	}
+
+	private void waitMessage() {
+		AlertDialog.Builder alt_bld = new AlertDialog.Builder(this);		// using a dialog box.
+
+		alt_bld.setMessage("When ready to resart with new base drive:\n\n " +
+							"Tap Menu -> Exit and then\n" +
+							"Restart BASIC!")
+		.setCancelable(false)												// Do not allow user BACK key out of dialog
+
+		// The click listeners ****************************
+
+		.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int id) {
+				dialog.cancel();
+				return;
+			}
+		});
+
+		// End of click listeners ****************************************
+
+		AlertDialog alert = alt_bld.create();								// Display the dialog
+		alert.setTitle("Restart Later");
+		alert.show();
+	}
 
 }
