@@ -29,6 +29,7 @@ package com.rfo.basic;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -525,7 +526,7 @@ public class Editor extends Activity {
 					askNameSaveFile(Action.RUN);			// ... get a name, save the program and run it
 				} else {									// else have a file name
 					writeTheFile(Basic.ProgramFileName);	// save the program, overwriting existing file
-					Basic.toaster(this, "Saved " + fname);	// notify the user
+					// Basic.toaster(this, "Saved " + fname);
 					Run();									// run the program
 				}
 				return true;
@@ -729,96 +730,75 @@ public class Editor extends Activity {
 	private void writeTheFile(String theFileName) {
 
 		String DirPart = "";
-		if (theFileName.contains("/")) {							// if name contains a path separator
-
-			int k = theFileName.length() - 1;
-			char c;
-			do {													// Find the rightmost /
-				c = theFileName.charAt(k);
-				--k;
-			} while (c != '/') ;
-			++k;
-
-			if (k == theFileName.length() - 1) {					// form of xxx/ (no filename given)
-				Basic.toaster(this, theFileName + "is an invalid filename");	// tell user
-				DirPart = "";
-				theFileName = "invalid_file_name";
-			} else if (k > 0) {										// form "xxx/yyy"
-				DirPart = theFileName.substring(0, k);				// the dir part includes the /
-				theFileName = theFileName.substring(k + 1);			// the filename is the yyy part
-			} else {												// form "/yyy"
-				theFileName = theFileName.substring(k + 1);			// the filename is the yyy part
+		int k = theFileName.lastIndexOf('/');						// does name contain a path separator?
+		if (k >= 0) {
+			if (k > 0) {											// form "path/file"
+				DirPart = theFileName.substring(0, k);				// DirPart does not include the separator
 			}
+			theFileName = theFileName.substring(k + 1);				// the filename is the part after the last separator
 		}
-
-		if (theFileName.length() < 5) {								// if the filename does not
-			theFileName = theFileName + ".bas";						// have the .bas extension
-		} else {													// then add it.
-			int x = theFileName.length() - 4;
-			String s = theFileName.substring(x);
-			if (!s.equals(".bas")) {
-				theFileName = theFileName + ".bas";
-			}
-		}
+		if (theFileName.length() == 0) {							// if no file name
+			theFileName = "default.bas";							// use the default
+		} else if (!theFileName.endsWith(".bas")) {					// if the filename does not
+			theFileName += ".bas";									// have the .bas extension
+		}															// then add it
 		// now we can start the write process
 
-			// First ensure the SD Card is available and writable
+		// First ensure the SD Card is available and writable
+		if (!Basic.checkSDCARD('w')) {								// If can't use SD card, pop up some
+			Basic.toaster(this, "External Storage not available or not writeable.");	// toast
+			return;
+		}
 
-			if (!Basic.checkSDCARD('w')) {											// If can't use SD card, pop up some
-				Basic.toaster(this, "External Storage not available or not writeable.");	// toast,
-			} else {
-				// Write to SD Card
-				File sdDir = new File(Basic.getBasePath());
-				if (sdDir.exists() && sdDir.canWrite()) {
-					if (Basic.SD_ProgramPath.equals("Sample_Programs") || Basic.SD_ProgramPath.equals("/Sample_Programs")) {
-						Basic.SD_ProgramPath = "";
-					}
-					String PathA = "/" + Basic.AppPath + "/source/" + "/" + Basic.SD_ProgramPath;  // Base path
-					File lbDir = new File(sdDir.getAbsoluteFile() + PathA);
-					lbDir.mkdirs();													// make the dirs
-					String PathB = PathA + "/" + DirPart;
-					File xbDir = new File(sdDir.getAbsoluteFile() + PathB);			// now add the new path
-					xbDir.mkdirs();													// make the dirs
-					if (xbDir.exists() && xbDir.canWrite()) {
-						File file = new File(xbDir.getAbsoluteFile()
-											 + "/" + theFileName);					// add the filename
-						try {
-							file.createNewFile();
-						} catch (Exception e) {
-							Basic.toaster(this, "File not saved: " + e);
-						}
-						if (file.exists() && file.canWrite()) {
-							FileWriter writer = null;
-
-							try {
-								writer = new FileWriter(file);						// write the program
-								for (int i = 0; i < Basic.lines.size(); i++) {
-									writer.write(Basic.lines.get(i).line());
-									writer.write("\n");
-								}
-							} catch (Exception e) {
-								Basic.toaster(this, "File not saved: " + e);
-							} finally {
-								if (writer != null) {
-									try {
-										writer.flush();
-										writer.close();
-									} catch (Exception e) {
-										Basic.toaster(this, "File not saved: " + e);
-									}
-								}
-							}
-
-						}
-					}
+		// Write to SD Card
+		String path = DirPart;
+		boolean success = false;
+		if (Basic.SD_ProgramPath.equals("Sample_Programs") || Basic.SD_ProgramPath.equals("/Sample_Programs")) {
+			Basic.SD_ProgramPath = "";
+		}
+		File sdDir = new File(Basic.getSourcePath(Basic.SD_ProgramPath));
+		IOException ex = null;
+		if (sdDir.exists() && sdDir.canWrite()) {
+			if (!path.equals("")) {
+				sdDir = new File(sdDir.getAbsolutePath() +'/' + path);
+				sdDir.mkdirs();										// make the dirs
+			}
+			FileWriter writer = null;
+			try {
+				path = sdDir.getAbsolutePath() + '/';				// now use path for full path.
+				File file = new File(path + theFileName);
+				file.createNewFile();
+				writer = new FileWriter(file);						// write the program
+				for (int i = 0; i < Basic.lines.size(); i++) {
+					writer.write(Basic.lines.get(i).line());
+					writer.write("\n");
+				}
+				success = true;
+			} catch (IOException e) {
+				ex = e;
+			} finally {
+				if (writer != null) {
+					try { writer.flush(); } catch (IOException e) { ex = e; }
+					try { writer.close(); } catch (IOException e) { ex = e; }
 				}
 			}
+		}
+		path += theFileName;									// full name for messages
+		if (success) {
+			String base = Basic.getBasePath() + '/';
+			if (path.startsWith(base)) { path = path.substring(base.length()); }
+			Basic.toaster(this, "Saved " + path);				// notify the user
 
-		Basic.ProgramFileName = theFileName;				// Set new Program file name
-		setTitle(Name + Basic.ProgramFileName);
-		InitialProgramSize = mText.length();				// Reset initial program size
-		Saved = true;										// Indicate the program has been saved
-	}
+			Basic.SD_ProgramPath = DirPart;						// ProgramPath is relative to source
+			Basic.ProgramFileName = theFileName;				// wet new Program file name
+			setTitle(Name + Basic.ProgramFileName);
+			InitialProgramSize = mText.length();				// Reset initial program size
+			Saved = true;										// indicate the program has been saved
+		} else {
+			String msg = "File not saved: " + ((ex == null) ? path : ex.getMessage());
+			Basic.toaster(this, msg);
+		}
+	} // writeTheFile
 
 	private void doAfterSave(Action afterSave) {
 		switch (afterSave) {
