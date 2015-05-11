@@ -10789,44 +10789,42 @@ public class Run extends ListActivity {
 		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
 	}
 
-	private double gr_collide(int Object1, int Object2) {
+	private double gr_collide(int obj1Num, int obj2Num) {
 
 		double fail = -1;
 		double xfalse = 0;
 		double xtrue = 1;
 
-		if (Object1 < 0 || Object1 >= DisplayList.size()) {
+		if (obj1Num < 0 || obj1Num >= DisplayList.size()) {
 			RunTimeError("Object 1 Number out of range");
 			return fail;
 		}
-		GR.BDraw b1 = DisplayList.get(Object1);						// Get the first object
-		if (b1.isHidden()) return xfalse;							// If hidden then no collide
-		Rect r1 = gr_getRect(b1);
-		if (r1 == null) return fail;
+		GR.BDraw obj1 = DisplayList.get(obj1Num);					// Get the first object
+		if (obj1.isHidden()) return xfalse;							// If hidden then no collide
 
-		if (Object2 < 0 || Object2 >= DisplayList.size()) {
+		if (obj2Num < 0 || obj2Num >= DisplayList.size()) {
 			RunTimeError("Object 2 Number out of range");
 			return fail;
 		}
-		GR.BDraw b2 = DisplayList.get(Object2);						// Get the second object
-		if (b2.isHidden()) return xfalse;							// If hidden then no collide
-		Rect r2 = gr_getRect(b2);
+		GR.BDraw obj2 = DisplayList.get(obj2Num);					// Get the second object
+		if (obj2.isHidden()) return xfalse;							// If hidden then no collide
+
+		Rect r1 = gr_getBounds(obj1);
+		if (r1 == null) return fail;
+		Rect r2 = gr_getBounds(obj2);
 		if (r2 == null) return fail;
 
-		if (r1.bottom < r2.top)										// Test for collision
-			return xfalse;
-		if (r1.top > r2.bottom)
-			return xfalse;
-		if (r1.right < r2.left)
-			return xfalse;
-		if (r1.left > r2.right)
-			return xfalse;
-
-		return xtrue;
+		// Note: Rect.intersects(Rect, Rect) does not consider right edge to be in the Rect
+		//       so we can't use it.
+		return ((r1.bottom < r2.top) ||								// Test for collision
+				(r2.bottom < r1.top) ||
+				(r1.right < r2.left) ||
+				(r2.right < r1.left)) ? xfalse : xtrue;
 	}
 
-	private Rect gr_getRect(GR.BDraw b) {
-		Rect theRect = null;
+	private Rect gr_getBounds(GR.BDraw b) {
+		int left, top, right, bottom;
+		Rect bounds = null;
 
 		GR.Type type = b.type();
 		switch (type) {
@@ -10834,30 +10832,40 @@ public class Run extends ListActivity {
 				int cx = b.x();
 				int cy = b.y();
 				int cr = b.radius();
-				theRect = new Rect(cx - cr, cy - cr, cx + cr, cy + cr);
+				bounds = new Rect(cx - cr, cy - cr, cx + cr, cy + cr);
 				break;
 
 			case Arc:
 			case Oval:
 			case Point:
 			case Rect:
-				theRect = new Rect(b.left(), b.top(), b.right(), b.bottom());
+				left = b.left();
+				top = b.top();
+				right = b.right();
+				bottom = b.bottom();
+				bounds = new Rect(left, top, right, bottom);
+				if (bounds.width() < 0) {
+					bounds.set(right, top, left, bottom);
+				}
+				if (bounds.height() < 0) {
+					bounds.set(left, bottom, right, top);
+				}
 				break;
 
 			case Bitmap:
-				int top = b.top();
-				int left = b.left();
+				left = b.left();
+				top = b.top();
 				Bitmap theBitmap = BitmapList.get(b.bitmap());
-				int bottom = top + theBitmap.getHeight();
-				int right = left + theBitmap.getWidth();
-				theRect = new Rect(left, top, right, bottom);
+				right = left + theBitmap.getWidth();
+				bottom = top + theBitmap.getHeight();
+				bounds = new Rect(left, top, right, bottom);
 				break;
 
 			case Text:
-				theRect = new Rect();
+				bounds = new Rect();
 				Paint paint = PaintList.get(b.paint());
 				String text = b.text();
-				paint.getTextBounds(text, 0, text.length(), theRect);	// returns the minimum bounding box
+				paint.getTextBounds(text, 0, text.length(), bounds);	// returns the minimum bounding box
 																		// from implied origin (0,0)
 				int tx = b.x();
 				int ty = b.y();
@@ -10865,9 +10873,9 @@ public class Run extends ListActivity {
 																		// generally more than theRect.width()
 				Paint.Align align = paint.getTextAlign();
 				switch (align) {										// adjust origin for alignment
-					case LEFT:   theRect.offset(tx,               ty); break;
-					case CENTER: theRect.offset((int)(tx - tw/2), ty); break;
-					case RIGHT:  theRect.offset((int)(tx - tw),   ty); break;
+					case LEFT:   bounds.offset(tx,               ty); break;
+					case CENTER: bounds.offset((int)(tx - tw/2), ty); break;
+					case RIGHT:  bounds.offset((int)(tx - tw),   ty); break;
 				}
 				break;
 
@@ -10875,7 +10883,7 @@ public class Run extends ListActivity {
 				break;
 		}
 
-		return theRect;
+		return bounds;
 	}
 
 	private boolean execute_gr_cls() {
@@ -11149,11 +11157,20 @@ public class Run extends ListActivity {
 
 		int[] bounds = getArgs4I();									// [left, top, right, bottom]
 		if (bounds == null) return false;							// error getting values
+		if (!checkEOL()) return false;
+
 		int left   = bounds[0];
 		int top    = bounds[1];
 		int right  = bounds[2];
 		int bottom = bounds[3];
-		if (!checkEOL()) return false;
+		if (right < left) {
+			left = bounds[2];
+			right = bounds[0];
+		}
+		if (bottom < top) {
+			top = bounds[3];
+			bottom = bounds[1];
+		}
 
 		boolean flag = false;
 		if (NewTouch[p]) {											// if currently being touched
