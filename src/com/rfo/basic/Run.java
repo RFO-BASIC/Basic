@@ -1006,7 +1006,9 @@ public class Run extends ListActivity {
 	private static final int MESSAGE_DEBUG_DIALOG = MESSAGE_DEBUG_GROUP + 1;
 	private static final int MESSAGE_DEBUG_SWAP   = MESSAGE_DEBUG_GROUP + 2;
 	private static final int MESSAGE_DEBUG_SELECT = MESSAGE_DEBUG_GROUP + 3;
-	private boolean WaitForResume = false;
+	private Object DB_LOCK = new Object();
+	private boolean mWaitForDebugLock = false;
+	private boolean WaitForDebugResume = false;
 	private boolean DebuggerStep = false;
 	private boolean DebuggerHalt = false;
 	private boolean WaitForSwap = false;
@@ -1761,9 +1763,6 @@ public class Run extends ListActivity {
 		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE,
 		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS
 	};
-
-	private boolean Debug = false;
-	private boolean Echo = false;
 
 	// *********************************************** Text to Speech *******************************
 
@@ -2653,23 +2652,22 @@ public class Run extends ListActivity {
 			.setPositiveButton(btnLabel, null);				// need to override default View click handler to prevent
 															// auto-dismiss, but can't do it until after show()
 
-		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface dialog) {
-				Log.d(LOGTAG, "Input Dialog onCancel");
-				mInputCancelled = true;						// signal read by executeINPUT
-			}
-		});
+		builder.setOnCancelListener(
+			new DialogInterface.OnCancelListener() {
+				public void onCancel(DialogInterface dialog) {
+					Log.d(LOGTAG, "Input Dialog onCancel");
+					mInputCancelled = true;					// signal read by executeINPUT
+				}
+			});
 
 		AlertDialog dialog = builder.create();
-		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-			public void onDismiss( DialogInterface dialog) {
-				Log.d(LOGTAG, "Input Dialog onDismiss");
-				mWaitForLock = false;						// semaphore used in waitForLOCK
-				synchronized (LOCK) {
-					LOCK.notify();							// release the lock that executeINPUT is waiting for
+		dialog.setOnDismissListener(
+			new DialogInterface.OnDismissListener() {
+				public void onDismiss(DialogInterface dialog) {
+					Log.d(LOGTAG, "Input Dialog onDismiss");
+					releaseLOCK();							// release the lock that executeINPUT is waiting for
 				}
-			}
-		});
+			});
 		dialog.show();
 		dialog.getButton(DialogInterface.BUTTON_POSITIVE)	// now we can replace the View click listener
 			.setOnClickListener(new InputDialogClickListener(dialog, text, args));	// to prevent auto-dismiss
@@ -2726,32 +2724,32 @@ public class Run extends ListActivity {
 		if (negative != null) { builder.setNegativeButton(negative, listener); }
 
 		if (list != null) {
-			builder.setItems(list, new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog, int which) {
-					mAlertItemID = which + 1;				// convert to 1-based index
-				}
-			});
+			builder.setItems(list,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						mAlertItemID = which + 1;			// convert to 1-based index
+					}
+				});
 		} else {
 			builder.setMessage(args.getString("message"));	// list and message are mutually exclusive
 		}
 
-		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface dialog) {
-				Log.d(LOGTAG, "Alert Dialog onCancel");
-				mAlertItemID = 0;							// no button clicked or item selected
-			}
-		});
+		builder.setOnCancelListener(
+			new DialogInterface.OnCancelListener() {
+				public void onCancel(DialogInterface dialog) {
+					Log.d(LOGTAG, "Alert Dialog onCancel");
+					mAlertItemID = 0;						// no button clicked or item selected
+				}
+			});
 
 		AlertDialog dialog = builder.create();
-		dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-			public void onDismiss( DialogInterface dialog) {
-				Log.d(LOGTAG, "Alert Dialog onDismiss");
-				mWaitForLock = false;						// semaphore used in waitForLOCK
-				synchronized (LOCK) {
-					LOCK.notify();							// release the lock that executeINPUT is waiting for
+		dialog.setOnDismissListener(
+			new DialogInterface.OnDismissListener() {
+				public void onDismiss( DialogInterface dialog) {
+					Log.d(LOGTAG, "Alert Dialog onDismiss");
+					releaseLOCK();							// release the lock that executeINPUT is waiting for
 				}
-			}
-		});
+			});
 		dialog.show();
 	}
 
@@ -2765,6 +2763,15 @@ public class Run extends ListActivity {
 				case DialogInterface.BUTTON_NEGATIVE: id = 3; break;
 			}
 			mAlertItemID = id;
+		}
+	}
+
+	private void releaseLOCK() {
+		if (!mWaitForLock) return;
+
+		synchronized (LOCK) {
+			mWaitForLock = false;							// semaphore used in waitForLOCK
+			LOCK.notify();									// release the lock
 		}
 	}
 
@@ -2912,7 +2919,7 @@ public class Run extends ListActivity {
 		LayoutInflater inflater = getLayoutInflater();
 		View dialogLayout = inflater.inflate(R.layout.debug_dialog_layout, null);
 
-		ListView debugView = (ListView) dialogLayout.findViewById(R.id.debug_list);
+		ListView debugView = (ListView)dialogLayout.findViewById(R.id.debug_list);
 		debugView.setAdapter(new ArrayAdapter<String>(Run.this, R.layout.debug_list_layout, msg));
 		debugView.setVerticalScrollBarEnabled(true);
 		if (dbDialogProgram) {
@@ -2923,32 +2930,37 @@ public class Run extends ListActivity {
 				.setCancelable(true).setTitle(R.string.debug_name)
 				.setView(dialogLayout);
 
-		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface arg0) {
-				DebuggerHalt = true;
-				WaitForResume = false;
-			}
-		});
+		builder.setOnCancelListener(
+			new DialogInterface.OnCancelListener() {
+				public void onCancel(DialogInterface arg0) {
+					DebuggerHalt = true;
+					WaitForDebugResume = false;
+					releaseDebugLOCK();
+				}
+			});
 
 		builder.setPositiveButton("Resume",
 			new DialogInterface.OnClickListener() {
 				public void onClick(DialogInterface dialog, int which) {
-					WaitForResume = false;
+					WaitForDebugResume = false;
+					releaseDebugLOCK();
 				}
 			});
 
-		builder.setNeutralButton("Step", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog, int which) {
-				DebuggerStep = true;
-				WaitForResume = true;
-			}
-		});
+		builder.setNeutralButton("Step",
+			new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					DebuggerStep = true;
+					WaitForDebugResume = true;
+					releaseDebugLOCK();
+				}
+			});
 
-		// leave out until the switcher is done.
 		builder.setNegativeButton("View Swap",
 			new DialogInterface.OnClickListener() {
 				public void onClick(DialogInterface dialog, int which) {
 					dbSwap = true;
+					releaseDebugLOCK();
 				}
 			});
 
@@ -2974,50 +2986,54 @@ public class Run extends ListActivity {
 		debugView.setVerticalScrollBarEnabled(true);
 		debugView.setClickable(true);
 
-		debugView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				DialogSelector(position);
-				boolean dosel = 
-					(dbDialogArray  && WatchedArray  == -1) ||
-					(dbDialogList   && WatchedList   == -1) ||
-					(dbDialogStack  && WatchedStack  == -1) ||
-					(dbDialogBundle && WatchedBundle == -1);
-				if (dosel) {
-					// if the element has not been defined ask if user wishes to do so.
-					// or at least this is where it will go.
-					// for now, default to view program.
-					DialogSelector(0);
-					position = 0;
+		debugView.setOnItemClickListener(
+			new AdapterView.OnItemClickListener() {
+				public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+					DialogSelector(position);
+					boolean dosel =
+						(dbDialogArray  && WatchedArray  == -1) ||
+						(dbDialogList   && WatchedList   == -1) ||
+						(dbDialogStack  && WatchedStack  == -1) ||
+						(dbDialogBundle && WatchedBundle == -1);
+					if (dosel) {
+						// if the element has not been defined ask if user wishes to do so.
+						// or at least this is where it will go.
+						// for now, default to view program.
+						DialogSelector(0);
+						position = 0;
+					}
+					String name = (position < names.length) ? names[position] : "";
+					Toaster(name).show();
 				}
-				String name = (position < names.length) ? names[position] : "";
-				Toaster(name).show();
-			}
-		});
+			});
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(Run.this)
 			.setCancelable(true)
 			.setTitle("Select View:")
 			.setView(dialogLayout);
 		
-		builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface arg0) {
-				WaitForSwap = false;
-			}
-		});
+		builder.setOnCancelListener(
+			new DialogInterface.OnCancelListener() {
+				public void onCancel(DialogInterface arg0) {
+					WaitForSwap = false;
+				}
+			});
 		
-		builder.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog,int which) {
-				WaitForSwap = false;
-				dbSwap = false;
-			}
-		});
+		builder.setPositiveButton("Confirm",
+			new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,int which) {
+					WaitForSwap = false;
+					dbSwap = false;
+				}
+			});
 
 /*  // leave out until the element selector is done.
-		builder.setNeutralButton("Choose Element", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog,int which) {
-				WaitForSelect = true;
-			}
-		});
+		builder.setNeutralButton("Choose Element",
+			new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,int which) {
+					WaitForSelect = true;
+				}
+			});
 */
 		dbSwapDialog = builder.show();
 		dbSwapDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
@@ -3042,6 +3058,14 @@ public class Run extends ListActivity {
 		return true;											// message handled
 	}
 
+	private void releaseDebugLOCK() {
+		if (!mWaitForDebugLock) return;
+
+		synchronized (DB_LOCK) {
+			mWaitForDebugLock = false;							// semaphore used in waitForLOCK
+			DB_LOCK.notify();									// release the lock
+		}
+	}
 
 /* ****************************** Start of Basic's run program code *******************************
  * 
@@ -3061,36 +3085,21 @@ public class Run extends ListActivity {
  * 
  */
 
+/* Implementation notes:
+	1.	This class must eventually be moved to its own file. Perhaps to run as a service?
+		Nested classes can't have static members, so until it moves, a few things
+		that really belong to this class are owned by Run instead.
+	2.	Command lines are in the Basic.lines array. Line 0 is valid.
+		To jump to a new line, set ExecutingLineIndex to the line before.
+		RunLoop() increments the index before loading ExecutingLineBuffer.
+ */
 
 	public class Background extends Thread {
 
 		// The execution of the basic program is done by this background Thread.
 		// This is done to keep the UI task responsive.
 
-		private Stack<Integer> GosubStack;					// Stack used for Gosub/Return
-		private Stack<ForNext> ForNextStack;				// Stack used for For/Next
-		private Stack<WhileRepeat> WhileStack;				// Stack used for While/Repeat
-		private Stack<Integer> DoStack;						// Stack used for Do/Until
-
-		private Stack <Integer> IfElseStack;				// Stack for IF-ELSE-ENDIF operations
-		private ArrayList<FunctionDefinition> FunctionTable;// Created for each defined function
-		private FunctionDefinition FnDef;					// Set by isUserFunction and used by doUserFunction
-		private Stack<CallStackFrame> FunctionStack;		// State saved through the currently executing functions
-		private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
-
-		private boolean VarIsNew = true;					// Signal from getVar() that this var is new
-		private boolean VarIsNumeric = true;				// if false, var is a string
-		private boolean VarIsInt = false;					// temporary integer status used only by fprint
-		private boolean VarIsArray = false;					// if true, var is an array
-															// if the var is an array, the VarIndex is
-															// an index into ArrayTable
-		private boolean VarIsFunction = false;				// Flag set by parseVar() when var is a user function
-		private int VarSearchStart;							// Used to limit search for var names to executing function vars
-		private int interruptVarSearchStart;				// Save VarSearchStart across interrupt
-
-
 		// **************************** Variable class ****************************
-		// So far the use is very limited, but who knows what the future holds?
 
 		public class Var {
 			private VarType mType;
@@ -3167,7 +3176,6 @@ public class Run extends ListActivity {
 			}
 
 			public int line() { return mLine; }
-			public double limit() { return mLimit; }
 			public boolean doStep() {
 				double idx = mVar.nval();						// get the loop index
 				idx += mStep;									// do the STEP
@@ -3257,6 +3265,8 @@ public class Run extends ListActivity {
 
 			public FunctionDefinition fnDef() { return mFnDef; }
 
+			public String name() { return mFnDef.name(); }
+
 			public void store(FunctionDefinition fn) {
 				mFnDef = fn;
 				mELI = ExecutingLineIndex;
@@ -3283,6 +3293,36 @@ public class Run extends ListActivity {
 			}
 		}
 
+		// **************************** START OF VARIABLE DEFINITIONS *****************************
+
+		// ************************* Various execution control variables **************************
+
+		private Stack<Integer> GosubStack;					// Stack used for Gosub/Return
+		private Stack<ForNext> ForNextStack;				// Stack used for For/Next
+		private Stack<WhileRepeat> WhileStack;				// Stack used for While/Repeat
+		private Stack<Integer> DoStack;						// Stack used for Do/Until
+
+		private Stack<Integer> IfElseStack;					// Stack for IF-ELSE-ENDIF operations
+		private ArrayList<FunctionDefinition> FunctionTable;// Created for each defined function
+		private FunctionDefinition FnDef;					// Set by isUserFunction and used by doUserFunction
+		private Stack<CallStackFrame> FunctionStack;		// State saved through the currently executing functions
+		private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
+
+		private boolean VarIsNew = true;					// Signal from getVar() that this var is new
+		private boolean VarIsNumeric = true;				// if false, var is a string
+		private boolean VarIsInt = false;					// temporary integer status used only by fprint
+		private boolean VarIsArray = false;					// if true, var is an array
+															// if the var is an array, the VarIndex is
+															// an index into ArrayTable
+		private boolean VarIsFunction = false;				// Flag set by parseVar() when var is a user function
+		private int VarSearchStart;							// Used to limit search for var names to executing function vars
+		private int interruptVarSearchStart;				// Save VarSearchStart across interrupt
+
+		// ************************************ Debug Commands ************************************
+
+		private boolean Debug = false;
+		private boolean Echo = false;
+
 		// ****************************** START OF INTERPRETER CODE *******************************
 
 		private UncaughtExceptionHandler mDefaultExceptionHandler;
@@ -3304,7 +3344,7 @@ public class Run extends ListActivity {
 
 				private void handleHere(String err) {
 					PrintShow(err + ", near line:", ExecutingLineBuffer.line());
-					SyntaxError = true;		// This blocks "Program ended" checks in finishUp()
+					SyntaxError = true;		// This blocks "Program ended" checks in finishRun()
 					OnErrorLine = 0;		// Don't allow OnError: to catch OOM, it's fatal
 					finishRun();
 				}
@@ -3352,7 +3392,9 @@ public class Run extends ListActivity {
 
 			OnBackKeyLine = 0;
 
-			if (OnErrorLine == 0 && !SyntaxError && !Exit) {
+			// For debugging loop errors: if debug is on and errors are not trapped
+			// and there is no other error and no immediate exit, then check the loop stacks.
+			if (Debug && OnErrorLine == 0 && !SyntaxError && !Exit) {
 				if (!ForNextStack.empty())	{ PrintShow("Program ended with FOR without NEXT"); }
 				if (!WhileStack.empty())	{ PrintShow("Program ended with WHILE without REPEAT"); }
 				if (!DoStack.empty())		{ PrintShow("Program ended with DO without UNTIL"); }
@@ -3424,15 +3466,17 @@ public class Run extends ListActivity {
 				LineIndex = 0 ;
 				sTime = SystemClock.uptimeMillis();
 
-        		flag = StatementExecuter();							// execute the next statement
-        															// returns true if no problems executing statement
-        		if (Exit) return flag;								// if Exit skip all other processing
+				flag = StatementExecuter();							// execute the next statement
+																	// returns true if no problems executing statement
+				if (Exit) return flag;								// if Exit skip all other processing
 
-        		if (!flag && (OnErrorLine != 0)) {					// If Error and there is an OnError label
-        			ExecutingLineIndex = OnErrorLine;				// Go to the OnError line
-        			SyntaxError = false;
-        			flag = true;									// and indicate no error
-        		} else
+				if (!flag) {										// error supersedes all other interrupt checking
+					if (OnErrorLine != 0) {							// if there is an OnError label
+						ExecutingLineIndex = OnErrorLine;			// go to the OnError line
+						SyntaxError = false;						// and clear the error status
+						flag = true;
+					}
+				} else
 
         		if (BackKeyHit && OnBackKeyLine != 0) {
         				BackKeyHit = doInterrupt(OnBackKeyLine);
@@ -3466,22 +3510,30 @@ public class Run extends ListActivity {
         				bgStateChange = doInterrupt(OnBGLine);
         		}
 
-				if (mConsoleBuffer.size() != 0) {								// somebody changed the console
+				if (mConsoleBuffer.size() != 0) {					// somebody changed the console
 					sendMessage(MESSAGE_UPDATE_CONSOLE);
+				}
+
+				if (fnRTN) {										// fn_rtn signal
+					fnRTN = false;									// make RunLoop() return to doUserFunction
+					break;
 				}
 
 				// Debugger control
 				// Michael/paulon0n also defined a signal for "Alert dialog var not set called". TODO?
-				while (WaitForResume) {
-					Thread.yield();
+				while (WaitForDebugResume && flag && !Stop) {
+					mWaitForDebugLock = true;
+					sendMessage(MESSAGE_DEBUG_DIALOG);				// signal UI to show debugger dialog
+					waitForDebugLOCK();								// wait for user's selection
+
 					if (DebuggerHalt) {
 						PrintShow("Execution halted");
 						Stop = true;
+						break;
 					}
 					if (DebuggerStep) {
 						DebuggerStep = false;
-						sendMessage(MESSAGE_DEBUG_DIALOG);			// signal UI to run debugger dialog again
-						break;
+						break;										// let the next command run
 					}
 					if (dbSwap) {
 						WaitForSwap = true;
@@ -3500,16 +3552,10 @@ public class Run extends ListActivity {
 							*/
 						}
 						dbSwap = false;
-						sendMessage(MESSAGE_DEBUG_DIALOG);			// signal UI to run debugger dialog again
 					}
 				}
 
-				if (fnRTN) {				// fn_rtn signal. If true make RunLoop() return
-					fnRTN = false;			// to doUserFunction
-					break;
-				}
-
-				++ExecutingLineIndex;								// Step to next line
+				++ExecutingLineIndex;								// step to next line
 			}
 			return flag;
 		} // end RunLoop
@@ -3553,6 +3599,25 @@ public class Run extends ListActivity {
 			return false;								// Turn off the interrupt
 		}
 
+		private boolean doResume(String errMsg) {
+			if (interruptResume == -1) {
+				return RunTimeError(errMsg);
+			}
+
+			ExecutingLineIndex = interruptResume;
+			interruptResume = -1;
+			VarSearchStart = interruptVarSearchStart;
+			// Pull the IEinterrupt from the If Else stack
+			// It is possible that IFs were executed in the interrupt code
+			// so pop entries until we get to the IEinterrupt
+			while (IfElseStack.peek() != IEinterrupt) {
+				IfElseStack.pop();
+			}
+			IfElseStack.pop();  // Top of stack is now IEInterrupt, pop it
+
+			return true;
+		}
+
 	private void InitVars() {
 		Log.d(LOGTAG, "InitVars() started");
 
@@ -3575,12 +3640,12 @@ public class Run extends ListActivity {
 		InChar = new ArrayList<String>();
 		KeyPressed = false;
 		OnKeyLine = 0;
-		
+
 		LineIndex = 0;									// Current displacement into ExecutingLineBuffer's line
 		ExecutingLineBuffer = new ProgramLine("\n");	// Holds the current line being executed
 		ExecutingLineIndex = 0;							// Points to the current line in Basic.lines
 		SEisLE = false;									// If a String expression result is a logical expression
-		
+
 		GosubStack = new Stack<Integer>();				// Stack used for Gosub/Return
 		ForNextStack = new Stack<ForNext>();			// Stack used for For/Next
 		WhileStack = new Stack<WhileRepeat>();			// Stack used for While/Repeat
@@ -3914,6 +3979,38 @@ public class Run extends ListActivity {
 
 		Log.d(LOGTAG, "cleanUp() done");
 	} // end cleanup
+
+	// ***************************************** UI Locks *****************************************
+
+	private void waitForLOCK() {
+		synchronized (LOCK) {
+//			Log.d(LOGTAG, "set LOCK wait");
+			while (mWaitForLock) {
+				try { LOCK.wait(); }
+				catch (InterruptedException e) { mWaitForLock = false; }
+			}
+		}
+	}
+
+	private void waitForGrLOCK() {
+		synchronized (GR.LOCK) {
+//			Log.d(LOGTAG, "set GR.LOCK wait");
+			while (GR.waitForLock) {
+				try { GR.LOCK.wait(); }
+				catch (InterruptedException e) { GR.waitForLock = false; }
+			}
+		}
+	}
+
+	private void waitForDebugLOCK() {
+		synchronized (DB_LOCK) {
+//			Log.d(LOGTAG, "set DB_LOCK wait");
+			while (mWaitForDebugLock) {
+				try { DB_LOCK.wait(); }
+				catch (InterruptedException e) { mWaitForDebugLock = false; }
+			}
+		}
+	}
 
 	// ************************************* Function Tables **************************************
 
@@ -4743,12 +4840,6 @@ public class Run extends ListActivity {
 		return null;												// no keyword found
 	}
 
-	private void Show(String... str) {					// conditionally write an error message to the console
-		if (OnErrorLine == 0) {							// if there is an OnError label, do not show the message.
-			PrintShow(str);
-		}
-	}
-
 	private void PrintShow(String... strs) {			// write the console
 		synchronized (mConsoleBuffer) {
 			if (strs != null) {
@@ -4760,18 +4851,14 @@ public class Run extends ListActivity {
 	}
 
 	private void SyntaxError() {						// Called to output Syntax Error Message
-/*		if (OnErrorLine != 0) {
-			return;
-		}*/
-		if (!SyntaxError) {								// If a previous Syntax error message has
-			RunTimeError("Syntax Error");				// not been displayed them display
-			SyntaxError = true;							// Then set the flag so we don't do it again.
+		if (!SyntaxError) {								// If a previous syntax error message has
+			RunTimeError("Syntax Error");				// not been displayed then display one now
+			SyntaxError = true;							// and set the flag so we don't do it again.
 		}
 
-		// If graphics is opened then the user will not be able to see error messages
-		// Provide a haptic notice
-
 		if (GRopen) {
+			// If graphics is opened then the user will not be able to see error messages.
+			// Provide a haptic notice.
 			lv.performHapticFeedback(2, 1);
 			try { Thread.sleep(300); } catch(InterruptedException e) {}
 			lv.performHapticFeedback(2, 1);
@@ -4782,20 +4869,21 @@ public class Run extends ListActivity {
 	}
 
 	private boolean RunTimeError(String... msgs) {
-		String line = ExecutingLineBuffer.line();
-		if (line.endsWith("\n")) { line = chomp(line); }
-		Show(msgs[0], line);						// Display error message and offending line
+		if (OnErrorLine == 0) {							// don't display anything if error is being trapped
+			String line = ExecutingLineBuffer.line();
+			if (line.endsWith("\n")) { line = chomp(line); }
+			PrintShow(msgs[0], line);					// display error message and offending line
 
-		for (int i = 1; i < msgs.length; ++i) {		// Display any supplemental text
-			Show(msgs[i]);
+			for (int i = 1; i < msgs.length; ++i) {		// display any supplemental text
+				PrintShow(msgs[i]);
+			}
 		}
-
 		SyntaxError = true;
 		Editor.SyntaxErrorDisplacement = ExecutingLineIndex + 1;
 
 		writeErrorMsg(msgs[0]);
 		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
-		return false;						// Always return false as convenience for caller
+		return false;									// always return false as convenience for caller
 	}
 
 	private boolean RunTimeError(Throwable e) {
@@ -7610,26 +7698,6 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-	private void waitForLOCK() {
-		synchronized (LOCK) {
-//			Log.d(LOGTAG, "set LOCK wait");
-			while (mWaitForLock) {
-				try { LOCK.wait(); }
-				catch (InterruptedException e) { mWaitForLock = false; }
-			}
-		}
-	}
-
-	private void waitForGrLOCK() {
-		synchronized (GR.LOCK) {
-//			Log.d(LOGTAG, "set GR.LOCK wait");
-			while (GR.waitForLock) {
-				try { GR.LOCK.wait(); }
-				catch (InterruptedException e) { GR.waitForLock = false; }
-			}
-		}
-	}
-
 	// ************************************** Dialog Commands *************************************
 
 	private boolean executeDIALOG() {						// Get Dialog command keyword if it is there
@@ -8040,10 +8108,10 @@ public class Run extends ListActivity {
 	private boolean executeSW_END() {
 		return true;
 	}
-	
-// *****************************  End of core Basic Methods ****************************
-	
-// ***************************** Data I/O Operations ***********************************
+
+	// *****************************  End of core Basic Methods ****************************
+
+	// ***************************** Data I/O Operations ***********************************
 
 	private boolean checkReadFile(int FileNumber) {							// Validate input file for read commands
 		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
@@ -9241,25 +9309,6 @@ public class Run extends ListActivity {
 	}
 
 	// ************************************** Miscellaneous Non-core commands **************************
-
-	private boolean doResume(String errMsg) {
-		if (interruptResume == -1) {
-			return RunTimeError(errMsg);
-		}
-
-		ExecutingLineIndex = interruptResume;
-		interruptResume = -1;
-		VarSearchStart = interruptVarSearchStart;
-		// Pull the IEinterrupt from the If Else stack
-		// It is possible that IFs were executed in the interrupt code
-		// so pop entries until we get to the IEinterrupt
-		while (IfElseStack.peek() != IEinterrupt) {
-			IfElseStack.pop();
-		}
-		IfElseStack.pop();  // Top of stack is now IEInterrupt, pop it
-
-		return true;
-	}
 
 	private boolean executeBACK_RESUME() {
 		return doResume("Back key not hit");
@@ -16501,7 +16550,7 @@ public class Run extends ListActivity {
 	// ********************************** Empty Program Command ***********************************
 
 	private boolean executeEMPTY_PROGRAM() {
-		Show("Nothing to execute.");
+		PrintShow("Nothing to execute.");
 		Stop = true;
 		return true;
 	}
@@ -17046,8 +17095,8 @@ public class Run extends ListActivity {
 
 	private boolean executeDEBUG_SHOW() {				// trigger do debug dialog
 		if (!Debug) return true;
-		WaitForResume = true;
-		sendMessage(MESSAGE_DEBUG_DIALOG);
+		WaitForDebugResume = true;						// make RunLoop() check debug flags
+		DebuggerStep = true;							// make RunLoop() start the debug dialog after this command
 		return true;
 	}
 
@@ -17075,9 +17124,9 @@ public class Run extends ListActivity {
 		ArrayList<String> msg = new ArrayList<String>();
 		String msgs = "";
 		if (!FunctionStack.isEmpty()) {
-			Stack<Bundle> tempStack = (Stack<Bundle>) FunctionStack.clone();
+			Stack<CallStackFrame> tempStack = (Stack<CallStackFrame>)FunctionStack.clone();
 			do {
-				msgs = tempStack.pop().getString("fname") + msgs;
+				msgs = tempStack.pop().name() + msgs;
 			} while (!tempStack.isEmpty());
 		} else { msgs += "MainProgram"; }
 		msg.add("In Function: " + msgs);
