@@ -235,6 +235,26 @@ public class Run extends ListActivity {
 	private static final int MESSAGE_INPUT_DIALOG      = MESSAGE_DIALOG_GROUP + 1;	// for INPUT command
 	private static final int MESSAGE_ALERT_DIALOG      = MESSAGE_DIALOG_GROUP + 2;	// for DIALOG.* commands
 
+	// *************************** EventHolder class ***************************
+	// Used to carry events between Activities.
+
+	public static class EventHolder {
+		public static final int KEY_DOWN = 1;
+		public static final int KEY_UP = 2;
+		public static final int BACK_KEY_PRESSED = 3;
+		public static final int GR_BACK_KEY_PRESSED = 4;
+
+		int mType;										// one of the above constants
+		int mCode;
+		KeyEvent mEvent;
+
+		public EventHolder(int type, int code, KeyEvent event) {
+			mType = type;
+			mCode = code;
+			mEvent = event;
+		}
+	}
+
 	// *************************** ProgramLine class ***************************
 
 	public static class ProgramLine {
@@ -717,8 +737,6 @@ public class Run extends ListActivity {
 		BKW_ONKEYPRESS, BKW_ONMENUKEY, BKW_ONTIMER,
 	};
 
-	private String PossibleKeyWord = "";						// Used when TO, STEP, THEN are expected
-
 	private static HashMap<String, String[]> keywordLists = null;	// For Format: map associates a keyword group
 																	// with the prefix common to the group.
 	public static HashMap<String, String[]> getKeywordLists() {
@@ -954,41 +972,49 @@ public class Run extends ListActivity {
 
 	// *****************************   Various execution control variables *********************
 
-    public static final int BASIC_GENERAL_INTENT = 255;
-    private Random randomizer;
-    private boolean mInterpreterRunning;
-    public static boolean background = false;
-    private String errorMsg;
-    private boolean kbShown = false;
+	public static final int BASIC_GENERAL_INTENT = 255;
+	public static boolean background = false;
+	public static boolean Exit = false;					// Exits program and signals caller to exit, too
+	private boolean Stop = false;						// Stops program from running
+	private boolean mInterpreterRunning;
+	private boolean kbShown = false;
+														// events from other Activites
+	public static final ArrayList<EventHolder> mEventList = new ArrayList<EventHolder>();
 
-    public static int OnErrorLine = 0;					// Line number for OnError: label
-    public static int OnBackKeyLine = 0;
-    public static boolean BackKeyHit = false;
-    public static int OnMenuKeyLine = 0;
-    public static boolean MenuKeyHit = false;
-    public static boolean bgStateChange = false;
-    private int OnBGLine = 0;
-    private int onCTLine = 0;
-    private boolean ConsoleTouched = false;
-    private boolean ConsoleLongTouch = false;
-    private int TouchedConsoleLine = 0;					// first valid line number is 1
-    private int interruptResume = -1;
+	private int OnErrorLine = 0;						// Line number for OnError: label
 
-    private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer's line
-    private ProgramLine ExecutingLineBuffer = null;		// Holds the current line being executed
-    private int ExecutingLineIndex = 0;					// Points to the current line in Basic.lines
-    private boolean SEisLE = false;						// If a String expression result is a logical expression
+	private boolean BackKeyHit = false;
+	private int OnBackKeyLine = 0;
+
+	public boolean timerExpired;
+	public int OnTimerLine;
+
+	public static boolean KeyPressed = false;
+	private int OnKeyLine;
+
+	private boolean MenuKeyHit = false;
+	private int OnMenuKeyLine = 0;
+
+	private int OnTouchLine;							// for graphics OnGrTouch:
+
+	private int OnBTReadLine = 0;
+	private boolean btReadReady = false;
+
+	private boolean ConsoleTouched = false;
+	private boolean ConsoleLongTouch = false;
+	private int TouchedConsoleLine = 0;					// first valid line number is 1
+	private int onCTLine = 0;
+
+	public static boolean bgStateChange = false;
+	private int OnBGLine = 0;
+
+	private int interruptResume = -1;
 
 	/* TODO: move these to Background */				// Constants for use in the IfElseStack
 	private static final Integer IEskip1 = 1;			// Skip statements until ELSE, ELSEIF or ENDIF
 	private static final Integer IEskip2 = 2;			// Skip to until ENDIF
 	private static final Integer IEexec = 3;			// Execute to ELSE, ELSEIF or ENDIF
 	private static final Integer IEinterrupt = 4;
-
-    private Double GetNumberValue = 0.0;				// Return value from GetNumber()
-    private Double EvalNumericExpressionValue = 0.0;	// Return value from EvalNumericExprssion()
-    private Long EvalNumericExpressionIntValue = 0L;	// Integer copy of EvalNumericExpressionValue when VarIsInt is true
-    private Vibrator myVib;
 
 														// The output screen text lines
 	final private static int MIN_CONSOLE_LINES = 100;	// starting capacity of mConsole
@@ -1037,28 +1063,16 @@ public class Run extends ListActivity {
 	private int WatchedBundle;
 	// end debugger ui vars
 
-	public static boolean Stop = false;					// Stops program from running
-	public static boolean Exit = false;					// Exits program and signals caller to exit, too
 	public static boolean RunPaused = false;			// Used to control the media player
-	private String PrintLine = "";						// Hold the Print line currently being built
-	private String textPrintLine = "";					// Hold the TextPrint line currently being built
-	private boolean PrintLineReady = false;				// Signals a line is ready to print or write
 
 	private InputMethodManager IMM;
 	private HashMap<String,Integer> Labels;				// A list of all labels and associated line numbers
 
 	public static ArrayList<Background.Var> Vars;		// All scalar the variables
 	private ArrayList<ArrayDescriptor> ArrayTable;		// Each DIMed array has an entry in this table
-	private String StringConstant = "";					// Storage for a string constant
-	private int theValueIndex;							// The index into the value table for the current var
 	private int ArrayValueStart = 0;					// Value index for newly created array
 
-	ClipboardManager clipboard;
-	private long sTime;
-
-	// ********************************** RUN variables *********************************
-
-	private Intent runIntent;							// Intent to run from RUN command
+	private ClipboardManager clipboard;
 
 	// ******************* Variables for User-defined Functions ************************
 
@@ -1125,10 +1139,8 @@ public class Run extends ListActivity {
 		BKW_FILE_RENAME, BKW_FILE_ROOT, BKW_FILE_EXISTS, BKW_FILE_TYPE
 	};
 
-	private static final int FMR = 0;						// File Mode Read
-	private static final int FMW = 1;						// File Mode Write
-
-	public ArrayList<FileInfo> FileTable;			// File table list
+	private static final int FMR = 0;					// File Mode Read
+	private static final int FMW = 1;					// File Mode Write
 
 	// ********************************* TEXT I/O variables *********************************
 
@@ -1181,8 +1193,6 @@ public class Run extends ListActivity {
 	private static final String font_KW[] = {			// Font command list for Format
 		BKW_FONT_LOAD, BKW_FONT_DELETE, BKW_FONT_CLEAR
 	};
-
-	public ArrayList<Typeface> FontList;
 
 	// ******************** Console Command variables ********************************
 
@@ -1246,16 +1256,11 @@ public class Run extends ListActivity {
 		BKW_SQL_RAW_QUERY, BKW_SQL_DROP_TABLE, BKW_SQL_NEW_TABLE
 	};
 
-	public ArrayList<SQLiteDatabase> DataBases;			// List of created data bases
-	public ArrayList<Cursor> Cursors;					// List of created data bases
-
 	// ******************************** Variables for the INKEY$ command ***********************
 
 	public static final String Numbers = "0123456789";	// translations for key codes
 	public static final String Chars = "abcdefghijklmnopqrstuvwxyz";
 	public static ArrayList<String> InChar;
-	public static boolean KeyPressed = false;
-	private int OnKeyLine;
 
 	// ********************************* Variables for text.input command **********************
 
@@ -1263,24 +1268,18 @@ public class Run extends ListActivity {
 
 	// ******************************** Graphics Declarations **********************************
 
-	private Intent GRclass;								// Graphics Intent Class
 	public static boolean GRopen = false;				// Graphics Open Flag
+	private boolean GRFront;
 
 	public static ArrayList<GR.BDraw> DisplayList;
 	public static ArrayList<Integer> RealDisplayList;
 
 	public static ArrayList<Paint> PaintList;
 	public static ArrayList<Bitmap> BitmapList;
-	private Paint aPaint;
 
 	public static double TouchX[] = new double[3];
 	public static double TouchY[] = new double[3];
 	public static boolean NewTouch[] = new boolean[3];
-	private int OnTouchLine;
-
-	private boolean GRFront;
-	private Canvas drawintoCanvas = null;
-	private boolean mShowStatusBar;
 
 	// Graphics command keywords
 	private static final String BKW_GR_ARC = "arc";
@@ -1452,12 +1451,6 @@ public class Run extends ListActivity {
 		BKW_AUDIO_ISDONE, BKW_AUDIO_RECORD_START, BKW_AUDIO_RECORD_STOP
 	};
 
-	private MediaPlayer theMP = null;
-	private ArrayList<MediaPlayer> theMPList;
-	private ArrayList<String> theMPNameList;
-	private boolean PlayIsDone;
-	private MediaRecorder mRecorder = null;
-
 	// ******************************* Variables for Sensor Commands **********************************
 
 	private static final String BKW_SENSORS_LIST = "list";
@@ -1551,9 +1544,6 @@ public class Run extends ListActivity {
 		BKW_LIST_TOARRAY, BKW_LIST_SEARCH
 	};
 
-	public ArrayList<ArrayList> theLists;
-	public ArrayList<VarType> theListsType;
-
 	// ************************************ Bundle Variables ****************************************
 
 	private static final String BKW_BUNDLE_CREATE = "create";
@@ -1573,8 +1563,6 @@ public class Run extends ListActivity {
 		BKW_BUNDLE_CLEAR, BKW_BUNDLE_CONTAIN, BKW_BUNDLE_REMOVE
 	};
 
-	private ArrayList<Bundle> theBundles;
-
 	// *********************************** Stack Variables **********************************************
 
 	private static final String BKW_STACK_CREATE = "create";
@@ -1590,9 +1578,6 @@ public class Run extends ListActivity {
 		BKW_STACK_PEEK, BKW_STACK_TYPE,
 		BKW_STACK_ISEMPTY, BKW_STACK_CLEAR
 	};
-
-	private ArrayList<Stack> theStacks;
-	private ArrayList<VarType> theStacksType; 
 
 //  ******************************* Socket Variables **************************************************
 
@@ -1776,7 +1761,6 @@ public class Run extends ListActivity {
 		BKW_TTS_SPEAK, BKW_TTS_STOP
 	};
 
-	private TextToSpeechActivity theTTS;
 	public static boolean ttsInit;
 
 	// *********************************************** FTP Client *************************************
@@ -1845,8 +1829,6 @@ public class Run extends ListActivity {
 	// Input buffer - use this for synchronization lock
 	private final ArrayList<String> BT_Read_Buffer = new ArrayList<String>();
 	public static BluetoothDevice btConnectDevice = null;
-	private boolean btReadReady = false;
-	private int OnBTReadLine = 0;
 
 	private static final String BKW_BT_OPEN = "open";
 	private static final String BKW_BT_CLOSE = "close";
@@ -1884,13 +1866,6 @@ public class Run extends ListActivity {
 	};
 	private static final String[] System_KW = su_KW;	// Command list for Format
 
-	private boolean isSU = true;						// set true for SU commands, false for System commands
-	private DataOutputStream SUoutputStream;
-	private BufferedReader SUinputStream;
-	private Process SUprocess;
-	private ArrayList <String> SU_ReadBuffer;
-	private SUReader theSUReader = null;
-
 	/***************************************  SOUND POOL  ************************************/
 
 	private static final String BKW_SOUNDPOOL_OPEN = "open";
@@ -1915,8 +1890,6 @@ public class Run extends ListActivity {
 		BKW_SOUNDPOOL_SETLOOP, BKW_SOUNDPOOL_SETRATE
 	};
 
-	private SoundPool theSoundPool ;
-
 	// *************************************** Ringer Vars ****************************************
 
 	private static final String BKW_RINGER_GET_MODE = "get.mode";
@@ -1936,9 +1909,9 @@ public class Run extends ListActivity {
 
 	// **************** Headset Vars **************************************
 
-	int headsetState;
-	String headsetName;
-	int headsetMic;
+	private int headsetState;
+	private String headsetName;
+	private int headsetMic;
 
 	//******************* html Vars ******************************************
 
@@ -1988,8 +1961,6 @@ public class Run extends ListActivity {
 		BKW_SMS_RCV_INIT, BKW_SMS_RCV_NEXT, BKW_SMS_SEND
 	};
 
-	public ArrayList<String> smsRcvBuffer;
-
 	// ******************** Speech to text Vars ********************************
 
 	public static final int VOICE_RECOGNITION_REQUEST_CODE = 1234;
@@ -2009,10 +1980,6 @@ public class Run extends ListActivity {
 		BKW_TIMER_SET, BKW_TIMER_CLEAR, BKW_TIMER_RESUME
 	};
 
-	public int OnTimerLine;
-	public Timer theTimer;
-	public boolean timerExpired;
-
 	// ******************** TimeZone Variables *******************************
 
 	private static final String BKW_TIMEZONE_SET = "set";
@@ -2022,8 +1989,6 @@ public class Run extends ListActivity {
 	private static final String TimeZone_KW[] = {		// Command list for Format
 		BKW_TIMEZONE_SET, BKW_TIMEZONE_GET, BKW_TIMEZONE_LIST
 	};
-
-	public String theTimeZone = "";
 
 	//************************ Phone variables ***************************
 
@@ -2036,12 +2001,6 @@ public class Run extends ListActivity {
 	private static final String phone_KW[] = {			// Command list for Format
 		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT, BKW_PHONE_INFO
 	};
-
-	public int phoneState = 0;
-	public String phoneNumber = "";
-	public boolean phoneRcvInited = false;
-	public TelephonyManager mTM;
-	public SignalStrength mSignalStrength = null;
 
 	//************************ am variables ******************************
 
@@ -2213,7 +2172,7 @@ public class Run extends ListActivity {
 	public void onCreate(Bundle savedInstanceState) {
 
 		super.onCreate(savedInstanceState);
-		Log.v(LOGTAG, CLASSTAG + " onCreate " + ExecutingLineIndex);
+		Log.v(LOGTAG, CLASSTAG + " onCreate");
 
 		if (Basic.lines == null) {
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
@@ -2305,63 +2264,58 @@ public class Run extends ListActivity {
 	// The following methods run in the foreground. The are called by asynchronous user events
 	// caused by the user pressing a key.
 
+	private boolean handleMenuKey(KeyEvent event) {
+		if (OnMenuKeyLine != 0) {
+			MenuKeyHit = true;			// menu key trapped by OnMenuKey
+			return true;
+		}
+		if ( Basic.isAPK ||				// if MENU key hit in APK and not trapped by OnMenuKey
+			(event == null) )			// or relayed via EventList with null event object
+		{
+			return true;				// then tell OS to ignore it
+		}
+		return false;					// let Android create the Run Menu
+	}
+
 	@Override
-	public boolean onTouchEvent(MotionEvent event) {
-		super.onTouchEvent(event);
-		int action = event.getAction();  // Get action type
-		return false;
+	public void onBackPressed() {
+		if (OnBackKeyLine != 0) {
+			BackKeyHit = true;		// BACK key trapped by OnBackKey
+			return;
+		}
+		if (Basic.DoAutoRun) {		// if AutoRun, BACK key always means exit
+			Exit = true;
+		}
+		if (mInterpreterRunning) {
+			Stop = true;			// if running a program, stop it
+		}
+		else finish();				// else already stopped, return to the Editor
 	}
 
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {		// The user hit a key
 		// Log.v(LOGTAG, CLASSTAG + " onKeyDown" + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
-			if (OnMenuKeyLine != 0) {
-				MenuKeyHit = true;
-				return true;
-			}
-			if (Basic.isAPK)			// If menu key hit in APK and not trapped by OnMenuKey									
-				return true;			// then tell OS to ignore it
-			
-			return false;				// Let Android create the Run Menu.
+			return handleMenuKey(event);
 		}
-
-		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-			if (OnBackKeyLine != 0) {
-				BackKeyHit = true;
-				return true;
-			}
-
-			if (Basic.DoAutoRun) Exit = true;	// If AutoRun, back key always means exit
-			if (mInterpreterRunning) {
-				Stop = true;			// If running a program, stop it
-			}
-			else finish();				// else already stopped, return to the Editor
-			return true;
-		}
-		return super.onKeyDown(keyCode, event);
+		// If event is null, we called this directly from runLoop(),
+		// so the return value does not matter.
+		return (event != null) ? super.onKeyDown(keyCode, event) : true;
 	}
 
 	@Override
-	public boolean onKeyUp( int keyCode, KeyEvent event) {
+	public boolean onKeyUp(int keyCode, KeyEvent event) {
 		// Log.v(LOGTAG, CLASSTAG + " onKeyUp" + keyCode);
-
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
-			if (OnMenuKeyLine != 0) {
-				MenuKeyHit = true;
-				return true;
-			}
-			if (Basic.isAPK)			// If menu key hit in APK and not trapped by OnMenuKey									
-				return true;			// then tell OS to ignore it
-			
-			return false;				// Let Android create the Run Menu.
+			return handleMenuKey(event);
 		}
-		
-		if (kbShown)
+		if (keyCode == KeyEvent.KEYCODE_BACK) {
+			return super.onKeyUp(keyCode, event);
+		}
+
+		if (kbShown) {
 			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-
-
-		if (keyCode == KeyEvent.KEYCODE_BACK && OnBackKeyLine != 0) return true;
+		}
 
 		char c;
 		String theKey = "@";
@@ -2438,8 +2392,8 @@ public class Run extends ListActivity {
 			return true;
 
 		case R.id.editor:									// User pressed Editor
-			if (!Basic.DoAutoRun && SyntaxError) {
-				Editor.SyntaxErrorDisplacement = ExecutingLineIndex;
+			if (!Basic.DoAutoRun && SyntaxError && (theBackground != null)) {
+				Editor.SyntaxErrorDisplacement = theBackground.ExecutingLineIndex;
 			}
 
 			Basic.theRunContext = null;
@@ -2884,13 +2838,20 @@ public class Run extends ListActivity {
 
 	private void doDebugDialog() {
 
+		int lineIndex = 0;
+		String line = "";
+		if (theBackground != null) {
+			lineIndex = theBackground.ExecutingLineIndex;
+			line = theBackground.ExecutingLineBuffer.line();
+		}
+
 		ArrayList<String> msg = new ArrayList<String>();
 
 		if (!dbDialogProgram) {
 			msg = theBackground.dbDoFunc();
 			msg.add("Executable Line #:    "
-					+ Integer.toString(ExecutingLineIndex + 1) + '\n'
-					+ chomp(ExecutingLineBuffer.line()));
+					+ Integer.toString(lineIndex + 1) + '\n'
+					+ chomp(line));
 		}
 
 		if (dbDialogScalars)
@@ -2908,10 +2869,8 @@ public class Run extends ListActivity {
 
 		if (dbDialogProgram) {
 			for (int i = 0; i < Basic.lines.size(); ++i) {
-				msg.add(((i == ExecutingLineIndex) ? " >>" : "   ") // mark
-																	// current
-																	// line
-						+ (i + 1) + ": " // one-based line index
+				msg.add(((i == lineIndex) ? " >>" : "   ")	// mark current line
+						+ (i + 1) + ": "					// one-based line index
 						+ chomp(Basic.lines.get(i).line())); // remove newline
 			}
 		}
@@ -2923,7 +2882,7 @@ public class Run extends ListActivity {
 		debugView.setAdapter(new ArrayAdapter<String>(Run.this, R.layout.debug_list_layout, msg));
 		debugView.setVerticalScrollBarEnabled(true);
 		if (dbDialogProgram) {
-			debugView.setSelection(ExecutingLineIndex);
+			debugView.setSelection(lineIndex);
 		}
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(Run.this)
@@ -3150,14 +3109,7 @@ public class Run extends ListActivity {
 				if (mType != VarType.STR) { throw new InvalidParameterException(); }
 				return mStrVal;
 			}
-		}
-
-		private ArrayList<String> VarNames ;				// Each entry has the variable name string
-		private ArrayList<Integer> VarIndex;				// Each entry is an index into
-															// Vars or
-															// ArrayTable or
-															// FunctionTable
-		private int VarNumber = 0;							// An index for Vars
+		} // class Var
 
 		// ***************************** ForNext class *****************************
 		// Records information about a For/Next loop. Objects go on the ForNextStack.
@@ -3297,6 +3249,10 @@ public class Run extends ListActivity {
 
 		// ************************* Various execution control variables **************************
 
+		private int ExecutingLineIndex = 0;					// Points to the current line in Basic.lines
+		private ProgramLine ExecutingLineBuffer = null;		// Holds the current line being executed
+		private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer's line
+
 		private Stack<Integer> GosubStack;					// Stack used for Gosub/Return
 		private Stack<ForNext> ForNextStack;				// Stack used for For/Next
 		private Stack<WhileRepeat> WhileStack;				// Stack used for While/Repeat
@@ -3308,6 +3264,12 @@ public class Run extends ListActivity {
 		private Stack<CallStackFrame> FunctionStack;		// State saved through the currently executing functions
 		private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
 
+		private ArrayList<String> VarNames;					// Each entry has the variable name string
+		private ArrayList<Integer> VarIndex;				// Each entry is an index into
+															// Vars or
+															// ArrayTable or
+															// FunctionTable
+		private int VarNumber = 0;							// An index for Vars
 		private boolean VarIsNew = true;					// Signal from getVar() that this var is new
 		private boolean VarIsNumeric = true;				// if false, var is a string
 		private boolean VarIsInt = false;					// temporary integer status used only by fprint
@@ -3315,10 +3277,122 @@ public class Run extends ListActivity {
 															// if the var is an array, the VarIndex is
 															// an index into ArrayTable
 		private boolean VarIsFunction = false;				// Flag set by parseVar() when var is a user function
-		private int VarSearchStart;							// Used to limit search for var names to executing function vars
-		private int interruptVarSearchStart;				// Save VarSearchStart across interrupt
+		private int VarSearchStart = 0;						// Used to limit search for var names to executing function vars
+		private int interruptVarSearchStart = 0;			// Save VarSearchStart across interrupt
 
-		// ************************************ Debug Commands ************************************
+		private int theValueIndex = 0;						// The index into the value table for the current var
+		private String StringConstant = "";						// Storage for a string constant
+		private boolean SEisLE = false;						// If a String expression result is a logical expression
+
+		private Double EvalNumericExpressionValue;			// Return value from EvalNumericExprssion()
+		private Long EvalNumericExpressionIntValue;			// Integer copy of EvalNumericExpressionValue when VarIsInt is true
+		private Double GetNumberValue;						// Return value from GetNumber()
+		private String PossibleKeyWord = "";				// Used when TO, STEP, THEN are expected
+		private String errorMsg;
+
+		// *************************** Random number function variables ***************************
+
+		private Random randomizer = null;
+
+		// ******************************* Print command variables ********************************
+
+		private String PrintLine = "";						// Hold the Print line currently being built
+		private String textPrintLine = "";					// Hold the TextPrint line currently being built
+		private boolean PrintLineReady = false;				// Signals a line is ready to print or write
+
+		// ******************************** List command variables ********************************
+
+		private ArrayList<ArrayList> theLists;
+		private ArrayList<VarType> theListsType;
+
+		// ******************************* Bundle command variables *******************************
+
+		private ArrayList<Bundle> theBundles;
+
+		// ******************************* Stack command variables ********************************
+
+		private ArrayList<Stack> theStacks;
+		private ArrayList<VarType> theStacksType; 
+
+		// ******************************** Read command variables ********************************
+
+		private ArrayList<Var> readData;
+		private int readNext;
+
+		// ********************************** File I/O variables **********************************
+
+		private ArrayList<FileInfo> FileTable;				// File table list
+
+		// ******************************** SQL command variables *********************************
+
+		private ArrayList<SQLiteDatabase> DataBases;		// List of created databases
+		private ArrayList<Cursor> Cursors;					// List of database cursors
+
+		// ******************************** Font command variables ********************************
+
+		private ArrayList<Typeface> FontList;
+
+		// ***************************** Graphics commands variables ******************************
+
+		private Intent GRclass;								// Graphics Class Intent
+		private boolean mShowStatusBar;
+		private Paint aPaint;
+		private Canvas drawintoCanvas = null;
+
+		// ******************************* Audio command variables ********************************
+
+		private MediaPlayer theMP = null;
+		private ArrayList<MediaPlayer> theMPList;
+		private ArrayList<String> theMPNameList;
+		private boolean PlayIsDone;
+		private MediaRecorder mRecorder = null;
+
+		// ***************************** SoundPool command variables ******************************
+
+		private SoundPool theSoundPool;
+
+		// *************************** Text-to-Speech command variables ***************************
+
+		private TextToSpeechActivity theTTS;
+
+		// ****************************** Vibrate command variables *******************************
+
+		private Vibrator myVib;
+
+		// ******************************* Phone command variables ********************************
+
+		public int phoneState = 0;
+		public String phoneNumber = "";
+		public boolean phoneRcvInited = false;
+		public TelephonyManager mTM;
+		public SignalStrength mSignalStrength = null;
+
+		// ******************************** SMS command variables *********************************
+
+		private ArrayList<String> smsRcvBuffer;
+
+		// ******************************* Timer command variables ********************************
+
+		public Timer theTimer;
+
+		// ***************************** TimeZone commands variables ******************************
+
+		public String theTimeZone = "";
+
+		// ******************************** Run command variables *********************************
+
+		private Intent runIntent;							// Intent to run from RUN command
+
+		// ************************ Superuser and System command variables ************************
+
+		private boolean mIsSU = true;						// set true for SU commands, false for System commands
+		private DataOutputStream SUoutputStream;
+		private BufferedReader SUinputStream;
+		private Process SUprocess;
+		private ArrayList <String> SU_ReadBuffer;
+		private SUReader theSUReader = null;
+
+		// ******************************* Debug commands variables *******************************
 
 		private boolean Debug = false;
 		private boolean Echo = false;
@@ -3464,7 +3538,6 @@ public class Run extends ListActivity {
 				ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);		// next program line
 //				Log.d(LOGTAG, "RunLoop: " + ExecutingLineBuffer.line());
 				LineIndex = 0 ;
-				sTime = SystemClock.uptimeMillis();
 
 				flag = StatementExecuter();							// execute the next statement
 																	// returns true if no problems executing statement
@@ -3476,39 +3549,10 @@ public class Run extends ListActivity {
 						SyntaxError = false;						// and clear the error status
 						flag = true;
 					}
-				} else
-
-        		if (BackKeyHit && OnBackKeyLine != 0) {
-        				BackKeyHit = doInterrupt(OnBackKeyLine);
-        		} else
-
-        		if (MenuKeyHit && OnMenuKeyLine != 0) {
-        				MenuKeyHit = doInterrupt(OnMenuKeyLine);
-        		} else
-
-        		if (timerExpired && OnTimerLine != 0) {
-        				timerExpired = doInterrupt(OnTimerLine);
-        		} else
-        		
-        		if (KeyPressed && OnKeyLine != 0) {
-        				KeyPressed = doInterrupt(OnKeyLine);
-        		} else
-
-        		if (NewTouch[2] && OnTouchLine != 0) {				// and is not tracked like NewTouch[0] and NewTouch[1]
-        				NewTouch[2] = doInterrupt(OnTouchLine);		// used with onGRtouch.
-        		} else
-
-        		if (btReadReady && OnBTReadLine != 0) {
-        				btReadReady = doInterrupt(OnBTReadLine);
-        		} else
-
-        		if (ConsoleTouched && onCTLine != 0) {
-        				ConsoleTouched = doInterrupt(onCTLine);
-        		} else
-
-        		if (bgStateChange && OnBGLine != 0) {
-        				bgStateChange = doInterrupt(OnBGLine);
-        		}
+				} else {
+					readEventList();								// get events detected by other activities
+					serviceInterrupt();
+				}
 
 				if (mConsoleBuffer.size() != 0) {					// somebody changed the console
 					sendMessage(MESSAGE_UPDATE_CONSOLE);
@@ -3558,7 +3602,7 @@ public class Run extends ListActivity {
 				++ExecutingLineIndex;								// step to next line
 			}
 			return flag;
-		} // end RunLoop
+		} // end RunLoop()
 
 		private boolean StatementExecuter() {				// Execute one basic line (statement)
 			Command c = ExecutingLineBuffer.cmd();			// use remembered command if possible
@@ -3587,7 +3631,58 @@ public class Run extends ListActivity {
 
 			if (!c.run()) { SyntaxError(); return false; }
 			return true;									// Statement executed ok. Return to main looper.
-		}
+		} // StatementExecuter()
+
+		private void readEventList() {
+			synchronized (mEventList) {
+				while (mEventList.size() != 0) {
+					EventHolder e = mEventList.remove(0);
+					if (e != null) {
+						switch (e.mType) {
+							case EventHolder.KEY_DOWN:			onKeyDown(e.mCode, e.mEvent);	break;
+							case EventHolder.KEY_UP:			onKeyUp(e.mCode, e.mEvent);		break;
+							case EventHolder.GR_BACK_KEY_PRESSED: GRstopped();	/* and fall through */
+							case EventHolder.BACK_KEY_PRESSED:	onBackPressed();				break;
+							default: break;
+						}
+					}
+				}
+			}
+		} // readEventList()
+
+		private void serviceInterrupt() {
+			if (BackKeyHit && OnBackKeyLine != 0) {
+				BackKeyHit = doInterrupt(OnBackKeyLine);
+			} else
+
+			if (MenuKeyHit && OnMenuKeyLine != 0) {
+				MenuKeyHit = doInterrupt(OnMenuKeyLine);
+			} else
+
+			if (timerExpired && OnTimerLine != 0) {
+				timerExpired = doInterrupt(OnTimerLine);
+			} else
+
+			if (KeyPressed && OnKeyLine != 0) {
+				KeyPressed = doInterrupt(OnKeyLine);
+			} else
+
+			if (NewTouch[2] && OnTouchLine != 0) {			// and is not tracked like NewTouch[0] and NewTouch[1]
+				NewTouch[2] = doInterrupt(OnTouchLine);		// used with onGRtouch.
+			} else
+
+			if (btReadReady && OnBTReadLine != 0) {
+				btReadReady = doInterrupt(OnBTReadLine);
+			} else
+
+			if (ConsoleTouched && onCTLine != 0) {
+				ConsoleTouched = doInterrupt(onCTLine);
+			} else
+
+			if (bgStateChange && OnBGLine != 0) {
+				bgStateChange = doInterrupt(OnBGLine);
+			}
+		} // serviceInterrupt()
 
 		private boolean doInterrupt(int gotoLine) {
 			if (interruptResume != -1) return true;		// If we are handling an interrupt then do not cancel this one
@@ -3621,47 +3716,48 @@ public class Run extends ListActivity {
 	private void InitVars() {
 		Log.d(LOGTAG, "InitVars() started");
 
+		// Owned by Run class
+
 		mInterpreterRunning = true;
+		background = false;
+		Stop = false;									// Stops program from running
+		Exit = false;									// Exits program and signals caller to exit, too
+		mEventList.clear();								// events from other Activites
 
 		OnErrorLine = 0;								// Line number for OnError: label
-		OnBackKeyLine = 0;
+
 		BackKeyHit = false;
-		OnMenuKeyLine = 0;
-		MenuKeyHit = false;
-		bgStateChange = false;
-		OnBGLine = 0;
-		onCTLine = 0;
-		ConsoleTouched = false;
-		ConsoleLongTouch = false;
-		TouchedConsoleLine = 0;							// first valid line number is 1
+		OnBackKeyLine = 0;
 
-		errorMsg = "No error";
+		timerExpired = false;
+		OnTimerLine = 0;
 
-		InChar = new ArrayList<String>();
 		KeyPressed = false;
 		OnKeyLine = 0;
 
-		LineIndex = 0;									// Current displacement into ExecutingLineBuffer's line
-		ExecutingLineBuffer = new ProgramLine("\n");	// Holds the current line being executed
-		ExecutingLineIndex = 0;							// Points to the current line in Basic.lines
-		SEisLE = false;									// If a String expression result is a logical expression
+		MenuKeyHit = false;
+		OnMenuKeyLine = 0;
 
-		GosubStack = new Stack<Integer>();				// Stack used for Gosub/Return
-		ForNextStack = new Stack<ForNext>();			// Stack used for For/Next
-		WhileStack = new Stack<WhileRepeat>();			// Stack used for While/Repeat
-		DoStack = new Stack<Integer>();					// Stack used for Do/Until
+		OnTouchLine = 0;
 
-		IfElseStack = new Stack <Integer>();			// Stack for IF-ELSE-ENDIF operations
-		GetNumberValue = (double)0;						// Return value from GetNumber()
-		EvalNumericExpressionValue = (double)0;			// Return value from EvalNumericExprssion()
+		OnBTReadLine = 0;
+		btReadReady = false;
+
+		ConsoleTouched = false;
+		ConsoleLongTouch = false;
+		TouchedConsoleLine = 0;							// first valid line number is 1
+		onCTLine = 0;
+
+		bgStateChange = false;
+		OnBGLine = 0;
+
+		interruptResume = -1;
 
 		SyntaxError = false;							// Set true when Syntax Error message has been output
 
 		mMessagePending = false;						// If true, may be messages pending
-		randomizer = null;
-		background = false;
 
-		// debugger ui vars
+		// debugger dialog and ui vars
 		Watch_VarNames = new ArrayList<String>();		// watch list of string names
 		WatchVarIndex = new ArrayList<Integer>();		// watch list of variable indexes
 		dbDialogScalars = false;
@@ -3682,121 +3778,34 @@ public class Run extends ListActivity {
 		dbDialog = null;
 		dbSwapDialog = null;
 		dbSelectDialog = null;
+		// end debugger ui vars
 
-		Stop = false;									// Stops program from running
-		Exit = false;									// Exits program and signals caller to exit, too
 		RunPaused = false;								// Used to control the media player
-		GRFront = false;
-
-		PrintLine = "";									// Hold the Print line currently being built
-		PrintLineReady = false;							// Signals a line is ready to print or write
 
 		Labels = new HashMap<String, Integer>();		// A list of all labels and associated line numbers
+		Vars = new ArrayList<Var>();					// All the scalar variables
+		ArrayTable = new ArrayList<ArrayDescriptor>();	// Each DIMed array has an entry in this table
+		ArrayValueStart = 0;							// Value index for newly created array 
 
-		PossibleKeyWord = "";
-
-		VarNames = new ArrayList<String>() ;				// Each entry has the variable name string
-		VarIndex = new ArrayList<Integer>();				// Each entry is an index into [...]
-		VarNumber = 0;										// An index for Vars
-		Vars = new ArrayList<Var>();						// All the scalar variables
-		ArrayTable = new ArrayList<ArrayDescriptor>();		// Each DIMed array has an entry in this table
-		StringConstant = "";								// Storage for a string constant
-		theValueIndex = 0;									// The index into the value table for the current var
-		ArrayValueStart = 0;								// Value index for newly created array 
-
-		FunctionTable = new ArrayList<FunctionDefinition>();// Created for each defined function
-		FnDef = null ;										// Set by isUserFunction and used by doUserFunction
-		FunctionStack = new Stack<CallStackFrame>() ;		// State saved through the currently executing functions
-		fnRTN = false;										// Set true by fn.rtn. Cause RunLoop() to return
-		Debug = false;
-
-		VarIsNew = true;									// Signal from getVar() that this var is new
-		VarIsNumeric = true;								// if false, var is a string
-		VarIsInt = false;									// temporary integer status used only by fprint
-		VarIsArray = false;									// if true, var is an array
-		VarIsFunction = false;								// Flag set by parseVar() when var is a user function
-		VarSearchStart = 0;									// Used to limit search for var names to executing function vars
-		interruptVarSearchStart = 0;						// Save VarSearchStart across interrupt
-
-		// ********************************** RUN variables *********************************
-
-		runIntent = null;									// Intent to run from RUN command
-
-		// ******************************* File I/O operation variables ************************
-
-		FileTable = new ArrayList<FileInfo>() ;				// File table list
-
-		// ******************** READ variables *******************************************
-
-		readNext = 0;
-		readData = new ArrayList<Var>();
-
-		// ********************** Font Command variables *********************************
-
-		FontList = new ArrayList<Typeface>();
-		clearFontList();
-
-		// ******************** Input Command variables ********************************
-
-//		mInputDismissed = false;						// This will be used only if we dismiss the dialog in onPause
-
-		// ******************** SQL Variables ******************************************
-
-		DataBases = new ArrayList<SQLiteDatabase>();	// List of created data bases
-		Cursors = new ArrayList<Cursor>();				// List of created data bases
-
-		// ********************************* Variables for text.input command ********************
-
+		InChar = new ArrayList<String>();
 		TextInputString = "";
 
-		// ******************************** Graphics Declarations **********************************
-
-		GRclass = null;									// Graphics Intent Class
 		GRopen = false;									// Graphics Open Flag
+		GRFront = false;
 		DisplayList = new ArrayList<GR.BDraw>();
 		RealDisplayList = new ArrayList<Integer>();
 		PaintList = new ArrayList<Paint>();
 		BitmapList = new ArrayList<Bitmap>();
-		aPaint = new Paint();
-		GRFront = false;
 		for (int i = 0; i < NewTouch.length; ++i) {
 			TouchX[i] = TouchY[i] = -1;
 			NewTouch[i] = false;
 		}
-		OnTouchLine = 0;
-		mShowStatusBar = false;
-
-		// ********************************* Variables for Audio Commands
-
-		theMP = null;
-		theMPList = new ArrayList<MediaPlayer>();
-		theMPNameList = new ArrayList<String>();
-		theMPList.add(null);		// We don't use the [0] element of these Lists
-		theMPNameList.add(null);
-
-		// ******************************* Variables for Sensor Commands **********************************
 
 		theSensors = null;
-
 		theGPS = null;
 
-		theLists = new ArrayList <ArrayList>();
-		ArrayList<ArrayList> aList = new ArrayList <ArrayList>();
-		theLists.add(aList);
-
-		theListsType = new ArrayList<VarType>();
-		theListsType.add(VarType.NOVAR);
-
-		theBundles = new ArrayList<Bundle>();
-		Bundle aBundle = new Bundle();
-		theBundles.add(aBundle);
-
-		theStacks = new ArrayList<Stack>();
-		Stack aStack = new Stack();
-		theStacks.add(aStack);
-
-		theStacksType = new ArrayList<VarType>();
-		theStacksType.add(VarType.NOVAR);
+		clientSocketState = STATE_NONE;
+		serverSocketState = STATE_NONE;
 
 		theClientSocket = null ;
 		clientSocketConnectThread = null;
@@ -3809,12 +3818,7 @@ public class Run extends ListActivity {
 		ServerBufferedReader = null ;
 		ServerPrintWriter = null ;
 
-		clientSocketState = STATE_NONE;
-		serverSocketState = STATE_NONE;
-
-		theTTS = null;
 		ttsInit = false;
-
 		mFTPClient = null;
 		FTPdir = null;
 
@@ -3822,20 +3826,11 @@ public class Run extends ListActivity {
 		CameraDone = true;
 		NumberOfCameras = -1;
 
+		bt_enabled = 0;
 		mConnectedDeviceName = null;
 		mOutStringBuffer = null;
 		mChatService = null;
-		btReadReady = false;
-		interruptResume = -1;
-		OnBTReadLine = 0;
-
-		SUoutputStream = null;
-		SUinputStream = null;
-		SUprocess = null;
-		SU_ReadBuffer = null;
-		theSUReader = null;
-
-		theSoundPool = null ;
+		BT_Read_Buffer.clear();
 
 		headsetState = -1;
 		headsetName = "NA" ;
@@ -3848,24 +3843,63 @@ public class Run extends ListActivity {
 		sttPrompt = null;
 		sttListening = false;
 
-		OnTimerLine = 0;
-		theTimer = null;
-		timerExpired = false;
+		// Owned by Background class
+		// allocate objects
 
-		theTimeZone = "";
+		ExecutingLineBuffer = new ProgramLine("\n");		// Holds the current line being executed
 
-		phoneState = 0;
-		phoneNumber = "";
-		phoneRcvInited = false;
-		mTM = null;
-		mSignalStrength = null;
+		GosubStack = new Stack<Integer>();					// Stack used for Gosub/Return
+		ForNextStack = new Stack<ForNext>();				// Stack used for For/Next
+		WhileStack = new Stack<WhileRepeat>();				// Stack used for While/Repeat
+		DoStack = new Stack<Integer>();						// Stack used for Do/Until
+
+		IfElseStack = new Stack <Integer>();				// Stack for IF-ELSE-ENDIF operations
+		FunctionTable = new ArrayList<FunctionDefinition>();// Created for each defined function
+		FunctionStack = new Stack<CallStackFrame>() ;		// State saved through the currently executing functions
+
+		VarNames = new ArrayList<String>() ;				// Each entry has the variable name string
+		VarIndex = new ArrayList<Integer>();				// Each entry is an index into [...]
+		errorMsg = "No error";
+
+		theLists = new ArrayList <ArrayList>();
+		theLists.add(new ArrayList <ArrayList>());
+
+		theListsType = new ArrayList<VarType>();
+		theListsType.add(VarType.NOVAR);
+
+		theBundles = new ArrayList<Bundle>();
+		theBundles.add(new Bundle());
+
+		theStacks = new ArrayList<Stack>();
+		theStacks.add(new Stack());
+
+		theStacksType = new ArrayList<VarType>();
+		theStacksType.add(VarType.NOVAR);
+
+		readData = new ArrayList<Var>();
+
+		FileTable = new ArrayList<FileInfo>() ;				// File table list
+
+		DataBases = new ArrayList<SQLiteDatabase>();		// List of created data bases
+		Cursors = new ArrayList<Cursor>();					// List of database cursors
+
+		FontList = new ArrayList<Typeface>();
+		clearFontList();
+
+		aPaint = new Paint();
+
+		theMPList = new ArrayList<MediaPlayer>();
+		theMPNameList = new ArrayList<String>();
+		theMPList.add(null);								// We don't use the [0] element of these Lists
+		theMPNameList.add(null);
 
 		Log.d(LOGTAG, "InitVars() done");
-
 	} // end InitVars
 
 	public void cleanUp() {
 		Log.d(LOGTAG, "cleanUp() started");
+		mEventList.clear();								// events from other Activites
+
 		if (theMP != null) {
 			try { theMP.stop(); } catch (IllegalStateException e) {}
 			if (theMP != null) theMP.release();
@@ -4321,9 +4355,6 @@ public class Run extends ListActivity {
 		new Command(BKW_READ_NEXT)          { public boolean run() { return executeREAD_NEXT(); } },
 		new Command(BKW_READ_FROM)          { public boolean run() { return executeREAD_FROM(); } },
 	};
-
-	private int readNext = 0;
-	private ArrayList<Var> readData;
 
 	// **************** FONT Group 
 
@@ -9056,7 +9087,6 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-
 	private boolean executeFILE_TYPE() {
 		if (!getSVar())					return false;		// get the var to put the type info into
 		Var var = Vars.get(theValueIndex);
@@ -10626,22 +10656,25 @@ public class Run extends ListActivity {
 		return true;
 	}
 
+	private void GRstopped() {										// GR stopped itself
+		synchronized (DisplayList) {
+			DisplayListClear(GR.Type.Null);
+		}
+		GRopen = false;
+		GRFront = false;
+	}
+
 	private boolean execute_gr_close() {
 		if (!checkEOL()) return false;
 
-		synchronized (DisplayList) {
-			DisplayListClear(GR.Type.Close);						// Create a new display list
-		}															// which commands GR.java to close
-//		Log.d(LOGTAG, "GR.Close, Rendering " + GR.Rendering);
-		synchronized (GR.Rendering) {
-			if (GR.Rendering) return true;
-			GR.Rendering = true;
+		if (GR.drawView != null) {
+			synchronized (DisplayList) {							// create a new display list
+				DisplayListClear(GR.Type.Close);					// that commands GR.java to close
+				GR.waitForLock = true;
+			}
+			GR.drawView.postInvalidate();							// start the draw so the command will get executed
+			waitForGrLOCK();
 		}
-
-		GR.waitForLock = true;
-		GR.drawView.postInvalidate();								// Start the draw so the command will get executed.
-		waitForGrLOCK();
-
 		GRopen = false;
 		GRFront = false;
 
@@ -10651,19 +10684,15 @@ public class Run extends ListActivity {
 	private boolean execute_gr_render() {
 		if (!checkEOL()) return false;
 
-		if (GR.drawView == null) {									// Make sure drawView has not gone null
+		if (GR.drawView == null) {									// make sure drawView has not gone null
 			Stop = true;
 			return false;
 		}
 
-//		Log.d(LOGTAG, "GR.Render, Rendering " + GR.Rendering);
-		synchronized (GR.Rendering) {
-			if (GR.Rendering) return true;
-			GR.Rendering = true;
+		synchronized (DisplayList) {
+			GR.waitForLock = true;
 		}
-
 		GR.NullBitMap = false;
-		GR.waitForLock = true;
 		GR.drawView.postInvalidate();								// Start GR drawing.
 		waitForGrLOCK();
 
@@ -15362,7 +15391,7 @@ public class Run extends ListActivity {
 		Command c = findCommand(SU_cmd, (isSU ? "SU" : "System"));
 		if (c != null) {
 			if (SUprocess == null) {
-				if (c.id == CID_OPEN) Run.this.isSU = isSU;
+				if (c.id == CID_OPEN) { mIsSU = isSU; }
 				else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
 			}
 			return c.run();									// run the function and report back
@@ -15376,20 +15405,20 @@ public class Run extends ListActivity {
 		SU_ReadBuffer = new ArrayList<String>();				// Initialize buffer
 
 		File dir = null;
-		if (!isSU) {											// System.open: make sure AppPath exists
+		if (!mIsSU) {											// System.open: make sure AppPath exists
 			dir = new File(Basic.getFilePath());
 			if (!dir.exists() && !dir.mkdirs()) {
 				return RunTimeError("Cannot create working directory " + dir);
 			}
 		}
 		try {
-			SUprocess = (isSU)	? Runtime.getRuntime().exec("su")				// Request Superuser
+			SUprocess = (mIsSU)	? Runtime.getRuntime().exec("su")				// Request Superuser
 								: Runtime.getRuntime().exec("sh", null, dir);	// Open ordinary shell
 			SUoutputStream = new DataOutputStream(SUprocess.getOutputStream());	// Open the output stream
 			SUinputStream = new BufferedReader(									// Open the input stream
 								new InputStreamReader(SUprocess.getInputStream()));
 		} catch (Exception e) {
-			return RunTimeError((isSU ? "SU" : "System") + " Exception: " + e);
+			return RunTimeError((mIsSU ? "SU" : "System") + " Exception: " + e);
 		}
 		theSUReader = new SUReader(SUinputStream, SU_ReadBuffer);
 		theSUReader.start();
@@ -15407,7 +15436,7 @@ public class Run extends ListActivity {
 			SUoutputStream.flush();
 		}
 		catch (Exception e) {
-			return RunTimeError((isSU ? "SU" : "System") + " Exception: " + e.getMessage());
+			return RunTimeError((mIsSU ? "SU" : "System") + " Exception: " + e.getMessage());
 		}
 		return true;
 	}

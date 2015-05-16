@@ -33,7 +33,6 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.media.AudioManager;
 import android.os.Bundle;
-import android.os.Process;
 import android.speech.RecognizerIntent;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -77,7 +76,6 @@ public class GR extends Activity {
 	public static float scaleX = 1f;
 	public static float scaleY = 1f;
 	public static boolean Running = false;
-	public static Boolean Rendering = false;	// Boolean (not boolean) so it has a lock
 	public static boolean NullBitMap = false;
 	public static InputMethodManager GraphicsImm ;
 	public static float Brightness = -1;
@@ -278,7 +276,7 @@ public class GR extends Activity {
 		public double getValue(String p) {
 			if (p.equals("paint"))	{ return mPaint; }
 			if (p.equals("alpha"))	{ return mAlpha; }
-			
+
 			switch (mType) {
 				case Circle:	if (p.equals("radius")) { return mRadius; }
 				case Point:
@@ -419,7 +417,6 @@ public class GR extends Activity {
 		scaleX = 1.0f;
 		scaleY = 1.0f;
 		Brightness = -1;
-		Rendering = false;
 
 		drawView = new DrawView(this);
 		setContentView(drawView);
@@ -473,85 +470,46 @@ public class GR extends Activity {
 		// if a new instance has started, don't let this one mess it up
 		if (context == this) {
 			Running = false;
-			if (waitForLock) {
-				releaseLOCK();							// don't leave GR.command hanging
-			}
+			releaseLOCK();								// don't leave GR.command hanging
 		}
 		super.onDestroy();
 	}
 
 	@Override
+	public void onBackPressed() {
+		Run.mEventList.add(new Run.EventHolder(Run.EventHolder.GR_BACK_KEY_PRESSED, 0, null));
+		Running = false;
+		releaseLOCK();									// don't leave GR.command hanging
+		super.onBackPressed();
+	}
+
+	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)  {
-
-//		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyDown " + keyCode);
-
-		if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP) || (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+		// Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyDown " + keyCode);
+		if ((keyCode == KeyEvent.KEYCODE_BACK) ||
+			(keyCode == KeyEvent.KEYCODE_VOLUME_UP) ||
+			(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN))
+		{
 			return super.onKeyDown(keyCode, event);
 		}
-
-		return true;
+		if (keyCode == KeyEvent.KEYCODE_MENU) {
+			// Do not put the KeyEvent on the EventList. This keeps Run.onKeyDown() from building a menu.
+			Run.mEventList.add(new Run.EventHolder(Run.EventHolder.KEY_DOWN, keyCode, null));
+		}
+		return true;									// ignore anything else
 	}
 
 	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit a key
-
-//		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyUp " + keyCode);
-
+		// Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyUp " + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
-
-			Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " BACK KEY HIT");
-
-			if (Run.OnBackKeyLine != 0){
-				Run.BackKeyHit = true;
-				return true;
-			}
-
-			Run.GRopen = false;
-			Run.Stop = true;
-			if (Basic.DoAutoRun) {
-				Run.Exit = true;			// Signal Run to exit immediately and silently
-			}
-			finish();
-			return true;
+			return super.onKeyUp(keyCode, event);
 		}
-
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
-			if (Run.OnMenuKeyLine != 0) {
-				Run.MenuKeyHit = true;
-				return true;
-			}
+			// Do not put the KeyEvent on the EventList. This keeps Run.onKeyDown() from building a menu.
+			event = null;
 		}
-
-		char c;
-	    String theKey = "@";
-	    int n ;
-	    if (keyCode >= 7 && keyCode <= 16){
-	    	n = keyCode - 7;
-	    	c = Run.Numbers.charAt(n);
-	    	theKey = Character.toString(c);
-	    	
-	    }else if (keyCode >=29 && keyCode <= 54){
-	    	n = keyCode -29;
-	    	c = Run.Chars.charAt(n);
-	    	theKey = Character.toString(c);
-	    }else if (keyCode == 62){ 
-	    	c = ' ';
-	    	theKey = Character.toString(c);
-	    }else if (keyCode >= 19 && keyCode <= 23){
-	    	switch (keyCode) {
-	    	case 19: theKey = "up"; break;
-	    	case 20: theKey = "down"; break;
-	    	case 21: theKey = "left"; break;
-	    	case 22: theKey = "right"; break;
-	    	case 23: theKey = "go"; break;
-	    	}
-	    }else {
-	    	theKey = "key " + keyCode;
-	    }
-	    synchronized (this) {
-	    	Run.InChar.add(theKey);
-	    }
-	    Run.KeyPressed = true;
-	    return true;
+		Run.mEventList.add(new Run.EventHolder(Run.EventHolder.KEY_UP, keyCode, event));
+		return true;
 	}
 
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -588,10 +546,12 @@ public class GR extends Activity {
 	}
 
 	private void releaseLOCK() {
-		synchronized (LOCK) {
-//			Log.d(LOGTAG, "releaseLOCK");
-			waitForLock = false;
-			LOCK.notify();								// release GR.OPEN or .CLOSE if it is waiting
+		if (waitForLock) {
+			synchronized (LOCK) {
+//				Log.d(LOGTAG, "releaseLOCK");
+				waitForLock = false;
+				LOCK.notify();							// release GR.OPEN or .CLOSE if it is waiting
+			}
 		}
 	}
 
@@ -701,7 +661,7 @@ public class GR extends Activity {
 
 		@Override
 		synchronized public void onDraw(Canvas canvas) {
-//			Log.d(LOGTAG,"onDraw, Rendering " + Rendering);
+//			Log.d(LOGTAG,"onDraw");
 			if (doEnableBT) {							// If this activity is running
 				enableBT();								// Bluetooth must be enabled here
 				doEnableBT = false;
@@ -744,15 +704,9 @@ public class GR extends Activity {
 						break;
 					}
 				}
+				releaseLOCK();
 			}
-
-			synchronized (GR.Rendering) {
-				if (Rendering) {
-					Rendering = false;
-					releaseLOCK();
-				}
-			}
-		}
+		} // onDraw()
 
 		public boolean doDraw(Canvas canvas, BDraw b) {
 //			Log.v(GR.LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
@@ -782,10 +736,7 @@ public class GR extends Activity {
 				case Null:
 					break;
 				case Open:
-					synchronized (GR.Rendering) {
-						Running = true;					// flag for GR.Open
-						Rendering = true;				// so onDraw will release LOCK
-					}
+					Running = true;						// flag for GR.Open
 					break;
 				case Close:
 					Running = false;

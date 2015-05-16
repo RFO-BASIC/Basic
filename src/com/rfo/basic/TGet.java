@@ -57,21 +57,10 @@ public class TGet extends Activity {
 											// instance is destroyed without first releasing the LOCK
 
 	@Override
-	public boolean onKeyUp(int keyCode, KeyEvent event)  {
-		// if BACK key cancel user input
-		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-
-			if (Run.OnBackKeyLine != 0) {					// Tell program runner it happened
-				Run.BackKeyHit = true;
-			} else {
-				Run.Stop = true;
-			}
-
-			returnText("");									// Tell TGet command it happened
+	public void onBackPressed() {
+		Run.mEventList.add(new Run.EventHolder(Run.EventHolder.BACK_KEY_PRESSED, 0, null));	// tell RunLoop
+		returnText("");										// tell TGet command it happened
 															// and end TGet Activity
-			return true;
-		}
-		return super.onKeyUp(keyCode, event);
 	}
 
 	@Override
