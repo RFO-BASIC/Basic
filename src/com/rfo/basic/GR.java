@@ -26,6 +26,8 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
+import static com.rfo.basic.Run.EventHolder.*;
+
 import java.util.ArrayList;
 
 import android.annotation.SuppressLint;
@@ -399,7 +401,7 @@ public class GR extends Activity {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " On Create " + this.toString());
+		Log.v(LOGTAG, " " + CLASSTAG + " On Create " + this.toString());
 		super.onCreate(savedInstanceState);
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -430,43 +432,39 @@ public class GR extends Activity {
 
 	@Override
 	protected void onPause() {
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onPause");
-		Run.background = true;
-		Run.bgStateChange = true;
+		Log.v(LOGTAG, " " + CLASSTAG + " onPause");
+		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_PAUSE, null));
 		super.onPause();
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStart");
+		Log.v(LOGTAG, " " + CLASSTAG + " onStart");
 	}
 
 	@Override
 	protected void onRestart() {
 		super.onRestart();
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onRestart");
+		Log.v(LOGTAG, " " + CLASSTAG + " onRestart");
 	}
 
 	protected void onStop() {
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStop");
-		Run.background = true;
-		Run.bgStateChange = true;
+		Log.v(LOGTAG, " " + CLASSTAG + " onStop");
 		super.onStop();
 	}
 
 	@Override
 	protected void onResume() {
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onResume");
-		Run.background = false;
-		Run.bgStateChange = true;
+		Log.v(LOGTAG, " " + CLASSTAG + " onResume");
+		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_RESUME, null));
 		context = this;
 		super.onResume();
 	}
 
 	@Override
 	protected void onDestroy() {
-		Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onDestroy " + this.toString());
+		Log.v(LOGTAG, " " + CLASSTAG + " onDestroy " + this.toString());
 		// if a new instance has started, don't let this one mess it up
 		if (context == this) {
 			Running = false;
@@ -477,7 +475,7 @@ public class GR extends Activity {
 
 	@Override
 	public void onBackPressed() {
-		Run.mEventList.add(new Run.EventHolder(Run.EventHolder.GR_BACK_KEY_PRESSED, 0, null));
+		Run.mEventList.add(new Run.EventHolder(GR_BACK_KEY_PRESSED, 0, null));
 		Running = false;
 		releaseLOCK();									// don't leave GR.command hanging
 		super.onBackPressed();
@@ -485,7 +483,7 @@ public class GR extends Activity {
 
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)  {
-		// Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyDown " + keyCode);
+		// Log.v(LOGTAG, " " + CLASSTAG + " keyDown " + keyCode);
 		if ((keyCode == KeyEvent.KEYCODE_BACK) ||
 			(keyCode == KeyEvent.KEYCODE_VOLUME_UP) ||
 			(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN))
@@ -494,13 +492,13 @@ public class GR extends Activity {
 		}
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			// Do not put the KeyEvent on the EventList. This keeps Run.onKeyDown() from building a menu.
-			Run.mEventList.add(new Run.EventHolder(Run.EventHolder.KEY_DOWN, keyCode, null));
+			Run.mEventList.add(new Run.EventHolder(KEY_DOWN, keyCode, null));
 		}
 		return true;									// ignore anything else
 	}
 
 	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit a key
-		// Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyUp " + keyCode);
+		// Log.v(LOGTAG, " " + CLASSTAG + " keyUp " + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			return super.onKeyUp(keyCode, event);
 		}
@@ -508,7 +506,7 @@ public class GR extends Activity {
 			// Do not put the KeyEvent on the EventList. This keeps Run.onKeyDown() from building a menu.
 			event = null;
 		}
-		Run.mEventList.add(new Run.EventHolder(Run.EventHolder.KEY_UP, keyCode, event));
+		Run.mEventList.add(new Run.EventHolder(KEY_UP, keyCode, event));
 		return true;
 	}
 
@@ -599,7 +597,7 @@ public class GR extends Activity {
 		}
 
 		synchronized public void setOrientation(int orientation) {	// Convert and apply orientation setting
-			Log.v(GR.LOGTAG, "Set orientation " + orientation);
+			Log.v(LOGTAG, "Set orientation " + orientation);
 			switch (orientation) {
 				default:
 				case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
@@ -634,13 +632,13 @@ public class GR extends Activity {
 			for (int i = 0; i < numPointers; i++) {
 				int pid = event.getPointerId(i);
 				if (pid > 1)  { continue; }				// currently, we allow only two pointers
-//				Log.v(GR.LOGTAG, " " + i + "," + pid + "," + action);
+//				Log.v(LOGTAG, " " + i + "," + pid + "," + action);
 				Run.TouchX[pid] = (double)event.getX(i);
 				Run.TouchY[pid] = (double)event.getY(i);
 				if (action == MotionEvent.ACTION_DOWN ||
 					action == MotionEvent.ACTION_POINTER_DOWN) {
 					Run.NewTouch[pid] = true;			// which pointer (0 or 1), cleared on UP
-					Run.NewTouch[2] = true;				// either pointer, not cleared on UP
+					Run.mEventList.add(new Run.EventHolder(GR_TOUCH, 0, null));
 				}
 				else if	(action == MotionEvent.ACTION_MOVE) {
 					Run.NewTouch[pid] = true;
@@ -709,7 +707,7 @@ public class GR extends Activity {
 		} // onDraw()
 
 		public boolean doDraw(Canvas canvas, BDraw b) {
-//			Log.v(GR.LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
+//			Log.v(LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
 
 			float fx1;
 			float fy1;

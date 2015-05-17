@@ -61,6 +61,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -179,7 +181,6 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -243,11 +244,27 @@ public class Run extends ListActivity {
 		public static final int KEY_UP = 2;
 		public static final int BACK_KEY_PRESSED = 3;
 		public static final int GR_BACK_KEY_PRESSED = 4;
+		public static final int GR_TOUCH = 5;
+		public static final int GR_STATE = 6;
+		public static final int WEB_STATE = 7;
+		public static final int DATALINK_ADD = 8;
+
+		public static final int ON_PAUSE = 1;
+		public static final int ON_RESUME = 2;
 
 		int mType;										// one of the above constants
 		int mCode;
 		KeyEvent mEvent;
+		String mStringData;
 
+		public EventHolder(int type, int code) {
+			mType = type;
+			mCode = code;
+		}
+		public EventHolder(int type, String data) {
+			mType = type;
+			mStringData = data;
+		}
 		public EventHolder(int type, int code, KeyEvent event) {
 			mType = type;
 			mCode = code;
@@ -299,6 +316,29 @@ public class Run extends ListActivity {
 		public Command(String name, int id) { this.name = name; this.id = id; }
 		public boolean run() { return false; }			// Run the command execution function
 	}
+
+	// **************************** Interrupt class ****************************
+
+	public static class Interrupt {
+		public final static Integer ERROR_BIT		= 0x0001;
+		public final static Integer BACK_KEY_BIT	= 0x0002;
+		public final static Integer MENU_KEY_BIT	= 0x0004;
+		public final static Integer TIMER_BIT		= 0x0008;
+		public final static Integer KEY_BIT			= 0x0010;
+		public final static Integer GR_TOUCH_BIT	= 0x0020;
+		public final static Integer BT_READY_BIT	= 0x0040;
+		public final static Integer CONS_TOUCH_BIT	= 0x0080;
+		public final static Integer BACKGROUND_BIT	= 0x0100;	// background state change
+		public final static Integer LOW_MEM_BIT		= 0x0200;
+		public final static Integer FN_RTN_BIT		= 0x1000;	// for user-defined function,  not an interrupt
+
+		protected final int mLine;						// ISR entry line
+
+		public Interrupt(int line) {
+			mLine = line;
+		}
+		public int line() { return mLine; }				// ISR entry line
+	} // class Interrupt
 
 	// ************************* ArrayDescriptor class *************************
 	// Array metadata. Objects go in the ArrayTable.
@@ -622,6 +662,7 @@ public class Run extends ListActivity {
 	private static final String BKW_KEY_RESUME = "key.resume";
 	private static final String BKW_LET = "let";
 	private static final String BKW_LIST_GROUP = "list.";
+	private static final String BKW_LOWMEM_RESUME = "lowmemory.resume";
 	private static final String BKW_MENUKEY_RESUME = "menukey.resume";
 	private static final String BKW_MKDIR = "mkdir";			// same as "file.mkdir"
 	private static final String BKW_MYPHONENUMBER = "myphonenumber";
@@ -634,6 +675,7 @@ public class Run extends ListActivity {
 	private static final String BKW_ONERROR = "onerror:";
 	private static final String BKW_ONGRTOUCH = "ongrtouch:";
 	private static final String BKW_ONKEYPRESS = "onkeypress:";
+	private static final String BKW_ONLOWMEM = "onlowmemory:";
 	private static final String BKW_ONMENUKEY = "onmenukey:";
 	private static final String BKW_ONTIMER = "ontimer:";
 	private static final String BKW_PAUSE = "pause";
@@ -728,13 +770,14 @@ public class Run extends ListActivity {
 		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
 		BKW_AM_GROUP,
 		BKW_BACK_RESUME, BKW_BACKGROUND_RESUME,
-		BKW_CONSOLETOUCH_RESUME,
-		BKW_KEY_RESUME, BKW_MENUKEY_RESUME,
+		BKW_CONSOLETOUCH_RESUME, BKW_KEY_RESUME,
+		BKW_LOWMEM_RESUME, BKW_MENUKEY_RESUME,
 
 		BKW_ONERROR,											// Interrupt labels are listed for formatter, but have no Command objects
 		BKW_ONBACKKEY, BKW_ONBACKGROUND, BKW_ONBTREADREADY,
 		BKW_ONCONSOLETOUCH, BKW_ONGRTOUCH,
-		BKW_ONKEYPRESS, BKW_ONMENUKEY, BKW_ONTIMER,
+		BKW_ONKEYPRESS, BKW_ONLOWMEM,
+		BKW_ONMENUKEY, BKW_ONTIMER,
 	};
 
 	private static HashMap<String, String[]> keywordLists = null;	// For Format: map associates a keyword group
@@ -973,40 +1016,41 @@ public class Run extends ListActivity {
 	// *****************************   Various execution control variables *********************
 
 	public static final int BASIC_GENERAL_INTENT = 255;
-	public static boolean background = false;
 	public static boolean Exit = false;					// Exits program and signals caller to exit, too
 	private boolean Stop = false;						// Stops program from running
 	private boolean mInterpreterRunning;
+	private boolean RunPaused = false;
 	private boolean kbShown = false;
 														// events from other Activites
 	public static final ArrayList<EventHolder> mEventList = new ArrayList<EventHolder>();
 
-	private int OnErrorLine = 0;						// Line number for OnError: label
+	// private int OnErrorLine = 0;						// Line number for OnError: label
+	private Interrupt mOnErrorInt = null;				// OnError gets a named interrupt. The others are anonymous.
 
-	private boolean BackKeyHit = false;
-	private int OnBackKeyLine = 0;
+	// private boolean BackKeyHit = false;
+	// private int OnBackKeyLine = 0;
 
-	public boolean timerExpired;
-	public int OnTimerLine;
+	// private boolean MenuKeyHit = false;
+	// private int OnMenuKeyLine = 0;
 
-	public static boolean KeyPressed = false;
-	private int OnKeyLine;
+	// public boolean timerExpired;
+	// public int OnTimerLine;
 
-	private boolean MenuKeyHit = false;
-	private int OnMenuKeyLine = 0;
+	// public static boolean KeyPressed = false;
+	// private int OnKeyLine;
 
-	private int OnTouchLine;							// for graphics OnGrTouch:
+	// private int OnTouchLine;							// for graphics OnGrTouch:
 
-	private int OnBTReadLine = 0;
-	private boolean btReadReady = false;
-
-	private boolean ConsoleTouched = false;
+	// private boolean ConsoleTouched = false;
 	private boolean ConsoleLongTouch = false;
 	private int TouchedConsoleLine = 0;					// first valid line number is 1
-	private int onCTLine = 0;
+	// private int onCTLine = 0;
 
-	public static boolean bgStateChange = false;
-	private int OnBGLine = 0;
+	// private int OnBTReadLine = 0;
+	// private boolean btReadReady = false;
+
+	// public static boolean bgStateChange = false;
+	// private int OnBGLine = 0;
 
 	private int interruptResume = -1;
 
@@ -1063,8 +1107,6 @@ public class Run extends ListActivity {
 	private int WatchedBundle;
 	// end debugger ui vars
 
-	public static boolean RunPaused = false;			// Used to control the media player
-
 	private InputMethodManager IMM;
 	private HashMap<String,Integer> Labels;				// A list of all labels and associated line numbers
 
@@ -1073,6 +1115,7 @@ public class Run extends ListActivity {
 	private int ArrayValueStart = 0;					// Value index for newly created array
 
 	private ClipboardManager clipboard;
+	public static boolean Notified;
 
 	// ******************* Variables for User-defined Functions ************************
 
@@ -1260,7 +1303,7 @@ public class Run extends ListActivity {
 
 	public static final String Numbers = "0123456789";	// translations for key codes
 	public static final String Chars = "abcdefghijklmnopqrstuvwxyz";
-	public static ArrayList<String> InChar;
+	static ArrayList<String> InChar;
 
 	// ********************************* Variables for text.input command **********************
 
@@ -1277,9 +1320,9 @@ public class Run extends ListActivity {
 	public static ArrayList<Paint> PaintList;
 	public static ArrayList<Bitmap> BitmapList;
 
-	public static double TouchX[] = new double[3];
-	public static double TouchY[] = new double[3];
-	public static boolean NewTouch[] = new boolean[3];
+	public static double TouchX[] = new double[2];
+	public static double TouchY[] = new double[2];
+	public static boolean NewTouch[] = new boolean[2];
 
 	// Graphics command keywords
 	private static final String BKW_GR_ARC = "arc";
@@ -1945,11 +1988,7 @@ public class Run extends ListActivity {
 	private static final int MESSAGE_LOAD_STRING   = MESSAGE_HTML_GROUP + 7;
 	private static final int MESSAGE_POST          = MESSAGE_HTML_GROUP + 8;
 
-	public static ArrayList<String> htmlData_Buffer;
 	private Intent htmlIntent;
-	private boolean htmlOpening;
-
-	public static boolean Notified;
 
 	//********************* SMS Vars ***********************************
 
@@ -2150,7 +2189,7 @@ public class Run extends ListActivity {
 	}
 
 	private void errorToConsole(String str) {			// conditionally write an error message to the console
-		if (OnErrorLine == 0) {							// if there is an OnError label, do not show the message.
+		if (mOnErrorInt == null) {						// if there is an OnError label, do not show the message.
 			updateConsole(str);
 		}
 	}
@@ -2229,23 +2268,18 @@ public class Run extends ListActivity {
 
 		lv.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				if (onCTLine != 0) {
-					TouchedConsoleLine = position + 1;
-					ConsoleLongTouch = false; 
-					ConsoleTouched = true;
-				}
+				triggerInterrupt(Interrupt.CONS_TOUCH_BIT);
+				TouchedConsoleLine = position + 1;
+				ConsoleLongTouch = false;
 			}
 		});
 
 		lv.setOnItemLongClickListener(new OnItemLongClickListener() {
-			public boolean  onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-				if (onCTLine != 0) {
-					TouchedConsoleLine = position + 1;
-					ConsoleLongTouch = true; 
-					ConsoleTouched = true;
-					return true;
-				}
-				return false;
+			public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+				triggerInterrupt(Interrupt.CONS_TOUCH_BIT);
+				TouchedConsoleLine = position + 1;
+				ConsoleLongTouch = true;
+				return true;
 			}
 		});
 
@@ -2265,10 +2299,9 @@ public class Run extends ListActivity {
 	// caused by the user pressing a key.
 
 	private boolean handleMenuKey(KeyEvent event) {
-		if (OnMenuKeyLine != 0) {
-			MenuKeyHit = true;			// menu key trapped by OnMenuKey
-			return true;
-		}
+		boolean trapped = triggerInterrupt(Interrupt.MENU_KEY_BIT);
+		if (trapped) return true;		// trapped by onBackKey:
+
 		if ( Basic.isAPK ||				// if MENU key hit in APK and not trapped by OnMenuKey
 			(event == null) )			// or relayed via EventList with null event object
 		{
@@ -2279,17 +2312,17 @@ public class Run extends ListActivity {
 
 	@Override
 	public void onBackPressed() {
-		if (OnBackKeyLine != 0) {
-			BackKeyHit = true;		// BACK key trapped by OnBackKey
-			return;
-		}
-		if (Basic.DoAutoRun) {		// if AutoRun, BACK key always means exit
-			Exit = true;
+		boolean trapped = triggerInterrupt(Interrupt.BACK_KEY_BIT);
+		if (trapped) return;			// trapped by onBackKey:
+
+		if (Basic.DoAutoRun) {
+			Exit = true;				// if AutoRun, untrapped BACK key always means exit
 		}
 		if (mInterpreterRunning) {
-			Stop = true;			// if running a program, stop it
+			Stop = true;				// if running a program, stop it
+		} else {
+			finish();					// else already stopped, return to the Editor
 		}
-		else finish();				// else already stopped, return to the Editor
 	}
 
 	@Override
@@ -2313,9 +2346,9 @@ public class Run extends ListActivity {
 			return super.onKeyUp(keyCode, event);
 		}
 
-		if (kbShown) {
-			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-		}
+//		if (kbShown) {
+//			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+//		}
 
 		char c;
 		String theKey = "@";
@@ -2347,7 +2380,7 @@ public class Run extends ListActivity {
 		synchronized (this) {
 			InChar.add(theKey);
 		}
-		KeyPressed = true;
+		triggerInterrupt(Interrupt.KEY_BIT);
 
 		return true;
 	}
@@ -2388,7 +2421,7 @@ public class Run extends ListActivity {
 		case R.id.stop:										// User wants to stop execution
 			updateConsole("Stopped by user.");				// tell user
 			Stop = true;									// signal main loop to stop
-			OnBackKeyLine = 0;								// menu-selected stop is not trappable
+			disableInterrupt(Interrupt.BACK_KEY_BIT);		// menu-selected stop is not trappable
 			return true;
 
 		case R.id.editor:									// User pressed Editor
@@ -2413,8 +2446,7 @@ public class Run extends ListActivity {
 		Log.v(LOGTAG, CLASSTAG + " onResume " + kbShown);
 
 		RunPaused = false;
-		background = false;
-		bgStateChange = true;
+		triggerInterrupt(Interrupt.BACKGROUND_BIT);
 
 //		if (WaitForInput) { theAlertDialog = doInputDialog().show(); } maybe???
 		super.onResume();
@@ -2454,8 +2486,7 @@ public class Run extends ListActivity {
 		Log.v(LOGTAG, CLASSTAG + " onStop " + kbShown);
 		System.gc();
 		if (!GR.Running) {
-			background = true;
-			bgStateChange = true;
+			triggerInterrupt(Interrupt.BACKGROUND_BIT);
 //			if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
 		}
 		super.onStop();
@@ -2503,7 +2534,11 @@ public class Run extends ListActivity {
 
 	@Override
 	public void onLowMemory() {
-		updateConsole("Warning: Low Memory");
+		Log.d(LOGTAG, "onLowMemory");
+		// If interpreter is running and OnLowMemory: label exists, set the Low Mem interrupt
+		// otherwise notify the user via the Console.
+		boolean trapped = triggerInterrupt(Interrupt.LOW_MEM_BIT);
+		if (!trapped) { updateConsole("Warning: Low Memory"); }
 	}
 
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -2540,7 +2575,16 @@ public class Run extends ListActivity {
 	}
 
 	// ********************************************************************************************
-	// Methods used outside of the Background thread
+	// Methods used to communicate between Run and Background
+	// or utilities used in both threads
+
+	private boolean triggerInterrupt(Integer bit) {		// delegate to theBackground if it exists
+		return (theBackground != null) && (theBackground.triggerInterrupt(bit));
+	}
+
+	private void disableInterrupt(Integer bit) {		// delegate to theBackground if it exists
+		if (theBackground != null) { theBackground.disableInterrupt(bit); }
+	}
 
 	private void clearConsole() {
 		synchronized (mConsoleBuffer) {
@@ -2568,12 +2612,9 @@ public class Run extends ListActivity {
 		}
 	}
 
-	private void trimArray(ArrayList Array, int start) {
-		int last = Array.size()-1;
-		int k = last;
-		while (k >= start) {
-			Array.remove(k);
-			--k;
+	private static void trimArray(ArrayList array, int start) {
+		for (int k = array.size() - 1; k >= start; --k) {
+			array.remove(k);
 		}
 	}
 
@@ -2753,7 +2794,9 @@ public class Run extends ListActivity {
 				}
 				readMessage = readMessage.substring(0, msg.arg1);
 				synchronized (BT_Read_Buffer) {
-					if (BT_Read_Buffer.size() == 0) { btReadReady = true; }
+					if (BT_Read_Buffer.size() == 0) {
+						triggerInterrupt(Interrupt.BT_READY_BIT);
+					}
 					BT_Read_Buffer.add(readMessage);
 				}
 				break;
@@ -2939,7 +2982,7 @@ public class Run extends ListActivity {
 
 		LayoutInflater inflater = getLayoutInflater();
 		View dialogLayout = inflater.inflate(R.layout.debug_list_s_layout, null);
-		
+
 		ListView debugView = (ListView)dialogLayout.findViewById(R.id.debug_list_s);
 		debugView.setAdapter(new ArrayAdapter<String>(Run.this, R.layout.simple_list_layout_1, msg));
 		debugView.setVerticalScrollBarEnabled(true);
@@ -2970,14 +3013,14 @@ public class Run extends ListActivity {
 			.setCancelable(true)
 			.setTitle("Select View:")
 			.setView(dialogLayout);
-		
+
 		builder.setOnCancelListener(
 			new DialogInterface.OnCancelListener() {
 				public void onCancel(DialogInterface arg0) {
 					WaitForSwap = false;
 				}
 			});
-		
+
 		builder.setPositiveButton("Confirm",
 			new DialogInterface.OnClickListener() {
 				public void onClick(DialogInterface dialog,int which) {
@@ -3001,7 +3044,7 @@ public class Run extends ListActivity {
 
 	private void doDebugSelectDialog() {
 		if (dbSelectDialog != null) { dbSelectDialog.dismiss(); }
-		
+
 		ArrayList<String> msg = new ArrayList<String>();
 		// TODO: What did Michael have in mind?
 	}
@@ -3051,6 +3094,13 @@ public class Run extends ListActivity {
 	2.	Command lines are in the Basic.lines array. Line 0 is valid.
 		To jump to a new line, set ExecutingLineIndex to the line before.
 		RunLoop() increments the index before loading ExecutingLineBuffer.
+	3.	Interrupts: OnError is special, so it is in a named variable.
+		The others are all anonymous. All, including OnError, are in
+		mIntA for "armed" interrupts, i.e, those that have interrupt labels.
+		All except OnError can be in mIntT, the triggered interrupts.
+		Triggering copies the Interrupt object from mIntA to mIntT.
+		Servicing removes it from mIntT. OnError is always serviced first.
+		The rest are serviced in the order they occur.
  */
 
 	public class Background extends Thread {
@@ -3079,7 +3129,7 @@ public class Run extends ListActivity {
 
 			public Var(Var src) {
 				mType = src.type();
-				mNumVal = (mType == VarType.NUM) ? src.nval() : 0.0; 
+				mNumVal = (mType == VarType.NUM) ? src.nval() : 0.0;
 				mStrVal = (mType == VarType.STR) ? src.sval() : null;
 			}
 
@@ -3253,6 +3303,9 @@ public class Run extends ListActivity {
 		private ProgramLine ExecutingLineBuffer = null;		// Holds the current line being executed
 		private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer's line
 
+		private final HashMap<Integer, Interrupt> mIntA = new HashMap<Integer, Interrupt>();
+		private final LinkedHashMap<Integer, Interrupt> mIntT = new LinkedHashMap<Integer, Interrupt>();
+
 		private Stack<Integer> GosubStack;					// Stack used for Gosub/Return
 		private Stack<ForNext> ForNextStack;				// Stack used for For/Next
 		private Stack<WhileRepeat> WhileStack;				// Stack used for While/Repeat
@@ -3312,7 +3365,7 @@ public class Run extends ListActivity {
 		// ******************************* Stack command variables ********************************
 
 		private ArrayList<Stack> theStacks;
-		private ArrayList<VarType> theStacksType; 
+		private ArrayList<VarType> theStacksType;
 
 		// ******************************** Read command variables ********************************
 
@@ -3338,6 +3391,12 @@ public class Run extends ListActivity {
 		private boolean mShowStatusBar;
 		private Paint aPaint;
 		private Canvas drawintoCanvas = null;
+
+		// ******************************** HTML command variables ********************************
+
+		public ArrayList<String> htmlData_Buffer;
+		private boolean htmlOpening;
+		private boolean mWebFront;
 
 		// ******************************* Audio command variables ********************************
 
@@ -3419,7 +3478,8 @@ public class Run extends ListActivity {
 				private void handleHere(String err) {
 					PrintShow(err + ", near line:", ExecutingLineBuffer.line());
 					SyntaxError = true;		// This blocks "Program ended" checks in finishRun()
-					OnErrorLine = 0;		// Don't allow OnError: to catch OOM, it's fatal
+					mOnErrorInt = null;		// Don't allow OnError to catch fatal exception
+					disableInterrupt(Interrupt.ERROR_BIT);
 					finishRun();
 				}
 			};
@@ -3464,11 +3524,11 @@ public class Run extends ListActivity {
 			PrintLineReady = false;
 			textPrintLine = "";
 
-			OnBackKeyLine = 0;
+			disableInterrupt(Interrupt.BACK_KEY_BIT);
 
 			// For debugging loop errors: if debug is on and errors are not trapped
 			// and there is no other error and no immediate exit, then check the loop stacks.
-			if (Debug && OnErrorLine == 0 && !SyntaxError && !Exit) {
+			if (Debug && (mOnErrorInt == null) && !SyntaxError && !Exit) {
 				if (!ForNextStack.empty())	{ PrintShow("Program ended with FOR without NEXT"); }
 				if (!WhileStack.empty())	{ PrintShow("Program ended with WHILE without REPEAT"); }
 				if (!DoStack.empty())		{ PrintShow("Program ended with DO without UNTIL"); }
@@ -3518,15 +3578,36 @@ public class Run extends ListActivity {
 
 		private void getInterruptLabels() {								// check for interrupt labels
 			Integer line;
-			line = Labels.get("onerror");        OnErrorLine   = (line == null) ? 0 : line.intValue();
-			line = Labels.get("onbackkey");      OnBackKeyLine = (line == null) ? 0 : line.intValue();
-			line = Labels.get("onmenukey");      OnMenuKeyLine = (line == null) ? 0 : line.intValue();
-			line = Labels.get("ontimer");        OnTimerLine   = (line == null) ? 0 : line.intValue();
-			line = Labels.get("onkeypress");     OnKeyLine     = (line == null) ? 0 : line.intValue();
-			line = Labels.get("ongrtouch");      OnTouchLine   = (line == null) ? 0 : line.intValue();
-			line = Labels.get("onbtreadready");  OnBTReadLine  = (line == null) ? 0 : line.intValue();
-			line = Labels.get("onbackground");   OnBGLine      = (line == null) ? 0 : line.intValue();
-			line = Labels.get("onconsoletouch"); onCTLine      = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("onerror");        OnErrorLine   = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("onbackkey");      OnBackKeyLine = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("onmenukey");      OnMenuKeyLine = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("ontimer");        OnTimerLine   = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("onkeypress");     OnKeyLine     = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("ongrtouch");      OnTouchLine   = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("onconsoletouch"); onCTLine      = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("onbtreadready");  OnBTReadLine  = (line == null) ? 0 : line.intValue();
+			// line = Labels.get("onbackground");   OnBGLine      = (line == null) ? 0 : line.intValue();
+			mOnErrorInt =
+			getInterruptLabel(BKW_ONERROR,        Interrupt.ERROR_BIT);
+			getInterruptLabel(BKW_ONBACKKEY,      Interrupt.BACK_KEY_BIT);
+			getInterruptLabel(BKW_ONMENUKEY,      Interrupt.MENU_KEY_BIT);
+			getInterruptLabel(BKW_ONTIMER,        Interrupt.TIMER_BIT);
+			getInterruptLabel(BKW_ONKEYPRESS,     Interrupt.KEY_BIT);
+			getInterruptLabel(BKW_ONGRTOUCH,      Interrupt.GR_TOUCH_BIT);
+			getInterruptLabel(BKW_ONCONSOLETOUCH, Interrupt.CONS_TOUCH_BIT);
+			getInterruptLabel(BKW_ONBTREADREADY,  Interrupt.BT_READY_BIT);
+			getInterruptLabel(BKW_ONBACKGROUND,   Interrupt.BACKGROUND_BIT);
+			getInterruptLabel(BKW_ONLOWMEM,       Interrupt.LOW_MEM_BIT);
+		}
+
+		private Interrupt getInterruptLabel(String label, Integer bit) {
+			Interrupt intrpt = null;
+			Integer line = Labels.get(chomp(label));					// remove colon from input string
+			if (line != null) {											// if this interrupt's label exists
+				intrpt = new Interrupt(line.intValue());
+				mIntA.put(bit, intrpt);									// "arm" the interrupt
+			}
+			return intrpt;
 		}
 
 		// The RunLoop() drives the execution of the program. It is called from doInBackground and
@@ -3537,21 +3618,21 @@ public class Run extends ListActivity {
 			while (ExecutingLineIndex < Basic.lines.size() && flag && !Stop) {	// keep executing statements until end
 				ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);		// next program line
 //				Log.d(LOGTAG, "RunLoop: " + ExecutingLineBuffer.line());
-				LineIndex = 0 ;
+				LineIndex = 0;
 
 				flag = StatementExecuter();							// execute the next statement
 																	// returns true if no problems executing statement
 				if (Exit) return flag;								// if Exit skip all other processing
 
 				if (!flag) {										// error supersedes all other interrupt checking
-					if (OnErrorLine != 0) {							// if there is an OnError label
-						ExecutingLineIndex = OnErrorLine;			// go to the OnError line
+					if (mOnErrorInt != null) {						// if there is an OnError label
+						ExecutingLineIndex = mOnErrorInt.line();	// go to the OnError line
 						SyntaxError = false;						// and clear the error status
 						flag = true;
 					}
 				} else {
 					readEventList();								// get events detected by other activities
-					serviceInterrupt();
+					serviceInterrupt();								// sets ExecutingLineIndex if an interrupt triggered
 				}
 
 				if (mConsoleBuffer.size() != 0) {					// somebody changed the console
@@ -3643,6 +3724,10 @@ public class Run extends ListActivity {
 							case EventHolder.KEY_UP:			onKeyUp(e.mCode, e.mEvent);		break;
 							case EventHolder.GR_BACK_KEY_PRESSED: GRstopped();	/* and fall through */
 							case EventHolder.BACK_KEY_PRESSED:	onBackPressed();				break;
+							case EventHolder.GR_TOUCH:			triggerInterrupt(Interrupt.GR_TOUCH_BIT); break;
+							case EventHolder.GR_STATE:			grStateChange(e.mCode);			break;
+							case EventHolder.WEB_STATE:			webStateChange(e.mCode);		break;
+							case EventHolder.DATALINK_ADD:		addDataLink(e.mStringData);		break;
 							default: break;
 						}
 					}
@@ -3650,48 +3735,43 @@ public class Run extends ListActivity {
 			}
 		} // readEventList()
 
+		private boolean triggerInterrupt(Integer bit) {
+			Interrupt intrpt = mIntA.get(bit);
+			if (intrpt == null) return false;
+
+			synchronized (mIntT) {
+				mIntT.put(bit, intrpt);
+			}
+			return true;
+		}
+
 		private void serviceInterrupt() {
-			if (BackKeyHit && OnBackKeyLine != 0) {
-				BackKeyHit = doInterrupt(OnBackKeyLine);
-			} else
-
-			if (MenuKeyHit && OnMenuKeyLine != 0) {
-				MenuKeyHit = doInterrupt(OnMenuKeyLine);
-			} else
-
-			if (timerExpired && OnTimerLine != 0) {
-				timerExpired = doInterrupt(OnTimerLine);
-			} else
-
-			if (KeyPressed && OnKeyLine != 0) {
-				KeyPressed = doInterrupt(OnKeyLine);
-			} else
-
-			if (NewTouch[2] && OnTouchLine != 0) {			// and is not tracked like NewTouch[0] and NewTouch[1]
-				NewTouch[2] = doInterrupt(OnTouchLine);		// used with onGRtouch.
-			} else
-
-			if (btReadReady && OnBTReadLine != 0) {
-				btReadReady = doInterrupt(OnBTReadLine);
-			} else
-
-			if (ConsoleTouched && onCTLine != 0) {
-				ConsoleTouched = doInterrupt(onCTLine);
-			} else
-
-			if (bgStateChange && OnBGLine != 0) {
-				bgStateChange = doInterrupt(OnBGLine);
+			if (interruptResume != -1) return;				// if servicing another interrupt, do not service another now
+			if (mIntT.size() != 0) {						// if there are triggered interrupts
+				Interrupt intrpt = null;					// service the oldest
+				synchronized (mIntT) {
+					Iterator<Integer> it = mIntT.keySet().iterator();
+					while (it.hasNext()) {
+						Integer key = it.next();
+						if (key == null) continue;			// huh? should not happen
+						intrpt = mIntT.remove(key);
+						if (intrpt == null) continue;		// huh? should not happen
+					}
+				}
+				if (intrpt != null) {
+					interruptResume = ExecutingLineIndex;	// Set the resume Line Number
+					ExecutingLineIndex = intrpt.line();		// Set the ISR line number
+					interruptVarSearchStart = VarSearchStart;// Save current VarSearchStart
+					VarSearchStart = 0;						// Force to predictable value
+					IfElseStack.push(IEinterrupt);
+				}
 			}
 		} // serviceInterrupt()
 
-		private boolean doInterrupt(int gotoLine) {
-			if (interruptResume != -1) return true;		// If we are handling an interrupt then do not cancel this one
-			interruptResume = ExecutingLineIndex;		// Set the resume Line Number
-			ExecutingLineIndex = gotoLine;				// Set the goto line number
-			interruptVarSearchStart = VarSearchStart;	// Save current VarSearchStart
-			VarSearchStart = 0;							// Force to predictable value
-			IfElseStack.push(IEinterrupt);
-			return false;								// Turn off the interrupt
+		private void disableInterrupt(Integer bit) {	// permanently disable an interrupt
+			if (mIntA.remove(bit) != null) {			// remove from "armed" list
+				mIntT.remove(bit);						// and from triggered list
+			}
 		}
 
 		private boolean doResume(String errMsg) {
@@ -3713,43 +3793,69 @@ public class Run extends ListActivity {
 			return true;
 		}
 
+		private void grStateChange(int newState) {
+			switch (newState) {
+				case EventHolder.ON_PAUSE:
+					GRFront = false;
+					break;
+				case EventHolder.ON_RESUME:
+					GRFront = true;
+					break;
+				default: return;
+			}
+			triggerInterrupt(Interrupt.BACKGROUND_BIT);
+		}
+
+		private void webStateChange(int newState) {
+			switch (newState) {
+				case EventHolder.ON_PAUSE:
+					mWebFront = false;
+					break;
+				case EventHolder.ON_RESUME:
+					mWebFront = true;
+					break;
+				default: return;
+			}
+			triggerInterrupt(Interrupt.BACKGROUND_BIT);
+		}
+
 	private void InitVars() {
 		Log.d(LOGTAG, "InitVars() started");
 
 		// Owned by Run class
 
 		mInterpreterRunning = true;
-		background = false;
+		RunPaused = false;
 		Stop = false;									// Stops program from running
 		Exit = false;									// Exits program and signals caller to exit, too
 		mEventList.clear();								// events from other Activites
 
-		OnErrorLine = 0;								// Line number for OnError: label
+		// OnErrorLine = 0;								// Line number for OnError: label
 
-		BackKeyHit = false;
-		OnBackKeyLine = 0;
+		// BackKeyHit = false;
+		// OnBackKeyLine = 0;
 
-		timerExpired = false;
-		OnTimerLine = 0;
+		// MenuKeyHit = false;
+		// OnMenuKeyLine = 0;
 
-		KeyPressed = false;
-		OnKeyLine = 0;
+		// timerExpired = false;
+		// OnTimerLine = 0;
 
-		MenuKeyHit = false;
-		OnMenuKeyLine = 0;
+		// KeyPressed = false;
+		// OnKeyLine = 0;
 
-		OnTouchLine = 0;
+		// OnTouchLine = 0;
 
-		OnBTReadLine = 0;
-		btReadReady = false;
+		// OnBTReadLine = 0;
+		// btReadReady = false;
 
-		ConsoleTouched = false;
+		// ConsoleTouched = false;
 		ConsoleLongTouch = false;
 		TouchedConsoleLine = 0;							// first valid line number is 1
-		onCTLine = 0;
+		// onCTLine = 0;
 
-		bgStateChange = false;
-		OnBGLine = 0;
+		// bgStateChange = false;
+		// OnBGLine = 0;
 
 		interruptResume = -1;
 
@@ -3780,12 +3886,10 @@ public class Run extends ListActivity {
 		dbSelectDialog = null;
 		// end debugger ui vars
 
-		RunPaused = false;								// Used to control the media player
-
 		Labels = new HashMap<String, Integer>();		// A list of all labels and associated line numbers
 		Vars = new ArrayList<Var>();					// All the scalar variables
 		ArrayTable = new ArrayList<ArrayDescriptor>();	// Each DIMed array has an entry in this table
-		ArrayValueStart = 0;							// Value index for newly created array 
+		ArrayValueStart = 0;							// Value index for newly created array
 
 		InChar = new ArrayList<String>();
 		TextInputString = "";
@@ -3796,10 +3900,7 @@ public class Run extends ListActivity {
 		RealDisplayList = new ArrayList<Integer>();
 		PaintList = new ArrayList<Paint>();
 		BitmapList = new ArrayList<Bitmap>();
-		for (int i = 0; i < NewTouch.length; ++i) {
-			TouchX[i] = TouchY[i] = -1;
-			NewTouch[i] = false;
-		}
+		initTouchVars();
 
 		theSensors = null;
 		theGPS = null;
@@ -3837,7 +3938,6 @@ public class Run extends ListActivity {
 		headsetMic = -1;
 
 		htmlIntent = null;
-		htmlOpening = false;
 
 		sttDefaultPrompt = getString(R.string.stt_prompt);
 		sttPrompt = null;
@@ -3899,6 +3999,10 @@ public class Run extends ListActivity {
 	public void cleanUp() {
 		Log.d(LOGTAG, "cleanUp() started");
 		mEventList.clear();								// events from other Activites
+		mIntT.clear();									// clear all pending interrupts
+		mIntA.clear();									// disable all interrupts
+
+		htmlData_Buffer.clear();
 
 		if (theMP != null) {
 			try { theMP.stop(); } catch (IllegalStateException e) {}
@@ -3971,7 +4075,6 @@ public class Run extends ListActivity {
 
 		Stop = true;								// make sure the background task stops
 		Basic.theRunContext = null;
-		RunPaused = false;
 		mMessagePending = false;
 
 		if (theGPS != null) {
@@ -4281,10 +4384,11 @@ public class Run extends ListActivity {
 		new Command(BKW_BACKGROUND_RESUME)      { public boolean run() { return executeBACKGROUND_RESUME(); } },
 		new Command(BKW_CONSOLETOUCH_RESUME)    { public boolean run() { return executeCONSOLETOUCH_RESUME(); } },
 		new Command(BKW_KEY_RESUME)             { public boolean run() { return executeKEY_RESUME(); } },
+		new Command(BKW_LOWMEM_RESUME)          { public boolean run() { return executeLOWMEM_RESUME(); } },
 		new Command(BKW_MENUKEY_RESUME)         { public boolean run() { return executeMENUKEY_RESUME(); } }
 	}; // BASIC_cmd
 
-	// **************** FN Group - user-defined functions 
+	// **************** FN Group - user-defined functions
 
 	private final Command[] fn_cmd = new Command[] {	// Map user function command keywords to their execution functions
 		new Command(BKW_FN_DEF)         { public boolean run() { return executeFN_DEF(); } },
@@ -4292,7 +4396,7 @@ public class Run extends ListActivity {
 		new Command(BKW_FN_END)         { public boolean run() { return executeFN_END(); } },
 	};
 
-	// **************** SW Group - switch statements 
+	// **************** SW Group - switch statements
 
 	private final Command[] sw_cmd = new Command[] {	// Map sw (switch) command keywords to their execution functions
 		new Command(BKW_SW_BEGIN)       { public boolean run() { return executeSW_BEGIN(); } },
@@ -4302,7 +4406,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SW_END)         { public boolean run() { return executeSW_END(); } },
 	};
 
-	// **************** FILE Group 
+	// **************** FILE Group
 
 	private final Command[] file_cmd = new Command[] {	// Map File command keywords to their execution functions
 		new Command(BKW_FILE_DELETE)    { public boolean run() { return executeDELETE(); } },
@@ -4356,7 +4460,7 @@ public class Run extends ListActivity {
 		new Command(BKW_READ_FROM)          { public boolean run() { return executeREAD_FROM(); } },
 	};
 
-	// **************** FONT Group 
+	// **************** FONT Group
 
 	private final Command[] font_cmd = new Command[] {	// Map font command keywords to their execution functions
 			new Command(BKW_FONT_LOAD)              { public boolean run() { return executeFONT_LOAD(); } },
@@ -4364,7 +4468,7 @@ public class Run extends ListActivity {
 			new Command(BKW_FONT_CLEAR)             { public boolean run() { return executeFONT_CLEAR(); } },
 	};
 
-	// **************** CONSOLE Group 
+	// **************** CONSOLE Group
 
 	private final Command[] Console_cmd = new Command[] {	// Map console command keywords to their execution functions
 		new Command(BKW_CONSOLE_FRONT)          { public boolean run() { return executeCONSOLE_FRONT(); } },
@@ -4377,14 +4481,14 @@ public class Run extends ListActivity {
 		new Command(BKW_CONSOLE_LINE_CHAR)      { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
 	};
 
-	// **************** DIALOG Group 
+	// **************** DIALOG Group
 
 	private final Command[] Dialog_cmd = new Command[] {	// Map dialog command keywords to their execution functions
 		new Command(BKW_DIALOG_MESSAGE)         { public boolean run() { return executeDIALOG_MESSAGE(); } },
 		new Command(BKW_DIALOG_SELECT)          { public boolean run() { return executeDIALOG_SELECT(); } },
 	};
 
-	// **************** SQL Group - SQLite database operations 
+	// **************** SQL Group - SQLite database operations
 
 	private final Command[] SQL_cmd = new Command[] {	// Map SQL command keywords to their execution functions
 		new Command(BKW_SQL_OPEN)           { public boolean run() { return execute_sql_open(); } },
@@ -4402,7 +4506,7 @@ public class Run extends ListActivity {
 		new Command(BKW_SQL_NEW_TABLE)      { public boolean run() { return execute_sql_new_table(); } }
 	};
 
-	// **************** GR Group - graphics mode commands 
+	// **************** GR Group - graphics mode commands
 
 	private final Command[] GR_cmd = new Command[] {	// Map GR command keywords to their execution functions
 		new Command(BKW_GR_RENDER)                  { public boolean run() { return execute_gr_render(); } },
@@ -4506,7 +4610,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_TEXT_SETFONT)            { public boolean run() { return execute_gr_text_setfont(); } },
 	};
 
-	// **************** AUDIO Group 
+	// **************** AUDIO Group
 
 	private final Command[] audio_cmd = new Command[] {	// Map audio command keywords to their execution functions
 		new Command(BKW_AUDIO_LOAD)             { public boolean run() { return execute_audio_load(); } },
@@ -4524,7 +4628,7 @@ public class Run extends ListActivity {
 		new Command(BKW_AUDIO_RECORD_STOP)      { public boolean run() { return execute_audio_record_stop(); } },
 	};
 
-	// **************** SENSORS Group 
+	// **************** SENSORS Group
 
 	private final Command[] sensors_cmd = new Command[] {	// Map sensor command keywords to their execution functions
 		new Command(BKW_SENSORS_LIST)           { public boolean run() { return execute_sensors_list(); } },
@@ -4900,7 +5004,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean RunTimeError(String... msgs) {
-		if (OnErrorLine == 0) {							// don't display anything if error is being trapped
+		if (mOnErrorInt == null) {						// don't display anything if error is being trapped
 			String line = ExecutingLineBuffer.line();
 			if (line.endsWith("\n")) { line = chomp(line); }
 			PrintShow(msgs[0], line);					// display error message and offending line
@@ -5216,7 +5320,7 @@ public class Run extends ListActivity {
 		try { d = Double.parseDouble(num); }			// have java parse it into a double
 		catch (Exception e) { return RunTimeError(e); }
 
-		GetNumberValue = d;								// Report the value 
+		GetNumberValue = d;								// Report the value
 		return true;									// Say we found a number
 	}
 
@@ -5242,7 +5346,7 @@ public class Run extends ListActivity {
 			}
 			StringConstant += c;						// add to String Constant
 		}
-		
+
 		if (i< max-1) { ++i; }							// do not let index be >= line length
 		LineIndex = i;
 		return true;									// Say we have a string constant
@@ -5301,7 +5405,7 @@ public class Run extends ListActivity {
 		double incdec = 0.0;									// for recording pre-inc/dec
 
 		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// First character
- 
+
 		if (c == '+') {											// Check for unary operators or pre-inc/dec
 			++LineIndex;										// move to the next character
 			if (isNext('+')) { incdec = 1.0; }					// remember to pre-increment
@@ -5388,7 +5492,7 @@ public class Run extends ListActivity {
 			if (theOpStack.isEmpty()) { return true; }		// ')' was removed with matching '('
 			if ((theOpStack.pop() == RPRN) && !theOpStack.isEmpty()) {
 				if (theOpStack.pop() == SOE) {
-					--LineIndex;							// LineIndex points at ')' 
+					--LineIndex;							// LineIndex points at ')'
 					return true;							// Let caller try to match ')'
 				}
 			}
@@ -5442,7 +5546,7 @@ public class Run extends ListActivity {
 											// keep doing this until the Goes Onto Precedence
 											// is less then the TOS Come Off Precedence and then
 											// push the current operator onto the operator stack
-		
+
 		while (ComesOffPrecedence[theOpStack.peek()] >= GoesOnPrecedence[op]) {
 
 				if (theValueStack.empty()) return false;	// Avoid a crash
@@ -5537,7 +5641,7 @@ public class Run extends ListActivity {
 					theValueStack.push(d1);
 					break;
 
-				case LEQ:						// Logical Equals 
+				case LEQ:						// Logical Equals
 					d1 = theValueStack.pop();
 					d2 = theValueStack.pop();
 					d1 = (d2 == d1) ? 1.0 : 0.0;
@@ -5581,7 +5685,7 @@ public class Run extends ListActivity {
 //			if (op == RPRN) break;
 
 		} // End of while pop stack operations
-		
+
 		theOpStack.push(op);          // Push the current operator
 		return true;
 	}
@@ -5968,7 +6072,7 @@ public class Run extends ListActivity {
 		EvalNumericExpressionValue = Math.cos(EvalNumericExpressionValue);
 		return true;
 	}
-	
+
 	private boolean executeMF_TAN() {
 		if (!evalNumericExpression()) return false;
 		EvalNumericExpressionValue = Math.tan(EvalNumericExpressionValue);
@@ -6055,7 +6159,7 @@ public class Run extends ListActivity {
 		EvalNumericExpressionValue = Math.exp(EvalNumericExpressionValue);
 		return true;
 	}
-	
+
 	private boolean executeMF_TODEGREES() {
 		if (!evalNumericExpression()) return false;
 		EvalNumericExpressionValue = Math.toDegrees(EvalNumericExpressionValue);
@@ -6149,6 +6253,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeMF_BACKGROUND() {
+		boolean background = RunPaused && !GRFront && !mWebFront;
 		EvalNumericExpressionValue = background ? 1.0 : 0.0;
 		return true;
 	}
@@ -6491,7 +6596,7 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-	private String ltrim(String str, String trim) {			// remove 
+	private String ltrim(String str, String trim) {			// remove
 		if ((str == null) || str.equals("")) return "";
 		if ((trim == null) || trim.equals("")) return str;
 		if (!trim.startsWith("^")) { trim = "^" + trim; }
@@ -6745,7 +6850,7 @@ public class Run extends ListActivity {
 		int FdecimalIndex = 0;
 		boolean VhasDecimal = false;
 		int VdecimalIndex = 0;
-		
+
 																			// First find pattern string decimal index
 		for (i = 0; i < Fstring.length(); ++i) {
 			if (Fstring.charAt(i)== '.') {
@@ -6781,7 +6886,7 @@ public class Run extends ListActivity {
 		}
 																			// Split the value string
 		VWstring = Vstring.substring(0, VdecimalIndex-1);										// VW is whole number part (includes decimal)
-		if (VhasDecimal) { VDstring = Vstring.substring(VdecimalIndex, Vstring.length()); }		// VD is the decimal part 
+		if (VhasDecimal) { VDstring = Vstring.substring(VdecimalIndex, Vstring.length()); }		// VD is the decimal part
 
 																			// Build the decimal part of the output string
 		Temp = "";
@@ -6789,7 +6894,7 @@ public class Run extends ListActivity {
 
 		for (i = 0; i < FDstring.length(); ++i) {							// Copy Decimal digits to output as long as there
 			if (FDstring.charAt(i) != '#')	return false;					// are pattern # chars. If run out of digits before
-			if (i < VDstring.length()) {									// pattern digits, output 0 characters			
+			if (i < VDstring.length()) {									// pattern digits, output 0 characters
 				Temp += VDstring.charAt(i);
 			} else {
 				Temp += "0";
@@ -6849,7 +6954,7 @@ public class Run extends ListActivity {
 					Temp += " ";													// output space
 				}
 				break;
- 
+
 			case '%':																// format charcter = %
 				blanks = false;
 				if (VWI >= 0) {
@@ -7117,7 +7222,7 @@ public class Run extends ListActivity {
 			LineIndex += 2;
 		}
 
-		if (VarIsNumeric) {									// if var is number then 
+		if (VarIsNumeric) {									// if var is number then
 			if (!evalNumericExpression()) { return false; }	// evaluate following numeric expression
 			if (op != ASSIGN) {
 				double val = EvalNumericExpressionValue;
@@ -7315,8 +7420,8 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeIF() {
-	
-		if (!IfElseStack.empty()) {											// if inside of an IF block		
+
+		if (!IfElseStack.empty()) {											// if inside of an IF block
 			Integer q = IfElseStack.peek();
 			if ((q != IEexec) && (q != IEinterrupt)) {						// and not executing
 				int index = ExecutingLineBuffer.line().indexOf("then");
@@ -7471,7 +7576,7 @@ public class Run extends ListActivity {
 		if (!evalToPossibleKeyword(kw)) { return false; }	// For Var = <exp> to <exp>
 		double flimit = EvalNumericExpressionValue;
 
-		double fstep = 1.0;									// For Var = <exp> to <exp> <default step> 
+		double fstep = 1.0;									// For Var = <exp> to <exp> <default step>
 		if (ExecutingLineBuffer.startsWith(kw, LineIndex)) {
 			LineIndex += 4;
 			if (!evalNumericExpression()) { return false; }	// For Var = <exp> to <exp> step <exp>
@@ -7717,9 +7822,9 @@ public class Run extends ListActivity {
 
 			if (canceledIndex == -1) {						// no cancel var, report cancel as error
 				String err = "Input dialog cancelled";
-				if (OnErrorLine != 0) {						// allow program to trap cancel as error
+				if (mOnErrorInt != null) {					// allow program to trap cancel as error
 					errorMsg = err;
-					ExecutingLineIndex = OnErrorLine;
+					ExecutingLineIndex = mOnErrorInt.line();
 				} else {									// tell user we are stopping
 					PrintShow(err, "Execution halted");
 					Stop = true;							// and stop executing
@@ -8114,11 +8219,11 @@ public class Run extends ListActivity {
 		RunTimeError("No sw.end after sw.begin");
 		return false;
 	}
-	
+
 	private boolean executeSW_CASE() {
 		return true;
 	}
-	
+
 	private boolean executeSW_BREAK() {
 		if (!checkEOL()) { return false; }
 		while (++ExecutingLineIndex < Basic.lines.size()) {
@@ -8131,11 +8236,11 @@ public class Run extends ListActivity {
 		RunTimeError("sw.xxxx without sw.end");
 		return false;
 	}
-	
+
 	private boolean executeSW_DEFAULT() {
 		return true;
 	}
-	
+
 	private boolean executeSW_END() {
 		return true;
 	}
@@ -8151,7 +8256,7 @@ public class Run extends ListActivity {
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
 	}
 
-	private boolean checkFile(int FileNumber) {								// Validate input file number for read or write commands 
+	private boolean checkFile(int FileNumber) {								// Validate input file number for read or write commands
 		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
 		else if (FileNumber >= FileTable.size() || FileNumber < 0)
 													{ RunTimeError("Invalid File Number at"); }
@@ -8429,7 +8534,7 @@ public class Run extends ListActivity {
 														// code copied from onOptionsItemSelected
 			PrintShow("Stopped by user.");				// tell user
 			Stop = true;								// signal main loop to stop
-			OnBackKeyLine = 0;							// menu-selected stop is not trappable
+			disableInterrupt(Interrupt.BACK_KEY_BIT);	// menu-selected stop is not trappable
 		} else {
 			PrintShow(Prompt + TextInputString);
 			var.val(TextInputString);
@@ -8865,7 +8970,7 @@ public class Run extends ListActivity {
 		if (!checkReadAttributes(fInfo, fType)) return false;		// Check runtime errors
 
 		if (markLimit < 0) {
-			markLimit = fInfo.markLimit();							// retrieve mark limit from fInfo 
+			markLimit = fInfo.markLimit();							// retrieve mark limit from fInfo
 		}
 
 		switch (fType) {
@@ -9344,6 +9449,10 @@ public class Run extends ListActivity {
 		return doResume("Back key not hit");
 	}
 
+	private boolean executeLOWMEM_RESUME() {
+		return doResume("No Low Memory signal");
+	}
+
 	private boolean executeMENUKEY_RESUME() {
 		return doResume("Menu key not hit");
 	}
@@ -9384,12 +9493,7 @@ public class Run extends ListActivity {
 		if (!getSVar()) return false;						// get the var to put the key value into
 		Var var = Vars.get(theValueIndex);
 		if (!checkEOL()) return false;
-		if (InChar.size() > 0) {
-			var.val(InChar.get(0));
-			InChar.remove(0);
-		} else {
-			var.val("@");
-		}
+		var.val(InChar.isEmpty() ? "@" : InChar.remove(0));
 		return true;
 	}
 
@@ -9565,7 +9669,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeJOIN(boolean keepAll) {					// opposite of SPLIT
-																	// if keepAll is true, keep empty array elements 
+																	// if keepAll is true, keep empty array elements
 		String vName = getArrayVarForRead();						// get the array to join
 		if (VarIsNumeric) { return RunTimeError(EXPECT_STRING_ARRAY); }
 		int arrayTableIndex = VarIndex.get(VarNumber);
@@ -9950,7 +10054,7 @@ public class Run extends ListActivity {
 		if (r != 0) {
 			return RunTimeError("List must have even number of elements");
 		}
-	
+
 		if (!isNext(','))				return false;
 		if (!getSVar())					return false;
 		Var var = Vars.get(theValueIndex);				// variable to hold Result
@@ -10141,7 +10245,7 @@ public class Run extends ListActivity {
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;			// Table Name
 		String TableName = StringConstant;
-		
+
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;			// String of comma separated columns to get
 		String RawColumns = StringConstant;
@@ -10583,7 +10687,7 @@ public class Run extends ListActivity {
 		RealDisplayList.add(0);										// First entry points to null object
 
 		synchronized (DisplayList) {
-			for (int i = 0; i < length; ++i) {						// Copy the object pointers 
+			for (int i = 0; i < length; ++i) {						// Copy the object pointers
 				int id = (int)Vars.get(base + i).nval();
 				if (id < 0 || id >= DisplayList.size()) {
 					return RunTimeError("Invalid Object Number");
@@ -10636,17 +10740,19 @@ public class Run extends ListActivity {
 
 		waitForGrLOCK();											// Do not continue until GR signals it is running
 
-		background = false;
 		GRopen = true;												// Set some more signals
-		RunPaused = false;
-		NewTouch[0] = false;
-		NewTouch[1] = false;
-		NewTouch[2] = false;
+		initTouchVars();
 		GR.doSTT = false;
-		GRFront = true;
 		CameraNumber = -1;
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		return true;
+	}
+
+	private void initTouchVars() {
+		for (int i = 0; i < NewTouch.length; ++i) {
+			TouchX[i] = TouchY[i] = -1;
+			NewTouch[i] = false;
+		}
 	}
 
 	private boolean execute_paint_get() {
@@ -10661,7 +10767,6 @@ public class Run extends ListActivity {
 			DisplayListClear(GR.Type.Null);
 		}
 		GRopen = false;
-		GRFront = false;
 	}
 
 	private boolean execute_gr_close() {
@@ -10676,7 +10781,6 @@ public class Run extends ListActivity {
 			waitForGrLOCK();
 		}
 		GRopen = false;
-		GRFront = false;
 
 		return true;
 	}
@@ -10788,7 +10892,7 @@ public class Run extends ListActivity {
 		if (xy == null) return false;
 		b.xy(xy);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_line() {
@@ -10801,7 +10905,7 @@ public class Run extends ListActivity {
 		if (x2y2 == null) return false;
 		b.ltrb(x2y2);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_rect() {
@@ -10814,7 +10918,7 @@ public class Run extends ListActivity {
 		if (ltrb == null) return false;
 		b.ltrb(ltrb);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_arc() {
@@ -10835,7 +10939,7 @@ public class Run extends ListActivity {
 
 		b.arc(ltrb, (float)angles[0], (float)angles[1], fillMode);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_circle() {
@@ -10851,7 +10955,7 @@ public class Run extends ListActivity {
 
 		b.circle(xy, radius);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_oval() {
@@ -10864,7 +10968,7 @@ public class Run extends ListActivity {
 		if (ltrb == null) return false;
 		b.ltrb(ltrb);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private double gr_collide(int obj1Num, int obj2Num) {
@@ -11019,7 +11123,7 @@ public class Run extends ListActivity {
 		theListsType.add(VarType.NUM);
 
 		b.list(listIndex, list);									// attach the list to the Group Object
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_group_list() {						// create a group from a list
@@ -11034,7 +11138,7 @@ public class Run extends ListActivity {
 
 		ArrayList<Double> list = theLists.get(listIndex);			// retrieve the list
 		b.list(listIndex, list);
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_group_getdl() {						// create a group from the current Display List
@@ -11063,7 +11167,7 @@ public class Run extends ListActivity {
 		theListsType.add(VarType.NUM);
 
 		b.list(listIndex, list);
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_group_newdl() {						// set a new display list from a group
@@ -11221,7 +11325,7 @@ public class Run extends ListActivity {
 		if (!checkEOL()) return false;
 
 		flagVar.val(NewTouch[p] ? 1.0 : 0.0);						// return touched flag as numerical value
-		if (NewTouch[2]) {											// if ever touched
+		if (TouchX[p] != -1) {										// if ever touched
 			xVar.val(TouchX[p]);									// then report the last touch
 			yVar.val(TouchY[p]);
 		}
@@ -11254,7 +11358,6 @@ public class Run extends ListActivity {
 		if (NewTouch[p]) {											// if currently being touched
 			flag = (TouchX[p] >= left && TouchX[p] <= right &&		// true iff touch was in bounding rect
 					TouchY[p] >= top  && TouchY[p] <= bottom);
-//			GR.NewTouch[p] = false;									// set not touched
 		}
 		flagVar.val(flag ? 1.0 : 0.0);								// return flag as numerical value
 		return true;
@@ -11273,7 +11376,7 @@ public class Run extends ListActivity {
 		b.xy(xy);
 		b.text(StringConstant);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_text_align() {
@@ -11337,7 +11440,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean execute_gr_text_bold() {
-		if (!evalNumericExpression()) return false;					// get Bold parameter 
+		if (!evalNumericExpression()) return false;					// get Bold parameter
 		if (!checkEOL()) return false;
 
 		boolean flag = (EvalNumericExpressionValue != 0.0);			// do bold if non-zero
@@ -11350,7 +11453,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean execute_gr_text_strike() {
-		if (!evalNumericExpression()) return false;					// get Strike parameter 
+		if (!evalNumericExpression()) return false;					// get Strike parameter
 		if (!checkEOL()) return false;
 
 		boolean flag = (EvalNumericExpressionValue != 0.0);			// do strike if non-zero
@@ -11610,7 +11713,7 @@ public class Run extends ListActivity {
 		if (xy == null) return false;
 		b.xy(xy);
 
-		return createGrObj_finish(b, SaveValueIndex);			// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);			// store the object and return its index
 	}
 
 	private boolean execute_gr_bitmap_create() {
@@ -11842,11 +11945,9 @@ public class Run extends ListActivity {
 		if (EvalNumericExpressionValue == 0) {
 			Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
 			startActivity(Basic.theProgramRunner);
-			GRFront = false;
 		} else {
 			GRclass.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 			startActivity(GRclass);
-			GRFront = true;
 		}
 		try { Thread.sleep(100); } catch(InterruptedException e) {}
 		return true;
@@ -11889,7 +11990,7 @@ public class Run extends ListActivity {
 		b.array(array);
 		b.xy(xy);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_get_bmpixel() {
@@ -12097,7 +12198,7 @@ public class Run extends ListActivity {
 			}
 		}
 		b.clipOp(RegionOp);
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	private boolean execute_gr_poly() {
@@ -12135,7 +12236,7 @@ public class Run extends ListActivity {
 		}
 		b.xy(xy);
 
-		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index 
+		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
 	@SuppressLint("NewApi")											// Uses value from API 9
@@ -12416,10 +12517,10 @@ public class Run extends ListActivity {
 	}
 
 	private boolean execute_audio_load() {
-		  /* If there is already an audio running,
-		   * then stop it and 
-		   * release its resources.
-		   */
+		/* If there is already an audio running,
+		 * then stop it and
+		 * release its resources.
+		 */
 
 /*		if (theMP != null) {
 			try {theMP.stop();} catch (IllegalStateException e) {}
@@ -12752,14 +12853,14 @@ public class Run extends ListActivity {
 
 		double[] SensorValues = theSensors.getValues(type);
 		for (int i = 1; i < 4; ++i) {
-			var[i].val(SensorValues[i]); 
+			var[i].val(SensorValues[i]);
 		}
 		return true;
 	}
 
 	private boolean execute_sensors_rotate() {
 
-		/* This is a test. 
+		/* This is a test.
 		 * It has failed so far
 		 * This command has not been exposed to the users.
 		 * Someday....?
@@ -13132,7 +13233,7 @@ public class Run extends ListActivity {
 			return ListToBasicStringArray(vName, Values, Values.size()); // Copy the list to a BASIC! array
 		}
 	}
-	
+
 	private boolean LoadNumericList(ArrayList <Double> Values) {
 		while (true) {											// loop through the list
 			if (!evalNumericExpression()) return false;			// values may be expressions
@@ -13438,7 +13539,7 @@ public class Run extends ListActivity {
 	}
 
 	private int createNewList(VarType type, Var var) {			// Put a new ArrayList in global theLists
-																// Put its type in global theListsType 
+																// Put its type in global theListsType
 																// Write its index to user variable var
 		int listIndex = theLists.size();
 		switch (type) {
@@ -13794,7 +13895,7 @@ public class Run extends ListActivity {
 		if (!getNVar())					return false;
 		Var var = Vars.get(theValueIndex);
 		if (!checkEOL())				return false;
-		
+
 		int size = theLists.get(listIndex).size();
 		var.val(size);
 
@@ -14035,7 +14136,7 @@ public class Run extends ListActivity {
 		theStacks.add(theStack);
 
 		theStacksType.add(type);								// add the type
-		var.val(theIndex);										// return the stack pointer    
+		var.val(theIndex);										// return the stack pointer
 		return true;
 	}
 
@@ -14186,7 +14287,7 @@ public class Run extends ListActivity {
 		String data = "";
 		if (clipboard.hasPrimaryClip()) {					// If clip board has text
 			CharSequence data1 = clipboard.getText();		// Get the clip
-			data = data1.toString(); 
+			data = data1.toString();
 			if (data == null) data = "";
 		} else data ="";									// If no clip, set data to null
 		StringVarValues.set(theValueIndex, data);			// Return the result to user
@@ -14205,7 +14306,7 @@ public class Run extends ListActivity {
 		return true;
 	}
 	*/
-	
+
 	private boolean executeCLIPBOARD_GET() {
 		if (!getSVar())					return false;		// get the var to put the clip into
 		Var var = Vars.get(theValueIndex);
@@ -14754,7 +14855,7 @@ public class Run extends ListActivity {
 		} catch (Exception e) {
 			return RunTimeError(e);
 		}
-		
+
 		var.val(IP);
 		return true;
 	}
@@ -14841,7 +14942,7 @@ public class Run extends ListActivity {
 
 	private boolean ttsWaitForDone() {							// wait for any outstanding speaking to finish
 		while (theTTS != null) {								// because cleanup() can kill theTTS while we're not looking
-			if (theTTS.mDone) break; 
+			if (theTTS.mDone) break;
 			Thread.yield();
 		}
 		return (theTTS != null);
@@ -15054,7 +15155,7 @@ public class Run extends ListActivity {
 			}
 			if (!status) { RunTimeError("Upload problem"); }
 			return status;
-	}	
+	}
 
 	public boolean executeFTP_CMD() {
 			if (FTPdir == null) { return RunTimeError("FTP not opened"); }
@@ -15213,7 +15314,7 @@ public class Run extends ListActivity {
 			return RunTimeError("Bluetooth is not available");
 		}
 
-		bt_Secure = true;												// this flag will be used when starting 
+		bt_Secure = true;												// this flag will be used when starting
 		if (evalNumericExpression()) {									// the accept thread in BlueTootChatService
 			if (EvalNumericExpressionValue == 0) { bt_Secure = false; }
 		}
@@ -15242,7 +15343,7 @@ public class Run extends ListActivity {
 			btConnectDevice = null;
 			mOutStringBuffer = new StringBuffer("");
 			BT_Read_Buffer.clear();
-	
+
 			mChatService = new BluetoothChatService(Run.this, mHandler);	// Starts the accept thread
 			mChatService.start(bt_Secure);
 		}
@@ -15665,7 +15766,6 @@ public class Run extends ListActivity {
 	private boolean executeCONSOLE_FRONT() {
 		Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
 		startActivity(Basic.theProgramRunner);
-		GRFront = false;
 
 		return true;
 	}
@@ -16455,8 +16555,10 @@ public class Run extends ListActivity {
 
 		String data = "";
 		if (htmlData_Buffer != null) {
-			if (htmlData_Buffer.size() > 0) {				// If the buffer is not empty
-				data = htmlData_Buffer.remove(0);			// get the oldest entry and remove it from the buffer
+			synchronized (htmlData_Buffer) {
+				if (htmlData_Buffer.size() > 0) {				// If the buffer is not empty
+					data = htmlData_Buffer.remove(0);			// get the oldest entry and remove it from the buffer
+				}
 			}
 		}
 		var.val(data);										// return the data to the user
@@ -16467,6 +16569,14 @@ public class Run extends ListActivity {
 		if (data.startsWith("ERR:")) return execute_html_close();	// if error, close the html
 
 		return true;
+	}
+
+	private void addDataLink(String data) {
+		if (htmlData_Buffer != null) {
+			synchronized (htmlData_Buffer) {
+				htmlData_Buffer.add(data);
+			}
+		}
 	}
 
 	private boolean execute_html_go_back() {
@@ -16509,7 +16619,7 @@ public class Run extends ListActivity {
 		if (!getStringArg()) return false;
 		String url = StringConstant;
 
-		if (!isNext(',')) return false; 
+		if (!isNext(',')) return false;
 		if (!evalNumericExpression()) return false;
 		if (!checkEOL()) return false;
 
@@ -16714,7 +16824,7 @@ public class Run extends ListActivity {
 			return RunTimeError("Previous Timer Not Cleared");
 		}
 
-		if (OnTimerLine == 0) {
+		if (!mIntA.containsKey(Interrupt.TIMER_BIT)) {
 			return RunTimeError("No OnTimer: Label");
 		}
 
@@ -16725,11 +16835,10 @@ public class Run extends ListActivity {
 
 		TimerTask tt = new TimerTask() {
 			public void run() {
-				timerExpired= true;
+				triggerInterrupt(Interrupt.TIMER_BIT);
 			}
 		};
 
-		timerExpired= false;
 		theTimer = new Timer();
 		theTimer.scheduleAtFixedRate(tt, interval, interval);
 
