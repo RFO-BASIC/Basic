@@ -1021,37 +1021,12 @@ public class Run extends ListActivity {
 	private boolean mInterpreterRunning;
 	private boolean RunPaused = false;
 	private boolean kbShown = false;
-														// events from other Activites
+														// events from other Activities
 	public static final ArrayList<EventHolder> mEventList = new ArrayList<EventHolder>();
 
-	// private int OnErrorLine = 0;						// Line number for OnError: label
 	private Interrupt mOnErrorInt = null;				// OnError gets a named interrupt. The others are anonymous.
-
-	// private boolean BackKeyHit = false;
-	// private int OnBackKeyLine = 0;
-
-	// private boolean MenuKeyHit = false;
-	// private int OnMenuKeyLine = 0;
-
-	// public boolean timerExpired;
-	// public int OnTimerLine;
-
-	// public static boolean KeyPressed = false;
-	// private int OnKeyLine;
-
-	// private int OnTouchLine;							// for graphics OnGrTouch:
-
-	// private boolean ConsoleTouched = false;
 	private boolean ConsoleLongTouch = false;
 	private int TouchedConsoleLine = 0;					// first valid line number is 1
-	// private int onCTLine = 0;
-
-	// private int OnBTReadLine = 0;
-	// private boolean btReadReady = false;
-
-	// public static boolean bgStateChange = false;
-	// private int OnBGLine = 0;
-
 	private int interruptResume = -1;
 
 	/* TODO: move these to Background */				// Constants for use in the IfElseStack
@@ -2310,11 +2285,23 @@ public class Run extends ListActivity {
 		return false;					// let Android create the Run Menu
 	}
 
+	public void GR_BackPressed() {
+		boolean trapped = triggerInterrupt(Interrupt.BACK_KEY_BIT);
+		if (trapped) return;			// trapped by onBackKey
+
+		if (theBackground != null) { theBackground.GRstop(); } // stop GR, don't wait for it
+		doBackPressed();				// stop interpreter, too
+	}
+
 	@Override
-	public void onBackPressed() {
+	public void onBackPressed() {		// system BACK key callback
 		boolean trapped = triggerInterrupt(Interrupt.BACK_KEY_BIT);
 		if (trapped) return;			// trapped by onBackKey:
 
+		doBackPressed();				// untrapped BACK key
+	}
+
+	private void doBackPressed() {		// BACK key pressed in Run, interrupt check already done
 		if (Basic.DoAutoRun) {
 			Exit = true;				// if AutoRun, untrapped BACK key always means exit
 		}
@@ -2443,7 +2430,7 @@ public class Run extends ListActivity {
 
 	@Override
 	protected void onResume() {
-		Log.v(LOGTAG, CLASSTAG + " onResume " + kbShown);
+		Log.v(LOGTAG, CLASSTAG + " onResume " +  this.toString());
 
 		RunPaused = false;
 		triggerInterrupt(Interrupt.BACKGROUND_BIT);
@@ -2463,7 +2450,7 @@ public class Run extends ListActivity {
 	*/
 		// If there is a Media Player running, pause it and hope
 		// that it works.
-		Log.v(LOGTAG, CLASSTAG + " onPause " + kbShown);
+		Log.v(LOGTAG, CLASSTAG + " onPause " + this.toString());
 		if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
 
 	/*	if (theMP != null) {
@@ -3578,18 +3565,9 @@ public class Run extends ListActivity {
 
 		private void getInterruptLabels() {								// check for interrupt labels
 			Integer line;
-			// line = Labels.get("onerror");        OnErrorLine   = (line == null) ? 0 : line.intValue();
-			// line = Labels.get("onbackkey");      OnBackKeyLine = (line == null) ? 0 : line.intValue();
-			// line = Labels.get("onmenukey");      OnMenuKeyLine = (line == null) ? 0 : line.intValue();
-			// line = Labels.get("ontimer");        OnTimerLine   = (line == null) ? 0 : line.intValue();
-			// line = Labels.get("onkeypress");     OnKeyLine     = (line == null) ? 0 : line.intValue();
-			// line = Labels.get("ongrtouch");      OnTouchLine   = (line == null) ? 0 : line.intValue();
-			// line = Labels.get("onconsoletouch"); onCTLine      = (line == null) ? 0 : line.intValue();
-			// line = Labels.get("onbtreadready");  OnBTReadLine  = (line == null) ? 0 : line.intValue();
-			// line = Labels.get("onbackground");   OnBGLine      = (line == null) ? 0 : line.intValue();
-			mOnErrorInt =
+			mOnErrorInt =												// OnError: gets a named Interrupt object
 			getInterruptLabel(BKW_ONERROR,        Interrupt.ERROR_BIT);
-			getInterruptLabel(BKW_ONBACKKEY,      Interrupt.BACK_KEY_BIT);
+			getInterruptLabel(BKW_ONBACKKEY,      Interrupt.BACK_KEY_BIT);	// the rest can be anonymous
 			getInterruptLabel(BKW_ONMENUKEY,      Interrupt.MENU_KEY_BIT);
 			getInterruptLabel(BKW_ONTIMER,        Interrupt.TIMER_BIT);
 			getInterruptLabel(BKW_ONKEYPRESS,     Interrupt.KEY_BIT);
@@ -3709,7 +3687,6 @@ public class Run extends ListActivity {
 				String line = ExecutingLineBuffer.line();
 				PrintShow(line.substring(0, line.length() - 1));
 			}
-
 			if (!c.run()) { SyntaxError(); return false; }
 			return true;									// Statement executed ok. Return to main looper.
 		} // StatementExecuter()
@@ -3722,7 +3699,7 @@ public class Run extends ListActivity {
 						switch (e.mType) {
 							case EventHolder.KEY_DOWN:			onKeyDown(e.mCode, e.mEvent);	break;
 							case EventHolder.KEY_UP:			onKeyUp(e.mCode, e.mEvent);		break;
-							case EventHolder.GR_BACK_KEY_PRESSED: GRstopped();	/* and fall through */
+							case EventHolder.GR_BACK_KEY_PRESSED: GR_BackPressed();				break;
 							case EventHolder.BACK_KEY_PRESSED:	onBackPressed();				break;
 							case EventHolder.GR_TOUCH:			triggerInterrupt(Interrupt.GR_TOUCH_BIT); break;
 							case EventHolder.GR_STATE:			grStateChange(e.mCode);			break;
@@ -3828,35 +3805,10 @@ public class Run extends ListActivity {
 		RunPaused = false;
 		Stop = false;									// Stops program from running
 		Exit = false;									// Exits program and signals caller to exit, too
-		mEventList.clear();								// events from other Activites
+		mEventList.clear();								// events from other Activities
 
-		// OnErrorLine = 0;								// Line number for OnError: label
-
-		// BackKeyHit = false;
-		// OnBackKeyLine = 0;
-
-		// MenuKeyHit = false;
-		// OnMenuKeyLine = 0;
-
-		// timerExpired = false;
-		// OnTimerLine = 0;
-
-		// KeyPressed = false;
-		// OnKeyLine = 0;
-
-		// OnTouchLine = 0;
-
-		// OnBTReadLine = 0;
-		// btReadReady = false;
-
-		// ConsoleTouched = false;
 		ConsoleLongTouch = false;
 		TouchedConsoleLine = 0;							// first valid line number is 1
-		// onCTLine = 0;
-
-		// bgStateChange = false;
-		// OnBGLine = 0;
-
 		interruptResume = -1;
 
 		SyntaxError = false;							// Set true when Syntax Error message has been output
@@ -3998,7 +3950,7 @@ public class Run extends ListActivity {
 
 	public void cleanUp() {
 		Log.d(LOGTAG, "cleanUp() started");
-		mEventList.clear();								// events from other Activites
+		mEventList.clear();								// events from other Activities
 		mIntT.clear();									// clear all pending interrupts
 		mIntA.clear();									// disable all interrupts
 
@@ -10761,9 +10713,12 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-	private void GRstopped() {										// GR stopped itself
-		synchronized (DisplayList) {
-			DisplayListClear(GR.Type.Null);
+	private void GRstop() {											// stop GR, but don't wait for lock
+		if (GR.drawView != null) {
+			synchronized (DisplayList) {							// create a new display list
+				DisplayListClear(GR.Type.Close);					// that commands GR.java to close
+			}
+			GR.drawView.postInvalidate();							// start the draw so the command will get executed
 		}
 		GRopen = false;
 	}

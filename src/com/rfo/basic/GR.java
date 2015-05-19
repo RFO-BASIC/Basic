@@ -401,7 +401,7 @@ public class GR extends Activity {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
-		Log.v(LOGTAG, " " + CLASSTAG + " On Create " + this.toString());
+		Log.v(LOGTAG, " " + CLASSTAG + " onCreate");
 		super.onCreate(savedInstanceState);
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -432,7 +432,7 @@ public class GR extends Activity {
 
 	@Override
 	protected void onPause() {
-		Log.v(LOGTAG, " " + CLASSTAG + " onPause");
+		Log.v(LOGTAG, " " + CLASSTAG + " onPause " + this.toString());
 		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_PAUSE, null));
 		super.onPause();
 	}
@@ -456,7 +456,7 @@ public class GR extends Activity {
 
 	@Override
 	protected void onResume() {
-		Log.v(LOGTAG, " " + CLASSTAG + " onResume");
+		Log.v(LOGTAG, " " + CLASSTAG + " onResume " + this.toString());
 		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_RESUME, null));
 		context = this;
 		super.onResume();
@@ -476,9 +476,6 @@ public class GR extends Activity {
 	@Override
 	public void onBackPressed() {
 		Run.mEventList.add(new Run.EventHolder(GR_BACK_KEY_PRESSED, 0, null));
-		Running = false;
-		releaseLOCK();									// don't leave GR.command hanging
-		super.onBackPressed();
 	}
 
 	@Override
@@ -677,9 +674,9 @@ public class GR extends Activity {
 			}
 
 			if ((Run.RealDisplayList == null) || (Run.DisplayList == null)) {
-				String msg = "GR.onDraw: null DisplayList";
-				Log.e(LOGTAG, msg);
-				throw new RuntimeException(msg);		// lost context?
+				Log.e(LOGTAG, "GR.onDraw: null DisplayList");
+				finish();								// lost context, bail out
+				return;
 			}
 
 			// float scale = getResources().getDisplayMetrics().density;
