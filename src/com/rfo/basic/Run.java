@@ -4002,8 +4002,6 @@ public class Run extends ListActivity {
 		mIntT.clear();									// clear all pending interrupts
 		mIntA.clear();									// disable all interrupts
 
-		htmlData_Buffer.clear();
-
 		if (theMP != null) {
 			try { theMP.stop(); } catch (IllegalStateException e) {}
 			if (theMP != null) theMP.release();
@@ -4015,7 +4013,8 @@ public class Run extends ListActivity {
 			theSoundPool = null;
 		}
 
-		if ( Web.aWebView != null) { Web.aWebView.webClose(); }
+		if (Web.aWebView != null) { Web.aWebView.webClose(); }
+		if (htmlData_Buffer != null) { htmlData_Buffer.clear(); }
 
 		cancelTimer();
 		ttsStop();
