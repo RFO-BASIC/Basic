@@ -11215,26 +11215,27 @@ public class Run extends ListActivity {
 	private boolean execute_gr_get_value() {
 		int obj = getObjectNumber();
 		if (obj < 0) return false;
-		if (!isNext(',') || !getStringArg()) return false;			// get the parameter string
-		String parm = StringConstant;
-		if (!isNext(',') || !getVar() || !checkEOL()) return false;	// var for value
-		Var var = Vars.get(theValueIndex);
-
 		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
-		if (!b.type().hasParameter(parm)) {
-			return RunTimeError("Object does not contain " + parm);
+		while (isNext(',')) {										// collect tag/var pairs
+			if (!getStringArg()) return false;						// get each parameter string
+			String parm = StringConstant;
+			if (!b.type().hasParameter(parm)) {
+				return RunTimeError("Object does not contain " + parm);
+			}
+			if (!isNext(',') || !getVar()) return false;			// var for value
+			if (VarIsNumeric == parm.equals("text")) {					// error if numeric var and "text" tag
+				return RunTimeError("Wrong var type for tag: " + parm);	// or string var and not "text" tag
+			}
+			Var var = Vars.get(theValueIndex);
+			if (VarIsNumeric) {
+				double value = b.getValue(parm);
+				var.val(value);
+			} else {
+				String theText = b.text();
+				var.val(theText);
+			}
 		}
-		if (VarIsNumeric == parm.equals("text")) {					// error if numeric var and "text" tag
-			return RunTimeError("Wrong var type for tag: " + parm);	// or string var and not "text" tag
-		}
-		if (VarIsNumeric) {
-			double value = b.getValue(parm);
-			var.val(value);
-		} else {
-			String theText = b.text();
-			var.val(theText);
-		}
-		return true;
+		return checkEOL();
 	}
 
 	private boolean execute_gr_get_type() {
