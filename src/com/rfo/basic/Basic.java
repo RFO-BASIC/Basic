@@ -99,8 +99,6 @@ public class Basic extends Activity {
 
 	public static ArrayList<Run.ProgramLine> lines;			// Program lines for execution
 
-	public static String ProgramFileName;					// Set when program loaded or saved
-
 	public static Context BasicContext;						// saved so we do not have to pass it around
 	public static Context theRunContext;
 
@@ -192,8 +190,6 @@ public class Basic extends Activity {
 		apkCreateDataBaseDir = res.getBoolean(R.bool.apk_create_database_dir);
 
 		DoAutoRun = false;
-
-		ProgramFileName = "";
 		theProgramRunner = null;
 	}
 
@@ -238,22 +234,27 @@ public class Basic extends Activity {
 		 * Auto run will be called with a new bundle with just the filename.
 		 */
 		Intent myIntent = getIntent();
-		String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // Launched by shortcut?
+		String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME);	// Launched by shortcut?
+		Bundle savedState = myIntent.getBundleExtra(Editor.EXTRA_RESTART);				// Restart from editor?
 		if (FileName == null) {								// Launched with a .bas as argument?
 			if (myIntent.getData() != null) FileName = myIntent.getData().getPath();
 		}
 
-		if ((FileName != null) && ! FileName.equals("")) {
+		if ((FileName != null) && !FileName.equals("")) {
 			Bundle bb = new Bundle();
 			bb.putString("fn", FileName);								// fn is the tag for the filename parameter
-			Intent intent = new  Intent(BasicContext, AutoRun.class);	// in the bundle going to AutoRun
+			Intent intent = new Intent(BasicContext, AutoRun.class);	// in the bundle going to AutoRun
 			intent.putExtras(bb);
 			DoAutoRun = true;
 			startActivity( intent );
 			finish();
-		} else if (AreSamplesLoaded()) {								// This is not a launcher short cut
+		} else if (AreSamplesLoaded()) {								// this is not a launcher short cut
 			DoAutoRun = false;
-			startActivity(new Intent(BasicContext, Editor.class));		// 	Goto the Editor
+			Intent intent = new Intent(BasicContext, Editor.class);
+			if (savedState != null) {									// if restarted by Editor
+				intent.putExtra(Editor.EXTRA_RESTART, savedState);		// send saved state back
+			}
+			startActivity(intent);										// to the Editor
 			finish();
 		} else {														// The sample files have not been loaded
 			runBackgroundLoader();							// Start the background task to load samples and graphics

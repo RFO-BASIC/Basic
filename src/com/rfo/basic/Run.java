@@ -103,6 +103,7 @@ import org.apache.http.util.ByteArrayBuffer;
 
 import com.rfo.basic.Basic.TextStyle;
 import com.rfo.basic.GPS.GpsData;
+import com.rfo.basic.Run.Background.Var;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -2189,10 +2190,7 @@ public class Run extends ListActivity {
 		Log.v(LOGTAG, CLASSTAG + " onCreate");
 
 		if (Basic.lines == null) {
-			Log.e(LOGTAG, CLASSTAG + ".onCreate: Basic.lines null. Restarting BASIC!.");
-			Intent intent = new Intent(getApplicationContext(), Basic.class);
-			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			startActivity(intent);
+			Log.e(LOGTAG, CLASSTAG + ".onCreate: Lost context. Bail out.");
 			finish();
 			return;
 		}

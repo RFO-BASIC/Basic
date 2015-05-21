@@ -62,11 +62,19 @@ import android.widget.Toast;
 public class Editor extends Activity {
 	private static final String LOGTAG = "Editor";
 	private static final String CLASSTAG = Editor.class.getSimpleName();
-//	Log.v(LOGTAG, CLASSTAG + " String Var Value =  " + d);
+
+	// Things to save and restore if the system kills us.
+	private static final String STATE_PROGRAM_FILE_NAME = "programFileName";
+	private static final String STATE_INITIAL_SIZE = "initialSize";
+	private static final String STATE_SAVED = "isSaved";
+	private static final String STATE_ERROR_DISPLACEMENT = "errorDisplacement";
+	private static final String STATE_MTEXT_DATA = "theText";
+	public static final String EXTRA_RESTART = "com.rfo.basic.doRestart";
 
 	public static final int LOAD_FILE_INTENT = 1;
 
 	public static LinedEditText mText;					// The Editors display text buffers
+	public static String ProgramFileName;				// Set when program loaded or saved
 
 	public static String DisplayText = "REM Start of BASIC! Program\n";
 	public static int SyntaxErrorDisplacement = -1;
@@ -79,6 +87,8 @@ public class Editor extends Activity {
 
 	private Menu mMenu = null;
 	private enum Action { NONE, CLEAR, LOAD, RUN, LOAD_RUN, EXIT }
+
+	private Bundle mSavedInstanceState = null;			// carry saved state across callbacks
 
 	// ****************** Class for drawing Lined Edit Text *******************
 
@@ -243,16 +253,13 @@ public class Editor extends Activity {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
-
+		Log.d(LOGTAG, CLASSTAG + ".onCreate");
 		super.onCreate(savedInstanceState);						// Setup and the display the text to be edited
 
-		if (Basic.BasicContext == null) {						// If we have lost context then
-			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Restarting BASIC!.");
-			Intent intent = new Intent(getApplicationContext(), Basic.class);
-			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			startActivity(intent);
-			finish();
-			return;
+		mSavedInstanceState = savedInstanceState;				// preserve for onResume
+		if (savedInstanceState == null) {						// if no state from system
+			Intent intent = getIntent();						// look for state from Basic Activity
+			mSavedInstanceState = intent.getBundleExtra(EXTRA_RESTART);
 		}
 		Run.Exit = false; 										// Clear this in case it was set last time BASIC! exited.
 
@@ -264,7 +271,7 @@ public class Editor extends Activity {
 		 * When that is done, the rest of the code here will be execute.
 		 */
 		setContentView(R.layout.editor);
-		setTitle(Name + Basic.ProgramFileName);
+		ProgramFileName = "unnamed program";
 
 		mText = (LinedEditText)findViewById(R.id.basic_text);	// mText is the TextView Object
 		mText.setTypeface(Typeface.MONOSPACE);
@@ -275,8 +282,8 @@ public class Editor extends Activity {
 		}
 
 		mText.setMinLines(4096);
-		mText.setText(DisplayText);								// Put the text lines into Object
 		mText.setCursorVisible(true);
+		mText.setText(DisplayText);								// Put the text lines into Object
 		InitialProgramSize = DisplayText.length();
 		Saved = true;
 	}
@@ -347,6 +354,30 @@ public class Editor extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
+
+		if (Basic.BasicContext == null) {						// if we have lost context then restart Basic Activity
+			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Restarting BASIC!.");
+			Intent intent = new Intent(getApplicationContext(), Basic.class);
+			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			if (mSavedInstanceState != null) {					// send saved state so Basic can send it back
+				mSavedInstanceState.putString(STATE_MTEXT_DATA, mText.getText().toString());
+				intent.putExtra(EXTRA_RESTART, mSavedInstanceState);
+			}
+			startActivity(intent);
+			finish();
+			return;
+		}
+
+		if (mSavedInstanceState != null) {
+			Log.d(LOGTAG, CLASSTAG + ".onResume: found savedInstanceState");
+			ProgramFileName = mSavedInstanceState.getString(STATE_PROGRAM_FILE_NAME);
+			mText.setText(mSavedInstanceState.getString(STATE_MTEXT_DATA));
+			InitialProgramSize = mSavedInstanceState.getInt(STATE_INITIAL_SIZE);
+			SyntaxErrorDisplacement = mSavedInstanceState.getInt(STATE_ERROR_DISPLACEMENT);
+			Saved = mSavedInstanceState.getBoolean(STATE_SAVED);
+			mSavedInstanceState = null;
+		}
+
 		if (Settings.changeBaseDrive) {
 			doBaseDriveChange();
 		}
@@ -356,12 +387,11 @@ public class Editor extends Activity {
 			return;			// Instead, clear it in onCreate() the next time the Editor starts
 		}
 
-//		Log.v(LOGTAG, CLASSTAG + ".onResume " + BasicDoAutoRun);
 		if (Basic.DoAutoRun) {
 			Log.e(LOGTAG, CLASSTAG + ".onResume: AutoRun is set. Shutting down.");
 			finish();
 		} else {
-			setTitle(Name + Basic.ProgramFileName);
+			setTitle(Name + ProgramFileName);
 
 			if (mMenu != null) {
 				menuItemsToActionBar(mMenu);
@@ -397,6 +427,16 @@ public class Editor extends Activity {
 			}
 		}
 
+	}
+
+	@Override
+	public void onSaveInstanceState(Bundle savedInstanceState) {
+		savedInstanceState.putString(STATE_PROGRAM_FILE_NAME, ProgramFileName);
+		savedInstanceState.putInt(STATE_INITIAL_SIZE, InitialProgramSize);
+		savedInstanceState.putBoolean(STATE_SAVED, Saved);
+		savedInstanceState.putInt(STATE_ERROR_DISPLACEMENT, SyntaxErrorDisplacement);
+
+		super.onSaveInstanceState(savedInstanceState);
 	}
 
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -519,13 +559,13 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.save_run:								// SAVE and RUN
-				String fname = Basic.ProgramFileName;
+				String fname = ProgramFileName;
 				if (Saved) {
 					Run();									// no change, just run the program
 				} else if (fname.equals("")) {				// if no file name...
 					askNameSaveFile(Action.RUN);			// ... get a name, save the program and run it
 				} else {									// else have a file name
-					writeTheFile(Basic.ProgramFileName);	// save the program, overwriting existing file
+					writeTheFile(ProgramFileName);	// save the program, overwriting existing file
 					// Basic.toaster(this, "Saved " + fname);
 					Run();									// run the program
 				}
@@ -677,8 +717,8 @@ public class Editor extends Activity {
 
 	private void clearProgram() {
 		Basic.clearProgram();						// then do the clear
-		Basic.ProgramFileName = "";
-		setTitle(Name + Basic.ProgramFileName);
+		ProgramFileName = "";
+		setTitle(Name + ProgramFileName);
 		mText.setText(DisplayText);
 	}
 
@@ -686,7 +726,7 @@ public class Editor extends Activity {
 
 		final AlertDialog.Builder alert = new AlertDialog.Builder(this);		// Get the filename from user
 		final EditText input = new EditText(this);
-		input.setText(Basic.ProgramFileName);							// If the program has a name
+		input.setText(ProgramFileName);									// If the program has a name
 		// put it in the dialog box
 		alert.setView(input);
 		alert.setCancelable(true);										// Allow the dialog to be canceled
@@ -790,8 +830,8 @@ public class Editor extends Activity {
 			Basic.toaster(this, "Saved " + path);				// notify the user
 
 			Basic.SD_ProgramPath = DirPart;						// ProgramPath is relative to source
-			Basic.ProgramFileName = theFileName;				// wet new Program file name
-			setTitle(Name + Basic.ProgramFileName);
+			ProgramFileName = theFileName;						// set new Program file name
+			setTitle(Name + ProgramFileName);
 			InitialProgramSize = mText.length();				// Reset initial program size
 			Saved = true;										// indicate the program has been saved
 		} else {

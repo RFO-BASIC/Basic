@@ -179,7 +179,7 @@ public class LoadFile extends ListActivity {
 		Basic.clearProgram(); 				// Clear the old program
 		Editor.DisplayText = "";			// Clear the display text buffer
 
-		Basic.ProgramFileName = aFileName;
+		Editor.ProgramFileName = aFileName;
 
 		String FullFileName = Basic.getSourcePath( 							// Base Source dir 
 				Basic.SD_ProgramPath + File.separatorChar +					// plus load path
