@@ -29,8 +29,8 @@ This file is part of BASIC! for Android
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.rfo.basic"
-    android:versionCode="1871"
-    android:versionName="1.87.01" >
+    android:versionCode="1872"
+    android:versionName="1.87.02" >
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
