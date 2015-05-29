@@ -2195,7 +2195,6 @@ public class Run extends ListActivity {
 			return;
 		}
 
-//		System.gc();
 //		Log.v(LOGTAG, CLASSTAG + " isOld  " + isOld);
 		if (isOld) {
 			if (theWakeLock != null) {
@@ -2469,7 +2468,6 @@ public class Run extends ListActivity {
 	@Override
 	protected void onStop() {
 		Log.v(LOGTAG, CLASSTAG + " onStop " + kbShown);
-		System.gc();
 		if (!GR.Running) {
 			triggerInterrupt(Interrupt.BACKGROUND_BIT);
 //			if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
@@ -3326,7 +3324,7 @@ public class Run extends ListActivity {
 		private Long EvalNumericExpressionIntValue;			// Integer copy of EvalNumericExpressionValue when VarIsInt is true
 		private Double GetNumberValue;						// Return value from GetNumber()
 		private String PossibleKeyWord = "";				// Used when TO, STEP, THEN are expected
-		private String errorMsg;
+		private String mErrorMsg;
 
 		// *************************** Random number function variables ***************************
 
@@ -3909,7 +3907,7 @@ public class Run extends ListActivity {
 
 		VarNames = new ArrayList<String>() ;				// Each entry has the variable name string
 		VarIndex = new ArrayList<Integer>();				// Each entry is an index into [...]
-		errorMsg = "No error";
+		mErrorMsg = "No error";
 
 		theLists = new ArrayList <ArrayList>();
 		theLists.add(new ArrayList <ArrayList>());
@@ -4966,7 +4964,7 @@ public class Run extends ListActivity {
 		Editor.SyntaxErrorDisplacement = ExecutingLineIndex + 1;
 
 		writeErrorMsg(msgs[0]);
-		Log.d(LOGTAG, "RunTimeError: " + errorMsg);
+		Log.d(LOGTAG, "RunTimeError: " + mErrorMsg);
 		return false;									// always return false as convenience for caller
 	}
 
@@ -4980,7 +4978,7 @@ public class Run extends ListActivity {
 	}
 
 	private void writeErrorMsg(String msg) {		// Write errorMsg, do NOT set SyntaxError
-		errorMsg = msg + "\nLine: " + ExecutingLineBuffer.line();
+		mErrorMsg = msg + "\nLine: " + ExecutingLineBuffer.line();
 	}
 
 	private void writeErrorMsg(String prefix, Throwable e) {
@@ -6677,7 +6675,7 @@ public class Run extends ListActivity {
 
 	private boolean executeSF_GETERROR() {												// GETERROR$
 		if (!isNext(')'))				return false;	// Function must end with ')'
-		StringConstant = (errorMsg != null) ? errorMsg : "unknown";
+		StringConstant = (mErrorMsg != null) ? mErrorMsg : "unknown";
 		return true;
 	}
 
@@ -7772,7 +7770,7 @@ public class Run extends ListActivity {
 			if (canceledIndex == -1) {						// no cancel var, report cancel as error
 				String err = "Input dialog cancelled";
 				if (mOnErrorInt != null) {					// allow program to trap cancel as error
-					errorMsg = err;
+					mErrorMsg = err;
 					ExecutingLineIndex = mOnErrorInt.line();
 				} else {									// tell user we are stopping
 					PrintShow(err, "Execution halted");
@@ -9892,7 +9890,6 @@ public class Run extends ListActivity {
 		shortView = null;
 		generatedSnd = null;
 		sample = null;
-		System.gc();
 
 		return true;
 	}
@@ -10583,7 +10580,6 @@ public class Run extends ListActivity {
 				}
 			}
 			BitmapList.clear();
-			System.gc();
 		}
 	}
 
@@ -10828,9 +10824,16 @@ public class Run extends ListActivity {
 	}
 
 	// Common processing for the end of a command that creates a bitmap.
-	private boolean createBitmap_finish(Bitmap bitmap, int varIndex) {
-		Vars.get(varIndex).val(BitmapList.size());					// save the GR Object index into the var
-		BitmapList.add(bitmap);										// add the new bitmap to the bitmap list
+	private boolean createBitmap_finish(Bitmap bitmap, Var var, String errMsg) {
+		int value;
+		if (bitmap != null) {
+			value = BitmapList.size();								// save the bitmap index
+			BitmapList.add(bitmap);									// add the new bitmap to the bitmap list
+		} else {
+			value = -1;
+			writeErrorMsg((errMsg != null) ? errMsg : "Failed to create bitmap at:");
+		}
+		if (var != null) { var.val(value); }						// give the bitmap pointer to the user
 		return true;
 	}
 
@@ -11513,30 +11516,30 @@ public class Run extends ListActivity {
 
 	private boolean execute_gr_bitmap_load() {
 		if (!getNVar()) return false;								// bitmap pointer variable
-		int SaveValueIndex = theValueIndex;
+		Var var = Vars.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		if (!getStringArg()) return false;							// get the file path
 		if (!checkEOL()) return false;
 
+		String errMsg = null;
+		Bitmap bitmap = null;
+
 		String fileName = StringConstant;							// the filename as given by the user
 		BufferedInputStream bis = null;								// establish an input stream
 		try { bis = Basic.getBufferedInputStream(Basic.DATA_DIR, fileName); }
-		catch (Exception e) { return RunTimeError(e); }
-		if (bis == null) { return RunTimeError("No bitmap found"); }	// can this happen?
-
-		System.gc();												// garbage collect
-
-		Bitmap bitmap = null;
-		try { bitmap = BitmapFactory.decodeStream(bis); }			// create bitmap from the input stream
-		catch (OutOfMemoryError oom) { RunTimeError(oom); }
-
-		try { bis.close(); }
-		catch (Exception e) { return RunTimeError(e); }
-
-		if (bitmap == null) { return RunTimeError("Bitmap load failed at:"); }
-
-		return createBitmap_finish(bitmap, SaveValueIndex);		// store the bitmap and return its index
+		catch (Exception e) { errMsg = e.getMessage(); }
+		if (bis == null) {
+			if (errMsg == null) { errMsg = "No bitmap found"; }		// can this happen?
+		} else {
+			try { bitmap = BitmapFactory.decodeStream(bis); }		// create bitmap from the input stream
+			catch (OutOfMemoryError oom) { errMsg = oom.getMessage(); }
+			finally {
+				try { bis.close(); }
+				catch (IOException e) { return RunTimeError(e); }
+			}
+		}
+		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_bitmap_delete() {
@@ -11549,22 +11552,18 @@ public class Run extends ListActivity {
 			bitmap.recycle();
 		}
 		BitmapList.set(bitmapPtr, null);
-		System.gc();
 		return true;
 	}
 
 	private boolean execute_gr_bitmap_scale() {
 
 		if (!getNVar()) return false;								// destination bitmap pointer variable
-		int SaveValueIndex = theValueIndex;
+		Var var = Vars.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		int bitmapPtr = getBitmapArg();								// get source bitmap number
 		if (bitmapPtr < 0) return false;
 		Bitmap srcBitmap = BitmapList.get(bitmapPtr);				// get the bitmap
-		if (srcBitmap == null) {
-			return RunTimeError("Bitmap was deleted");
-		}
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// get width
@@ -11581,22 +11580,23 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
+		if (srcBitmap == null) {
+			return RunTimeError("Bitmap was deleted");
+		}
 		if (Width == 0 || Height == 0) {
 			return RunTimeError("Width and Height must not be zero");
 		}
 
+		String errMsg = null;
 		Bitmap bitmap = null;
 		try { bitmap = Bitmap.createScaledBitmap(srcBitmap, Width, Height, parm); }
-		catch (Exception e) { return RunTimeError(e); }
-		catch (OutOfMemoryError oom) { return RunTimeError(oom); }
+		catch (OutOfMemoryError oom) { errMsg = oom.getMessage(); }
 
 		if (bitmap == srcBitmap) {
 			// Scale 1:1 does not create a new bitmap. Make a copy.
 			bitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
 		}
-
-		System.gc();
-		return createBitmap_finish(bitmap, SaveValueIndex);		// store the bitmap and return its index
+		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_bitmap_size() {
@@ -11624,7 +11624,7 @@ public class Run extends ListActivity {
 
 	private boolean execute_gr_bitmap_crop() {
 		if (!getNVar()) return false;								// dest Graphic Object variable
-		int SaveValueIndex = theValueIndex;
+		Var var = Vars.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		int bitmapPtr = getBitmapArg("Invalid Source Bitmap Pointer");	// get source bitmap number
@@ -11636,16 +11636,20 @@ public class Run extends ListActivity {
 		if (bounds == null) return false;							// error getting values
 		if (!checkEOL()) return false;
 
+		if (srcBitmap == null) {
+			return RunTimeError("Bitmap was deleted");
+		}
+
+		String errMsg = null;
 		Bitmap bitmap = null;
 		try { bitmap = Bitmap.createBitmap(srcBitmap, bounds[0], bounds[1], bounds[2], bounds[3]); }
-		catch (Exception e) { return RunTimeError(e); }
-		catch (OutOfMemoryError oom) { return RunTimeError(oom); }
+		catch (OutOfMemoryError oom) { errMsg = oom.getMessage(); }
 
 		if (bitmap == srcBitmap) {
 			// "Crop" to full image does not create a new bitmap. Make a copy.
 			bitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
 		}
-		return createBitmap_finish(bitmap, SaveValueIndex);		// store the bitmap and return its index
+		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_bitmap_draw() {
@@ -11671,7 +11675,7 @@ public class Run extends ListActivity {
 
 	private boolean execute_gr_bitmap_create() {
 		if (!getNVar()) return false;								// get bitmap pointer variable
-		int SaveValueIndex = theValueIndex;
+		Var var = Vars.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// get the width
@@ -11688,14 +11692,12 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
+		String errMsg = null;
 		Bitmap bitmap = null;
-		try {
-			bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); // Create the bitamp
-		}
-		catch (Exception e) { return RunTimeError(e); }
-		catch (OutOfMemoryError oom) { return RunTimeError(oom.toString()); }
+		try { bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); }
+		catch (OutOfMemoryError oom) { errMsg = oom.getMessage(); }
 
-		return createBitmap_finish(bitmap, SaveValueIndex);			// store the bitmap and return its index
+		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_rotate_start() {
@@ -11956,18 +11958,12 @@ public class Run extends ListActivity {
 	}
 
 	private boolean execute_gr_get_pixel() {
-		boolean retval = true;
 		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
-		if (b == null) {
-			RunTimeError("Could not capture screen bitmap. Sorry.");
-			retval = false;
-		} else {
-			retval = getTheBMpixel(b);								// get the requested pixel
-			b.recycle();											// clean up bitmap
-			b = null;
-		}
+		boolean retval = (b != null)
+						? getTheBMpixel(b)							// get the requested pixel
+						: RunTimeError("Could not capture screen bitmap. Sorry.");
+		b = null;
 		GR.drawView.destroyDrawingCache();							// clean up DrawingCache
-		System.gc();
 		return retval;
 	}
 
@@ -12050,18 +12046,12 @@ public class Run extends ListActivity {
 		}
 		if (!checkEOL()) return false;
 
-		boolean retval = true;
 		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
-		if (b == null) {
-			RunTimeError("Problem creating bitmap");
-			retval = false;
-		} else {
-			retval = writeBitmapToFile(b, fn, quality);
-			b.recycle();											// clean up bitmap
-			b = null;
-		}
+		boolean retval = (b != null)
+						? writeBitmapToFile(b, fn, quality)
+						: RunTimeError("Problem creating bitmap");
+		b = null;
 		GR.drawView.destroyDrawingCache();							// clean up DrawingCache
-		System.gc();
 		return retval;
 	}
 
@@ -12070,23 +12060,18 @@ public class Run extends ListActivity {
 		Var var = Vars.get(theValueIndex);
 		if (!checkEOL()) return false;
 
-		boolean retval = false;
+		String errMsg = null;
 		Bitmap b = getTheBitmap();									// get the DrawingCache bitmap
 		if (b == null) {
-			RunTimeError("Could not capture screen bitmap. Sorry.");
+			errMsg = "Could not capture screen bitmap. Sorry.";
 		} else {
-			var.val(BitmapList.size());								// Save the GR Object index into the var
-			try {
-				BitmapList.add(b.copy(Bitmap.Config.ARGB_8888, true));	// copy the bitmap from the DrawingCache
-				retval = true;										// success
-			}
-			catch (OutOfMemoryError oom) { RunTimeError(oom); }
-			b.recycle();											// clean up bitmap
-			b = null;
+			try { b = b.copy(Bitmap.Config.ARGB_8888, true); }		// copy the bitmap from the DrawingCache
+			catch (Exception e) { errMsg = e.getMessage(); }
+			catch (OutOfMemoryError oom) { errMsg = oom.getMessage(); }
 		}
+		createBitmap_finish(b, var, errMsg);						// store the bitmap and return its index
 		GR.drawView.destroyDrawingCache();							// clean up DrawingCache
-		System.gc();
-		return retval;
+		return true;
 	}
 
 	private boolean execute_bitmap_save() {
@@ -12109,11 +12094,7 @@ public class Run extends ListActivity {
 		if (quality < 0 || quality > 100) {
 			return RunTimeError("Quality must be between 0 and 100");
 		}
-
-		boolean retval = writeBitmapToFile(SrcBitMap, fn, quality);
-		SrcBitMap = null;
-		System.gc();
-		return retval;
+		return writeBitmapToFile(SrcBitMap, fn, quality);
 	}
 
 	private boolean execute_gr_scale() {
@@ -12287,8 +12268,6 @@ public class Run extends ListActivity {
 		var.val(bitmapIndex);											// Save the GR Object index into the var
 
 		CameraBitmap = null;
-		System.gc();
-
 		return true;
 	}
 
@@ -15597,7 +15576,6 @@ public class Run extends ListActivity {
 		}
 		if (font != null) {
 			FontList.set(fp, null);
-			System.gc();
 		}
 		return true;
 	}
@@ -15611,7 +15589,6 @@ public class Run extends ListActivity {
 	private void clearFontList() {
 		FontList.clear();											// clear the font list
 		FontList.add(null);											// add a dummy element 0
-		System.gc();
 	}
 
 	// ************************************* CONSOLE Commands *************************************
