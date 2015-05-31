@@ -103,7 +103,6 @@ import org.apache.http.util.ByteArrayBuffer;
 
 import com.rfo.basic.Basic.TextStyle;
 import com.rfo.basic.GPS.GpsData;
-import com.rfo.basic.Run.Background.Var;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -1351,6 +1350,7 @@ public class Run extends ListActivity {
 	private static final String BKW_GR_BITMAP_DRAW = "draw";
 	private static final String BKW_GR_BITMAP_DRAWINTO_END = "drawinto.end";
 	private static final String BKW_GR_BITMAP_DRAWINTO_START = "drawinto.start";
+	private static final String BKW_GR_BITMAP_FILL = "fill";
 	private static final String BKW_GR_BITMAP_LOAD = "load";
 	private static final String BKW_GR_BITMAP_SAVE = "save";
 	private static final String BKW_GR_BITMAP_SCALE = "scale";
@@ -1414,6 +1414,7 @@ public class Run extends ListActivity {
 		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_DRAWINTO_START,
 		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_DRAWINTO_END,
 		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_DRAW,
+		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_FILL,
 		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_LOAD,
 		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_SAVE,
 		BKW_GR_BITMAP_GROUP + BKW_GR_BITMAP_SCALE,
@@ -4513,6 +4514,7 @@ public class Run extends ListActivity {
 		new Command(BKW_GR_BITMAP_DRAWINTO_START)   { public boolean run() { return execute_gr_bitmap_drawinto_start(); } },
 		new Command(BKW_GR_BITMAP_DRAWINTO_END)     { public boolean run() { return execute_gr_bitmap_drawinto_end(); } },
 		new Command(BKW_GR_BITMAP_DRAW)             { public boolean run() { return execute_gr_bitmap_draw(); } },
+		new Command(BKW_GR_BITMAP_FILL)             { public boolean run() { return execute_gr_bitmap_fill(); } },
 		new Command(BKW_GR_BITMAP_LOAD)             { public boolean run() { return execute_gr_bitmap_load(); } },
 		new Command(BKW_GR_BITMAP_SAVE)             { public boolean run() { return execute_bitmap_save(); } },
 		new Command(BKW_GR_BITMAP_SCALE)            { public boolean run() { return execute_gr_bitmap_scale(); } },
@@ -11652,6 +11654,78 @@ public class Run extends ListActivity {
 		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
 	}
 
+	private void fillscan(int[] arrPixels, int color, int sx, int ex, int y, int width, Stack<Point> q) {
+		if ((arrPixels == null) || (q == null)) return;
+
+		// Scan part of a line for points of the target color,
+		// pushing one new seed for each segment of connected points found.
+		boolean open = false;										// if true, have seeded a segment
+		int x0 = width * y;											// first point of line
+		for (int x = sx; x <= ex; ++x) {
+			boolean match = arrPixels[x0 + x] == color;
+			if (!open && match) {
+				q.push(new Point (x, y));							// start a new segment
+				open = true;
+			} else if (open && !match) {
+				open = false;										// close this segment
+			}
+		}
+	}
+
+	// 2015-05-31 Algorithm by George Matei, implemented by Chaand.
+	private boolean execute_gr_bitmap_fill() {					// floodfill a region of a bitmap
+		int bitmapPtr = getBitmapArg();								// get the bitmap number
+		if (bitmapPtr < 0)				return false;
+		if (!isNext(','))				return false;
+		int[] xy = getArgsII();										// x, y coordinates of point in region to color
+		if (xy == null)					return false;
+		if (!checkEOL())				return false;
+
+		Bitmap bmp = BitmapList.get(bitmapPtr);						// get the bitmap
+		if (!checkBitmapPoint(bmp, xy))	return false;				// is point in bitmap?
+
+		int targetColor = bmp.getPixel(xy[0], xy[1]);				// get the original color of the bitmap pixel
+		int replacementColor = aPaint.getColor();					// get the color to change to
+		if (targetColor == replacementColor) return true;			// nothing to do
+
+		int width = bmp.getWidth();									// get the bitmap dimensions
+		int xmax = width - 1;
+		int height = bmp.getHeight();
+		int ymax = height - 1;
+		int[] arrPixels = new int[width * height];					// array for the bitmap pixels [TODO: too much memory?]
+
+		bmp.getPixels(arrPixels, 0, width, 0, 0, width, height);	// get the bitmap pixels
+
+		Stack<Point> q = new Stack<Point>();
+
+		q.push(new Point(xy[0], xy[1]));							// first seed
+		while (!q.empty()) {
+			Point p = q.pop();
+			int y = p.y;
+			int x0 = width * p.y;									// index of point (0, y)
+
+			// Change all connected points of the old color to the new color
+			int sx = p.x;											// start point
+			int ex = sx;											// end point
+			arrPixels[x0 + sx] = replacementColor;
+			while ((sx > 0) && (arrPixels[x0 + sx - 1] == targetColor)) {
+				arrPixels[x0 + --sx] = replacementColor;
+			}
+			while ((ex < xmax) && (arrPixels[x0 + ex + 1] == targetColor)) {
+				arrPixels[x0 + ++ex] = replacementColor;
+			}
+			bmp.setPixels(arrPixels, x0 + sx, width, sx, y, ex - sx + 1, 1);
+
+			if (y > 0) {											// if there is a line above
+				fillscan(arrPixels, targetColor, sx, ex, y - 1, width, q);	// push a point for each segment of matching color
+			}
+			if (y < ymax) {											// if there is a line below
+				fillscan(arrPixels, targetColor, sx, ex, y + 1, width, q);	// push a point for each segment of matching color
+			}
+		}
+		return true;
+	}
+
 	private boolean execute_gr_bitmap_draw() {
 		GR.BDraw b = createGrObj_start(GR.Type.Bitmap);				// create Graphic Object and get variable
 		if (b == null) return false;
@@ -11977,28 +12051,16 @@ public class Run extends ListActivity {
 	}
 
 	private boolean getTheBMpixel(Bitmap b) {
-
-		if (!evalNumericExpression()) return false;					// get x
-		int x = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;					// get y
-		int y = EvalNumericExpressionValue.intValue();
-		if (!isNext(',')) return false;
-
+		int[] xy = getArgsII();										// get x and y
+		if (xy == null)					return false;				// error getting coordinate values
+		if (!isNext(','))				return false;
 		int[] argb = getArgs4NVar();								// [a, r, g, b]
-		if (argb == null) return false;								// error getting variables
-		if (!checkEOL()) return false;
+		if (argb == null)				return false;				// error getting variables
+		if (!checkEOL())				return false;				// end of syntax checks
 
-		if (b == null) { return RunTimeError("Bitmap was deleted"); }
+		if (!checkBitmapPoint(b, xy))	return false;				// is point in bitmap?
 
-		int w = b.getWidth();										// get the image width
-		int h = b.getHeight();										// get the image height
-		if (x < 0 || x >= w || y < 0 || y >= h) {
-			return RunTimeError("x or y exceeds size of bitmap");
-		}
-
-		int pixel = (b == null) ? 0 : b.getPixel(x, y);				// get the pixel from the bitmap
+		int pixel = b.getPixel(xy[0], xy[1]);						// get the pixel from the bitmap
 
 		Vars.get(argb[0]).val(Color.alpha(pixel));					// get the components of the pixel
 		Vars.get(argb[1]).val(Color.red(pixel));
@@ -12006,6 +12068,17 @@ public class Run extends ListActivity {
 		Vars.get(argb[3]).val(Color.blue(pixel));
 
 		return true;
+	}
+
+	private boolean checkBitmapPoint(Bitmap b, int xy[]) {
+		if (b == null)	{ return RunTimeError("Bitmap was deleted"); }
+		if (xy == null)	{ return false; }
+		int x = xy[0];
+		int y = xy[1];
+		if ((x < 0) || (x >= b.getWidth()) || (y < 0) || (y >= b.getHeight())) {
+			return RunTimeError("x or y exceeds size of bitmap");
+		}
+		return true;									// point is in bitmap
 	}
 
 	private boolean writeBitmapToFile(Bitmap b, String fn, int quality) {
