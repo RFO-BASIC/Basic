@@ -3973,7 +3973,7 @@ public class Run extends ListActivity {
 
 		if (theMP != null) {
 			try { theMP.stop(); } catch (IllegalStateException e) {}
-			if (theMP != null) theMP.release();
+			theMP.release();
 			theMP = null;
 		}
 
@@ -10154,7 +10154,7 @@ public class Run extends ListActivity {
 		try {													// Do the open or create
 			db = SQLiteDatabase.openOrCreateDatabase(new File(fn), null );
 		} catch  (Exception e) {
-			return RunTimeError("SQL Exception: " + e.getMessage());
+			return RunTimeError("SQL Exception:", e);
 		}
 
 		// The newly opened data base is added to the DataBases list.
@@ -10174,7 +10174,7 @@ public class Run extends ListActivity {
 		int i = (int)var.nval();								// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 		try { db.close(); }										// Try closing it
-		catch (Exception e) { return RunTimeError("SQL Exception: " + e.getMessage()); }
+		catch (Exception e) { return RunTimeError("SQL Exception:", e); }
 
 		var.val(0.0);											// Set the pointer to 0 to indicate closed.
 		return true;
@@ -10196,7 +10196,7 @@ public class Run extends ListActivity {
 		if (!checkEOL())				return false;
 
 		try { db.insertOrThrow(TableName, null, values); }		// Now insert the pairs into the named table
-		catch (Exception e) { return RunTimeError("SQL Exception: " + e.getMessage()); }
+		catch (Exception e) { return RunTimeError("SQL Exception:", e); }
 
 		return true;
 	}
@@ -10255,7 +10255,7 @@ public class Run extends ListActivity {
 		try {													// Do the query and get the cursor
 			cursor = db.query(TableName, Q_Columns, Where, null, null, null, Order);
 		} catch (Exception e) {
-			return RunTimeError("SQL Exception: " + e.getMessage());
+			return RunTimeError("SQL Exception:", e);
 		}
 
 		cursorVar.val(Cursors.size() + 1);						// save the Cursor index into the var
@@ -10282,7 +10282,7 @@ public class Run extends ListActivity {
 				try {
 					result = cursor.getString(index);			// get the result
 				} catch (Exception e) {
-					return RunTimeError("SQL Exception: " + e.getMessage());
+					return RunTimeError("SQL Exception:", e);
 				}
 				if (result == null) { result = ""; }
 				Vars.get(theValueIndex).val(result);			// set result into var
@@ -10352,7 +10352,7 @@ public class Run extends ListActivity {
 		try {
 			count = db.delete(TableName, Where, null);			// do the deletes
 		} catch (Exception e) {
-			return RunTimeError("SQL Exception: " + e.getMessage());
+			return RunTimeError("SQL Exception:", e);
 		}
 
 		if (resultVar != null) {
@@ -10382,7 +10382,7 @@ public class Run extends ListActivity {
 		if (!checkEOL())				return false;
 
 		try { db.update(TableName, values, Where, null); }
-		catch (Exception e) { return RunTimeError("SQL Exception: " + e.getMessage()); }
+		catch (Exception e) { return RunTimeError("SQL Exception:", e); }
 		return true;
 	}
 
@@ -10397,7 +10397,7 @@ public class Run extends ListActivity {
 		if (!checkEOL())				return false;
 
 		try { db.execSQL(CommandString); }
-		catch (Exception e) { return RunTimeError("SQL Exception: " + e.getMessage()); }
+		catch (Exception e) { return RunTimeError("SQL Exception:", e); }
 		return true;
 	}
 
@@ -10420,7 +10420,7 @@ public class Run extends ListActivity {
 		try {													// Do the query and get the cursor
 			cursor = db.rawQuery(QueryString, null);
 		} catch (Exception e) {
-			return RunTimeError("SQL Exception: " + e.getMessage());
+			return RunTimeError("SQL Exception:", e);
 		}
 
 		cursorVar.val(Cursors.size() + 1);						// Save the Cursor index into the var
@@ -10442,7 +10442,7 @@ public class Run extends ListActivity {
 		String CommandString = "DROP TABLE IF EXISTS " + TableName;
 
 		try { db.execSQL(CommandString); }
-		catch (Exception e) { return RunTimeError("SQL Exception: " + e.getMessage()); }
+		catch (Exception e) { return RunTimeError("SQL Exception:", e); }
 		return true;
 	}
 
@@ -10477,7 +10477,7 @@ public class Run extends ListActivity {
 				+ columns + " )";
 
 		try { db.execSQL(CommandString); }
-		catch (Exception e) { return RunTimeError("SQL Exception: " + e.getMessage()); }
+		catch (Exception e) { return RunTimeError("SQL Exception:", e); }
 		return true;
 	}
 
@@ -10851,7 +10851,7 @@ public class Run extends ListActivity {
 			BitmapList.add(bitmap);									// add the new bitmap to the bitmap list
 		} else {
 			value = -1;
-			writeErrorMsg((errMsg != null) ? errMsg : "Failed to create bitmap at:");
+			writeErrorMsg((errMsg != null) ? errMsg : "Failed to create bitmap");
 		}
 		if (var != null) { var.val(value); }						// give the bitmap pointer to the user
 		return true;
@@ -12505,6 +12505,7 @@ public class Run extends ListActivity {
 	}
 
 	private MediaPlayer getMP(String fileName) {
+		String errMsg = null;
 		MediaPlayer mp = null;
 		File file = new File(Basic.getDataPath(fileName));
 		if (file.exists()) {
@@ -12526,6 +12527,7 @@ public class Run extends ListActivity {
 						mp.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());
 						mp.prepare();
 					} catch (IOException e) {
+						errMsg = e.getMessage();
 						if (mp != null) {
 							mp.release();
 							mp = null;
@@ -12534,7 +12536,10 @@ public class Run extends ListActivity {
 						if (afd != null) { try { afd.close(); } catch (IOException e) { } }
 					}
 				}
-			}
+			} else { errMsg = "Audio file not found"; }
+		}
+		if (mp == null) {
+			writeErrorMsg((errMsg != null) ? errMsg : "Unable to load audio file");
 		}
 		return mp;
 	}
@@ -12576,13 +12581,18 @@ public class Run extends ListActivity {
 		return true;
 	}
 
+	private boolean checkAudioFileTableIndex(int index) {
+		if ((index <= 0) || (index >= theMPList.size())) {
+			return RunTimeError("Invalid Audio File Table index");
+		}
+		return true;
+	}
+
 	private boolean execute_audio_release() {
 
 		if (!evalNumericExpression())	return false;
 		int index = EvalNumericExpressionValue.intValue();
-		if (index <= 0 || index >= theMPList.size()) {
-			return RunTimeError("Invalid Player List Value");
-		}
+		if (!checkAudioFileTableIndex(index)) return false;
 		if (!checkEOL())				return false;
 
 		MediaPlayer aMP = theMPList.get(index);
@@ -12600,9 +12610,7 @@ public class Run extends ListActivity {
 
 		if (!evalNumericExpression())	return false;
 		int index = EvalNumericExpressionValue.intValue();
-		if (index <= 0 || index >= theMPList.size()) {
-			return RunTimeError("Invalid Player List Value");
-		}
+		if (!checkAudioFileTableIndex(index)) return false;
 		if (!checkEOL())				return false;
 
 		MediaPlayer aMP = theMPList.get(index);
@@ -12732,9 +12740,7 @@ public class Run extends ListActivity {
 		if (!isNext(','))				return false;
 		if (!evalNumericExpression())	return false;
 		int index = EvalNumericExpressionValue.intValue();
-		if (index <= 0 || index >= theMPList.size()) {
-			return RunTimeError("Invalid Player List Value");
-		}
+		if (!checkAudioFileTableIndex(index)) return false;
 		if (!checkEOL())				return false;
 
 		MediaPlayer aMP = theMPList.get(index);
@@ -15560,7 +15566,7 @@ public class Run extends ListActivity {
 			SUoutputStream.flush();
 		}
 		catch (Exception e) {
-			return RunTimeError((mIsSU ? "SU" : "System") + " Exception: " + e.getMessage());
+			return RunTimeError((mIsSU ? "SU" : "System") + " Exception:", e);
 		}
 		return true;
 	}
