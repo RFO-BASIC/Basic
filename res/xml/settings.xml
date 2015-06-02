@@ -177,6 +177,12 @@ This file is part of BASIC! for Android
         android:defaultValue="0"
         android:dialogTitle="@string/choose_one" />
 
+    <CheckBoxPreference
+        android:key="gr_accel"
+        android:title="Graphic acceleration"
+        android:summary="Enable graphic acceleration"
+        android:defaultValue="false" />
+
     <ListPreference
         android:key="base_drive_pref"
         android:title="Base Drive"

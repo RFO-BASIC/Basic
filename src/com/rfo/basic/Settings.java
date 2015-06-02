@@ -243,6 +243,11 @@ public class Settings extends PreferenceActivity {
 				.getBoolean("autoindent", false);
 	}
 
+	public static boolean getGraphicAcceleration(Context context){
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getBoolean("gr_accel", false);
+	}
+
 	public static String getColorScheme(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getString("es_pref", "BW");
