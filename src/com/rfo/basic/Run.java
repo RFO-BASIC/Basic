@@ -376,6 +376,12 @@ public class Run extends ListActivity {
 			mValid = true;
 		}
 
+		public void clear() {							// free as much storage as possible
+			for (int idx = mBase; idx < mLength; ++idx) {
+				Vars.get(idx).clear();
+			}
+		}
+
 		public void invalidate() {						// deleted, as by UNDIM
 			mValid = false;
 		}
@@ -3094,56 +3100,70 @@ public class Run extends ListActivity {
 
 		// **************************** Variable class ****************************
 
-		public class Var {
-			private VarType mType;
-			private double mNumVal;
-			private String mStrVal;
+		public abstract class Var {
+			public Var(double val) { }
+			public Var(String val) { }
 
-			public Var(double val) {
-				mType = VarType.NUM;
-				mNumVal = val;
-				mStrVal = null;
-			}
-
-			public Var(String val) {
-				mType = VarType.STR;
-				mNumVal = 0.0;
-				mStrVal = val;
-			}
-
-			public Var(Var src) {
-				mType = src.type();
-				mNumVal = (mType == VarType.NUM) ? src.nval() : 0.0;
-				mStrVal = (mType == VarType.STR) ? src.sval() : null;
-			}
-
-			public VarType type() { return mType; }
-
-			public void val(double val) {
-				if (mType != VarType.NUM) { throw new InvalidParameterException(); }
-				mNumVal = val;
-			}
-
-			public void addval(double val) {
-				if (mType != VarType.NUM) { throw new InvalidParameterException(); }
-				mNumVal += val;
-			}
-
-			public void val(String val) {
-				if (mType != VarType.STR) { throw new InvalidParameterException(); }
-				mStrVal = val;
-			}
-
-			public double nval() {
-				if (mType != VarType.NUM) { throw new InvalidParameterException(); }
-				return mNumVal;
-			}
-
-			public String sval() {
-				if (mType != VarType.STR) { throw new InvalidParameterException(); }
-				return mStrVal;
-			}
+			public abstract Var clone();
+			public abstract void clear();
+			public abstract boolean isNumeric();
+			public abstract boolean isString();
+			public abstract void val(double val);
+			public abstract void addval(double val);
+			public abstract void val(String val);
+			public abstract double nval();
+			public abstract String sval();
 		} // class Var
+
+		public class NumVar extends Var {
+			private double mVal;
+
+			public NumVar() { this(0.0); }
+			public NumVar(double val) {
+				super(val);
+				mVal = val;
+			}
+
+			public Var clone() { return new NumVar(mVal); }
+			public void clear() { mVal = 0.0; }
+
+			public boolean isNumeric() { return true; }
+			public boolean isString() { return false; }
+
+			public void val(double val) { mVal = val; }
+			public void val(String val) { throw new InvalidParameterException(); }
+
+			public void addval(double val) { mVal += val; }
+			public void addval(String val) { throw new InvalidParameterException(); }
+
+			public double nval() { return mVal; }
+			public String sval() { throw new InvalidParameterException(); }
+		} // class NumVar
+
+		public class StrVar extends Var {
+			private String mVal;
+
+			public StrVar() { this(""); }
+			public StrVar(String val) {
+				super(val);
+				mVal = val;
+			}
+
+			public Var clone() { return new StrVar(mVal); }
+			public void clear() { mVal = ""; }
+
+			public boolean isNumeric() { return false; }
+			public boolean isString() { return true; }
+
+			public void val(double val) { throw new InvalidParameterException(); }
+			public void val(String val) { mVal = val; }
+
+			public void addval(double val) { throw new InvalidParameterException(); }
+			public void addval(String val) { mVal += val; }
+
+			public double nval() { throw new InvalidParameterException(); }
+			public String sval() { return mVal; }
+		} // class StrVar
 
 		// ***************************** ForNext class *****************************
 		// Records information about a For/Next loop. Objects go on the ForNextStack.
@@ -3199,8 +3219,8 @@ public class Run extends ListActivity {
 			public FunctionParameter(String name, VarType type, boolean isArray) {
 				mName = name; mIsArray = isArray;
 				switch (type) {
-					case NUM: mVar = new Var(0.0); break;
-					case STR: mVar = new Var(""); break;
+					case NUM: mVar = new NumVar(); break;
+					case STR: mVar = new StrVar(); break;
 					default: mVar = null; break;
 				}
 			}
@@ -5209,9 +5229,9 @@ public class Run extends ListActivity {
 	private void createNewScalar(String name) {		// make a new var table entry and put a scalar in it
 		Var var;
 		if (!VarIsNumeric) {						// if var is string
-			var = new Var("");						// new scalar initialized to empty string
+			var = new StrVar();						// new scalar initialized to empty string
 		} else {									// else var is numeric
-			var = new Var(0.0);						// new scalar initialized to 0.0
+			var = new NumVar();						// new scalar initialized to 0.0
 		}
 		int kk = Vars.size();						// index into the list of scalar variables
 		Vars.add(var);								// add new scalar to list
@@ -6957,11 +6977,11 @@ public class Run extends ListActivity {
 		ArrayValueStart = Vars.size();
 		if (IsNumeric) {									// Initialize Numeric Array Values
 			for (int i = 0; i < TotalElements; ++i) {
-				Vars.add(new Var(0.0));						// Numbers initalized to 0.0
+				Vars.add(new NumVar());						// Numbers initalized to 0.0
 			}
 		} else {											// Initialize String Array Values
 			for (int i = 0; i < TotalElements; ++i) {
-				Vars.add(new Var(""));						// Strings inited to empty
+				Vars.add(new StrVar());						// Strings inited to empty
 			}
 		}
 		array.setArray(ArrayValueStart);
@@ -7226,6 +7246,7 @@ public class Run extends ListActivity {
 				// Mark the array invalid in case any other variable is looking at it.
 				VarNames.set(VarNumber, " ");
 				ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber));
+				array.clear();
 				array.invalidate();
 			}
 		} while (isNext(','));											// continue while there are arrays to be UNDIMed
@@ -7863,7 +7884,7 @@ public class Run extends ListActivity {
 		do {													// Sweep up the data values
 			Var v;
 			if (GetStringConstant()) {							// If it is a string
-				v = new Var(StringConstant);					// create a Var object for it
+				v = new StrVar(StringConstant);					// create a Var object for it
 			}
 			else {												// Should be a number
 				double signum = 1.0;							// Assume positive
@@ -7871,7 +7892,7 @@ public class Run extends ListActivity {
 				else if (isNext('+')) { ; }						// If not negative, eat optional '+'
 
 				if (getNumber()) {								// If it is a number
-					v = new Var(signum * GetNumberValue);		// create a Var object for it
+					v = new NumVar(signum * GetNumberValue);	// create a Var object for it
 				}
 				else {											// else is a run time error
 					return RunTimeError("Invalid Data Value");
@@ -8049,7 +8070,7 @@ public class Run extends ListActivity {
 				boolean isGlobal = isNext('&');							// optional for scalars, ignored for arrays
 				FunctionParameter parm = parms.get(i);
 				parm.global(isGlobal);
-				boolean typeIsNumeric = parm.var().type().isNumeric();
+				boolean typeIsNumeric = parm.var().isNumeric();
 				if (parm.isArray()) {									// if this parm is an array
 					if (getArrayVarForRead() == null) return false;		// get the array name var
 					parm.varIndex(VarIndex.get(VarNumber));				// copy array table pointer
@@ -8095,7 +8116,7 @@ public class Run extends ListActivity {
 			for (FunctionParameter parm : parms) {
 				if (!parm.isArray() && !parm.isGlobal()) {
 					VarIndex.add(Vars.size());							// new scalar
-					Vars.add(new Var(parm.var()));
+					Vars.add(parm.var().clone());
 				} else {
 					VarIndex.add(parm.varIndex());						// array or global scalar
 				}
@@ -10509,8 +10530,8 @@ public class Run extends ListActivity {
 
 	private boolean execute_gr_bitmap_drawinto_start() {
 		int bitmapPtr = getBitmapArg();								// get the bitmap number
-		if (bitmapPtr < 0) return false;
-		if (!checkEOL()) return false;
+		if (bitmapPtr < 0)				return false;
+		if (!checkEOL())				return false;
 
 		Bitmap bitmap = BitmapList.get(bitmapPtr);					// get the bitmap
 		if (bitmap == null) {
@@ -10520,12 +10541,9 @@ public class Run extends ListActivity {
 			return RunTimeError("Bitmaps loaded from files not changeable.");
 		}
 		if (bitmap.isRecycled()) {
-			bitmap = null;
 			return RunTimeError("Bitmap was recycled");
 		}
 		drawintoCanvas = new Canvas(bitmap);
-		bitmap = null;
-
 		return true;
 	}
 
