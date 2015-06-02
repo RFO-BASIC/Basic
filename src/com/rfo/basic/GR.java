@@ -592,10 +592,8 @@ public class GR extends Activity {
 			setFocusable(true);
 			setFocusableInTouchMode(true);
 			GraphicsImm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-			if ((android.os.Build.VERSION.SDK_INT >= 11) &&	// Hardware acceleration is supported starting API 11
-				isHardwareAccelerated())					// may be enabled or disabled in Manifest
-			{
-				// Hardware acceleration is enabled for the app.
+			if (android.os.Build.VERSION.SDK_INT >= 11) {	// Hardware acceleration is supported starting API 11
+				// Assume hardware acceleration is enabled for the app.
 				// Choose whether to use it in DrawView based on user Preference.
 				int layerType = Settings.getGraphicAcceleration(context)
 								? View.LAYER_TYPE_HARDWARE	// use hardware acceleration
