@@ -30,6 +30,7 @@ package com.rfo.basic;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -271,7 +272,7 @@ public class Editor extends Activity {
 		 * When that is done, the rest of the code here will be execute.
 		 */
 		setContentView(R.layout.editor);
-		ProgramFileName = "unnamed program";
+		ProgramFileName = "";
 
 		mText = (LinedEditText)findViewById(R.id.basic_text);	// mText is the TextView Object
 		mText.setTypeface(Typeface.MONOSPACE);
@@ -391,7 +392,7 @@ public class Editor extends Activity {
 			Log.e(LOGTAG, CLASSTAG + ".onResume: AutoRun is set. Shutting down.");
 			finish();
 		} else {
-			setTitle(Name + ProgramFileName);
+			setTitle(ProgramFileName);
 
 			if (mMenu != null) {
 				menuItemsToActionBar(mMenu);
@@ -427,6 +428,12 @@ public class Editor extends Activity {
 			}
 		}
 
+	}
+
+	@Override
+	public void setTitle(CharSequence programName) {
+		CharSequence title = Name + (((programName != null) && !programName.equals("")) ? programName : "unnamed program");
+		super.setTitle(title);
 	}
 
 	@Override
@@ -565,8 +572,7 @@ public class Editor extends Activity {
 				} else if (fname.equals("")) {				// if no file name...
 					askNameSaveFile(Action.RUN);			// ... get a name, save the program and run it
 				} else {									// else have a file name
-					writeTheFile(ProgramFileName);	// save the program, overwriting existing file
-					// Basic.toaster(this, "Saved " + fname);
+					writeTheFile(ProgramFileName);			// save the program, overwriting existing file
 					Run();									// run the program
 				}
 				return true;
@@ -718,7 +724,7 @@ public class Editor extends Activity {
 	private void clearProgram() {
 		Basic.clearProgram();						// then do the clear
 		ProgramFileName = "";
-		setTitle(Name + ProgramFileName);
+		setTitle(ProgramFileName);
 		mText.setText(DisplayText);
 	}
 
@@ -732,39 +738,40 @@ public class Editor extends Activity {
 		alert.setCancelable(true);										// Allow the dialog to be canceled
 		alert.setTitle("Save As..");
 		alert.setOnCancelListener(new DialogInterface.OnCancelListener() {
-				public void onCancel(DialogInterface arg0) {			// User has canceled save
-					return;												// done
-				}
-			});
+			public void onCancel(DialogInterface arg0) {			// User has canceled save
+				return;												// done
+			}
+		});
 
-		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {	//Have a filename
-				public void onClick(DialogInterface dialog, int whichButton) {
-					String theFilename = input.getText().toString().trim();
-
-					Basic.clearProgram();									// Clear Basic.lines
-					Basic.lines.remove(0);									// including that REM statement
-					DisplayText = mText.getText().toString();				// get the text being displayed
-					String Temp1 = "";
-					boolean LineAdded = false;
-					for (int k = 0; k < DisplayText.length(); ++k) {		// Move the display text to Basic.lines
-						if (DisplayText.charAt(k) == '\n') {
-							Basic.lines.add(new Run.ProgramLine(Temp1));
-							Temp1 = "";
-							LineAdded = true;
-						} else {
-							Temp1 += DisplayText.charAt(k);
-							LineAdded = false;
-						}
-					}
-					if (!LineAdded) {										// Special case for line
-						Basic.lines.add(new Run.ProgramLine(Temp1));		// without \n
-					}
-
-					writeTheFile(theFilename);								// Now go write the file
-					doAfterSave(afterSave);									// and finish what was interrupted by Save dialog
-				}});
+		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {	// Have a filename
+			public void onClick(DialogInterface dialog, int whichButton) {
+				String theFilename = input.getText().toString().trim();
+				writeTheFile(theFilename);								// write the program to a file
+				doAfterSave(afterSave);									// and finish what was interrupted by Save dialog
+			}});
 
 		alert.show();
+	}
+
+	private ArrayList<String> captureProgram() {
+		ArrayList<String> lines = new ArrayList<String>();
+		DisplayText = mText.getText().toString();				// get the text being displayed
+		String line = "";
+		boolean LineAdded = false;
+		for (int k = 0; k < DisplayText.length(); ++k) {		// move the display text to a String array
+			if (DisplayText.charAt(k) == '\n') {
+				lines.add(line);
+				line = "";
+				LineAdded = true;
+			} else {
+				line += DisplayText.charAt(k);
+				LineAdded = false;
+			}
+		}
+		if (!LineAdded) {										// Special case for line
+			lines.add(line);									// without \n
+		}
+		return lines;
 	}
 
 	private void writeTheFile(String theFileName) {
@@ -790,8 +797,9 @@ public class Editor extends Activity {
 			return;
 		}
 
-		// Write to SD Card
-		String path = DirPart;
+		ArrayList<String> lines = captureProgram();					// copy the program to a String array
+
+		String path = DirPart;										// and write it to the SD Card
 		boolean success = false;
 		if (Basic.SD_ProgramPath.equals("Sample_Programs") || Basic.SD_ProgramPath.equals("/Sample_Programs")) {
 			Basic.SD_ProgramPath = "";
@@ -809,9 +817,8 @@ public class Editor extends Activity {
 				File file = new File(path + theFileName);
 				file.createNewFile();
 				writer = new FileWriter(file);						// write the program
-				for (int i = 0; i < Basic.lines.size(); i++) {
-					writer.write(Basic.lines.get(i).line());
-					writer.write("\n");
+				for (String line : lines) {
+					writer.write(line + '\n');
 				}
 				success = true;
 			} catch (IOException e) {
@@ -831,7 +838,7 @@ public class Editor extends Activity {
 
 			Basic.SD_ProgramPath = DirPart;						// ProgramPath is relative to source
 			ProgramFileName = theFileName;						// set new Program file name
-			setTitle(Name + ProgramFileName);
+			setTitle(ProgramFileName);
 			InitialProgramSize = mText.length();				// Reset initial program size
 			Saved = true;										// indicate the program has been saved
 		} else {
