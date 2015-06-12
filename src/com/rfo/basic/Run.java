@@ -53,6 +53,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.BufferedReader;
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
@@ -80,10 +81,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 
 import java.security.InvalidParameterException;
 
@@ -105,6 +109,7 @@ import com.rfo.basic.Basic.TextStyle;
 import com.rfo.basic.GPS.GpsData;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
@@ -602,7 +607,7 @@ public class Run extends ListActivity {
 		public String toString() { return mStr; }
 	}
 
-	// **********  The variables for the Basic Keywords ****************************
+	// ***************** The constants for the Basic Keywords *****************
 
 	// First, an alphabetical list of all of the top-level keywords.
 	// Every constant in this list must appear in both BasicKeyWords[] and BASIC_cmd[].
@@ -882,24 +887,19 @@ public class Run extends ListActivity {
 	private static final String MF_UCODE = "ucode(";
 	private static final String MF_VAL = "val(";
 
-	public static final String MathFunctions[] = {
-		MF_SIN, MF_COS, MF_TAN,
-		MF_SQR, MF_ABS, MF_RND,
-		MF_VAL, MF_LEN, MF_ACOS,
-		MF_ASIN, MF_ATAN2, MF_CEIL,
-		MF_FLOOR, MF_MOD, MF_LOG,
-		MF_ROUND, MF_TORADIANS, MF_TODEGREES,
-		MF_TIME, MF_EXP,
-		MF_IS_IN, MF_CLOCK,
-		MF_BNOT, MF_BOR, MF_BAND, MF_BXOR,
-		MF_GR_COLLISION,
-		MF_ASCII, MF_STARTS_WITH, MF_ENDS_WITH,
-		MF_HEX, MF_OCT, MF_BIN, MF_SHIFT,
-		MF_RANDOMIZE, MF_BACKGROUND,
-		MF_ATAN, MF_CBRT, MF_COSH, MF_HYPOT,
-		MF_SINH, MF_POW, MF_LOG10,
-		MF_UCODE, MF_PI, MF_MIN, MF_MAX,
-		MF_INT, MF_FRAC, MF_SGN,
+	public static final String MathFunctions[] = {		// Command list for Format
+		MF_ABS, MF_ACOS, MF_ASCII, MF_ASIN,
+		MF_ATAN, MF_ATAN2, MF_BACKGROUND,
+		MF_BAND, MF_BIN, MF_BNOT, MF_BOR, MF_BXOR,
+		MF_CBRT, MF_CEIL, MF_CLOCK, MF_COS, MF_COSH,
+		MF_ENDS_WITH, MF_EXP, MF_FLOOR, MF_FRAC,
+		MF_GR_COLLISION, MF_HEX, MF_HYPOT, MF_INT,
+		MF_IS_IN, MF_LEN, MF_LOG, MF_LOG10,
+		MF_MAX, MF_MIN, MF_MOD, MF_OCT, MF_PI,
+		MF_POW, MF_RANDOMIZE, MF_RND, MF_ROUND,
+		MF_SGN, MF_SHIFT, MF_SIN, MF_SINH, MF_SQR,
+		MF_STARTS_WITH, MF_TAN, MF_TIME,
+		MF_TODEGREES, MF_TORADIANS, MF_UCODE, MF_VAL,
 	};
 
 	private static final HashMap<String, Integer> mRoundingModeTable = new HashMap<String, Integer>(7) {
@@ -986,6 +986,8 @@ public class Run extends ListActivity {
 
 	private static final String SF_BIN = "bin$(";
 	private static final String SF_CHR = "chr$(";
+	private static final String SF_DECODE = "decode$(";
+	private static final String SF_ENCODE = "encode$(";
 	private static final String SF_FORMAT = "format$(";
 	private static final String SF_FORMAT_USING = "format_using$(";
 	private static final String SF_GETERROR = "geterror$(";
@@ -1006,20 +1008,27 @@ public class Run extends ListActivity {
 	private static final String SF_VERSION = "version$(";
 	private static final String SF_WORD = "word$(";
 
-	public static final String StringFunctions[] = {
-		SF_LEFT, SF_MID, SF_RIGHT,
-		SF_STR, SF_UPPER, SF_LOWER,
-		SF_TRIM, SF_LTRIM, SF_RTRIM,
-		SF_USING, SF_FORMAT, SF_FORMAT_USING,
-		SF_CHR, SF_REPLACE, SF_WORD,
-		SF_INT, SF_HEX, SF_OCT, SF_BIN,
-		SF_GETERROR, SF_VERSION,
+	public static final String StringFunctions[] = {	// Command list for Format
+		SF_BIN, SF_CHR, SF_DECODE, SF_ENCODE,
+		SF_FORMAT, SF_FORMAT_USING, SF_GETERROR,
+		SF_HEX, SF_INT, SF_LEFT, SF_LOWER,
+		SF_LTRIM, SF_MID, SF_OCT, SF_REPLACE,
+		SF_RIGHT, SF_RTRIM, SF_STR, SF_TRIM,
+		SF_UPPER, SF_USING, SF_WORD, SF_VERSION,
 	};
 
-	private static final int LEFT = 1;					// control bits for SF_TRIM
-	private static final int RIGHT = 2;
+	private static final int TLEFT = 1;					// control bits for SF_TRIM
+	private static final int TRIGHT = 2;
 
-	// *****************************   Various execution control variables *********************
+	private static final boolean ENCODE = true;			// control bits for ENCODE/DECODE
+	private static final boolean DECODE = false;
+
+	private static final int ENCODING_ENCRYPT = 1;		// encode/decode types
+	private static final int ENCODING_BASE64 = 2;
+	private static final int ENCODING_URL = 3;
+	private static final int ENCODING_OTHER = 4;		// simple string conversion
+
+	// *************************** Various execution control variables ****************************
 
 	public static final int BASIC_GENERAL_INTENT = 255;
 	public static boolean Exit = false;					// Exits program and signals caller to exit, too
@@ -1741,7 +1750,6 @@ public class Run extends ListActivity {
 
 	private static final String BKW_DEBUG_ON = "on";
 	private static final String BKW_DEBUG_OFF = "off";
-	private static final String BKW_DEBUG_PRINT = "print";
 	private static final String BKW_DEBUG_ECHO_ON = "echo.on";
 	private static final String BKW_DEBUG_ECHO_OFF = "echo.off";
 	private static final String BKW_DEBUG_DUMP_SCALARS = "dump.scalars";
@@ -1764,7 +1772,7 @@ public class Run extends ListActivity {
 	private static final String BKW_DEBUG_STATS = "stats";
 
 	private static final String Debug_KW[] = {			// Command list for Format
-		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_DEBUG_PRINT, BKW_DEBUG_ECHO_ON,
+		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_PRINT, BKW_DEBUG_ECHO_ON,
 		BKW_DEBUG_ECHO_OFF, BKW_DEBUG_DUMP_SCALARS,
 		BKW_DEBUG_DUMP_ARRAY, BKW_DEBUG_DUMP_LIST,
 		BKW_DEBUG_DUMP_STACK, BKW_DEBUG_DUMP_BUNDLE,
@@ -2778,9 +2786,9 @@ public class Run extends ListActivity {
 				// construct a string from the valid bytes in the buffer
 //				String readMessage = new String(readBuf, 0, msg.arg1);
 				try {
-					readMessage = new String(readBuf, 0);
+					readMessage = new String(readBuf, "ISO-8859-1");
 				} catch (Exception e) {
-					errorToConsole("Error: " + e);
+					errorToConsole("Error: " + e.getMessage());
 				}
 				readMessage = readMessage.substring(0, msg.arg1);
 				synchronized (BT_Read_Buffer) {
@@ -4120,56 +4128,56 @@ public class Run extends ListActivity {
 	// ************************************* Function Tables **************************************
 
 	private final Command[] MF_cmd = new Command[] {	// Map math function names to their functions
-		new Command(MF_SIN)                     { public boolean run() { return executeMF_SIN(); } },
-		new Command(MF_COS)                     { public boolean run() { return executeMF_COS(); } },
-		new Command(MF_TAN)                     { public boolean run() { return executeMF_TAN(); } },
-		new Command(MF_SQR)                     { public boolean run() { return executeMF_SQR(); } },
 		new Command(MF_ABS)                     { public boolean run() { return executeMF_ABS(); } },
-		new Command(MF_RND)                     { public boolean run() { return executeMF_RND(); } },
-		new Command(MF_VAL)                     { public boolean run() { return executeMF_VAL(); } },
-		new Command(MF_LEN)                     { public boolean run() { return executeMF_LEN(); } },
 		new Command(MF_ACOS)                    { public boolean run() { return executeMF_ACOS(); } },
+		new Command(MF_ASCII)                   { public boolean run() { return executeMF_ASCII(); } },
 		new Command(MF_ASIN)                    { public boolean run() { return executeMF_ASIN(); } },
+		new Command(MF_ATAN)                    { public boolean run() { return executeMF_ATAN(); } },
 		new Command(MF_ATAN2)                   { public boolean run() { return executeMF_ATAN2(); } },
-		new Command(MF_CEIL)                    { public boolean run() { return executeMF_CEIL(); } },
-		new Command(MF_FLOOR)                   { public boolean run() { return executeMF_FLOOR(); } },
-		new Command(MF_MOD)                     { public boolean run() { return executeMF_MOD(); } },
-		new Command(MF_LOG)                     { public boolean run() { return executeMF_LOG(); } },
-		new Command(MF_ROUND)                   { public boolean run() { return executeMF_ROUND(); } },
-		new Command(MF_TORADIANS)               { public boolean run() { return executeMF_TORADIANS(); } },
-		new Command(MF_TODEGREES)               { public boolean run() { return executeMF_TODEGREES(); } },
-		new Command(MF_TIME)                    { public boolean run() { return executeMF_TIME(); } },
-		new Command(MF_EXP)                     { public boolean run() { return executeMF_EXP(); } },
-		new Command(MF_IS_IN)                   { public boolean run() { return executeMF_IS_IN(); } },
-		new Command(MF_CLOCK)                   { public boolean run() { return executeMF_CLOCK(); } },
+		new Command(MF_BACKGROUND)              { public boolean run() { return executeMF_BACKGROUND(); } },
+		new Command(MF_BAND)                    { public boolean run() { return executeMF_BAND(); } },
+		new Command(MF_BIN)                     { public boolean run() { return executeMF_base(2); } },
 		new Command(MF_BNOT)                    { public boolean run() { return executeMF_BNOT(); } },
 		new Command(MF_BOR)                     { public boolean run() { return executeMF_BOR(); } },
-		new Command(MF_BAND)                    { public boolean run() { return executeMF_BAND(); } },
 		new Command(MF_BXOR)                    { public boolean run() { return executeMF_BXOR(); } },
-		new Command(MF_GR_COLLISION)            { public boolean run() { return executeMF_GR_COLLISION(); } },
-		new Command(MF_ASCII)                   { public boolean run() { return executeMF_ASCII(); } },
-		new Command(MF_STARTS_WITH)             { public boolean run() { return executeMF_STARTS_WITH(); } },
-		new Command(MF_ENDS_WITH)               { public boolean run() { return executeMF_ENDS_WITH(); } },
-		new Command(MF_HEX)                     { public boolean run() { return executeMF_base(16); } },
-		new Command(MF_OCT)                     { public boolean run() { return executeMF_base(8); } },
-		new Command(MF_BIN)                     { public boolean run() { return executeMF_base(2); } },
-		new Command(MF_SHIFT)                   { public boolean run() { return executeMF_SHIFT(); } },
-		new Command(MF_RANDOMIZE)               { public boolean run() { return executeMF_RANDOMIZE(); } },
-		new Command(MF_BACKGROUND)              { public boolean run() { return executeMF_BACKGROUND(); } },
-		new Command(MF_ATAN)                    { public boolean run() { return executeMF_ATAN(); } },
 		new Command(MF_CBRT)                    { public boolean run() { return executeMF_CBRT(); } },
+		new Command(MF_CEIL)                    { public boolean run() { return executeMF_CEIL(); } },
+		new Command(MF_CLOCK)                   { public boolean run() { return executeMF_CLOCK(); } },
+		new Command(MF_COS)                     { public boolean run() { return executeMF_COS(); } },
 		new Command(MF_COSH)                    { public boolean run() { return executeMF_COSH(); } },
-		new Command(MF_HYPOT)                   { public boolean run() { return executeMF_HYPOT(); } },
-		new Command(MF_SINH)                    { public boolean run() { return executeMF_SINH(); } },
-		new Command(MF_POW)                     { public boolean run() { return executeMF_POW(); } },
-		new Command(MF_LOG10)                   { public boolean run() { return executeMF_LOG10(); } },
-		new Command(MF_UCODE)                   { public boolean run() { return executeMF_UCODE(); } },
-		new Command(MF_PI)                      { public boolean run() { return executeMF_PI(); } },
-		new Command(MF_MIN)                     { public boolean run() { return executeMF_MIN(); } },
-		new Command(MF_MAX)                     { public boolean run() { return executeMF_MAX(); } },
-		new Command(MF_INT)                     { public boolean run() { return executeMF_INT(); } },
+		new Command(MF_ENDS_WITH)               { public boolean run() { return executeMF_ENDS_WITH(); } },
+		new Command(MF_EXP)                     { public boolean run() { return executeMF_EXP(); } },
+		new Command(MF_FLOOR)                   { public boolean run() { return executeMF_FLOOR(); } },
 		new Command(MF_FRAC)                    { public boolean run() { return executeMF_FRAC(); } },
+		new Command(MF_GR_COLLISION)            { public boolean run() { return executeMF_GR_COLLISION(); } },
+		new Command(MF_HEX)                     { public boolean run() { return executeMF_base(16); } },
+		new Command(MF_HYPOT)                   { public boolean run() { return executeMF_HYPOT(); } },
+		new Command(MF_INT)                     { public boolean run() { return executeMF_INT(); } },
+		new Command(MF_IS_IN)                   { public boolean run() { return executeMF_IS_IN(); } },
+		new Command(MF_LEN)                     { public boolean run() { return executeMF_LEN(); } },
+		new Command(MF_LOG)                     { public boolean run() { return executeMF_LOG(); } },
+		new Command(MF_LOG10)                   { public boolean run() { return executeMF_LOG10(); } },
+		new Command(MF_MAX)                     { public boolean run() { return executeMF_MAX(); } },
+		new Command(MF_MIN)                     { public boolean run() { return executeMF_MIN(); } },
+		new Command(MF_MOD)                     { public boolean run() { return executeMF_MOD(); } },
+		new Command(MF_OCT)                     { public boolean run() { return executeMF_base(8); } },
+		new Command(MF_PI)                      { public boolean run() { return executeMF_PI(); } },
+		new Command(MF_POW)                     { public boolean run() { return executeMF_POW(); } },
+		new Command(MF_RANDOMIZE)               { public boolean run() { return executeMF_RANDOMIZE(); } },
+		new Command(MF_RND)                     { public boolean run() { return executeMF_RND(); } },
+		new Command(MF_ROUND)                   { public boolean run() { return executeMF_ROUND(); } },
 		new Command(MF_SGN)                     { public boolean run() { return executeMF_SGN(); } },
+		new Command(MF_SHIFT)                   { public boolean run() { return executeMF_SHIFT(); } },
+		new Command(MF_SIN)                     { public boolean run() { return executeMF_SIN(); } },
+		new Command(MF_SINH)                    { public boolean run() { return executeMF_SINH(); } },
+		new Command(MF_SQR)                     { public boolean run() { return executeMF_SQR(); } },
+		new Command(MF_STARTS_WITH)             { public boolean run() { return executeMF_STARTS_WITH(); } },
+		new Command(MF_TAN)                     { public boolean run() { return executeMF_TAN(); } },
+		new Command(MF_TIME)                    { public boolean run() { return executeMF_TIME(); } },
+		new Command(MF_TODEGREES)               { public boolean run() { return executeMF_TODEGREES(); } },
+		new Command(MF_TORADIANS)               { public boolean run() { return executeMF_TORADIANS(); } },
+		new Command(MF_UCODE)                   { public boolean run() { return executeMF_UCODE(); } },
+		new Command(MF_VAL)                     { public boolean run() { return executeMF_VAL(); } },
 	};
 
 	private final HashMap<String, Command> MF_map = new HashMap<String, Command>(64) {
@@ -4179,27 +4187,29 @@ public class Run extends ListActivity {
 		}};
 
 	private final Command[] SF_cmd = new Command[] {	// Map string function names to their functions
-		new Command(SF_LEFT)                    { public boolean run() { return executeSF_LEFT(); } },
-		new Command(SF_MID)                     { public boolean run() { return executeSF_MID(); } },
-		new Command(SF_RIGHT)                   { public boolean run() { return executeSF_RIGHT(); } },
-		new Command(SF_STR)                     { public boolean run() { return executeSF_STR(); } },
-		new Command(SF_UPPER)                   { public boolean run() { return executeSF_UPPER(); } },
-		new Command(SF_LOWER)                   { public boolean run() { return executeSF_LOWER(); } },
-		new Command(SF_TRIM)                    { public boolean run() { return executeSF_TRIM(LEFT | RIGHT); } },
-		new Command(SF_LTRIM)                   { public boolean run() { return executeSF_TRIM(LEFT); } },
-		new Command(SF_RTRIM)                   { public boolean run() { return executeSF_TRIM(RIGHT); } },
-		new Command(SF_FORMAT_USING)            { public boolean run() { return executeSF_USING(); } },
-		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
-		new Command(SF_USING)                   { public boolean run() { return executeSF_USING(); } },
-		new Command(SF_CHR)                     { public boolean run() { return executeSF_CHR(); } },
-		new Command(SF_REPLACE)                 { public boolean run() { return executeSF_REPLACE(); } },
-		new Command(SF_WORD)                    { public boolean run() { return executeSF_WORD(); } },
-		new Command(SF_INT)                     { public boolean run() { return executeSF_INT(); } },
-		new Command(SF_HEX)                     { public boolean run() { return executeSF_HEX(); } },
-		new Command(SF_OCT)                     { public boolean run() { return executeSF_OCT(); } },
 		new Command(SF_BIN)                     { public boolean run() { return executeSF_BIN(); } },
+		new Command(SF_CHR)                     { public boolean run() { return executeSF_CHR(); } },
+		new Command(SF_DECODE)                  { public boolean run() { return executeSF_ENCODE(DECODE); } },
+		new Command(SF_ENCODE)                  { public boolean run() { return executeSF_ENCODE(ENCODE); } },
+		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
+		new Command(SF_FORMAT_USING)            { public boolean run() { return executeSF_USING(); } },
 		new Command(SF_GETERROR)                { public boolean run() { return executeSF_GETERROR(); } },
+		new Command(SF_HEX)                     { public boolean run() { return executeSF_HEX(); } },
+		new Command(SF_INT)                     { public boolean run() { return executeSF_INT(); } },
+		new Command(SF_LEFT)                    { public boolean run() { return executeSF_LEFT(); } },
+		new Command(SF_LOWER)                   { public boolean run() { return executeSF_LOWER(); } },
+		new Command(SF_LTRIM)                   { public boolean run() { return executeSF_TRIM(TLEFT); } },
+		new Command(SF_MID)                     { public boolean run() { return executeSF_MID(); } },
+		new Command(SF_OCT)                     { public boolean run() { return executeSF_OCT(); } },
+		new Command(SF_REPLACE)                 { public boolean run() { return executeSF_REPLACE(); } },
+		new Command(SF_RIGHT)                   { public boolean run() { return executeSF_RIGHT(); } },
+		new Command(SF_RTRIM)                   { public boolean run() { return executeSF_TRIM(TRIGHT); } },
+		new Command(SF_STR)                     { public boolean run() { return executeSF_STR(); } },
+		new Command(SF_TRIM)                    { public boolean run() { return executeSF_TRIM(TLEFT | TRIGHT); } },
+		new Command(SF_UPPER)                   { public boolean run() { return executeSF_UPPER(); } },
+		new Command(SF_USING)                   { public boolean run() { return executeSF_USING(); } },
 		new Command(SF_VERSION)                 { public boolean run() { return executeSF_VERSION(); } },
+		new Command(SF_WORD)                    { public boolean run() { return executeSF_WORD(); } },
 	};
 
 	private final HashMap<String, Command> SF_map = new HashMap<String, Command>(64) {
@@ -4304,8 +4314,8 @@ public class Run extends ListActivity {
 		new Command(BKW_TONE)                   { public boolean run() { return executeTONE(); } },
 		new Command(BKW_CLIPBOARD_GET)          { public boolean run() { return executeCLIPBOARD_GET(); } },
 		new Command(BKW_CLIPBOARD_PUT)          { public boolean run() { return executeCLIPBOARD_PUT(); } },
-		new Command(BKW_ENCRYPT)                { public boolean run() { return executeENCRYPT(); } },
-		new Command(BKW_DECRYPT)                { public boolean run() { return executeDECRYPT(); } },
+		new Command(BKW_ENCRYPT)                { public boolean run() { return executeENCRYPT(ENCODE); } },
+		new Command(BKW_DECRYPT)                { public boolean run() { return executeENCRYPT(DECODE); } },
 		new Command(BKW_SWAP)                   { public boolean run() { return executeSWAP(); } },
 		new Command(BKW_SPLIT_ALL)              { public boolean run() { return executeSPLIT(-1); } },
 		new Command(BKW_SPLIT)                  { public boolean run() { return executeSPLIT(0); } },
@@ -4730,7 +4740,7 @@ public class Run extends ListActivity {
 	private final Command[] debug_cmd = new Command[] {	// Map debug command keywords to their execution functions
 		new Command(BKW_DEBUG_ON)               { public boolean run() { return executeDEBUG_ON(); } },
 		new Command(BKW_DEBUG_OFF)              { public boolean run() { return executeDEBUG_OFF(); } },
-		new Command(BKW_DEBUG_PRINT)            { public boolean run() { return executeDEBUG_PRINT(); } },
+		new Command(BKW_PRINT)                  { public boolean run() { return executeDEBUG_PRINT(); } },
 		new Command(BKW_DEBUG_ECHO_ON)          { public boolean run() { return executeECHO_ON(); } },
 		new Command(BKW_DEBUG_ECHO_OFF)         { public boolean run() { return executeECHO_OFF(); } },
 		new Command(BKW_DEBUG_DUMP_SCALARS)     { public boolean run() { return executeDUMP_SCALARS(); } },
@@ -6580,7 +6590,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeSF_TRIM(int what) {											// TRIM$
-														// use LEFT, RIGHT, or LEFT|RIGHT for what arg
+														// use TLEFT, TRIGHT, or TLEFT|TRIGHT for what arg
 		if (!getStringArg())			return false;
 		String str = StringConstant;
 		String trim = "\\s+";							// default: trim whitespace
@@ -6591,8 +6601,8 @@ public class Run extends ListActivity {
 		if (!isNext(')'))				return false;	// Function must end with ')'
 
 		if (trim != "") {
-			if ((what & LEFT) != 0)  { str = ltrim(str, trim); }
-			if ((what & RIGHT) != 0) { str = rtrim(str, trim); }
+			if ((what & TLEFT) != 0)  { str = ltrim(str, trim); }
+			if ((what & TRIGHT) != 0) { str = rtrim(str, trim); }
 		}
 		StringConstant = str;
 		return true;
@@ -6639,6 +6649,128 @@ public class Run extends ListActivity {
 		if (!isNext(')'))				return false;	// Function must end with ')'
 		StringConstant = StringConstant.toLowerCase(Locale.getDefault());
 		return true;
+	}
+
+	private boolean executeSF_ENCODE(boolean mode) {									// DECODE$ and ENCODE$
+		int encoding;
+		String charset = "UTF-8";						// default charset
+		// If one of the special encodings (Base64, URL, or encryption),
+		// the first arg is the type, (optional) second is charset (password if encryption)
+		// and third (required) is the string to encode/decode.
+		if (!getStringArg())			return false;	// get the type or charset
+		String type = StringConstant;
+		if (!isNext(','))				return false;
+		String typeLC = type.toLowerCase(Locale.getDefault());
+		if		(typeLC.equals("base64"))	{ encoding = ENCODING_BASE64; }
+		else if	(typeLC.equals("url"))		{ encoding = ENCODING_URL; }
+		else if	(typeLC.equals("encrypt"))	{ encoding = ENCODING_ENCRYPT; }
+		else if	(typeLC.equals("decrypt"))	{ encoding = ENCODING_ENCRYPT; }
+		else {
+			// Plain string conversion. First arg is charset, second is string to convert.
+			encoding = ENCODING_OTHER;
+			charset = type;
+		}
+
+		String src;
+		switch (encoding) {
+			case ENCODING_ENCRYPT:
+				charset = "";							// default password is empty string
+				// Fall through to get password, if present.
+			case ENCODING_BASE64:
+			case ENCODING_URL:
+				if (!isNext(',')) {
+					if (!getStringArg()) return false;	// get the optional charset (password if ENCRYPT)
+					charset = StringConstant;
+					if (!isNext(','))	return false;
+				}
+				// Fall through to get the string.
+			default:
+				if (!getStringArg())	return false;	// Get the required source string
+				src = StringConstant;
+				if (!isNext(')'))		return false;	// Function must end with ')'
+		}
+
+		String dest = null;
+		try {
+			switch (encoding) {
+				case ENCODING_ENCRYPT:
+					dest = (mode == ENCODE) ? encrypt(src, charset)
+											: decrypt(src, charset);
+					break;
+				case ENCODING_BASE64:
+					dest = (mode == ENCODE) ? encodeBase64(src, charset)
+											: decodeBase64(src, charset);
+					break;
+				case ENCODING_URL:
+					dest = (mode == ENCODE) ? URLEncoder.encode(src, charset)
+											: URLDecoder.decode(src, charset);
+					break;
+				default:
+					dest = (mode == ENCODE) ? encode(src, charset)
+											: decode(src, charset);
+					break;
+			}
+		} catch (Exception e) {
+			if (encoding == ENCODING_ENCRYPT) {
+				return encryptionException(mode, e);
+			} else {
+				// UnsupportedEncodingException, IllegalCharsetNameException, or UnsupportedCharsetException
+				return RunTimeError(charset + " is not a valid encoding on this device.");
+			}
+		}
+		if (dest == null)				return false;
+		StringConstant = dest;
+		return true;
+	}
+
+	private boolean encryptionException(boolean mode, Exception e) {
+		return (mode == ENCODE)
+			? RunTimeError("Encryption error (" + e.getMessage() + ")")
+			: RunTimeError("Decryption error (" + e.getMessage() + "). Check password.");
+	}
+
+	@TargetApi(Build.VERSION_CODES.FROYO)
+	private String encrypt(String src, String pw) throws Exception {
+		Cipher ecipher = new Basic.Encryption(Cipher.ENCRYPT_MODE, pw).cipher();
+		byte[] utf8 = src.getBytes("UTF-8");			// encode the string into bytes using UTF-8
+		byte[] enc = ecipher.doFinal(utf8);				// encrypt
+
+		// To support FroYo, there is a copy of Android's Base64.java in our build files.
+		String dest = Base64.encodeToString(enc, Base64.NO_WRAP);	// encode bytes to base64 to get a string
+		return dest.trim();
+	}
+
+	@TargetApi(Build.VERSION_CODES.FROYO)
+	private String decrypt(String src, String pw) throws Exception {
+		Cipher dcipher = new Basic.Encryption(Cipher.DECRYPT_MODE, pw).cipher();
+		// To support FroYo, there is a copy of Android's Base64.java in our build files.
+		byte[] dec = Base64.decode(src, Base64.DEFAULT); // decode base64 to get bytes
+		byte[] utf8 = dcipher.doFinal(dec);				// decrypt
+		return new String(utf8, "UTF-8");				// encode bytes to UTF-8 to get a string
+	}
+
+	@TargetApi(Build.VERSION_CODES.FROYO)
+	private String encodeBase64(String src, String charset) throws UnsupportedEncodingException {
+		byte[] enc = src.getBytes(charset);
+		// To support FroYo, there is a copy of Android's Base64.java in our build files.
+		return Base64.encodeToString(enc, Base64.NO_WRAP);
+	}
+
+	@TargetApi(Build.VERSION_CODES.FROYO)
+	private String decodeBase64(String src, String charset) throws UnsupportedEncodingException {
+		// To support FroYo, there is a copy of Android's Base64.java in our build files.
+		byte[] dec = Base64.decode(src, Base64.DEFAULT);
+		return new String(dec, charset);
+	}
+
+	private String encode(String src, String charset) throws UnsupportedEncodingException {
+		byte[] enc = src.getBytes(charset);
+		return new String(enc, "ISO-8859-1");
+	}
+
+	private String decode(String src, String charset) throws UnsupportedEncodingException {
+		byte[] dec = src.getBytes("ISO-8859-1");		// any char > 00FF maps to byte 3F
+		return new String(dec, charset);
 	}
 
 	private boolean executeSF_FORMAT() {												// FORMAT$
@@ -8254,7 +8386,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean checkWriteAttributes(FileInfo fInfo, FileType fType) {
-											// Validate common FileInfo itemsfor commands that write text files
+											// Validate common FileInfo items for commands that write text files
 		if (!checkFileType(fInfo, fType)) return false;							// Type TEXT or BYTE as requested?
 		else if (fInfo.isClosed())    { RunTimeError("File is closed"); }
 		else if (fInfo.mode() != FMW) { RunTimeError("File not opened for write at"); }
@@ -8718,7 +8850,10 @@ public class Run extends ListActivity {
 				fInfo.eof(true);									// Hit eof, mark fInfo
 			} else {
 				fInfo.incPosition(count);							// Not eof, update position in Bundle
-				buff = new String(byteArray, 0);					// convert bytes to String for user
+				try { buff = new String(byteArray, "ISO-8859-1"); }	// convert bytes to String for user
+				catch (UnsupportedEncodingException ex) {
+					return RunTimeError(ex);						// can't happen: "ISO-8859-1" is supported
+				}
 				if (count < byteCount) {
 					buff = buff.substring(0, count);
 				}
@@ -9341,9 +9476,9 @@ public class Run extends ListActivity {
 
 		// Construct a String object from the byte array containing the response
 		if (textFlag) {
-			return new String(byteArray.toByteArray());			// Text: keep full two-byte encoding
+			return new String(byteArray.toByteArray());			// Text: keep full two-byte encoding, assumes input is UTF-8
 		} else {
-			return new String(byteArray.toByteArray(), 0);		// ASCII or binary: force upper byte 0
+			return new String(byteArray.toByteArray(), "ISO-8859-1");// ASCII or binary: force upper byte 0
 		}
 	}
 
@@ -9787,7 +9922,7 @@ public class Run extends ListActivity {
 		return (++arg == nArgs);							// sanity-check arg count
 	}
 
-	@SuppressLint("InlinedApi")										// Uses a value from API 12
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB_MR1)
 	private boolean executeWIFILOCK() {
 		if (!evalNumericExpression())	return false;				// Get setting
 		int code  = EvalNumericExpressionValue.intValue();
@@ -10979,7 +11114,8 @@ public class Run extends ListActivity {
 				(r2.right < r1.left)) ? xfalse : xtrue;
 	}
 
-	private Rect gr_getBounds(GR.BDraw b) {
+	@SuppressLint("RtlHardcoded")	// suppress false warning on Paint.Align.LEFT and RIGHT
+	private Rect gr_getBounds(GR.BDraw b) {							// get the bounding box of a graphical object
 		int left, top, right, bottom;
 		Rect bounds = null;
 
@@ -12264,12 +12400,12 @@ public class Run extends ListActivity {
 		return createGrObj_finish(b, SaveValueIndex);				// store the object and return its index
 	}
 
-	@SuppressLint("NewApi")											// Uses value from API 9
+	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	private int getNumberOfCameras() {
 
 		int cameraCount;
 		int level = Build.VERSION.SDK_INT;
-		if (level < 9) {											// if SDK < 9 there can be only one camera
+		if (level < Build.VERSION_CODES.GINGERBREAD) {				// if SDK < 9 there can be only one camera
 			Camera tCamera = Camera.open();							// Check to see if there is any camera at all
 			cameraCount = (tCamera == null) ? 0 : 1;
 			tCamera.release();
@@ -12279,14 +12415,14 @@ public class Run extends ListActivity {
 		return cameraCount;
 	}
 
-	@SuppressLint("NewApi")											// Uses value from API 9
+	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	private boolean execute_gr_camera_select() {
 
 		if (NumberOfCameras < 0) { NumberOfCameras = getNumberOfCameras(); }
 		if (NumberOfCameras == 0) { return RunTimeError("This device does not have a camera."); }
 
 		int level = Build.VERSION.SDK_INT;
-		if (level < 9) {											// if SDK < 9 there can be only one camera
+		if (level < Build.VERSION_CODES.GINGERBREAD) {				// if SDK < 9 there can be only one camera
 			CameraNumber = -1;										// so no selection is possible
 			return (NumberOfCameras != 0);
 		}
@@ -14357,62 +14493,28 @@ public class Run extends ListActivity {
 
 	// *********************************** Encryption Commands ************************************
 
-	@SuppressLint("NewApi")									// Uses value from API 8
-	private boolean executeENCRYPT() {
-		if (!getStringArg())			return false;		// Get the Pass Word
-		String pw = StringConstant;
-		if (!isNext(','))				return false;
-
-		if (!getStringArg())			return false;		// Get the Src string
+	private boolean executeENCRYPT(boolean mode) {
+		String pw = "";										// default password
+		if (!isNext(',')) {
+			if (!getStringArg())		return false;		// get the (optional) password arg
+			pw = StringConstant;
+			if (!isNext(','))			return false;
+		}
+		if (!getStringArg())			return false;		// get the (required) source string
 		String src = StringConstant;
 		if (!isNext(','))				return false;
 
-		if (!getSVar())					return false;		// Get the destination Var string variable
+		if (!getSVar())					return false;		// get the destination string variable
 		Var var = Vars.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		String dest;
+		String dest = null;
 		try {
-			Cipher ecipher = new Basic.Encryption(Cipher.ENCRYPT_MODE, pw).cipher();
-			byte[] utf8 = src.getBytes("UTF8");				// Encode the string into bytes using utf-8
-			byte[] enc = ecipher.doFinal(utf8);				// Encrypt
-
-			dest = Base64.encodeToString(enc, Base64.NO_WRAP);	// Encode bytes to base64 to get a string
-			dest = dest.trim();
-		} catch (Exception e) {
-			return RunTimeError(e);
-		}
+			dest = (mode == ENCODE) ? encrypt(src, pw) : decrypt(src, pw);
+		} catch (Exception e) { return encryptionException(mode, e); }
+		if (dest == null)				return false;
 
 		var.val(dest);										// Put the encrypted string into the user variable
-		return true;
-	}
-
-	@SuppressLint("NewApi")									// Uses value from API 8
-	private boolean executeDECRYPT() {
-		if (!getStringArg())			return false;		// Get the Pass Word
-		String pw = StringConstant;
-		if (!isNext(','))				return false;
-
-		if (!getStringArg())			return false;		// Get the Src string
-		String src = StringConstant;
-		if (!isNext(','))				return false;
-
-		if (!getSVar())					return false;		// Get the destination Var string variable
-		Var var = Vars.get(theValueIndex);
-		if (!checkEOL())				return false;
-
-		String dest = "";
-		try {
-			Cipher dcipher = new Basic.Encryption(Cipher.DECRYPT_MODE, pw).cipher();
-			byte[] dec = Base64.decode(src, Base64.DEFAULT);// Decode base64 to get bytes
-			byte[] utf8 = dcipher.doFinal(dec);				// Decrypt
-			dest = new String(utf8, "UTF8");				// Encode bytes to UTF 8 to get a string
-		} catch (Exception e) {
-			return RunTimeError(e);
-		}
-
-		var.val(dest);										// Put the decoded string into the user variable.
-
 		return true;
 	}
 
@@ -16020,7 +16122,7 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-	@SuppressLint("NewApi")									// Uses value from API 8
+	@TargetApi(Build.VERSION_CODES.FROYO)
 	private boolean execute_SP_pause() {
 		if (!evalNumericExpression())	return false;
 		if (!checkEOL())				return false;
@@ -16032,7 +16134,7 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-	@SuppressLint("NewApi")									// Uses value from API 8
+	@TargetApi(Build.VERSION_CODES.FROYO)
 	private boolean execute_SP_resume() {
 		if (!evalNumericExpression())	return false;
 		if (!checkEOL())				return false;
