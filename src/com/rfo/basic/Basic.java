@@ -645,12 +645,22 @@ public class Basic extends Activity {
 		}
 
 		private Intent doBGforAPK() {								// Background code of APK
+			long startTime = System.currentTimeMillis();		// for splash screen timing
 			InitDirs();											// Initialize Basic directories every time
 			LoadGraphicsForAPK();								// Load the sound and graphics files
 
 			lines = new ArrayList<Run.ProgramLine>();			// Program will be loaded into this array list
 			LoadTheProgram();									// Load the basic program into memory
 
+			if (mRes.getBoolean(R.bool.splash_display)) {		// if displaying splash screen, enforce minimum duration
+				// This code was provided by forum user Luca_G, posted 2015/06/02.
+				int splashTime = mRes.getInteger(R.integer.splash_time);
+				int delay = splashTime - (int)(System.currentTimeMillis() - startTime);
+				if (delay > 1) {
+					try { Thread.sleep(delay); }
+					catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
+				}
+			}
 			theProgramRunner = new Intent(BasicContext, Run.class);	// now go run the program
 			theRunContext = null;
 			DoAutoRun = true;
