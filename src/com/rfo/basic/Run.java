@@ -668,8 +668,7 @@ public class Run extends ListActivity {
 	private static final String BKW_INPUT = "input";
 	private static final String BKW_JOIN = "join";
 	private static final String BKW_JOIN_ALL = "join.all";
-	private static final String BKW_KB_HIDE = "kb.hide";
-	private static final String BKW_KB_TOGGLE = "kb.toggle";
+	private static final String BKW_KB_GROUP = "kb.";
 	private static final String BKW_KEY_RESUME = "key.resume";
 	private static final String BKW_LET = "let";
 	private static final String BKW_LIST_GROUP = "list.";
@@ -768,8 +767,7 @@ public class Run extends ListActivity {
 		BKW_SPLIT_ALL, BKW_SPLIT,
 		BKW_JOIN_ALL, BKW_JOIN, BKW_CLS,
 		BKW_FONT_GROUP, BKW_CONSOLE_GROUP, BKW_DEBUG_GROUP,
-		BKW_DEVICE, BKW_ECHO_ON, BKW_ECHO_OFF,
-		BKW_KB_TOGGLE, BKW_KB_HIDE,
+		BKW_DEVICE, BKW_ECHO_ON, BKW_ECHO_OFF, BKW_KB_GROUP,
 		BKW_NOTIFY, BKW_RUN, // BKW_EMPTY_PROGRAM,		// Format does not need EMPTY_PROGRAM
 		BKW_SU_GROUP, BKW_SYSTEM_GROUP,
 		BKW_STT_LISTEN, BKW_STT_RESULTS, BKW_TTS_GROUP,
@@ -813,6 +811,7 @@ public class Run extends ListActivity {
 			keywordLists.put(BKW_GPS_GROUP,       GPS_KW);
 			keywordLists.put(BKW_GR_GROUP,        GR_KW);
 			keywordLists.put(BKW_HTML_GROUP,      html_KW);
+			keywordLists.put(BKW_KB_GROUP,        KB_KW);
 			keywordLists.put(BKW_LIST_GROUP,      List_KW);
 			keywordLists.put(BKW_PHONE_GROUP,     phone_KW);
 			keywordLists.put(BKW_READ_GROUP,      read_KW);
@@ -1035,7 +1034,6 @@ public class Run extends ListActivity {
 	private boolean Stop = false;						// Stops program from running
 	private boolean mInterpreterRunning;
 	private boolean RunPaused = false;
-	private boolean kbShown = false;
 														// events from other Activities
 	public static final ArrayList<EventHolder> mEventList = new ArrayList<EventHolder>();
 
@@ -1243,6 +1241,19 @@ public class Run extends ListActivity {
 		BKW_CONSOLE_LINE_COUNT, BKW_CONSOLE_LINE_TEXT, BKW_CONSOLE_LINE_TOUCHED,
 		BKW_CONSOLE_LINE_NEW, BKW_CONSOLE_LINE_CHAR
 	};
+
+	// ********************** KB Command variables *********************************
+
+	private static final String BKW_KB_HIDE = "hide";
+	private static final String BKW_KB_SHOW = "show";
+	private static final String BKW_KB_SHOWING = "showing";	// future use
+	private static final String BKW_KB_TOGGLE = "toggle";
+
+	private static final String KB_KW[] = {			// KB command list for Format
+		BKW_KB_HIDE, BKW_KB_SHOW, BKW_KB_TOGGLE
+	};
+
+	private boolean kbShown = false;
 
 	// ******************** Input Command variables ********************************
 
@@ -1772,6 +1783,7 @@ public class Run extends ListActivity {
 	private static final String BKW_DEBUG_STATS = "stats";
 
 	private static final String Debug_KW[] = {			// Command list for Format
+		// Do not include BKW_PRINT_SHORTCUT, but add BKW_DEBUG_GROUP last
 		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_PRINT, BKW_DEBUG_ECHO_ON,
 		BKW_DEBUG_ECHO_OFF, BKW_DEBUG_DUMP_SCALARS,
 		BKW_DEBUG_DUMP_ARRAY, BKW_DEBUG_DUMP_LIST,
@@ -1780,7 +1792,8 @@ public class Run extends ListActivity {
 		BKW_DEBUG_SHOW_ARRAY, BKW_DEBUG_SHOW_LIST, BKW_DEBUG_SHOW_STACK,
 		BKW_DEBUG_SHOW_BUNDLE, BKW_DEBUG_SHOW_WATCH, BKW_DEBUG_SHOW_PROGRAM,
 		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE,
-		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS
+		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS,
+		BKW_DEBUG_GROUP		// capitalize "DEBUG." in case of "DEBUG.?"
 	};
 
 	// *********************************************** Text to Speech *******************************
@@ -2232,6 +2245,8 @@ public class Run extends ListActivity {
 		setListAdapter(mConsole);
 		lv = getListView();
 		lv.setTextFilterEnabled(false);
+		lv.setFocusable(true);
+		lv.setFocusableInTouchMode(true);
 		lv.setSelection(0);
 		lv.setBackgroundColor(mConsole.getBackgroundColor());
 		if (Settings.getLinedConsole(this)) {
@@ -2242,7 +2257,7 @@ public class Run extends ListActivity {
 		}
 
 //		IMM.restartInput(lv);
-		kbHide();
+//		kbHide();
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		setRequestedOrientation(Settings.getSreenOrientation(this));
 
@@ -2287,7 +2302,7 @@ public class Run extends ListActivity {
 
 	private boolean handleMenuKey(KeyEvent event) {
 		boolean trapped = triggerInterrupt(Interrupt.MENU_KEY_BIT);
-		if (trapped) return true;		// trapped by onBackKey:
+		if (trapped) return true;		// trapped by onMenuKey:
 
 		if ( Basic.isAPK ||				// if MENU key hit in APK and not trapped by OnMenuKey
 			(event == null) )			// or relayed via EventList with null event object
@@ -2460,11 +2475,11 @@ public class Run extends ListActivity {
 			InputDismissed = true;
 		}
 	*/
-		// If there is a Media Player running, pause it and hope
-		// that it works.
 		Log.v(LOGTAG, CLASSTAG + " onPause " + this.toString());
 		if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
 
+		// If there is a Media Player running, pause it and hope
+		// that it works.
 	/*	if (theMP != null) {
 			try { theMP.pause(); } catch (IllegalStateException e) {}
 		}
@@ -2598,16 +2613,29 @@ public class Run extends ListActivity {
 		sendMessage(MESSAGE_CHECKPOINT);
 	}
 
-	private void kbHide() {
-		if (GRFront) {
-//			GR.GraphicsImm.toggleSoftInputFromWindow(GR.drawView.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
-			GR.GraphicsImm.hideSoftInputFromWindow(GR.drawView.getWindowToken(), 0);
-			kbShown = false;
-		} else {
-//			IMM.toggleSoftInputFromWindow(lv.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
-			IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
-			kbShown = false;
-		}
+	private boolean kbHide() {
+		View view = GRFront ? GR.drawView : lv;
+		InputMethodManager imm = GRFront ? GR.GraphicsImm : IMM;
+//		imm.toggleSoftInputFromWindow(view.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
+		boolean result = imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+		Log.d(LOGTAG, "kbHide: GRFront " + GRFront + ", result " + result);
+		kbShown = false;
+		return true;
+	}
+
+	private boolean kbShow() {
+		if (kbShown)					return true;
+		InputMethodManager imm = GRFront ? GR.GraphicsImm : IMM;
+//		View view = GRFront ? GR.drawView : lv;
+//		if (!view.isFocused()) { view.requestFocus(); }
+
+//		imm.showSoftInputFromInputMethod(view.getWindowToken(), InputMethodManager.SHOW_FORCED);
+//		boolean result = imm.showSoftInput(view, 0, mImmResult);
+//		Log.d(LOGTAG, "kbShow: GRFront " + GRFront + ", result " + result);
+//		imm.toggleSoftInputFromWindow(view.getWindowToken(), InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_NOT_ALWAYS);
+		imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+		kbShown = true;
+		return true;
 	}
 
 	private static void trimArray(ArrayList array, int start) {
@@ -4328,8 +4356,7 @@ public class Run extends ListActivity {
 		new Command(BKW_DEVICE)                 { public boolean run() { return executeDEVICE(); } },
 		new Command(BKW_ECHO_ON)                { public boolean run() { return executeECHO_ON(); } },
 		new Command(BKW_ECHO_OFF)               { public boolean run() { return executeECHO_OFF(); } },
-		new Command(BKW_KB_TOGGLE)              { public boolean run() { return executeKB_TOGGLE(); } },
-		new Command(BKW_KB_HIDE)                { public boolean run() { return executeKB_HIDE(); } },
+		new Command(BKW_KB_GROUP,  CID_GROUP)   { public boolean run() { return executeKB(); } },
 		new Command(BKW_NOTIFY)                 { public boolean run() { return executeNOTIFY(); } },
 		new Command(BKW_RUN)                    { public boolean run() { return executeRUN(); } },
 		new Command(BKW_EMPTY_PROGRAM)          { public boolean run() { return executeEMPTY_PROGRAM(); } },
@@ -4464,6 +4491,14 @@ public class Run extends ListActivity {
 	private final Command[] Dialog_cmd = new Command[] {	// Map dialog command keywords to their execution functions
 		new Command(BKW_DIALOG_MESSAGE)         { public boolean run() { return executeDIALOG_MESSAGE(); } },
 		new Command(BKW_DIALOG_SELECT)          { public boolean run() { return executeDIALOG_SELECT(); } },
+	};
+
+	// **************** KB Group
+
+	private final Command[] KB_cmd = new Command[] {	// Map KB command keywords to their execution functions
+		new Command(BKW_KB_HIDE)                { public boolean run() { return executeKB_HIDE(); } },
+		new Command(BKW_KB_SHOW)                { public boolean run() { return executeKB_SHOW(); } },
+		new Command(BKW_KB_TOGGLE)              { public boolean run() { return executeKB_TOGGLE(); } },
 	};
 
 	// **************** SQL Group - SQLite database operations
@@ -4741,6 +4776,7 @@ public class Run extends ListActivity {
 		new Command(BKW_DEBUG_ON)               { public boolean run() { return executeDEBUG_ON(); } },
 		new Command(BKW_DEBUG_OFF)              { public boolean run() { return executeDEBUG_OFF(); } },
 		new Command(BKW_PRINT)                  { public boolean run() { return executeDEBUG_PRINT(); } },
+		new Command(BKW_PRINT_SHORTCUT)         { public boolean run() { return executeDEBUG_PRINT(); } },
 		new Command(BKW_DEBUG_ECHO_ON)          { public boolean run() { return executeECHO_ON(); } },
 		new Command(BKW_DEBUG_ECHO_OFF)         { public boolean run() { return executeECHO_OFF(); } },
 		new Command(BKW_DEBUG_DUMP_SCALARS)     { public boolean run() { return executeDUMP_SCALARS(); } },
@@ -9814,33 +9850,30 @@ public class Run extends ListActivity {
 		return true;
 	}
 
+	// ************************************ Keyboard Commands *************************************
+
+	private boolean executeKB() {								// Get kb command keyword if it is there
+		return executeCommand(KB_cmd, "KB");					// and execute the command
+	}
+
 	private boolean executeKB_TOGGLE() {
 		if (!checkEOL())				return false;
 		Log.v(LOGTAG, CLASSTAG + " KB_TOGGLE " + kbShown );
 
-		if (kbShown)					return true;
-
-		if (GRFront) {
-//			GR.GraphicsImm.toggleSoftInputFromWindow(GR.drawView.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
-//			GR.GraphicsImm.showSoftInput(GR.drawView, InputMethodManager.SHOW_FORCED);
-			GR.GraphicsImm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-			kbShown = true;
-		}
-		else {
-//			IMM.toggleSoftInputFromWindow(lv.getWindowToken(), InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_NOT_ALWAYS);
-//			IMM.showSoftInput(lv, 0);
-			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-			kbShown = true;
-		}
-//		IMM.showSoftInputFromInputMethod(lv.getWindowToken(), InputMethodManager.SHOW_FORCED);
-//		IMM.showSoftInputFromInputMethod (lv.getWindowToken(), IMM.SHOW_FORCED);
-		return true;
+		return (kbShown ? kbHide() : kbShow());
 	}
 
 	private boolean executeKB_HIDE() {
 		if (!checkEOL())				return false;
 		Log.v(LOGTAG, CLASSTAG + " KBHIDE " + kbShown);
 		kbHide();
+		return true;
+	}
+
+	private boolean executeKB_SHOW() {
+		if (!checkEOL())				return false;
+		Log.v(LOGTAG, CLASSTAG + " KBSHOW " + kbShown);
+		kbShow();
 		return true;
 	}
 
