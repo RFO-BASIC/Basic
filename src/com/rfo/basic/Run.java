@@ -199,10 +199,10 @@ import android.widget.Toast;
 
 
 /* Executes the Basic program. Run splits into two parts.
- * The UI thread part and the background thread part.
+ * The UI thread part (console) and the background thread part (interpreter).
  * 
  * The actual execution of the program occurs in the background
- * task. UI activities must all be handled in the UI task.
+ * thread. UI activities must all be handled in the UI thread.
  * 
  * This leads to a little complication.
  */
@@ -1030,6 +1030,9 @@ public class Run extends ListActivity {
 	// *************************** Various execution control variables ****************************
 
 	public static final int BASIC_GENERAL_INTENT = 255;
+
+	private Intent mConsoleIntent;						// keep a reference to the Intent that started Run 
+
 	public static boolean Exit = false;					// Exits program and signals caller to exit, too
 	private boolean Stop = false;						// Stops program from running
 	private boolean mInterpreterRunning;
@@ -1042,7 +1045,7 @@ public class Run extends ListActivity {
 	private int TouchedConsoleLine = 0;					// first valid line number is 1
 	private int interruptResume = -1;
 
-	/* TODO: move these to Background */				// Constants for use in the IfElseStack
+	/* TODO: move these to Interpreter */				// Constants for use in the IfElseStack
 	private static final Integer IEskip1 = 1;			// Skip statements until ELSE, ELSEIF or ENDIF
 	private static final Integer IEskip2 = 2;			// Skip to until ENDIF
 	private static final Integer IEexec = 3;			// Execute to ELSE, ELSEIF or ENDIF
@@ -1051,11 +1054,11 @@ public class Run extends ListActivity {
 														// The output screen text lines
 	final private static int MIN_CONSOLE_LINES = 100;	// starting capacity of mConsole
 	private final ArrayList<String> mOutput = new ArrayList<String>(MIN_CONSOLE_LINES);
-	private final ArrayList<String> mConsoleBuffer = new ArrayList<String>();	// carries output from Background to UI
+	private final ArrayList<String> mConsoleBuffer = new ArrayList<String>();	// carries output from mInterpreter to UI
 
 	public Basic.ColoredTextAdapter mConsole;			// The output screen array adapter
 	private ListView lv;								// The output screen list view
-	private Background theBackground;					// Background task - the program runner
+	private Interpreter mInterpreter;					// the program runner, runs in a separate Thread
 	private boolean SyntaxError = false;				// Set true when Syntax Error message has been output
 
 	private boolean mMessagePending;					// If true, may be messages pending
@@ -1098,7 +1101,7 @@ public class Run extends ListActivity {
 	private InputMethodManager IMM;
 	private HashMap<String,Integer> Labels;				// A list of all labels and associated line numbers
 
-	public static ArrayList<Background.Var> Vars;		// All scalar the variables
+	public static ArrayList<Interpreter.Var> Vars;		// All scalar the variables
 	private ArrayList<ArrayDescriptor> ArrayTable;		// Each DIMed array has an entry in this table
 	private int ArrayValueStart = 0;					// Value index for newly created array
 
@@ -1257,7 +1260,7 @@ public class Run extends ListActivity {
 
 	// ******************** Input Command variables ********************************
 
-	private boolean mInputCancelled = false;			// Signal between background task and foreground
+	private boolean mInputCancelled = false;			// Signal between Interpreter Thread and UI Thread
 //	private boolean mInputDismissed = false;			// This will be used only if we dismiss the dialog in onPause
 
 	// ******************** Dialog Command variables *******************************
@@ -2076,7 +2079,7 @@ public class Run extends ListActivity {
 		return GRFront ? GR.context : this;
 	}
 
-	// These sendMessage methods are used by Background to send messages to mHandler.
+	// These sendMessage methods are used by mInterpreter to send messages to mHandler.
 	// For convenience, there are several combinations of message parameters provided.
 
 	private void sendMessage(int what) {
@@ -2091,8 +2094,8 @@ public class Run extends ListActivity {
 		mHandler.obtainMessage(what, arg1, arg2).sendToTarget();
 	}
 
-	// This Handler is in the UI (foreground) Task part of Run.
-	// It gets control when the background task sends a Message.
+	// This Handler is in the UI (foreground) thread part of Run.
+	// It gets control when the interpreter thread sends a Message.
 
 	private final Handler mHandler = new Handler() {
 		@Override
@@ -2198,7 +2201,7 @@ public class Run extends ListActivity {
 		}
 	}
 
-	// TODO: Move this to Background when Background is put in its own class file
+	// TODO: Move this to Interpreter when Interpreter is put in its own class file
 	public static Intent buildVoiceRecognitionIntent() {
 		if (sttPrompt == null) { sttPrompt = sttDefaultPrompt; }
 		Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -2215,7 +2218,7 @@ public class Run extends ListActivity {
 	public void onCreate(Bundle savedInstanceState) {
 
 		super.onCreate(savedInstanceState);
-		Log.v(LOGTAG, CLASSTAG + " onCreate");
+		Log.v(LOGTAG, CLASSTAG + " onCreate " + this.toString());
 
 		if (Basic.lines == null) {
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: Lost context. Bail out.");
@@ -2236,6 +2239,7 @@ public class Run extends ListActivity {
 		theWifiLock = null;
 		isOld = true;
 
+		mConsoleIntent = getIntent();						// keep a reference to the Intent that started Run
 		InitRunVars();
 
 															// Establish the output screen
@@ -2285,8 +2289,8 @@ public class Run extends ListActivity {
 			}
 		});
 
-		theBackground = new Background();					// Start the interpreter in a background task
-		theBackground.start();
+		mInterpreter = new Interpreter();					// start the interpreter in a background Thread
+		mInterpreter.start();
 
 	} // end onCreate
 
@@ -2294,7 +2298,7 @@ public class Run extends ListActivity {
 		IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
 		clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-		theBackground = null;								// Background task ID
+		mInterpreter = null;								// reference to Interpreter Thread
 	}
 
 	// The following methods run in the foreground. The are called by asynchronous user events
@@ -2316,7 +2320,7 @@ public class Run extends ListActivity {
 		boolean trapped = triggerInterrupt(Interrupt.BACK_KEY_BIT);
 		if (trapped) return;			// trapped by onBackKey
 
-		if (theBackground != null) { theBackground.GRstop(); } // stop GR, don't wait for it
+		if (mInterpreter != null) { mInterpreter.GRstop(); }	// stop GR, don't wait for it
 		doBackPressed();				// stop interpreter, too
 	}
 
@@ -2420,7 +2424,7 @@ public class Run extends ListActivity {
 		super.onPrepareOptionsMenu(menu);
 		MenuItem item;
 		if (Stop) {										// If program running display with Editor dimmed
-			item = menu.getItem(0);						// Other wise dim stop and undim Editor
+			item = menu.getItem(0);						// Other wise dim Stop and undim Editor
 			item.setEnabled(false);
 			item = menu.getItem(1);
 			item.setEnabled(true);
@@ -2439,10 +2443,11 @@ public class Run extends ListActivity {
 			return true;
 
 		case R.id.editor:									// User pressed Editor
-			if (!Basic.DoAutoRun && SyntaxError && (theBackground != null)) {
-				Editor.SyntaxErrorDisplacement = theBackground.ExecutingLineIndex;
+			if (!Basic.DoAutoRun && SyntaxError && (mInterpreter != null)) {
+				Editor.SyntaxErrorDisplacement = mInterpreter.ExecutingLineIndex;
 			}
 
+			// TODO: This can't possibly be enough. Shouldn't we run cleanup() or equivalent?
 			Basic.theRunContext = null;
 			if (mChatService != null) {
 				mChatService.stop();
@@ -2457,7 +2462,7 @@ public class Run extends ListActivity {
 
 	@Override
 	protected void onResume() {
-		Log.v(LOGTAG, CLASSTAG + " onResume " +  this.toString());
+		Log.v(LOGTAG, CLASSTAG + " onResume " + this.toString());
 
 		RunPaused = false;
 		triggerInterrupt(Interrupt.BACKGROUND_BIT);
@@ -2491,13 +2496,13 @@ public class Run extends ListActivity {
 
 	@Override
 	protected void onStart() {
-		Log.v(LOGTAG, CLASSTAG + " onStart");
+		Log.v(LOGTAG, CLASSTAG + " onStart " + this.toString());
 		super.onStart();
 	}
 
 	@Override
 	protected void onStop() {
-		Log.v(LOGTAG, CLASSTAG + " onStop " + kbShown);
+		Log.v(LOGTAG, CLASSTAG + " onStop " + this.toString() + " kbShown: " + kbShown);
 		if (!GR.Running) {
 			triggerInterrupt(Interrupt.BACKGROUND_BIT);
 //			if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
@@ -2507,13 +2512,13 @@ public class Run extends ListActivity {
 
 	@Override
 	protected void onRestart() {
-		Log.v(LOGTAG, CLASSTAG + " onRestart");
+		Log.v(LOGTAG, CLASSTAG + " onRestart " + this.toString());
 		super.onRestart();
 	}
 
 	@Override
 	protected void onDestroy() {
-		Log.v(LOGTAG, CLASSTAG + " onDestroy");
+		Log.v(LOGTAG, CLASSTAG + " onDestroy " + this.toString());
 
 		if (theSensors != null) {
 			theSensors.stop();
@@ -2558,14 +2563,14 @@ public class Run extends ListActivity {
 		switch (requestCode) {
 			case REQUEST_CONNECT_DEVICE_SECURE:
 				// When DeviceListActivity returns with a device to connect
-				if ((resultCode == Activity.RESULT_OK) && (theBackground != null)) {
-					theBackground.connectDevice(data, bt_Secure);
+				if ((resultCode == Activity.RESULT_OK) && (mInterpreter != null)) {
+					mInterpreter.connectDevice(data, bt_Secure);
 				}
 				break;
 			case REQUEST_CONNECT_DEVICE_INSECURE:
 				// When DeviceListActivity returns with a device to connect
-				if ((resultCode == Activity.RESULT_OK) && (theBackground != null)) {
-					theBackground.connectDevice(data, false);
+				if ((resultCode == Activity.RESULT_OK) && (mInterpreter != null)) {
+					mInterpreter.connectDevice(data, false);
 				}
 				break;
 			case REQUEST_ENABLE_BT:
@@ -2588,15 +2593,15 @@ public class Run extends ListActivity {
 	}
 
 	// ********************************************************************************************
-	// Methods used to communicate between Run and Background
+	// Methods used to communicate between Run and Interpreter
 	// or utilities used in both threads
 
-	private boolean triggerInterrupt(Integer bit) {		// delegate to theBackground if it exists
-		return (theBackground != null) && (theBackground.triggerInterrupt(bit));
+	private boolean triggerInterrupt(Integer bit) {		// delegate to the interpreter if it exists
+		return (mInterpreter != null) && (mInterpreter.triggerInterrupt(bit));
 	}
 
-	private void disableInterrupt(Integer bit) {		// delegate to theBackground if it exists
-		if (theBackground != null) { theBackground.disableInterrupt(bit); }
+	private void disableInterrupt(Integer bit) {		// delegate to the interpreter if it exists
+		if (mInterpreter != null) { mInterpreter.disableInterrupt(bit); }
 	}
 
 	private void clearConsole() {
@@ -2681,7 +2686,7 @@ public class Run extends ListActivity {
 				}
 			});
 
-		AlertDialog dialog = builder.create();
+		final AlertDialog dialog = builder.create();
 		dialog.setOnDismissListener(
 			new DialogInterface.OnDismissListener() {
 				public void onDismiss(DialogInterface dialog) {
@@ -2689,6 +2694,7 @@ public class Run extends ListActivity {
 					releaseLOCK();							// release the lock that executeINPUT is waiting for
 				}
 			});
+		dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
 		dialog.show();
 		dialog.getButton(DialogInterface.BUTTON_POSITIVE)	// now we can replace the View click listener
 			.setOnClickListener(new InputDialogClickListener(dialog, text, args));	// to prevent auto-dismiss
@@ -2699,7 +2705,7 @@ public class Run extends ListActivity {
 		private final AlertDialog mmDialog;
 		private final EditText mmText;
 		private final boolean mmIsNumeric;
-		private final Background.Var mmVar;
+		private final Interpreter.Var mmVar;
 		public InputDialogClickListener(AlertDialog dialog, EditText text, Bundle args) {
 			mmDialog = dialog;
 			mmText = text;
@@ -2763,7 +2769,7 @@ public class Run extends ListActivity {
 				}
 			});
 
-		AlertDialog dialog = builder.create();
+		final AlertDialog dialog = builder.create();
 		dialog.setOnDismissListener(
 			new DialogInterface.OnDismissListener() {
 				public void onDismiss( DialogInterface dialog) {
@@ -2909,32 +2915,32 @@ public class Run extends ListActivity {
 
 		int lineIndex = 0;
 		String line = "";
-		if (theBackground != null) {
-			lineIndex = theBackground.ExecutingLineIndex;
-			line = theBackground.ExecutingLineBuffer.line();
+		if (mInterpreter != null) {
+			lineIndex = mInterpreter.ExecutingLineIndex;
+			line = mInterpreter.ExecutingLineBuffer.line();
 		}
 
 		ArrayList<String> msg = new ArrayList<String>();
 
 		if (!dbDialogProgram) {
-			msg = theBackground.dbDoFunc();
+			msg = mInterpreter.dbDoFunc();
 			msg.add("Executable Line #:    "
 					+ Integer.toString(lineIndex + 1) + '\n'
 					+ chomp(line));
 		}
 
 		if (dbDialogScalars)
-			msg.addAll(theBackground.dbDoScalars("  "));
+			msg.addAll(mInterpreter.dbDoScalars("  "));
 		if (dbDialogArray)
-			msg.addAll(theBackground.dbDoArray("  "));
+			msg.addAll(mInterpreter.dbDoArray("  "));
 		if (dbDialogList)
-			msg.addAll(theBackground.dbDoList("  "));
+			msg.addAll(mInterpreter.dbDoList("  "));
 		if (dbDialogStack)
-			msg.addAll(theBackground.dbDoStack("  "));
+			msg.addAll(mInterpreter.dbDoStack("  "));
 		if (dbDialogBundle)
-			msg.addAll(theBackground.dbDoBundle("  "));
+			msg.addAll(mInterpreter.dbDoBundle("  "));
 		if (dbDialogWatch)
-			msg.addAll(theBackground.dbDoWatch("  "));
+			msg.addAll(mInterpreter.dbDoWatch("  "));
 
 		if (dbDialogProgram) {
 			for (int i = 0; i < Basic.lines.size(); ++i) {
@@ -3109,7 +3115,7 @@ public class Run extends ListActivity {
  * its execution method. The execution methods call the parsing methods to identify variables and
  * evaluate expressions.
  * 
- * The final and largest part of Background is code that actually executes user program statements.
+ * The final and largest part of Interpreter is code that actually executes user program statements.
  * 
  */
 
@@ -3129,10 +3135,10 @@ public class Run extends ListActivity {
 		The rest are serviced in the order they occur.
  */
 
-	public class Background extends Thread {
+	public class Interpreter extends Thread {
 
 		// The execution of the basic program is done by this background Thread.
-		// This is done to keep the UI task responsive.
+		// This is done to keep the UI responsive.
 
 		// **************************** Variable class ****************************
 
@@ -3206,7 +3212,7 @@ public class Run extends ListActivity {
 
 		private class ForNext {
 			private int mLine;								// loop return location
-			private Background.Var mVar;					// loop index
+			private Interpreter.Var mVar;					// loop index
 			private double mStep;							// step value
 			private double mLimit;							// limit value
 
@@ -3427,7 +3433,7 @@ public class Run extends ListActivity {
 
 		// ***************************** Graphics commands variables ******************************
 
-		private Intent GRclass;								// Graphics Class Intent
+		private Intent mGrIntent;							// Graphics Activity (GR) Intent
 		private boolean mShowStatusBar;
 		private Paint aPaint;
 		private Canvas drawintoCanvas = null;
@@ -3480,7 +3486,7 @@ public class Run extends ListActivity {
 
 		// ******************************** Run command variables *********************************
 
-		private Intent runIntent;							// Intent to run from RUN command
+		private AutoRun mAutoRun;							// used to load the new program
 
 		// ************************ Superuser and System command variables ************************
 
@@ -3547,8 +3553,9 @@ public class Run extends ListActivity {
 			}
 
 			finishRun();
-			if (ok && runIntent != null) {				// program executed a RUN command
-				Run.this.startActivity(runIntent);		// start new AutoRun
+			if (ok && mAutoRun != null) {				// program executed a RUN command
+				Intent runIntent = mAutoRun.load();
+				Run.this.startActivity(runIntent);		// start new Run
 				Exit = true;							// and force this Run to finish
 			}
 
@@ -3576,8 +3583,6 @@ public class Run extends ListActivity {
 			if (mConsoleBuffer.size() != 0) {								// somebody changed the console
 				sendMessage(MESSAGE_UPDATE_CONSOLE);
 			}
-
-			Basic.theRunContext = null;  // Signals that the background task has stopped
 			cleanUp();
 		}
 
@@ -3653,7 +3658,7 @@ public class Run extends ListActivity {
 
 				flag = StatementExecuter();							// execute the next statement
 																	// returns true if no problems executing statement
-				if (Exit) return flag;								// if Exit skip all other processing
+				if (Exit) break;									// if Exit skip all other processing
 
 				if (!flag) {										// error supersedes all other interrupt checking
 					if (mOnErrorInt != null) {						// if there is an OnError label
@@ -3948,7 +3953,7 @@ public class Run extends ListActivity {
 		sttPrompt = null;
 		sttListening = false;
 
-		// Owned by Background class
+		// Owned by Interpreter class
 		// allocate objects
 
 		ExecutingLineBuffer = new ProgramLine("\n");		// Holds the current line being executed
@@ -4077,7 +4082,7 @@ public class Run extends ListActivity {
 
 		audioRecordStop();
 
-		Stop = true;								// make sure the background task stops
+		Stop = true;								// make sure the interpreter thread stops
 		Basic.theRunContext = null;
 		mMessagePending = false;
 
@@ -9659,13 +9664,13 @@ public class Run extends ListActivity {
 			b.putInt("dur", args[2]);
 			m.setData(b);
 		}
-		m.sendToTarget();								// tell the UI Task to pop the toast
+		m.sendToTarget();								// tell the UI thread to pop the toast
 		return true;
 	}
 
 	public boolean executeCLS() {							// Clear Screen
 		if (!checkEOL()) return false;
-		sendMessage(MESSAGE_CLEAR_CONSOLE);				// tell the UI Task to clear the Console
+		sendMessage(MESSAGE_CLEAR_CONSOLE);				// tell the UI thread to clear the Console
 		return true;
 	}
 
@@ -10862,14 +10867,14 @@ public class Run extends ListActivity {
 			PaintList.add(aPaint);									// Add to the Paint List as element 2
 		}
 
-		GRclass = new Intent(Run.this, GR.class);					// Set up parameters for the Graphics Activity
-		GRclass.putExtra(GR.EXTRA_SHOW_STATUSBAR, showStatusBar);
-		GRclass.putExtra(GR.EXTRA_ORIENTATION, orientation);
-		GRclass.putExtra(GR.EXTRA_BACKGROUND_COLOR, backgroundColor);
+		mGrIntent = new Intent(Run.this, GR.class);					// Set up parameters for the Graphics Activity
+		mGrIntent.putExtra(GR.EXTRA_SHOW_STATUSBAR, showStatusBar);
+		mGrIntent.putExtra(GR.EXTRA_ORIENTATION, orientation);
+		mGrIntent.putExtra(GR.EXTRA_BACKGROUND_COLOR, backgroundColor);
 
 		GR.Running = false;											// Set up the signals
 		GR.waitForLock = true;
-		startActivityForResult(GRclass, BASIC_GENERAL_INTENT);		// Start the Graphics Activity
+		startActivityForResult(mGrIntent, BASIC_GENERAL_INTENT);	// Start the Graphics Activity
 
 		waitForGrLOCK();											// Do not continue until GR signals it is running
 
@@ -12159,11 +12164,11 @@ public class Run extends ListActivity {
 		if (!checkEOL()) return false;
 
 		if (EvalNumericExpressionValue == 0) {
-			Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-			startActivity(Basic.theProgramRunner);
+			mConsoleIntent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
+			startActivity(mConsoleIntent);
 		} else {
-			GRclass.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-			startActivity(GRclass);
+			mGrIntent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+			startActivity(mGrIntent);
 		}
 		try { Thread.sleep(100); } catch(InterruptedException e) {}
 		return true;
@@ -15926,8 +15931,8 @@ public class Run extends ListActivity {
 	}
 
 	private boolean executeCONSOLE_FRONT() {
-		Basic.theProgramRunner.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
-		startActivity(Basic.theProgramRunner);
+		mConsoleIntent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT );
+		startActivity(mConsoleIntent);
 
 		return true;
 	}
@@ -16770,7 +16775,7 @@ public class Run extends ListActivity {
 	}
 
 	private boolean execute_html_close() {					// Close the html
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 		if (Web.aWebView != null) Web.aWebView.webClose();	// if it is open
 		while (Web.aWebView != null) Thread.yield();		// wait for the close signal
 		htmlIntent = null;									// indicate not open
@@ -16778,12 +16783,12 @@ public class Run extends ListActivity {
 	}
 
 	private boolean execute_html_post() {
-		if (!getStringArg()) return false;
+		if (!getStringArg())			return false;
 		String url = StringConstant;
 
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;
-		if (!checkEOL()) return false;
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;
+		if (!checkEOL())				return false;
 
 		int theListIndex = EvalNumericExpressionValue.intValue();
 		if (theListIndex < 1 || theListIndex >= theLists.size()) {
@@ -16814,15 +16819,15 @@ public class Run extends ListActivity {
 
 	private boolean executeRUN() {
 
-		if (!getStringArg()) { return false; }								// get program filename
+		if (!getStringArg())			return false;						// get program filename
 		String fileName = StringConstant;
 
 		String data = "";
 		if (isNext(',')) {													// optional
-			if (!getStringArg()) { return false; }							// parameter to pass to program
+			if (!getStringArg())		return false;						// parameter to pass to program
 			data = StringConstant;
 		}
-		if (!checkEOL()) { return false; }
+		if (!checkEOL())				return false;
 
 		String path = Basic.getFilePath(Basic.SOURCE_DIR, fileName);
 		boolean exists = false;
@@ -16836,15 +16841,10 @@ public class Run extends ListActivity {
 			return RunTimeError(fileName + " not found");
 		}
 
-		Bundle bb = new Bundle();
-		bb.putString("fn", fileName);										// without the path
-		bb.putString("data", data);
-		bb.putBoolean("RUN", true);											// tell AutoRun this is a RUN command
-
-		runIntent = new Intent(Run.this, AutoRun.class);
-		runIntent.putExtras(bb);
-
-		Stop = true;				// "Stop" would allow interrupt handling
+		// This AutoRun will be used later to load the new program
+		// and to get an Intent to create a new Interpreter to run it.
+		mAutoRun = new AutoRun(fileName, true, data);						// use file name without path
+		Exit = true;														// do not allow interrupt processing
 		return true;
 	}
 
@@ -17592,6 +17592,6 @@ public class Run extends ListActivity {
 		return msg;
 	}
 
-} // End of Background
+} // End of Interpreter
 
 } // End of Run

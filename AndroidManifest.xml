@@ -172,7 +172,7 @@ This file is part of BASIC! for Android
             android:name="Search"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:label="@string/search_name"
-            android:windowSoftInputMode="adjustResize" >
+            android:windowSoftInputMode="stateVisible|adjustResize" >
         </activity>
 
         <activity
@@ -221,7 +221,8 @@ This file is part of BASIC! for Android
             android:id="@+id/text_get_screen"
             android:name="TGet"
             android:configChanges="keyboardHidden|orientation|screenSize"
-            android:label="@string/textinput_name" >
+            android:label="@string/textinput_name"
+            android:windowSoftInputMode="stateVisible|adjustResize" >
         </activity>
 
         <activity

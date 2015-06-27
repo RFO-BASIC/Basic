@@ -101,11 +101,10 @@ public class Basic extends Activity {
 
 	public static Context BasicContext;						// saved so we do not have to pass it around
 	public static Context theRunContext;
+	public static String mBasicPackage = "";				// not valid but not null
 
 	public static String SD_ProgramPath = "";	// Used by Load/Save
-	public static Intent theProgramRunner;
 
-	private Background theBackground;						// Background task ID
 	private TextView mProgressText;
 	private Dialog mProgressDialog;
 	private ImageView mSplash;								// ImageView for splash screen
@@ -182,6 +181,7 @@ public class Basic extends Activity {
 	private void initVars() {
 		// Some of these may not need initialization; if so I choose to err on the side of caution
 		BasicContext = getApplicationContext();
+		mBasicPackage = BasicContext.getPackageName();
 
 		Resources res = getResources();
 		AppPath = res.getString(R.string.app_path);
@@ -190,7 +190,6 @@ public class Basic extends Activity {
 		apkCreateDataBaseDir = res.getBoolean(R.bool.apk_create_database_dir);
 
 		DoAutoRun = false;
-		theProgramRunner = null;
 	}
 
 	/** Called when the activity is first created. */
@@ -240,13 +239,11 @@ public class Basic extends Activity {
 			if (myIntent.getData() != null) FileName = myIntent.getData().getPath();
 		}
 
-		if ((FileName != null) && !FileName.equals("")) {
-			Bundle bb = new Bundle();
-			bb.putString("fn", FileName);								// fn is the tag for the filename parameter
-			Intent intent = new Intent(BasicContext, AutoRun.class);	// in the bundle going to AutoRun
-			intent.putExtras(bb);
+		if ((FileName != null) && !FileName.equals("")) {				// launched by shortcut or as a file share intent
+			AutoRun autoRun = new AutoRun(FileName, false, null);
+			Intent intent = autoRun.load();								// load the program
 			DoAutoRun = true;
-			startActivity( intent );
+			startActivity(intent);										// run the program
 			finish();
 		} else if (AreSamplesLoaded()) {								// this is not a launcher short cut
 			DoAutoRun = false;
@@ -257,7 +254,7 @@ public class Basic extends Activity {
 			startActivity(intent);										// to the Editor
 			finish();
 		} else {														// The sample files have not been loaded
-			runBackgroundLoader();							// Start the background task to load samples and graphics
+			runBackgroundLoader();							// Start the background thread to load samples and graphics
 		}
 	}
 
@@ -285,10 +282,9 @@ public class Basic extends Activity {
 
 		// Loading can take a while, so we have to start a background thread to do it.
 		// The background thread will make calls to the UI thread to show the progress.
-		// Once the files are loaded, the background task will start the loaded program running.
+		// Once the files are loaded, the Loader will start the loaded program running.
 
-		theBackground = new Background();						// Start the background task to load
-		theBackground.execute("");								// sample and graphics
+		(new Loader()).execute("");								// Start thread to load samples and graphics
 
 	}
 
@@ -397,7 +393,6 @@ public class Basic extends Activity {
 
 	public static int getRawResourceID(String fileName) {
 		if (fileName == null) fileName = "";
-		String packageName = BasicContext.getPackageName();				// Get the package name
 		int resID = 0;													// 0 is not a valid resource ID
 		for (int attempt = 1; (resID == 0) && (attempt <= 2); ++attempt) {
 			String rawFileName =
@@ -405,7 +400,7 @@ public class Basic extends Activity {
 				(attempt == 2) ? getRawFileName(fileName) : "";			// If first try didn't work, try again, Android-style.
 			if (!rawFileName.equals("")) {
 				Resources res = BasicContext.getResources();
-				String fullName = packageName + ":raw/" + rawFileName;	// "fully-qualified resource name"
+				String fullName = mBasicPackage + ":raw/" + rawFileName;// "fully-qualified resource name"
 				resID = res.getIdentifier(fullName, null, null);		// Get the resource ID
 			}
 		}
@@ -459,7 +454,7 @@ public class Basic extends Activity {
 
 	public static InputStream getDecryptedStream(InputStream inputStream) throws Exception {
 		// Decrypt program that was encrypted with PBEWithMD5AndDES
-		String PW = BasicContext.getPackageName();
+		String PW = mBasicPackage;
 		Cipher cipher = new Basic.Encryption(Cipher.DECRYPT_MODE, PW).cipher();
 		return new CipherInputStream(inputStream, cipher);
 	}
@@ -564,10 +559,10 @@ public class Basic extends Activity {
 
 	/************************************* background loader *************************************/
 
-	// The loading of the sample files and graphics is done in a background AsyncTask rather than the UI task
-	// Progress is shown by sending progress messages to the UI task.
+	// The loading of the sample files and graphics is done in a background AsyncTask rather than the UI thread.
+	// Progress is shown by sending progress messages to the UI thread.
 
-	public class Background extends AsyncTask<String, String, String>{
+	public class Loader extends AsyncTask<String, String, String>{
 
 		private String mProgressMarker;						// Displayed as a unit of progress while files are loading
 		private boolean mDisplayProgress;
@@ -661,10 +656,9 @@ public class Basic extends Activity {
 					catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
 				}
 			}
-			theProgramRunner = new Intent(BasicContext, Run.class);	// now go run the program
 			theRunContext = null;
 			DoAutoRun = true;
-			return theProgramRunner;							// Go run the program
+			return new Intent(BasicContext, Run.class);			// Go run the program
 		}
 
 		private void copyAssets(String path) {	// Recursively copy all the assets in the named subdirectory to the SDCard
@@ -865,7 +859,7 @@ public class Basic extends Activity {
 				}
 			}
 		}
-	} // class Background
+	} // class Loader
 
 	/************************************** utility classes **************************************/
 

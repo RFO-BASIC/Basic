@@ -703,11 +703,9 @@ public class Editor extends Activity {
 			Basic.lines.add(new Run.ProgramLine("@@@"));		// add Nothing to run command
 		}
 
-		Basic.theProgramRunner = new Intent(this, Run.class);	// now go run the program
 		Basic.theRunContext = null;								// Run will set theRunContext to non-null value
 		SyntaxErrorDisplacement = -1;
-
-		startActivity(Basic.theProgramRunner);
+		startActivity(new Intent(this, Run.class));				// now go run the program
 	}
 
 	private void loadFile(boolean doRun) {

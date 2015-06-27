@@ -45,8 +45,8 @@ import android.widget.EditText;
 
 public class TGet extends Activity {
 	// Names for Intent extras
-	public static final String TITLE = Basic.BasicContext.getPackageName() + "title";
-	public static final String CONSOLE_TEXT = Basic.BasicContext.getPackageName() + "consoletext";
+	public static final String TITLE = Basic.mBasicPackage + ".title";
+	public static final String CONSOLE_TEXT = Basic.mBasicPackage + ".consoletext";
 	public static boolean mMenuStop = false;				// set true if user selects Stop from menu
 
 	private EditText theTextView;							// The EditText TextView
