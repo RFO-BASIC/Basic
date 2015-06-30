@@ -73,11 +73,14 @@ public class AddProgramLine {
 	private Boolean BlockFlag = false;
 	private String mMerge = null;						// collects lines joined by ~ continuation character
 
+	private final ArrayList<String> mIncludeFiles;		// prevent recursive INCLUDE
+
 	public AddProgramLine() {
 		charCount = 0;									// Character count = 0
 		lineCharCounts = new ArrayList<Integer>();		// create a new list of line char counts
 		lineCharCounts.add(0);							// First line starts with a zero char count
 		Basic.lines = new ArrayList<Run.ProgramLine>();
+		mIncludeFiles = new ArrayList<String>();
 	}
 
 	public void AddLine(String line) {
@@ -353,6 +356,12 @@ public class AddProgramLine {
 		// Error messages go back through AddLine() again, so keep the quotes.
 		String originalFileName = fileName.substring(KW_INCLUDE.length()).trim();	// use this for error message
 		fileName = originalFileName.replace("\"",  "");								// use this for file operations
+
+		for (String f : mIncludeFiles) {
+			if (f.equals(fileName)) return;							// don't do recursive INCLUDE
+		}
+		mIncludeFiles.add(fileName);
+
 		BufferedReader buf = null;
 		try { buf = Basic.getBufferedReader(Basic.SOURCE_DIR, fileName, Basic.Encryption.ENABLE_DECRYPTION); }
 		// If getBufferedReader() returned null, it could not open the file or asset,
