@@ -87,7 +87,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 
 import java.security.InvalidParameterException;
 
@@ -2260,7 +2259,6 @@ public class Run extends ListActivity {
 			lv.setDividerHeight(0);							// don't show the divider
 		}
 
-//		IMM.restartInput(lv);
 //		kbHide();
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		setRequestedOrientation(Settings.getSreenOrientation(this));
@@ -2481,7 +2479,8 @@ public class Run extends ListActivity {
 		}
 	*/
 		Log.v(LOGTAG, CLASSTAG + " onPause " + this.toString());
-		if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
+		IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
+		kbShown = false;
 
 		// If there is a Media Player running, pause it and hope
 		// that it works.
@@ -4029,6 +4028,8 @@ public class Run extends ListActivity {
 		cancelTimer();
 		ttsStop();
 		cancelVibrator();
+
+		((NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE)).cancelAll();
 
 		if (theMP != null) {
 			theMP.release();
@@ -11455,10 +11456,11 @@ public class Run extends ListActivity {
 		if (vName == null)				return false;				// must name a new string array variable
 		if (!checkEOL())				return false;				// line must end with ']'
 
-		ArrayList<String> params = (ArrayList<String>)Arrays.asList(b.type().parameters());
+		String[] params = b.type().parameters();
+		int length = params.length;
 
 		/* Puts the list of keys into a new array */
-		return ListToBasicStringArray(vName, params, params.size());
+		return ListToBasicStringArray(vName, Arrays.asList(params), length);
 	}
 
 	private boolean execute_gr_touch(int p) {
@@ -17044,8 +17046,8 @@ public class Run extends ListActivity {
 	}
 
 	private Intent buildIntentForAM() {
-		// Four optional string expressions:
-		// the action, the data, the package, and the component.
+		// Five optional string expressions:
+		// the action, the data, the package, the component, and "other" (not yet implemented)
 		byte[] type = { 2, 2, 2, 2, 2 };
 		Double[] nVal = new Double[5];							// not used
 		String[] sVal = { null, null, null, null, null };
