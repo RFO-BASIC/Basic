@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -75,14 +75,16 @@ public class LoadFile extends ListActivity {
 
 				// User has selected a file.
 				// If the selection is a directory, change the program path
-				// and then display the list of files in that directory
-				// otherwise load the selected file
+				// and then display the list of files in that directory.
+				// Otherwise load the selected file and tell the Editor it was loaded.
 
 				if (!SelectionIsFile(position)){
 					Basic.SD_ProgramPath = ProgramPath;
 					updateList();
 				} else {
 					FileLoader(FL1.get(position));
+					setResult(RESULT_OK);
+					finish();									// LoadFile is done
 					return;
 				}
 			}
@@ -91,55 +93,56 @@ public class LoadFile extends ListActivity {
 		// End of Click Listener **********************************************
 	}
 
-private void updateList(){
+	private void updateList() {
 
-	 ProgramPath = Basic.SD_ProgramPath;                 // Set Load path to current program path
-  	 File lbDir = new File(Basic.getSourcePath(ProgramPath));
-	 lbDir.mkdirs();
+		ProgramPath = Basic.SD_ProgramPath;						// Set Load path to current program path
+		File lbDir = new File(Basic.getSourcePath(ProgramPath));
+		lbDir.mkdirs();
 
-	 String[] FL = lbDir.list();									// Get the list of files in this dir
-	 if (FL == null){
-		Basic.toaster(this, "System Error. File not directory");
-		return;
-	 }
-	 
+		String[] FL = lbDir.list();								// Get the list of files in this dir
+		if (FL == null) {
+			String msg = lbDir.exists() ? "File not directory" : "Source directory does not exist";
+			Basic.toaster(this, "System Error: " + msg);
+			return;
+		}
 
-	// Go through the list of files and mark directories with (d)
-	// also only display files with the .bas extension
-	ArrayList<String> dirs = new ArrayList<String>();
-	ArrayList<String> files = new ArrayList<String>();
-	String absPath = lbDir.getAbsolutePath() + '/';
-	for (String s : FL) {
-		File test = new File(absPath + s);
-		if (test.isDirectory()) {								// If file is a directory, add "(d)"
-			dirs.add(s + "(d)");								// and add to display list
-		} else {
-			if (s.endsWith(".bas")) {							// 	Only put files ending in
-				files.add(s);									// .bas into the display list
+		// Go through the list of files and mark directories with (d)
+		// also only display files with the .bas extension
+		ArrayList<String> dirs = new ArrayList<String>();
+		ArrayList<String> files = new ArrayList<String>();
+		String absPath = lbDir.getAbsolutePath() + '/';
+		for (String s : FL) {
+			File test = new File(absPath + s);
+			if (test.isDirectory()) {							// If file is a directory, add "(d)"
+				dirs.add(s + "(d)");							// and add to display list
+			} else {
+				if (s.toLowerCase().endsWith(".bas")) {			// 	Only put files ending in
+					files.add(s);								// .bas into the display list
+				}
 			}
 		}
+		Collections.sort(dirs);									// Sort the directory list
+		Collections.sort(files);								// Sort the file list
+
+		FL1.clear();
+		FL1.add("..");											// put  the ".." to the top of the list
+		FL1.addAll(dirs);										// copy the directory list to the adapter list
+		FL1.addAll(files);										// copy the file list to the end of the adapter list
+
+		if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
+
+		Basic.toaster(this, "Select File To Load");				// Tell the user what to do using Toast
 	}
-	Collections.sort(dirs);									// Sort the directory list
-	Collections.sort(files);								// Sort the file list
 
-	FL1.clear();
-	FL1.add("..");											// put  the ".." to the top of the list
-	FL1.addAll(dirs);										// copy the directory list to the adapter list
-	FL1.addAll(files);										// copy the file list to the end of the adapter list
-
-	if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
-
-	Basic.toaster(this, "Select File To Load");					// Tell the user what to do using Toast
-}
-
-@Override
-public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key pressed
-    if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {      // and the key is the BACK key
-       finish();																// then done with LoadFile
-       return true;
-    }
-    return super.onKeyUp(keyCode, event);
-}
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event) {						// If back key pressed
+		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {	// and the key is the BACK key
+			setResult(RESULT_CANCELED);
+			finish();															// then done with LoadFile
+			return true;
+		}
+		return super.onKeyUp(keyCode, event);
+	}
 
 	public static String goUp(String path){					// Return the parent directory
 		if (path.equals("")) { return path; }					// if up at top level dir, just return
@@ -176,7 +179,7 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
 		Basic.clearProgram(); 				// Clear the old program
 		Editor.DisplayText = "";			// Clear the display text buffer
 
-		Basic.ProgramFileName = aFileName;
+		Editor.ProgramFileName = aFileName;
 
 		String FullFileName = Basic.getSourcePath( 							// Base Source dir 
 				Basic.SD_ProgramPath + File.separatorChar +					// plus load path
@@ -202,7 +205,6 @@ public boolean onKeyUp(int keyCode, KeyEvent event)  {						// If back key press
 			throw new RuntimeException("LoadFile: Editor.mText null");
 		}
 		Editor.mText.setText(Editor.DisplayText);
-		finish();													// LoadFile is done
 	}
 
 }

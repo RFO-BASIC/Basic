@@ -300,7 +300,7 @@ LET   X = 0.75
 FOR ix = 1 TO ixtra
  FOR i = 1 TO n8
 
-  LET          X = SQR(LOG(X) / t1)
+  LET X = SQR(ABS(LOG(X)) / t1)
 
  NEXT i
 NEXT ix

@@ -5,7 +5,7 @@ Android devices.
 
 This file is part of BASIC! for Android
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
     BASIC! is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -66,8 +67,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.PBEParameterSpec;
+import java.security.spec.AlgorithmParameterSpec;
+import java.security.spec.KeySpec;
 
-public class Basic extends Activity  {
+
+public class Basic extends Activity {
 
 	private static final String LOGTAG = "Basic";
 	private static final String CLASSTAG = Basic.class.getSimpleName();
@@ -87,17 +97,14 @@ public class Basic extends Activity  {
 	private static String filePath = "";
 	private static String basePath = "";
 
-	public static ArrayList<String> lines;					//Program lines for execution
-
-	public static String ProgramFileName;					// Set when program loaded or saved
+	public static ArrayList<Run.ProgramLine> lines;			// Program lines for execution
 
 	public static Context BasicContext;						// saved so we do not have to pass it around
 	public static Context theRunContext;
+	public static String mBasicPackage = "";				// not valid but not null
 
 	public static String SD_ProgramPath = "";	// Used by Load/Save
-	public static Intent theProgramRunner;
 
-	private Background theBackground;						// Background task ID
 	private TextView mProgressText;
 	private Dialog mProgressDialog;
 	private ImageView mSplash;								// ImageView for splash screen
@@ -108,7 +115,7 @@ public class Basic extends Activity  {
 															// 'r' for either readable or writable
 		String state = Environment.getExternalStorageState();
 		if (Environment.MEDIA_MOUNTED.equals(state)) { return true; }	// mounted for both read and write
-		if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state) && (mount == 'r')) return true;
+		if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state) && (mount == 'r')) { return true; }
 		return false;
 	}
 
@@ -174,6 +181,7 @@ public class Basic extends Activity  {
 	private void initVars() {
 		// Some of these may not need initialization; if so I choose to err on the side of caution
 		BasicContext = getApplicationContext();
+		mBasicPackage = BasicContext.getPackageName();
 
 		Resources res = getResources();
 		AppPath = res.getString(R.string.app_path);
@@ -182,9 +190,6 @@ public class Basic extends Activity  {
 		apkCreateDataBaseDir = res.getBoolean(R.bool.apk_create_database_dir);
 
 		DoAutoRun = false;
-
-		ProgramFileName = "";
-		theProgramRunner = null;
 	}
 
 	/** Called when the activity is first created. */
@@ -228,25 +233,28 @@ public class Basic extends Activity  {
 		 * Auto run will be called with a new bundle with just the filename.
 		 */
 		Intent myIntent = getIntent();
-		String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME); // Launched by shortcut?
+		String FileName = myIntent.getStringExtra(LauncherShortcuts.EXTRA_LS_FILENAME);	// Launched by shortcut?
+		Bundle savedState = myIntent.getBundleExtra(Editor.EXTRA_RESTART);				// Restart from editor?
 		if (FileName == null) {								// Launched with a .bas as argument?
 			if (myIntent.getData() != null) FileName = myIntent.getData().getPath();
 		}
 
-		if ((FileName != null) && ! FileName.equals("")) {
-			Bundle bb = new Bundle();
-			bb.putString("fn", FileName);								// fn is the tag for the filename parameter
-			Intent intent = new  Intent(BasicContext, AutoRun.class);	// in the bundle going to AutoRun
-			intent.putExtras(bb);
+		if ((FileName != null) && !FileName.equals("")) {				// launched by shortcut or as a file share intent
+			AutoRun autoRun = new AutoRun(FileName, false, null);
+			Intent intent = autoRun.load();								// load the program
 			DoAutoRun = true;
-			startActivity( intent );
+			startActivity(intent);										// run the program
 			finish();
-		} else if (AreSamplesLoaded()) {								// This is not a launcher short cut
+		} else if (AreSamplesLoaded()) {								// this is not a launcher short cut
 			DoAutoRun = false;
-			startActivity(new Intent(BasicContext, Editor.class));		// 	Goto the Editor
+			Intent intent = new Intent(BasicContext, Editor.class);
+			if (savedState != null) {									// if restarted by Editor
+				intent.putExtra(Editor.EXTRA_RESTART, savedState);		// send saved state back
+			}
+			startActivity(intent);										// to the Editor
 			finish();
 		} else {														// The sample files have not been loaded
-			runBackgroundLoader();							// Start the background task to load samples and graphics
+			runBackgroundLoader();							// Start the background thread to load samples and graphics
 		}
 	}
 
@@ -274,14 +282,13 @@ public class Basic extends Activity  {
 
 		// Loading can take a while, so we have to start a background thread to do it.
 		// The background thread will make calls to the UI thread to show the progress.
-		// Once the files are loaded, the background task will start the loaded program running.
+		// Once the files are loaded, the Loader will start the loaded program running.
 
-		theBackground = new Background();						// Start the background task to load
-		theBackground.execute("");								// sample and graphics
+		(new Loader()).execute("");								// Start thread to load samples and graphics
 
 	}
 
-	public static void InitDirs(){
+	public static void InitDirs() {
 
 		// Initializes (creates) the directories used by Basic
 
@@ -314,14 +321,14 @@ public class Basic extends Activity  {
 
 	}
 
-	public static void clearProgram(){
+	public static void clearProgram() {
 
-		lines = new ArrayList<String>();					// The lines array list is the program
-		lines.add("");										// add an empty string to lines
+		lines = new ArrayList<Run.ProgramLine>();			// The lines array list is the program
+		lines.add(new Run.ProgramLine(""));					// add an empty string to lines
 		Editor.DisplayText="REM Start of BASIC! Program\n";	// Display text is the editors program storage for display
 	}
 
-	private static boolean AreSamplesLoaded(){		// Sample program files have not been loaded
+	private static boolean AreSamplesLoaded() {		// Sample program files have not been loaded
 													// if the sample programs directory is empty
 		String samplesPath = getSamplesPath(null);
 		File sdDir = new File(samplesPath);
@@ -335,9 +342,9 @@ public class Basic extends Activity  {
 			String f0 = FL1.get(0);					// The top of the list should be the
 			if (f0.length() > 11) {					// f00_vnn_nn_xxx file
 				String[] f = f0.substring(5).split("_");
-				if (f.length > 1) {
-					if (BasicContext.getString(R.string.version)	// Get the version string
-							.equals(f[0] + "." + f[1])) {			// Compare version numbers
+				if (f.length > 1) {					// keep "0x.xx" of version number
+					String version = BasicContext.getString(R.string.version).substring(0,5);
+					if (version.equals(f[0] + "." + f[1])) {	// Compare version numbers
 						return true;				// Versions match, correct files are loaded
 					}
 				}
@@ -386,7 +393,6 @@ public class Basic extends Activity  {
 
 	public static int getRawResourceID(String fileName) {
 		if (fileName == null) fileName = "";
-		String packageName = BasicContext.getPackageName();				// Get the package name
 		int resID = 0;													// 0 is not a valid resource ID
 		for (int attempt = 1; (resID == 0) && (attempt <= 2); ++attempt) {
 			String rawFileName =
@@ -394,7 +400,7 @@ public class Basic extends Activity  {
 				(attempt == 2) ? getRawFileName(fileName) : "";			// If first try didn't work, try again, Android-style.
 			if (!rawFileName.equals("")) {
 				Resources res = BasicContext.getResources();
-				String fullName = packageName + ":raw/" + rawFileName;	// "fully-qualified resource name"
+				String fullName = mBasicPackage + ":raw/" + rawFileName;// "fully-qualified resource name"
 				resID = res.getIdentifier(fullName, null, null);		// Get the resource ID
 			}
 		}
@@ -414,25 +420,21 @@ public class Basic extends Activity  {
 		return inputStream;
 	}
 
-	public static BufferedReader getBufferedReader(String dir, String path) throws Exception {
+	public static BufferedReader getBufferedReader(String dir, String path, boolean enableDecryption) throws Exception {
 		File file = new File((dir == null)	? path						// no dir, use path as given
 											: getFilePath(dir, path));	// dir is SOURCE_DIR, DATA_DIR, etc
 		BufferedReader buf = null;
 		if (file.exists()) {
-			try {
-				buf = new BufferedReader(new FileReader(file));			// open an input stream from the file
-				if (buf != null) buf.mark((int)file.length());			// this call may throw an exception
-			} catch (IOException ex) {
-				Log.e(LOGTAG, "getBufferedReader: " + ex);
-				if (buf != null) {
-					try { buf.close(); } catch (IOException e) { }		// ignore second exception, if any
-				}
-				throw ex;												// throw first exception
-			}
+			buf = new BufferedReader(new FileReader(file));				// open an input stream from the file
 		} else if (isAPK) {
 			InputStream inputStream = streamFromResource(dir, path);
-			if (inputStream != null) { buf = new BufferedReader(new InputStreamReader(inputStream)); }
-			// TODO: how to mark a non-file buffered stream?
+			if (inputStream != null) {
+				Resources res = BasicContext.getResources();
+				if (enableDecryption & res.getBoolean(R.bool.apk_programs_encrypted)) {
+					inputStream = getDecryptedStream(inputStream);
+				}
+				buf = new BufferedReader(new InputStreamReader(inputStream));
+			}
 		}
 		return buf;
 	}
@@ -443,13 +445,18 @@ public class Basic extends Activity  {
 		BufferedInputStream buf = null;
 		if (file.exists()) {
 			buf = new BufferedInputStream(new FileInputStream(file));	// open an input stream from the file
-			if (buf != null) buf.mark((int)file.length());				// this call can NOT throw any exception
 		} else if (isAPK) {
 			InputStream inputStream = streamFromResource(dir, path);	// this call may throw an exception
 			if (inputStream != null) { buf = new BufferedInputStream(inputStream); }
-			// TODO: how to mark a non-file buffered stream?
 		}
 		return buf;
+	}
+
+	public static InputStream getDecryptedStream(InputStream inputStream) throws Exception {
+		// Decrypt program that was encrypted with PBEWithMD5AndDES
+		String PW = mBasicPackage;
+		Cipher cipher = new Basic.Encryption(Cipher.DECRYPT_MODE, PW).cipher();
+		return new CipherInputStream(inputStream, cipher);
 	}
 
 	public static int loadProgramFileToList(boolean isFullPath, String path, ArrayList<String> list) {
@@ -462,7 +469,8 @@ public class Basic extends Activity  {
 
 		int size = 0;
 		BufferedReader buf = null;
-		try { buf = getBufferedReader((isFullPath ? null : Basic.SOURCE_DIR), path); }
+		String dir = isFullPath ? null : Basic.SOURCE_DIR;
+		try { buf = getBufferedReader(dir, path, Basic.Encryption.ENABLE_DECRYPTION); }
 		catch (Exception e) { return size; }
 
 		// Read the file. Insert the the lines into the ArrayList.
@@ -476,7 +484,7 @@ public class Basic extends Activity  {
 			}
 		} while (data != null);											// while not EOF and no error
 
-		if (list.isEmpty()){
+		if (list.isEmpty()) {
 			list.add("!");
 			size = 2;
 		}
@@ -508,7 +516,8 @@ public class Basic extends Activity  {
 			}
 		}
 		if (sb.length() != 0) {									// if last line has no newline
-			 APL.AddLine(sb.toString());						// add the line now
+			AddProgramLine.charCount = length + offset;			// add the line now
+			APL.AddLine(sb.toString());
 		}
 	}
 
@@ -550,10 +559,10 @@ public class Basic extends Activity  {
 
 	/************************************* background loader *************************************/
 
-	// The loading of the sample files and graphics is done in a background AsyncTask rather than the UI task
-	// Progress is shown by sending progress messages to the UI task.
+	// The loading of the sample files and graphics is done in a background AsyncTask rather than the UI thread.
+	// Progress is shown by sending progress messages to the UI thread.
 
-	public class Background extends AsyncTask<String, String, String>{
+	public class Loader extends AsyncTask<String, String, String>{
 
 		private String mProgressMarker;						// Displayed as a unit of progress while files are loading
 		private boolean mDisplayProgress;
@@ -631,32 +640,41 @@ public class Basic extends Activity  {
 		}
 
 		private Intent doBGforAPK() {								// Background code of APK
+			long startTime = System.currentTimeMillis();		// for splash screen timing
 			InitDirs();											// Initialize Basic directories every time
 			LoadGraphicsForAPK();								// Load the sound and graphics files
 
-			lines = new ArrayList <String>();					// Program will be loaded into this array list
+			lines = new ArrayList<Run.ProgramLine>();			// Program will be loaded into this array list
 			LoadTheProgram();									// Load the basic program into memory
 
-			theProgramRunner = new Intent(BasicContext, Run.class);	// now go run the program
+			if (mRes.getBoolean(R.bool.splash_display)) {		// if displaying splash screen, enforce minimum duration
+				// This code was provided by forum user Luca_G, posted 2015/06/02.
+				int splashTime = mRes.getInteger(R.integer.splash_time);
+				int delay = splashTime - (int)(System.currentTimeMillis() - startTime);
+				if (delay > 1) {
+					try { Thread.sleep(delay); }
+					catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
+				}
+			}
 			theRunContext = null;
 			DoAutoRun = true;
-			return theProgramRunner;							// Go run the program
+			return new Intent(BasicContext, Run.class);			// Go run the program
 		}
 
 		private void copyAssets(String path) {	// Recursively copy all the assets in the named subdirectory to the SDCard
 			String[] dirs = null;
-			try { dirs = getAssets().list(path); }
+			try { dirs = getAssets().list(path); }				// Get the names of subdirectories and files in this directory
 			catch (IOException e) { Log.e(LOGTAG, "copyAssets: " + e); }
 			if (dirs == null) return;
 
 			if (dirs.length == 0) {
-				copyAssetToFile(path);
+				copyAssetToFile(path);							// File, not directory. Copy it.
 				return;
 			}
 
-			new File(getBasePath() + File.separatorChar + path).mkdirs();
+			new File(getBasePath() + File.separatorChar + path).mkdirs();	// Create subdirectory to copy into
 			for (String dir : dirs) {
-				copyAssets(path + File.separatorChar + dir);
+				copyAssets(path + File.separatorChar + dir);	// Step into the new subdirectory
 			}
 		}
 
@@ -674,9 +692,6 @@ public class Basic extends Activity  {
 
 			publishProgress(mProgressMarker);						// Show progress for each program loaded
 			File file = new File(getBasePath() + File.separatorChar + path);
-			File dir = new File(file.getParent());
-			if (!dir.exists()) { dir.mkdirs(); }
-
 			try {
 				in = new BufferedReader(new InputStreamReader(getAssets().open(path)));
 				out = new BufferedWriter(new FileWriter(file));
@@ -698,14 +713,14 @@ public class Basic extends Activity  {
 			File file = new File(getBasePath() + File.separatorChar + path);
 			byte[] bytes = new byte[8192];
 			int count = 0;
-			try {
+			try {													// Open the asset and copy it to the file
 				in = new BufferedInputStream(getAssets().open(path));
 				out = new BufferedOutputStream(new FileOutputStream(file));
 				do {
 					count = in.read(bytes, 0, 8192);
 					if (count > 0) {
 						out.write(bytes, 0, count);
-						publishProgress(mProgressMarker);
+						publishProgress(mProgressMarker);			// Show progress for each chunk, up to 8K
 					}
 				} while (count != -1);
 			} catch (IOException e) {
@@ -714,7 +729,7 @@ public class Basic extends Activity  {
 			closeStreams(in,out);
 		}
 
-		private void LoadGraphicsForAPK(){
+		private void LoadGraphicsForAPK() {
 
 			// Loads icons and audio to the SDcard.
 			// The files to create are listed in setup.xml:load_file_names.
@@ -731,28 +746,28 @@ public class Basic extends Activity  {
 			}
 		}
 
-		private void Load1Graphic(String dir, String fileName){
+		private void Load1Graphic(String dir, String fileName) {
 			BufferedInputStream in = null;
 			BufferedOutputStream out = null;
 
-			File file = new File(getFilePath(dir, fileName));
-			File parent = new File(file.getParent());
-			if (!parent.exists()) { parent.mkdirs(); }
+			File file = new File(getFilePath(dir, fileName));	// path must name a file
+			File parent = new File(file.getParent());			// get the directory the path is in
+			if (!parent.exists()) { parent.mkdirs(); }			// create the directory if it does not exist
 			if (!parent.exists()) {
 				Log.w(LOGTAG, "Load1Graphic: can not create directory " + file.getPath());
 				return;
 			}
 
-			byte[] bytes = new byte[8192];
+			byte[] bytes = new byte[8192];						// copy the file
 			int count = 0;
-			try {
+			try {												// source may be either a resource or an asset
 				in = new BufferedInputStream(streamFromResource(dir, fileName), 8192);
 				out = new BufferedOutputStream(new FileOutputStream(file));
 				do {
 					count = in.read(bytes, 0, 8192);
 					if (count > 0) {
 						out.write(bytes, 0, count);
-						publishProgress(mProgressMarker);
+						publishProgress(mProgressMarker);		// show progress for each chunk, up to 8K
 					}
 				} while (count != -1);
 			} catch (Exception e) {
@@ -761,7 +776,7 @@ public class Basic extends Activity  {
 			closeStreams(in, out);
 		}
 
-		public void doFirstLoad(){
+		public void doFirstLoad() {
 			// The first load is a short program of comments that will be displayed
 			// by the Editor
 
@@ -789,7 +804,7 @@ public class Basic extends Activity  {
 					"!!";
 		}
 
-		public void doCantLoad(){
+		public void doCantLoad() {
 			// A short program of comments that will be displayed
 			// by the Editor to indicate the Base Drive is not writable
 
@@ -806,14 +821,18 @@ public class Basic extends Activity  {
 					"!!";
 		}
 
-		private void LoadTheProgram(){
+		private void LoadTheProgram() {
 
 			// Reads the program file from res/raw or assets/<AppPath>/source and puts it into memory
 			AddProgramLine APL = new AddProgramLine();
 			String name = mRes.getString(R.string.my_program);
 			InputStream inputStream = null;
-			try { inputStream = streamFromResource(SOURCE_DIR, name); }
-			catch (Exception ex) {											// If not found, give up
+			try {
+				inputStream = streamFromResource(SOURCE_DIR, name);
+				if ((inputStream != null) && mRes.getBoolean(R.bool.apk_programs_encrypted)) {
+					inputStream = getDecryptedStream(inputStream);
+				}
+			} catch (Exception ex) {										// If not found or can't decrypt, give up
 				Log.e(LOGTAG, "LoadTheProgram - error getting stream from resource: " + ex);
 				return;
 			}
@@ -840,7 +859,7 @@ public class Basic extends Activity  {
 				}
 			}
 		}
-	} // class Background
+	} // class Loader
 
 	/************************************** utility classes **************************************/
 
@@ -848,6 +867,7 @@ public class Basic extends Activity  {
 		public int mTextColor;
 		public int mBackgroundColor;
 		public int mLineColor;
+		public int mHighlightColor;
 		public float mSize;
 		public Typeface mTypeface;
 
@@ -861,13 +881,15 @@ public class Basic extends Activity  {
 		}
 
 		public TextStyle(TextStyle from) {
-			this(from.mTextColor, from.mBackgroundColor, from.mLineColor, from.mSize, from.mTypeface);
+			this(from.mTextColor, from.mBackgroundColor,
+				 from.mLineColor, from.mHighlightColor,
+				 from.mSize, from.mTypeface);
 		}
 
-		public TextStyle(int fg, int bg, int lc, float size, Typeface typeface) {
+		public TextStyle(int fg, int bg, int lc, int hl, float size, Typeface typeface) {
 			mTextColor = fg; mBackgroundColor = bg;
-			mLineColor = lc; mSize = size;
-			mTypeface = typeface;
+			mLineColor = lc; mHighlightColor = hl;
+			mSize = size; mTypeface = typeface;
 		}
 
 		public void refresh() {									// set fields from setup.xml values and Preferences settings
@@ -876,31 +898,58 @@ public class Basic extends Activity  {
 			mTypeface = Settings.getConsoleTypeface(BasicContext);
 		}
 
-		public void getScreenColors() {
-			// By default, color1 is solid black, color2 is solid white,
-			// and color3 is a shade of blue that Paul originally chose for "WBL".
-			// The programmer may define the colors any way she likes in res/values/setup.xml.
-			Resources res = BasicContext.getResources();
-			int black = res.getInteger(R.integer.color1);
-			int white = res.getInteger(R.integer.color2);
-			int blue  = res.getInteger(R.integer.color3);
-			String colorSetting = Settings.getEditorColor(BasicContext);
-			if (colorSetting.equals("BW")) {
-				mTextColor = black;
-				mBackgroundColor = white;
-				mLineColor = mTextColor;
-			} else
-			if (colorSetting.equals("WB")) {
-				mTextColor = white;
-				mBackgroundColor = black;
-				mLineColor = mTextColor;
-			} else
-			if (colorSetting.equals("WBL")) {
-				mTextColor = white;
-				mBackgroundColor = blue;
-				mLineColor = black;
+		public boolean getCustomColors(int[] colors) {
+			boolean useCustom = Settings.useCustomColors(BasicContext);
+			if (useCustom) {
+				String[] prefs = Settings.getCustomColors(BasicContext);
+				for (int i = 0; i < 4; ++i) {
+					String pref = prefs[i].trim().replace("0x", "#");
+					if (!pref.contains("#")) pref = "#" + pref;
+					try {
+						colors[i] = Color.parseColor(pref);
+					} catch (IllegalArgumentException ex) {	// leave unchanged
+						Log.d(LOGTAG, "getPrefColors: failed to parse <" + pref + ">");
+					}
+				}
 			}
-			mLineColor &= 0x80ffffff;		// half alpha
+			return useCustom;
+		}
+
+		public void getScreenColors() {
+			int[] colors = new int[4];
+
+			// The programmer may define the colors in res/values/setup.xml.
+			Resources res = BasicContext.getResources();
+			colors[0] = res.getInteger(R.integer.color1);		// default is solid black
+			colors[1] = res.getInteger(R.integer.color2);		// default is solid white
+			colors[2] = res.getInteger(R.integer.color3);		// default is blue Paul chose for "WBL"
+			colors[3] = res.getInteger(R.integer.color4);		// default is green, same in all schemes
+
+			// The user may change the colors in Preferences.
+			if (getCustomColors(colors)) {
+				mTextColor = colors[1];
+				mBackgroundColor = colors[2];
+				mLineColor = colors[0];
+			} else {
+				String colorSetting = Settings.getColorScheme(BasicContext);
+				if (colorSetting.equals("BW")) {
+					mTextColor = colors[0];
+					mBackgroundColor = colors[1];
+					mLineColor = mTextColor;
+				} else
+				if (colorSetting.equals("WB")) {
+					mTextColor = colors[1];
+					mBackgroundColor = colors[0];
+					mLineColor = mTextColor;
+				} else
+				if (colorSetting.equals("WBL")) {
+					mTextColor = colors[1];
+					mBackgroundColor = colors[2];
+					mLineColor = colors[0];
+				}
+				mLineColor &= 0x80ffffff;		// half alpha
+			}
+			mHighlightColor = colors[3];
 		}
 	} // class ScreenColors
 
@@ -924,6 +973,7 @@ public class Basic extends Activity  {
 		public int getTextColor() { return mTextStyle.mTextColor; }
 		public int getBackgroundColor() { return mTextStyle.mBackgroundColor; }
 		public int getLineColor() { return mTextStyle.mLineColor; }
+		public int getHighlightColor() { return mTextStyle.mHighlightColor; }
 
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent) {
@@ -938,6 +988,7 @@ public class Basic extends Activity  {
 			text.setText(mList.get(position));
 			if (mTextStyle.mTypeface != null) { text.setTypeface(mTextStyle.mTypeface); }
 			text.setBackgroundColor(mTextStyle.mBackgroundColor);
+			text.setHighlightColor(mTextStyle.mHighlightColor);
 
 			return row;
 		}
@@ -950,4 +1001,36 @@ public class Basic extends Activity  {
 		toast.show();
 	}
 
+	public static class Encryption {
+		public static final boolean ENABLE_DECRYPTION = true;
+		public static final boolean NO_DECRYPTION = false;
+
+		private final static byte[] SALT = {							// 8-byte Salt
+			(byte)0xA9, (byte)0x9B, (byte)0xC8, (byte)0x32,
+			(byte)0x56, (byte)0x35, (byte)0xE3, (byte)0x03
+		};
+		private final static int ITERATION_COUNT = 19;
+
+		private Cipher mCipher = null;
+		public Cipher cipher() { return mCipher; }
+
+		public Encryption(int mode, String PW) throws Exception {
+			try {
+				// Create the key
+				KeySpec keySpec = new PBEKeySpec(PW.toCharArray(), SALT, ITERATION_COUNT);
+				SecretKey key = SecretKeyFactory.getInstance(
+						"PBEWithMD5AndDES").generateSecret(keySpec);
+				mCipher = Cipher.getInstance(key.getAlgorithm());
+
+				// Prepare the parameter to the ciphers
+				AlgorithmParameterSpec paramSpec = new PBEParameterSpec(SALT, ITERATION_COUNT);
+
+				// Create the ciphers
+				mCipher.init(mode, key, paramSpec);
+			}
+			catch (Exception e) {
+				throw e;
+			}
+		}
+	} // class Encryption
 }

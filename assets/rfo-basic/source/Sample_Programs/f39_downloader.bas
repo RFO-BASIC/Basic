@@ -76,9 +76,9 @@ IF choose$=".." THEN
  ARRAY.LENGTH l, result$[]
  PRINT "Going back..."
  l=l-1
- path$="/"
+ path$=""
  FOR i=1 TO l
-  path$=result$[i]+"/"
+  path$=path$+result$[i]+"/"
  NEXT i
  FTP.CD path$
  GOTO skip

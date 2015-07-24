@@ -3,7 +3,7 @@
  BASIC! is an implementation of the Basic programming language for
  Android devices.
 
- Copyright (C) 2010 - 2014 Paul Laughton
+ Copyright (C) 2010 - 2015 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -28,60 +28,52 @@ package com.rfo.basic;
 
 import java.util.ArrayList;
 
-import android.app.Activity;
 import android.content.Intent;
-import android.os.Bundle;
 import android.util.Log;
 
 
 // Called from Basic.java when Basic.java
 // is called from a launcher shortcut
 
-public class AutoRun extends Activity {
+public class AutoRun {
 	private static final String LOGTAG = "AutoRun";
-	private static final String CLASSTAG = AutoRun.class.getSimpleName();
-//	Log.v(AutoRun.LOGTAG, " " + AutoRun.CLASSTAG + " String Var Value =  " + d);
 
-	private boolean fromRun;						// false if started by shortcut,
-													// true if started by RUN command
+	private final String mFileName;
+	private final boolean mFromRun;						// false if started by shortcut,
+														// true if started by RUN command
+	private final String mData;							// RUN command can add a data string
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
+	public AutoRun(String filename, boolean fromRun, String data) {
+		Log.v(AutoRun.LOGTAG, filename);
+		mFileName = filename;
+		mFromRun = fromRun;
+		mData = data;
+	}
 
-		//Log.v(AutoRun.LOGTAG, " " + AutoRun.CLASSTAG + " On Create");
-
-		// The program filename is in the bundle placed in the intent extras by Basic.java
-
-		Intent intent = getIntent();
-		Bundle b = intent.getExtras();
-		fromRun = false;											// assume shortcut
-
+	public Intent load() {		// load a program file and create an Intent to run it
 		boolean fileFound;
-		if (b != null) {											// If bundle is not empty
-			fromRun = b.getBoolean("RUN", false);					// from RUN command?
-			String fn = b.getString("fn");							// then go load the file
-			fileFound = FileLoader(fn);
-		} else {													// if bundle is empty
-			fileFound = FileLoader("System Error");					// then we have a problem
+		if ((mFileName != null) && !mFileName.equals("")) {	// if there is a file name
+			fileFound = FileLoader(mFileName);			// then go load the file
+			Log.d(LOGTAG, "Run file " + mFileName);
+		} else {										// if no file name
+			fileFound = FileLoader("System Error");		// then we have a problem
 		}
 
 		// If the file has been found and loaded, then set the program up for running
 		// and then go run it.
+		// If the file was not found then an error message program was created.
+		// Go to the Editor to display it.
+		Intent intent;
+		if (fileFound) {								// F\file found and loaded into display text buffer
 
-		// If the file was not found then create a error message program
-		// and go to the Editor to display program which is an error message.
+// Note:	This code could be optimized to eliminate the back and forth
+//			copying from the display text buffer and Basic.lines.
+// TODO:	The loading should be in a background thread.
 
-		if (fileFound) {								// File found and loaded into display text buffer
+			AddProgramLine APL = new AddProgramLine();	// creates new Basic.lines
 
-// Note: This code could be optimized to eliminate the back an forth copying from the display
-// text buffer and Basic.lines.
-
-			AddProgramLine APL = new AddProgramLine();				// creates new Basic.lines
-
-			String data = b.getString("data");						// RUN command can add a data string
-			if (data != null) {
-				data = "##$=\"" + data + "\"";
+			if (mData != null) {						// if RUN command added a data string
+				String data = "##$=\"" + mData + "\"";
 				AddProgramLine.charCount = data.length();
 				APL.AddLine(data);
 			}
@@ -89,17 +81,14 @@ public class AutoRun extends Activity {
 			Basic.loadProgramFromString(Editor.DisplayText, APL);	// build program in Basic.lines
 
 			if (Basic.lines.size() == 0) {							// If the program is empty
-				Basic.lines.add("rem\n");							// add a single REM line
+				Basic.lines.add(new Run.ProgramLine("rem\n"));		// add a single REM line
 			}														// to keep Run happy
-			Basic.theProgramRunner = new Intent(this, Run.class);	// now go run the program
-			Basic.theRunContext = null;
-			startActivity(Basic.theProgramRunner);
+			intent = new Intent(Basic.BasicContext, Run.class);		// create Intent to run the program
 		} else {													// File not found
 			Basic.DoAutoRun = false;								// Load error message program
-			startActivity(new Intent(this, Editor.class));			// into Editor so user can see it.
+			intent = new Intent(Basic.BasicContext, Editor.class);	// into Editor so user can see it.
 		}
-		finish();
-
+		return intent;
 	}
 
 	private boolean FileLoader(String aFileName) {					// Loads the selected file
@@ -111,7 +100,7 @@ public class AutoRun extends Activity {
 		if (aFileName == null) aFileName = " ";
 
 		boolean baseDriveChanged = false;
-		if (!fromRun) {												// file name from shortcut may need massage
+		if (!mFromRun) {											// file name from shortcut may need massage
 			String filePath = Basic.getFilePath();
 			int z = aFileName.indexOf(filePath);
 			if (z == -1) {
@@ -128,7 +117,7 @@ public class AutoRun extends Activity {
 		Editor.DisplayText = "";			// Clear the display text buffer
 
 		ArrayList<String> lines = new ArrayList<String>();
-		int size = Basic.loadProgramFileToList(!fromRun, aFileName, lines);
+		int size = Basic.loadProgramFileToList(!mFromRun, aFileName, lines);
 		Boolean found = (size != 0);		// size is 0 if file not found
 		if (!found) {
 			// Special case of file not found and doing Launcher Shortcut.

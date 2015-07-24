@@ -5,7 +5,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -64,6 +64,13 @@ This file is part of BASIC! for Android
 
     <string name="cancel_button_label">Cancel</string>
     <string name="ok_button_label">OK</string>
+    <string name="yes_button_label">Yes</string>
+    <string name="no_button_label">No</string>
+    <string name="choose_one">Choose one</string>
+    <string name="hex_color">Enter a hex color value</string>
+    <string name="color_chars">0123456789abcdefxABCDEFX#</string>
+
+    <string name="stt_prompt">"BASIC! Speech To Text"</string>
 
 <string name="run">Run</string>
 <string name="load">Load</string>
@@ -72,6 +79,8 @@ This file is part of BASIC! for Android
 <string name="search">Search</string>
 <string name="format">Format</string>
 <string name="clear">Clear</string>
+<string name="load_run">Load and Run</string>
+<string name="save_run">Save and Run</string>
 <string name="settings">Preferences</string>
 <string name="spawn">Create Application</string>
 <string name="help">Commands</string>
@@ -98,17 +107,5 @@ This file is part of BASIC! for Android
 <string name="echo_summary">Print executing source code</string>
 <string name="restricted">Restricted SD Card I/O</string>
 <string name="restricted_summary">Restrict SD Card I/O to BASIC! directory</string>
-
-<string name= "crash_toast_text">BASIC! Crashed. Open status bar to report the problem.</string>
-<string name="crash_notif_ticker_text">BASIC! Crashed. Open status bar to report.</string>
-<string name="crash_notif_title">BASIC! has crashed.</string>
-<string name="crash_notif_text">Please click here to help fix the issue.</string>
-
-<string name="crash_dialog_title">BASIC! has crashed</string>
-<string name="crash_dialog_text">An unexpected error occurred forcing the
-        application to stop. Please help us fix this by sending us error data,
-        all you have to do is click \'OK\'.</string>
-<string name="crash_dialog_comment_prompt">You might add your comments about the problem below:</string>
-<string name="crash_dialog_ok_toast">Thank you!</string>
 
 </resources>

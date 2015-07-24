@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -104,7 +104,7 @@ public class Select extends ListActivity {
 		synchronized (Run.LOCK) {
 			Run.SelectedItem = item;						// 1-based index of selected item
 			Run.SelectLongClick = isLongClick;
-			Run.ItemSelected = true;
+			Run.mWaitForLock = false;
 			lockReleased = true;
 			Run.LOCK.notify();								// release the lock that Run is waiting for
 		}

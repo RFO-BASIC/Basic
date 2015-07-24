@@ -4,7 +4,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2013 - 2014 Paul Laughton
+Copyright (C) 2013 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -27,7 +27,7 @@ This file is part of BASIC! for Android
 -->
 
 <resources>
-    <string name="version">01.82</string>
+    <string name="version">01.87.05</string>
 
     <!-- The application name displayed in the Launcher -->
     <string name="app_name">BASIC!</string>
@@ -44,6 +44,9 @@ This file is part of BASIC! for Android
     <!-- If APK needs a /database/ directory, set true -->
     <bool name="apk_create_database_dir">true</bool>
 
+    <!-- Option to encrypt (obfuscate) the .bas files in an APK -->
+    <bool name="apk_programs_encrypted">false</bool>
+
     <!-- The BASIC! program resource to build into the APK -->
     <!-- Default path is assets/<app_path>/source/ -->
     <string name="my_program">my_program.bas</string>
@@ -53,14 +56,17 @@ This file is part of BASIC! for Android
     <string name="select_name">BASIC! Select</string>
     <string name="textinput_name">BASIC! Text Input</string>
 
-    <!-- The splash screen settings: display and background color -->
+    <!-- The splash screen settings: display, background color, minimum display time -->
     <bool name="splash_display">true</bool>
     <color name="splash_color">#FFFFFF</color>
+    <integer name="splash_time">1500</integer>
 
     <!-- The default text and background colors selected in Preferences -->
     <integer name="color1">0xff000000</integer>
     <integer name="color2">0xffffffff</integer>
     <integer name="color3">0xff006478</integer>
+    <!-- The default selection and highlight color -->
+    <integer name="color4">0xff00c000</integer>
 
     <!--
         Message lines displayed on the opening screen while files are loading.

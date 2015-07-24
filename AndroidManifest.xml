@@ -5,7 +5,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -29,11 +29,12 @@ This file is part of BASIC! for Android
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.rfo.basic"
-    android:versionCode="1820"
-    android:versionName="1.82" >
+    android:versionCode="1875"
+    android:versionName="1.87.05" >
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
@@ -68,7 +69,7 @@ This file is part of BASIC! for Android
     <supports-screens android:xlargeScreens="true" />
 
     <application
-        android:hardwareAccelerated="false"
+        android:hardwareAccelerated="true"
         android:allowBackup="true"
         android:icon="@drawable/icon"
         android:label="@string/app_name" >
@@ -171,7 +172,7 @@ This file is part of BASIC! for Android
             android:name="Search"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:label="@string/search_name"
-            android:windowSoftInputMode="adjustResize" >
+            android:windowSoftInputMode="stateVisible|adjustResize" >
         </activity>
 
         <activity
@@ -220,7 +221,8 @@ This file is part of BASIC! for Android
             android:id="@+id/text_get_screen"
             android:name="TGet"
             android:configChanges="keyboardHidden|orientation|screenSize"
-            android:label="@string/textinput_name" >
+            android:label="@string/textinput_name"
+            android:windowSoftInputMode="stateVisible|adjustResize" >
         </activity>
 
         <activity

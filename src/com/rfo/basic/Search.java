@@ -28,6 +28,7 @@ package com.rfo.basic;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -84,11 +85,18 @@ public class Search extends Activity {
 		doneButton = (Button) findViewById(R.id.done_button);
 
 		theTextView = (EditText) findViewById(R.id.the_text);			// The text display area
+
+		InputFilter[] filters = theTextView.getFilters();				// some devices (Samsung) have a filter that limits EditText size
+		if (filters.length != 0) {
+			theTextView.setFilters(new InputFilter[0]);					// if there are any filters, remove them
+		}
+
 		theTextView.setText(Editor.DisplayText);						// The Editor's display text
 
 		Basic.TextStyle style = Basic.defaultTextStyle;					// Get text color from Settings
 		theTextView.setTextColor(style.mTextColor);
 		theTextView.setBackgroundColor(style.mBackgroundColor);
+		theTextView.setHighlightColor(style.mHighlightColor);
 		rText.setTextColor(style.mTextColor);
 		rText.setBackgroundColor(style.mBackgroundColor);
 		sText.setTextColor(style.mTextColor);
@@ -158,8 +166,11 @@ public class Search extends Activity {
 					Editor.Saved = false;
 				}
 				if (nextIndex < 0 ) nextIndex = 0;						// If nextIndex indicates done, then set to start
-				if (Index < 0) Index = 0;								// If Index indicates not found, set to start
-				if (nextIndex < Index){
+				if (Index < 0) {
+					Index = Editor.selectionStart;						// If Index indicates not found, restore position before search
+					nextIndex = Editor.selectionEnd;
+				} else
+				if (nextIndex < Index) {
 					int ni = nextIndex;
 					nextIndex = Index;
 					Index = ni;

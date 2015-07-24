@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<!--  *********************************************************************************
+<!--
+*********************************************************************************
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -22,80 +22,174 @@ This file is part of BASIC! for Android
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
 
     You may contact the author or current maintainers at http://rfobasic.freeforums.org
-	
-	**********************************************************************************
-	-->
-	
+
+**********************************************************************************
+-->
 
 <PreferenceScreen
-   xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
-      
+    <PreferenceScreen
+        android:key="colors_pref"
+        android:title="Screen Colors"
+        android:summary="Select a color scheme or custom colors"
+        android:persistent="false">
 
         <ListPreference
-                android:key="font_pref"
-                android:title="Font Size"
-                android:summary="Select Font Size"
-                android:entries="@array/font_list_preference"
-                android:entryValues="@array/fontvalues_list_preference"
-                android:defaultValue="Medium"
-                android:dialogTitle="Choose one" />
-         
-        <ListPreference
-                android:key="es_pref"
-                android:title="Screen Colors"
-                android:summary="Select Screen Type"
-                android:entries="@array/es_list_preference"
-                android:entryValues="@array/esvalues_list_preference"
-                android:defaultValue="BW"
-                android:dialogTitle="Choose one" />
-                
-                
-         <CheckBoxPreference
-      			android:key="lined_editor"
-     			android:title="Editor Lines"
-      			android:summary="Use Lined Editor"
-      			android:defaultValue="true" />
+            android:key="es_pref"
+            android:title="Color Scheme"
+            android:summary="Select Color Scheme"
+            android:entries="@array/es_list_preference"
+            android:entryValues="@array/esvalues_list_preference"
+            android:defaultValue="BW"
+            android:dialogTitle="@string/choose_one" />
 
-         <CheckBoxPreference
-      			android:key="lined_console"
-     			android:title="Console Lines"
-      			android:summary="Use Lined Console"
-      			android:defaultValue="true" />
+        <CheckBoxPreference
+            android:key="custom_colors_pref"
+            android:title="Custom Colors"
+            android:summary="Define Your Own Colors"
+            android:defaultValue="false" />
 
-         <CheckBoxPreference
-      			android:key="autoindent"
-     			android:title="Editor AutoIndent"
-      			android:summary="Enable Editor AutoIndent"
-      			android:defaultValue="false" />
-         
-         <ListPreference
-                android:key="csf_pref"
-                android:title="Console Typeface"
-                android:summary="Select Typeface"
-                android:entries="@array/csf_list_preference"
-                android:entryValues="@array/csfvalues_list_preference"
-                android:defaultValue="MS"
-                android:dialogTitle="Choose one" />
-         
-         <ListPreference
-                android:key="so_pref"
-                android:title="Screen Orientation"
-                android:summary="Select Orientation"
-                android:entries="@array/orientation_list_preference"
-                android:entryValues="@array/orientationvalues_list_preference"
-                android:defaultValue="0"
-                android:dialogTitle="Choose one" />
-         
-          <ListPreference
-                android:key="base_drive_pref"
-                android:title="Base Drive"
-                android:summary="Select New Base Drive"
-                android:entries="@array/base_drive_names"
-                android:entryValues="@array/base_drive_values"
-                android:defaultValue="none"
-                android:dialogTitle="Choose one" />
-         
-         
-      
+        <EditTextPreference
+            android:key="tc_pref"
+            android:dependency="custom_colors_pref"
+            android:title="Text Color"
+            android:summary="Set Text Color"
+            android:digits="@string/color_chars"
+            android:defaultValue="@integer/color2"
+            android:dialogTitle="@string/hex_color" />
+
+        <EditTextPreference
+            android:key="bc_pref"
+            android:dependency="custom_colors_pref"
+            android:title="Background Color"
+            android:summary="Set Background Color"
+            android:digits="@string/color_chars"
+            android:defaultValue="@integer/color3"
+            android:dialogTitle="@string/hex_color" />
+
+        <EditTextPreference
+            android:key="lc_pref"
+            android:dependency="custom_colors_pref"
+            android:title="Line Color"
+            android:summary="Set Line Color"
+            android:digits="@string/color_chars"
+            android:defaultValue="@integer/color1"
+            android:dialogTitle="@string/hex_color" />
+
+        <EditTextPreference
+            android:key="hc_pref"
+            android:dependency="custom_colors_pref"
+            android:title="Highlight Color"
+            android:summary="Set Highlight Color"
+            android:digits="@string/color_chars"
+            android:defaultValue="@integer/color4"
+            android:dialogTitle="@string/hex_color" />
+
+    </PreferenceScreen>
+
+    <ListPreference
+        android:key="font_pref"
+        android:title="Font Size"
+        android:summary="Select Font Size"
+        android:entries="@array/font_list_preference"
+        android:entryValues="@array/fontvalues_list_preference"
+        android:defaultValue="Medium"
+        android:dialogTitle="@string/choose_one" />
+
+    <ListPreference
+        android:key="csf_pref"
+        android:title="Console Typeface"
+        android:summary="Select Typeface"
+        android:entries="@array/csf_list_preference"
+        android:entryValues="@array/csfvalues_list_preference"
+        android:defaultValue="MS"
+        android:dialogTitle="@string/choose_one" />
+
+    <CheckBoxPreference
+        android:key="console_menu"
+        android:title="Console Menu"
+        android:summary="Display Menu in Console and TGet"
+        android:defaultValue="true" />
+
+    <CheckBoxPreference
+        android:key="lined_console"
+        android:title="Console Lines"
+        android:summary="Use Lined Console"
+        android:defaultValue="true" />
+
+    <CheckBoxPreference
+        android:key="lined_editor"
+        android:title="Editor Lines"
+        android:summary="Use Lined Editor"
+        android:defaultValue="true" />
+
+    <PreferenceScreen
+        android:key="editor_items_on_action_bar"
+        android:title="Menu Items on Action Bar"
+        android:summary="Editor menu items to show on action bar"
+        android:persistent="false">
+
+        <CheckBoxPreference
+            android:key="editor_menu_run_on_action_bar"
+            android:title="RUN on action bar"
+            android:summary="Show RUN on action bar if it fits"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
+            android:key="editor_menu_load_on_action_bar"
+            android:title="LOAD on action bar"
+            android:summary="Show LOAD on action bar if it fits"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
+            android:key="editor_menu_save_on_action_bar"
+            android:title="SAVE on action bar"
+            android:summary="Show SAVE on action bar if it fits"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
+            android:key="editor_menu_exit_on_action_bar"
+            android:title="EXIT on action bar"
+            android:summary="Show EXIT on action bar if it fits"
+            android:defaultValue="false" />
+
+    </PreferenceScreen>
+
+    <CheckBoxPreference
+        android:key="wrap_editor"
+        android:title="Editor Line Wrap"
+        android:summary="Wrap Long Editor Lines"
+        android:defaultValue="false" />
+
+    <CheckBoxPreference
+        android:key="autoindent"
+        android:title="Editor AutoIndent"
+        android:summary="Enable Editor AutoIndent"
+        android:defaultValue="false" />
+
+    <ListPreference
+        android:key="so_pref"
+        android:title="Screen Orientation"
+        android:summary="Select Orientation"
+        android:entries="@array/orientation_list_preference"
+        android:entryValues="@array/orientationvalues_list_preference"
+        android:defaultValue="0"
+        android:dialogTitle="@string/choose_one" />
+
+    <CheckBoxPreference
+        android:key="gr_accel"
+        android:title="Graphic acceleration"
+        android:summary="Enable graphic acceleration"
+        android:defaultValue="false" />
+
+    <ListPreference
+        android:key="base_drive_pref"
+        android:title="Base Drive"
+        android:summary="Select New Base Drive"
+        android:entries="@array/base_drive_names"
+        android:entryValues="@array/base_drive_values"
+        android:defaultValue="none"
+        android:dialogTitle="@string/choose_one" />
+
 </PreferenceScreen>

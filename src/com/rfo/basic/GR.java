@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -26,13 +26,15 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
+import static com.rfo.basic.Run.EventHolder.*;
+
 import java.util.ArrayList;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.media.AudioManager;
 import android.os.Bundle;
-import android.os.Process;
 import android.speech.RecognizerIntent;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -64,66 +66,344 @@ public class GR extends Activity {
 	public static final String EXTRA_ORIENTATION = "orientation";
 	public static final String EXTRA_BACKGROUND_COLOR = "background";
 
-    public static Context context;
-    public static DrawView drawView;
-    public static Bitmap screenBitmap = null;
-//    public static boolean NewTouch[] = {false, false};
-//    public static double TouchX[] = {0,0};
-//    public static double TouchY[] = {0,0};
-    public static float scaleX = 1f;
-    public static float scaleY = 1f;
-    public static Boolean Rendering = false;	// Boolean (not boolean) so it has a lock
-    public static boolean NullBitMap = false;
-    public static InputMethodManager GraphicsImm ;
-    public static float Brightness = -1;
-    
-    public static boolean doSTT = false;
-    public static boolean doEnableBT = false;
-    public static boolean startConnectBT = false;
-    
-    public static final int dNull = 0;
-    public static final int dCircle = 1;
-    public static final int dRect = 2;
-    public static final int dLine = 3;
-    public static final int dOval = 4;
-    public static final int dArc = 5;
-    public static final int dText = 6;
-    public static final int dBitmap = 7;
-    public static final int dRotate_Start = 8;
-    public static final int dRotate_End = 9;
-    public static final int dOrientation = 10;
-    public static final int dClose = 11;
-    public static final int dsetPixels = 12;
-    public static final int dClip = 13;
-    public static final int dPoly = 14;
-    public static final int dPoint = 15;
-    public static final String[] types = {			// KEEP THESE IN SYNC!!!
-        "null",				// dNull = 0;
-        "circle",			// dCircle = 1;
-        "rect",				// dRect = 2;
-        "line",				// dLine = 3;
-        "oval",				// dOval = 4;
-        "arc",				// dArc = 5;
-        "text",				// dText = 6;
-        "bitmap",			// dBitmap = 7;
-        "rotate.start",		// dRotate_Start = 8;
-        "rotate.end",		// dRotate_End = 9;
-        "orientation",		// dOrientation = 10;
-        "close",			// dClose = 11;
-        "set.pixels",		// dsetPixels = 12;
-        "clip",				// dClip = 13;
-        "poly",				// dPoly = 14;
-        "point",			// dPoint = 15;
-    };
+	public static Object LOCK = new Object();
+	public static boolean waitForLock = false;
 
-//  Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " String Var Value =  ");
+	public static Context context;
+	public static DrawView drawView;
+	public static Bitmap screenBitmap = null;
+//	public static boolean NewTouch[] = {false, false};
+//	public static double TouchX[] = {0,0};
+//	public static double TouchY[] = {0,0};
+	public static float scaleX = 1f;
+	public static float scaleY = 1f;
+	public static boolean Running = false;
+	public static boolean NullBitMap = false;
+	public static InputMethodManager GraphicsImm ;
+	public static float Brightness = -1;
 
+	public static boolean doSTT = false;
+	public static boolean doEnableBT = false;
+	public static boolean startConnectBT = false;
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-//    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " On Create  ");
-        super.onCreate(savedInstanceState);
-        setVolumeControlStream(AudioManager.STREAM_MUSIC);
+	public enum VISIBLE { SHOW, HIDE, TOGGLE; }
+
+	// ************* enumeration of BASIC! Drawable Object types **************
+
+	public enum Type {
+		Null("null",				new String[0]),
+		Point("point",				new String[]
+				{ "x", "y" } ),
+		Line("line",				new String[]
+				{ "x1", "y1", "x2", "y2" } ),
+		Rect("rect",				new String[]
+				{ "left", "right", "top", "bottom" } ),
+		Circle("circle",			new String[]
+				{ "x", "y", "radius" } ),
+		Oval("oval",				new String[]
+				{ "left", "right", "top", "bottom" } ),
+		Arc("arc",					new String[]
+				{ "left", "right", "top", "bottom",
+					"start_angle", "sweep_angle", "fill_mode" } ),
+		Poly("poly",				new String[]
+				{ "x", "y", "list" } ),
+		Bitmap("bitmap",			new String[]
+				{ "x", "y", "bitmap" } ),
+		SetPixels("set.pixels",		new String[]
+				{ "x", "y" } ),
+		Text("text",				new String[]
+				{ "x", "y", "text" } ),
+		Group("group",				new String[]
+				{ "list" } ),
+		RotateStart("rotate.start",	new String[]
+				{ "x", "y", "angle" } ),
+		RotateEnd("rotate.end",		new String[0]),
+		Clip("clip",				new String[]
+				{ "left", "right", "top", "bottom", "RO" } ),
+		Open("open",				new String[0]),
+		Close("close",				new String[0]);
+
+		private final String mType;
+		private final String[] mParameters;		// all parameters except "paint" and "alpha"
+		Type(String type, String[] parameters) {
+			mType = type;
+			mParameters = parameters;
+		}
+
+		public String type()			{ return mType; }
+		public String[] parameters()	{ return mParameters; }
+
+		public boolean hasParameter(String parameter) {
+			for (String p : mParameters) {
+				if (parameter.equals(p)) { return true; }
+			}
+			if (parameter.equals("paint")) { return true; }
+			if (parameter.equals("alpha")) { return true; }
+			return false;
+		}
+	}
+
+	// ********************* BASIC! Drawable Object class *********************
+	// Objects go on the Display List. Not related to Android's Drawable class.
+
+	public static class BDraw {
+		private final Type mType;
+		private String mErrorMsg;
+
+		private int mBitmap;							// index into the BitmapList
+		private int mPaint;								// index into the PaintList
+		private int mAlpha;
+		private boolean mVisible;
+
+		private String mText;							// for Type.Text
+		private int mClipOpIndex;						// for getValue
+		private Region.Op mClipOp;						// for Type.Clip
+		private int mListIndex;							// for getValue
+		private ArrayList<Double> mList;				// for Type.Poly
+		private Run.ArrayDescriptor mArray;				// for Type.SetPixels
+		private int mRadius;							// for Type.Circle
+		private float mAngle_1;							// for Type.Rotate, Arc
+		private float mAngle_2;							// for Type.Arc
+		private int mFillMode;							// for getValue
+		private boolean mUseCenter;						// for Type.Arc
+
+		private int mLeft;								// left, x, or x1
+		private int mRight;								// right or x2
+		private int mTop;								// top, y, or y1
+		private int mBottom;							// bottom or y2
+
+		public BDraw(Type type) {
+			mType = type;
+			mVisible = true;
+			mErrorMsg = "";
+		}
+
+		public void common(int paintIndex, int alpha) { mPaint = paintIndex; mAlpha = alpha; }
+
+		// setters
+		// For now, range checking for bitmap, paint, and list must be done in Run.
+		public void bitmap(int bitmap) { mBitmap = bitmap; }	// index into the BitmapList
+		public void paint(int paint) { mPaint = paint; }		// index into the PaintList
+		public void alpha(int alpha) { mAlpha = alpha & 255; }
+
+		public void xy(int[] xy) { mLeft = mRight = xy[0]; mTop = mBottom = xy[1]; }
+		public void ltrb(int[] ltrb) { mLeft = ltrb[0]; mTop = ltrb[1]; mRight = ltrb[2]; mBottom = ltrb[3]; }
+		public void radius(int radius) { mRadius = radius; }
+		public void text(String text) { mText = text; }
+		public void array(Run.ArrayDescriptor array) { mArray = array; }
+		public void angle(float angle) { mAngle_1 = angle; }
+
+		public void show(VISIBLE show) {
+			switch (show) {
+				case SHOW: mVisible = true; break;
+				case HIDE: mVisible = false; break;
+				case TOGGLE: mVisible = !mVisible; break;
+			}
+		}
+
+		public void clipOp(int opIndex) {
+			Region.Op[] ops = {
+				Region.Op.INTERSECT, Region.Op.DIFFERENCE, Region.Op.REPLACE,
+				Region.Op.REVERSE_DIFFERENCE, Region.Op.UNION, Region.Op.XOR
+			};
+			mClipOpIndex = opIndex;
+			mClipOp = ops[opIndex];
+		}
+
+		public void list(int index, ArrayList<Double> list) {
+			mListIndex = index;
+			mList = list;
+		}
+
+		public void useCenter(int fillMode) {
+			mFillMode = fillMode;
+			mUseCenter = (fillMode != 0);
+		}
+
+		public void arc(int[] ltrb, float startAngle, float sweepAngle, int fillMode) {
+			ltrb(ltrb);
+			mAngle_1 = startAngle;
+			mAngle_2 = sweepAngle;
+			useCenter(fillMode);
+		}
+
+		public void circle(int[] xy, int radius) {
+			xy(xy);					// (x, y) in mTop and mLeft marks the CENTER of the circle
+			mRadius = radius;
+		}
+
+		public void move(int[] dxdy) {
+			int dx = dxdy[0];
+			int dy = dxdy[1];
+			mLeft += dx; mRight += dx;
+			mTop += dy; mBottom += dy;
+		}
+
+		// universal getters
+		public Type type()			{ return mType; }
+		public String errorMsg()	{ return mErrorMsg; }
+		public int bitmap()			{ return mBitmap; }	// index into the BitmapList
+		public int paint()			{ return mPaint; }	// index into the PaintList
+		public int alpha()			{ return mAlpha; }
+		public boolean isHidden()	{ return !mVisible; }
+		public boolean isVisible()	{ return mVisible; }
+
+		// type-specific getters
+		public String text()				{ return mText; }
+		public Region.Op clipOp()			{ return mClipOp; }
+		public ArrayList<Double> list()		{
+			if (mList == null) { mList = new ArrayList<Double>(); }
+			return mList;
+		}
+		public Run.ArrayDescriptor array()	{ return mArray; }
+		public int radius()					{ return mRadius; }
+		public float angle()				{ return mAngle_1; }
+		public float arcStart()				{ return mAngle_1; }
+		public float arcSweep()				{ return mAngle_2; }
+		public boolean useCenter()			{ return mUseCenter; }
+
+		// coordinate getters
+		public int x()				{ return mLeft; }
+		public int x1()				{ return mLeft; }
+		public int left()			{ return mLeft; }
+		public int y()				{ return mTop; }
+		public int y1()				{ return mTop; }
+		public int top()			{ return mTop; }
+		public int x2() 			{ return mRight; }
+		public int right()			{ return mRight; }
+		public int y2()				{ return mBottom; }
+		public int bottom()			{ return mBottom; }
+
+		// For GR.Get.Value
+		public double getValue(String p) {
+			if (p.equals("paint"))	{ return mPaint; }
+			if (p.equals("alpha"))	{ return mAlpha; }
+
+			switch (mType) {
+				case Circle:	if (p.equals("radius")) { return mRadius; }
+				case Point:
+				case SetPixels:
+				case Text:	// For now, "text" must be handled by Run
+					if (p.equals("x"))				{ return mLeft; }
+					if (p.equals("y"))				{ return mTop; }
+					break;
+				case Line:
+					if (p.equals("x1"))				{ return mLeft; }
+					if (p.equals("y1"))				{ return mTop; }
+					if (p.equals("x2"))				{ return mRight; }
+					if (p.equals("y2"))				{ return mBottom; }
+					break;
+				case Clip:		if (p.equals("RO")) { return mClipOpIndex; }
+				case Oval:
+				case Rect:
+					if (p.equals("left"))			{ return mLeft; }
+					if (p.equals("top"))			{ return mTop; }
+					if (p.equals("right"))			{ return mRight; }
+					if (p.equals("bottom"))			{ return mBottom; }
+					break;
+				case Arc:
+					if (p.equals("start_angle"))	{ return mAngle_1; }
+					if (p.equals("sweep_angle"))	{ return mAngle_2; }
+					if (p.equals("fill_mode"))		{ return mFillMode; }
+					if (p.equals("left"))			{ return mLeft; }
+					if (p.equals("top"))			{ return mTop; }
+					if (p.equals("right"))			{ return mRight; }
+					if (p.equals("bottom"))			{ return mBottom; }
+					break;
+				case Poly:
+					if (p.equals("x"))				{ return mLeft; }
+					if (p.equals("y"))				{ return mTop; }
+				case Group:
+					if (p.equals("list"))			{ return mListIndex; }
+					break;
+				case Bitmap:
+					if (p.equals("bitmap"))			{ return mBitmap; }
+					if (p.equals("x"))				{ return mLeft; }
+					if (p.equals("y"))				{ return mTop; }
+					break;
+				case RotateStart:
+					if (p.equals("angle"))			{ return mAngle_1; }
+					if (p.equals("x"))				{ return mLeft; }
+					if (p.equals("y"))				{ return mTop; }
+					break;
+				case Close:
+				case Null:
+				case RotateEnd:
+				default:							break;
+			}
+			return 0.0;
+		} // getValue(String)
+
+		// For GR.Modify
+		private boolean mod_xy(String p, int val) {
+			if (p.equals("x"))		{ mLeft = mRight  = val; return true; }
+			if (p.equals("y"))		{ mTop  = mBottom = val; return true; }
+			return false;
+		}
+		private boolean mod_x2y2(String p, int val) {
+			if (p.equals("x1"))		{ mLeft   = val; return true; }
+			if (p.equals("y1"))		{ mTop    = val; return true; }
+			if (p.equals("x2"))		{ mRight  = val; return true; }
+			if (p.equals("y2"))		{ mBottom = val; return true; }
+			return false;
+		}
+		private boolean mod_ltrb(String p, int val) {
+			if (p.equals("left"))	{ mLeft   = val; return true; }
+			if (p.equals("top"))	{ mTop    = val; return true; }
+			if (p.equals("right"))	{ mRight  = val; return true; }
+			if (p.equals("bottom"))	{ mBottom = val; return true; }
+			return false;
+		}
+		public boolean modify(String p, int iVal, float fVal, String text) {
+			// For now, "paint" is handled in Run because of range check.
+			// if (p.equals("paint"))	{ mPaint = iVal; return true; }
+			if (p.equals("alpha"))	{ alpha(iVal); return true; }
+			switch (mType) {
+				case Circle:	if (p.equals("radius"))	{ mRadius = iVal; return true; }
+				case Bitmap:	// for now, BitmapList range check must be handled in Run
+				case Point:
+				case Poly:		// for now, list parm must be handled in Run
+				case SetPixels:	if (mod_xy(p, iVal))	{ return true; } else { break; }
+
+				case Line:		if (mod_x2y2(p, iVal))	{ return true; } else { break; }
+
+				case Clip:		if (p.equals("RO"))		{ clipOp(iVal); return true; }
+				case Oval:
+				case Rect:		if (mod_ltrb(p, iVal))	{ return true; } else { break; }
+
+				case Arc:
+					if (p.equals("start_angle"))	{ mAngle_1 = fVal; return true; }
+					if (p.equals("sweep_angle"))	{ mAngle_2 = fVal; return true; }
+					if (p.equals("fill_mode"))		{ useCenter(iVal); return true; }
+					if (mod_ltrb(p, iVal))			{ return true; }
+					break;
+
+				case RotateStart:
+					if (p.equals("angle"))			{ mAngle_1 = fVal; return true; }
+					if (mod_xy(p, iVal))			{ return true; }
+					break;
+
+				case Text:
+					if (p.equals("text"))			{ mText = text; return true; }
+					if (mod_xy(p, iVal))			{ return true; }
+					break;
+
+				case Close:
+				case Group:		// for now, list parm must be handled in Run
+				case Null:
+				case RotateEnd:
+				default:							break;
+			}
+			mErrorMsg = "Object does not contain: " + p;
+			return false;
+		} // modify(String, int, float, String)
+	} // BDraw class
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		Log.v(LOGTAG, " " + CLASSTAG + " onCreate");
+		super.onCreate(savedInstanceState);
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
 		Intent intent = getIntent();
 		int showStatusBar = intent.getIntExtra(EXTRA_SHOW_STATUSBAR, 0);
@@ -136,6 +416,10 @@ public class GR extends Activity {
 		getWindow().setFlags(showStatusBar, showStatusBar);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 
+		scaleX = 1.0f;
+		scaleY = 1.0f;
+		Brightness = -1;
+
 		drawView = new DrawView(this);
 		setContentView(drawView);
 		drawView.requestFocus();
@@ -144,138 +428,87 @@ public class GR extends Activity {
 		drawView.setOrientation(orientation);		// Set orientation, get screen height and width
 
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+	}
 
-        scaleX = 1.0f;
-        scaleY = 1.0f;
-        Brightness = -1;
-        Rendering = false;
+	@Override
+	protected void onPause() {
+		Log.v(LOGTAG, " " + CLASSTAG + " onPause " + this.toString());
+		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_PAUSE, null));
+		super.onPause();
+	}
 
-//        Run.GRrunning = true;
-//        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " on create display list =  "+Run.DisplayList);        
-    }
-    
-   
-    @Override
-    protected void onPause() {
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onPause ");
-    	Run.background = true;
-    	Run.bgStateChange = true;
-      super.onPause();
-    }    
-   
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStart");
-    }    
+	@Override
+	protected void onStart() {
+		super.onStart();
+		Log.v(LOGTAG, " " + CLASSTAG + " onStart");
+	}
 
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onRestart");
-    }   
-    
-    protected void onStop(){
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onStop ");
-    	Run.background = true;
-    	Run.bgStateChange = true;
-    	super.onStop();
-    }
-    
-    @Override
-    protected void onResume() {
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onResume ");
-//        Run.GRrunning = true;
-    	Run.background = false;
-    	Run.bgStateChange = true;
+	@Override
+	protected void onRestart() {
+		super.onRestart();
+		Log.v(LOGTAG, " " + CLASSTAG + " onRestart");
+	}
+
+	protected void onStop() {
+		Log.v(LOGTAG, " " + CLASSTAG + " onStop");
+		super.onStop();
+	}
+
+	@Override
+	protected void onResume() {
+		Log.v(LOGTAG, " " + CLASSTAG + " onResume " + this.toString());
+		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_RESUME, null));
 		context = this;
-      super.onResume();
-    }  
-    @Override
-    protected void onDestroy() {
-    	Run.GRrunning = false;
-    	Run.GraphicsPaused = false;
-        super.onDestroy();
-        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " onDestroy");
-    }
-    
-    
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)  {
+		super.onResume();
+	}
 
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyDown " + keyCode);
+	@Override
+	protected void onDestroy() {
+		Log.v(LOGTAG, " " + CLASSTAG + " onDestroy " + this.toString());
+		// if a new instance has started, don't let this one mess it up
+		if (context == this) {
+			Running = false;
+			releaseLOCK();								// don't leave GR.command hanging
+		}
+		super.onDestroy();
+	}
 
-    	if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP) || (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
-    	  return super.onKeyDown(keyCode, event);
-    	}
+	@Override
+	public void onBackPressed() {
+		Run.mEventList.add(new Run.EventHolder(GR_BACK_KEY_PRESSED, 0, null));
+	}
 
-        return true;
-    }
-    
-	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit a key
-		
-    	Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " keyUp " + keyCode);
-    	
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-        	 
-            Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " BACK KEY HIT");
-
-        	if (Run.OnBackKeyLine != 0){
-        		Run.BackKeyHit = true;
-        		return true;
-        	}
-
-        	Run.GRopen = false;
-        	Run.Stop = true;
-        	if (Basic.DoAutoRun) {
-        		 Run.Exit = true;			// Signal Run to exit immediately and silently
-        	}
-        	finish();
-        	return true;
-        }
-
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event)  {
+		// Log.v(LOGTAG, " " + CLASSTAG + " keyDown " + keyCode);
+		if ((keyCode == KeyEvent.KEYCODE_BACK) ||
+			(keyCode == KeyEvent.KEYCODE_VOLUME_UP) ||
+			(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN))
+		{
+			return super.onKeyDown(keyCode, event);
+		}
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
-			if (Run.OnMenuKeyLine != 0) {
-				Run.MenuKeyHit = true;
-				return true;
-			}
+			// Do not put the KeyEvent on the EventList. This keeps Run.onKeyDown() from building a menu.
+			Run.mEventList.add(new Run.EventHolder(KEY_DOWN, keyCode, null));
 		}
+		return true;									// ignore anything else
+	}
 
-		char c;
-	    String theKey = "@";
-	    int n ;
-	    if (keyCode >= 7 && keyCode <= 16){
-	    	n = keyCode - 7;
-	    	c = Run.Numbers.charAt(n);
-	    	theKey = Character.toString(c);
-	    	
-	    }else if (keyCode >=29 && keyCode <= 54){
-	    	n = keyCode -29;
-	    	c = Run.Chars.charAt(n);
-	    	theKey = Character.toString(c);
-	    }else if (keyCode == 62){ 
-	    	c = ' ';
-	    	theKey = Character.toString(c);
-	    }else if (keyCode >= 19 && keyCode <= 23){
-	    	switch (keyCode) {
-	    	case 19: theKey = "up"; break;
-	    	case 20: theKey = "down"; break;
-	    	case 21: theKey = "left"; break;
-	    	case 22: theKey = "right"; break;
-	    	case 23: theKey = "go"; break;
-	    	}
-	    }else {
-	    	theKey = "key " + keyCode;
-	    }
-	    synchronized (this) {
-	    	Run.InChar.add(theKey);
-	    }
-	    Run.KeyPressed = true;
-	    return true;
+	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit a key
+		// Log.v(LOGTAG, " " + CLASSTAG + " keyUp " + keyCode);
+		if (keyCode == KeyEvent.KEYCODE_BACK) {
+			return super.onKeyUp(keyCode, event);
 		}
-	
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        switch (requestCode) {
+		if (keyCode == KeyEvent.KEYCODE_MENU) {
+			// Do not put the KeyEvent on the EventList. This keeps Run.onKeyDown() from building a menu.
+			event = null;
+		}
+		Run.mEventList.add(new Run.EventHolder(KEY_UP, keyCode, event));
+		return true;
+	}
+
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		switch (requestCode) {
         case Run.REQUEST_CONNECT_DEVICE_SECURE:
             // When DeviceListActivity returns with a device to connect
             if (resultCode == Activity.RESULT_OK) {
@@ -298,19 +531,27 @@ public class GR extends Activity {
             }
             break;
 
-        case Run.VOICE_RECOGNITION_REQUEST_CODE:
-        	if (resultCode == RESULT_OK){
-    	        Run.sttResults = new ArrayList<String>();
-        		Run.sttResults = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-        	}
-        	Run.sttDone = true;
-            Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " VR Done");
-        }
-    }
-    
+		case Run.VOICE_RECOGNITION_REQUEST_CODE:
+			if (resultCode == RESULT_OK) {
+				Run.sttResults = new ArrayList<String>();
+				Run.sttResults = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+			}
+			Run.sttDone = true;
+		}
+	}
+
+	private void releaseLOCK() {
+		if (waitForLock) {
+			synchronized (LOCK) {
+//				Log.d(LOGTAG, "releaseLOCK");
+				waitForLock = false;
+				LOCK.notify();							// release GR.OPEN or .CLOSE if it is waiting
+			}
+		}
+	}
+
     public void connectDevice(Intent data, boolean secure) {
-    	
-    	
+
         String address = data.getExtras()
             .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
         Run.btConnectDevice = null;
@@ -323,7 +564,7 @@ public class GR extends Activity {
         }
         // Attempt to connect to the device
     }
-    
+
     public void startsBTConnect() {
     	Intent serverIntent = null;
         serverIntent = new Intent(this, DeviceListActivity.class);
@@ -337,34 +578,32 @@ public class GR extends Activity {
 
     }
 
-    
-    public void startVoiceRecognitionActivity() {
-        Log.v(GR.LOGTAG, " " + GR.CLASSTAG + " VR Start" + Process.myTid());
-
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "BASIC! Speech To Text");
-        startActivityForResult(intent, Run.VOICE_RECOGNITION_REQUEST_CODE);
-    }
-    
     public void enableBT() {
         Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
         startActivityForResult(enableIntent, Run.REQUEST_ENABLE_BT);
     }
 
-	public class DrawView extends View  {
-		private static final String TAG = "DrawView";
+	public class DrawView extends View {
+		private static final String LOGTAG = "GR.DrawView";
 
+		@SuppressLint("NewApi")
 		public DrawView(Context context) {
 			super(context);
 			setFocusable(true);
 			setFocusableInTouchMode(true);
 			GraphicsImm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+			if (android.os.Build.VERSION.SDK_INT >= 11) {	// Hardware acceleration is supported starting API 11
+				// Assume hardware acceleration is enabled for the app.
+				// Choose whether to use it in DrawView based on user Preference.
+				int layerType = Settings.getGraphicAcceleration(context)
+								? View.LAYER_TYPE_HARDWARE	// use hardware acceleration
+								: View.LAYER_TYPE_SOFTWARE;	// disable hardware acceleration
+				setLayerType(layerType, null);
+			}
 		}
 
-		public void setOrientation(int orientation) {	// Convert and apply orientation setting
-//			Log.v(GR.LOGTAG, "Set orientation " + orientation);
+		synchronized public void setOrientation(int orientation) {	// Convert and apply orientation setting
+			Log.v(LOGTAG, "Set orientation " + orientation);
 			switch (orientation) {
 				default:
 				case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
@@ -391,283 +630,208 @@ public class GR extends Activity {
 			return dm.densityDpi;
 		}
 
-        public boolean onTouchEvent(MotionEvent event){
-        	super.onTouchEvent(event);
-        	int action = event.getAction();  // Get action type
+		public boolean onTouchEvent(MotionEvent event) {
+			super.onTouchEvent(event);
+			int action = event.getAction() & MotionEvent.ACTION_MASK;	// Get action type, mask off index field
+			int numPointers = event.getPointerCount();
 
+			for (int i = 0; i < numPointers; i++) {
+				int pid = event.getPointerId(i);
+				if (pid > 1)  { continue; }				// currently, we allow only two pointers
+//				Log.v(LOGTAG, " " + i + "," + pid + "," + action);
+				Run.TouchX[pid] = (double)event.getX(i);
+				Run.TouchY[pid] = (double)event.getY(i);
+				if (action == MotionEvent.ACTION_DOWN ||
+					action == MotionEvent.ACTION_POINTER_DOWN) {
+					Run.NewTouch[pid] = true;			// which pointer (0 or 1), cleared on UP
+					Run.mEventList.add(new Run.EventHolder(GR_TOUCH, 0, null));
+				}
+				else if	(action == MotionEvent.ACTION_MOVE) {
+					Run.NewTouch[pid] = true;
+				} else if (action == MotionEvent.ACTION_UP ||
+					action == MotionEvent.ACTION_POINTER_UP) {
+					Run.NewTouch[pid] = false;
+				}
+			}
+			return true;
+		}
 
-        	for (int i = 0; i < event.getPointerCount(); i++){
-        		if ( i > 1 ) break;
-            	int pid = event.getPointerId(i);
-            	if (pid > 1) break;
-//        		Log.v(GR.LOGTAG, " " + i + ","+pid+"," + action);
-        		Run.TouchX[pid] = (double)event.getX(i);
-        		Run.TouchY[pid] = (double)event.getY(i);
-        		if (action == MotionEvent.ACTION_DOWN ||
-        			action == MotionEvent.ACTION_POINTER_DOWN) {
-        			Run.NewTouch[pid] = true;
-        			Run.NewTouch[2] = true;
-        			Run.Touched = true;
-        		}
-        		else if	(action == MotionEvent.ACTION_MOVE){
-            		Run.NewTouch[pid] = true;
-            	} else if (action == MotionEvent.ACTION_UP ||
-            		action == MotionEvent.ACTION_POINTER_UP ||
-            		action == 6 ||
-            		action == 262) {
-            		Run.NewTouch[pid] = false;
-            	}
-        	}
-        	
-        	return true;
-        }
-   
-  	  public Paint newPaint(Paint fromPaint){
-		  Typeface tf = fromPaint.getTypeface();
-		  Paint rPaint = new Paint(fromPaint);
-		  rPaint.setTypeface(tf);
-		  return rPaint;
-	  }
+		public Paint newPaint(Paint fromPaint) {
+			Typeface tf = fromPaint.getTypeface();
+			Paint rPaint = new Paint(fromPaint);
+			rPaint.setTypeface(tf);
+			return rPaint;
+		}
 
 		@Override
-		public  void onDraw(Canvas canvas) {
-//			Log.d(LOGTAG,"onDraw " + getWidth() + " x " + getHeight());
-            if (doEnableBT) {							// If this activity is running
-            	enableBT();								// Bluetooth must be enabled here
-            	doEnableBT = false;
-            }
-            
-            if (startConnectBT) {
-            	startsBTConnect();
-            	startConnectBT = false;
-            }
-       		
-       		if (doSTT) {
-   					startVoiceRecognitionActivity();
-   					doSTT = false;
-       		}
+		synchronized public void onDraw(Canvas canvas) {
+//			Log.d(LOGTAG,"onDraw");
+			if (doEnableBT) {							// If this activity is running
+				enableBT();								// Bluetooth must be enabled here
+				doEnableBT = false;
+			}
 
-        	synchronized (Rendering) {
-        		Run.GRrunning = true;
-        		if (!Rendering) return;		// If Run.java did not ask to render then don't render
-        	}
-        	
-            float scale = getResources().getDisplayMetrics().density;
-        	Paint thePaint;
-        	Bitmap theBitmap;
-        	drawView.setDrawingCacheEnabled(true);
-        	canvas.scale(scaleX, scaleY);
-        	
-        	if (Run.DisplayList == null){					        // If we have lost context then
-        		throw new RuntimeException("GR.onDraw: null DisplayList");
-        	}
-        	
-        	if (Brightness != -1){
-        		WindowManager.LayoutParams lp = getWindow().getAttributes();
-        		lp.screenBrightness = Brightness;
-        		getWindow().setAttributes(lp);
-        	}
+			if (startConnectBT) {
+				startsBTConnect();
+				startConnectBT = false;
+			}
 
-        	if (Run.RealDisplayList != null){
-        		for (int di = 0 ; di< Run.RealDisplayList.size(); ++di){
-        			int rdi = Run.RealDisplayList.get(di);
-        			if (Run.DisplayList != null){
-        				if (rdi >= Run.DisplayList.size()) return;
-        				Bundle b = Run.DisplayList.get(rdi);
-        				doDraw(canvas, b);
-        			}
-        		}
-        	}
+			if (doSTT) {
+				Intent intent = Run.buildVoiceRecognitionIntent();
+				startActivityForResult(intent, Run.VOICE_RECOGNITION_REQUEST_CODE);
+				doSTT = false;
+			}
 
-       		Rendering = false;
-            
-            
-        }
+			if ((Run.RealDisplayList == null) || (Run.DisplayList == null)) {
+				Log.e(LOGTAG, "GR.onDraw: null DisplayList");
+				finish();								// lost context, bail out
+				return;
+			}
 
-        public void doDraw(Canvas canvas, Bundle b){
-//        	Log.v(GR.LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
-        	
-        	int x1;
-        	int y1;
-        	int x2;
-        	int y2;
-        	int r;
-        	
-        	Paint thePaint;
-        	Bitmap theBitmap;
-//        	canvas.scale(scaleX, scaleY);
-        	
-           		thePaint = null;
-           		int type = dNull;
-           		if (b != null){
-           			type = b.getInt("type");
-           			if (b.getInt("hide")!=0 ) type = dNull;
-           			else {
-           				int pIndex = b.getInt("paint");
-           				if (Run.PaintList.size()==0) return;
-          				if (pIndex < 1 || pIndex >= Run.PaintList.size()) return;
-           				thePaint = newPaint(Run.PaintList.get(pIndex));
-           				int alpha = b.getInt("alpha");
-           				if (alpha < 256) thePaint.setAlpha(alpha);
-           				}
-           			}
-          		
-           		switch (type) {
-           			case dNull:
-           				break;
-           			case dClose:
-           				finish();
-           				break;
-           			case dCircle:
-                    
-           				x1= b.getInt("x");
-           				y1 =b.getInt("y");
-           				r = b.getInt("radius");
-           				canvas.drawCircle(x1, y1, r, thePaint);
-           				break;
-           			case dRect:
-           				x1= b.getInt("left");
-           				x2 =b.getInt("top");
-           				y2= b.getInt("bottom");
-           				y1 =b.getInt("right");
-           				canvas.drawRect(x1,x2,y1,y2, thePaint);
-           				break;
-           			case dClip:
-           				x1= b.getInt("left");
-           				x2 =b.getInt("top");
-           				y2= b.getInt("bottom");
-           				y1 =b.getInt("right");
-           				int RO = b.getInt("RO");
-           				switch (RO){
-           					case 0:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.INTERSECT);
-           						break;
-           					case 1:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.DIFFERENCE);
-           						break;
-           					case 2:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.REPLACE );
-           						break;
-           					case 3:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.REVERSE_DIFFERENCE );
-           						break;
-           					case 4:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.UNION );
-           						break;
-           					case 5:
-           						canvas.clipRect(x1,x2,y1,y2,Region.Op.XOR );
-           						break;
-           				}
-           				
-           				break;
-           			case dOval:
-           				x1= b.getInt("left");
-           				x2 =b.getInt("top");
-           				y1 =b.getInt("right");
-           				y2= b.getInt("bottom");
-           				RectF rect = new RectF(x1,x2,y1,y2);
-           				canvas.drawOval(rect , thePaint);
-           				break;
-           			case dArc:
-           				x1= b.getInt("left");
-           				x2 =b.getInt("top");
-           				y1 =b.getInt("right");
-           				y2= b.getInt("bottom");
-           				rect = new RectF(x1,x2,y1,y2);
-           				int sa = b.getInt("start_angle");
-           				int ea = b.getInt("sweep_angle");
-        				int iflag = b.getInt("fill_mode");
-        				boolean bflag = true;
-        				if (iflag == 0) bflag = false;
-        				canvas.drawArc(rect, sa,ea,bflag, thePaint);
-        				break;
-           			case dLine:
-           				x1= b.getInt("x1");
-           				x2 =b.getInt("x2");
-           				y1= b.getInt("y1");
-           				y2 =b.getInt("y2");
-           				canvas.drawLine(x1,y1,x2,y2, thePaint);
-           				break;
-           			case dPoint:
-           				x1= b.getInt("x");
-           				y1 =b.getInt("y");
-           				canvas.drawPoint(x1,y1, thePaint);
-           				break;
-           			case dsetPixels:
-           				x1=b.getInt("x");
-        				y1=b.getInt("y");
-           				int pBase = b.getInt("pbase");
-           				int pLength = b.getInt("plength");
-           				float[] pixels;
-           				pixels = new float[pLength];
-           				for (int j = 0; j<pLength-1; ++j){
-           					pixels[j] = (float) (double) Run.NumericVarValues.get(pBase+j) + x1;
-           					++j;
-           					pixels[j] = (float) (double) Run.NumericVarValues.get(pBase+j) + y1;
-           				}
-           				canvas.drawPoints(pixels, thePaint);
-           				break;
-           				
-           			case dPoly:
-           				x1=b.getInt("x");
-        				y1=b.getInt("y");
-        				int ListIndex = b.getInt("list");
-        				ArrayList<Double> thisList = Run.theLists.get(ListIndex);
-        				
-        				Path p = new Path();
-        				float firstX = (float)(double) thisList.get(0) + (float) x1;
-        				float firstY = (float)(double) thisList.get(1) + (float) y1;
-        				p.moveTo(firstX, firstY);
-        				
-        				for (int i = 2; i<thisList.size(); ++i){
-        					float nextX = (float)(double) thisList.get(i) + (float) x1;
-        					++i;
-        					float nextY = (float)(double) thisList.get(i) + (float) y1;
-        					p.lineTo(nextX, nextY);
-        				}
-        				p.lineTo(firstX, firstY);
-        				p.close();
-        				canvas.drawPath(p, thePaint);
-        				break;
- 
-           			case dText:
-           				x1=b.getInt("x");
-        				y1=b.getInt("y");
-        				String s = b.getString("text");
-        				canvas.drawText(s, x1, y1, thePaint);
-        				break;
-        			case dBitmap:
-        				x1 = b.getInt("x");
-        				y1 = b.getInt("y");
-        				theBitmap = Run.BitmapList.get(b.getInt("bitmap"));
-        				if (theBitmap != null) {
-        					if (theBitmap.isRecycled()){
-        						Run.BitmapList.set(b.getInt("bitmap"), null);
-        						theBitmap = null;
-        					}
-        				}
-        				if (theBitmap != null)
-        					canvas.drawBitmap(theBitmap, x1, y1, thePaint);
-        				else
-        					NullBitMap = true;
-        				break;
-        			case dRotate_Start:
-        				int angle = b.getInt("angle");
-        				x1 = b.getInt("x");
-        				y1 = b.getInt("y");
-        				canvas.save();
-        				canvas.rotate( angle, x1, y1);
-        				break;
-        			case dRotate_End:
-        				canvas.restore();
-        				break;
-        			default:
-           			}
-           		
-        }
-    }
-    
-    
+			// float scale = getResources().getDisplayMetrics().density;
+			drawView.setDrawingCacheEnabled(true);
+			canvas.scale(scaleX, scaleY);
 
+			if (Brightness != -1) {
+				WindowManager.LayoutParams lp = getWindow().getAttributes();
+				lp.screenBrightness = Brightness;
+				getWindow().setAttributes(lp);
+				Brightness = -1;						// do it only once
+			}
+
+			synchronized (Run.DisplayList) {
+				for (int di : Run.RealDisplayList) {
+					if (di >= Run.DisplayList.size()) continue;
+					BDraw b = Run.DisplayList.get(di);
+					if (!doDraw(canvas, b)) {
+						finish();
+						break;
+					}
+				}
+				releaseLOCK();
+			}
+		} // onDraw()
+
+		public boolean doDraw(Canvas canvas, BDraw b) {
+//			Log.v(LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
+
+			float fx1;
+			float fy1;
+			RectF rectf;
+
+			Paint thePaint;
+			Bitmap theBitmap;
+//			canvas.scale(scaleX, scaleY);
+
+			thePaint = null;
+			Type type = Type.Null;
+			if ((b != null) && b.isVisible()) {
+				type = b.type();
+				int pIndex = b.paint();
+				if (Run.PaintList.size() == 0)						return true;
+				if (pIndex < 1 || pIndex >= Run.PaintList.size())	return true;
+				thePaint = newPaint(Run.PaintList.get(pIndex));
+				int alpha = b.alpha();
+				if (alpha < 256) thePaint.setAlpha(alpha);
+			}
+
+			switch (type) {
+				case Group:
+				case Null:
+					break;
+				case Open:
+					Running = true;						// flag for GR.Open
+					break;
+				case Close:
+					Running = false;
+					return false;
+
+				case Circle:
+					canvas.drawCircle(b.x(),b.y(),b.radius(), thePaint);
+					break;
+				case Rect:
+					canvas.drawRect(b.left(), b.top(), b.right(), b.bottom(), thePaint);
+					break;
+				case Clip:
+					canvas.clipRect(b.left(), b.top(), b.right(), b.bottom(), b.clipOp());
+					break;
+				case Oval:
+					rectf = new RectF(b.left(), b.top(), b.right(), b.bottom());
+					canvas.drawOval(rectf, thePaint);
+					break;
+				case Arc:
+					rectf = new RectF(b.left(), b.top(), b.right(), b.bottom());
+					canvas.drawArc(rectf, b.arcStart(), b.arcSweep(), b.useCenter(), thePaint);
+					break;
+				case Line:
+					canvas.drawLine(b.x1(),b.y1(),b.x2(),b.y2(), thePaint);
+					break;
+				case Point:
+					canvas.drawPoint(b.x(),b.y(), thePaint);
+					break;
+				case SetPixels:
+					fx1 = b.x();
+					fy1 = b.y();
+					Run.ArrayDescriptor array = b.array();
+					int pBase = array.base();
+					int pLength = array.length();
+					float[] pixels = new float[pLength];
+					for (int j = 0; j < pLength; ++j) {
+						pixels[j] = (float)Run.Vars.get(pBase + j).nval() + fx1;
+						++j;
+						pixels[j] = (float)Run.Vars.get(pBase + j).nval() + fy1;
+					}
+					canvas.drawPoints(pixels, thePaint);
+					break;
+				case Poly:
+					fx1 = b.x();
+					fy1 = b.y();
+					ArrayList<Double> thisList = b.list();
+					Path p = new Path();
+					float firstX = thisList.get(0).floatValue() + fx1;
+					float firstY = thisList.get(1).floatValue() + fy1;
+					p.moveTo(firstX, firstY);
+					int size = thisList.size();
+					for (int i = 2; i < size; ) {
+						float nextX = thisList.get(i++).floatValue() + fx1;
+						float nextY = thisList.get(i++).floatValue() + fy1;
+						p.lineTo(nextX, nextY);
+					}
+					p.lineTo(firstX, firstY);
+					p.close();
+					canvas.drawPath(p, thePaint);
+					break;
+				case Text:
+					canvas.drawText(b.text(), b.x(), b.y(), thePaint);
+					break;
+				case Bitmap:
+					int bitmapIndex = b.bitmap();
+					theBitmap = Run.BitmapList.get(bitmapIndex);
+					if (theBitmap != null) {
+						if (theBitmap.isRecycled()) {
+							Run.BitmapList.set(bitmapIndex, null);
+							theBitmap = null;
+						}
+					}
+					if (theBitmap != null) {
+						canvas.drawBitmap(theBitmap, b.x(), b.y(), thePaint);
+					} else {
+						NullBitMap = true;
+					}
+					break;
+				case RotateStart:
+					canvas.save();
+					canvas.rotate(b.angle(), b.x1(), b.y1());
+					break;
+				case RotateEnd:
+					canvas.restore();
+					break;
+				default:
+					break;
+			}
+			return true;
+		} // doDraw()
+
+	} // class DrawView
 
 }
