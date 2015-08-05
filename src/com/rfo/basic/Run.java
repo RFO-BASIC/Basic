@@ -2285,8 +2285,10 @@ public class Run extends Activity {
 		lv.setAdapter(mConsole);
 		lv.setKeyboardManager(mKeyboardChangeListener);
 		lv.setTextFilterEnabled(false);
-		lv.setBackgroundColor(mConsole.getBackgroundColor());
-		// lv.setBackgroundColor(mConsole.getLineColor());
+		lv.setBackgroundColor(
+			Settings.getEmptyConsoleColor(this).equals("line")
+				? mConsole.getLineColor()
+				: mConsole.getBackgroundColor());			// default is "background"
 		if (Settings.getLinedConsole(this)) {
 			lv.setDivider(new ColorDrawable(mConsole.getLineColor()));	// override default from theme, sometimes it's invisible
 			if (lv.getDividerHeight() < 1) { lv.setDividerHeight(1); }	// make sure the divider shows

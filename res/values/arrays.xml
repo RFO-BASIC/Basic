@@ -5,7 +5,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2015 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -32,16 +32,15 @@ This file is part of BASIC! for Android
     <string-array name="font_list_preference">
         <item>Small</item>
         <item>Medium</item>
-        <item>Large</item>  
+        <item>Large</item>
     </string-array>
-    
+
     <string-array name="fontvalues_list_preference">
         <item>Small</item>
         <item>Medium</item>
-        <item>Large</item>  
+        <item>Large</item>
     </string-array>
-    
-    
+
     <string-array name="orientation_list_preference">
         <item>Variable By Sensors</item>
         <item>Fixed Landscape</item>
@@ -53,17 +52,17 @@ This file is part of BASIC! for Android
         <string-array name="orientationvalues_list_preference">
         <item>0</item>
         <item>1</item>
-        <item>2</item>  
-        <item>3</item>  
-        <item>4</item>  
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
     </string-array>
-    
+
     <string-array name="es_list_preference">
         <item>Black Text On White Screen</item>
         <item>White Text on Black Screen</item>
         <item>White Text on Blue Screen</item>
     </string-array>
-    
+
     <string-array name="esvalues_list_preference">
         <item>BW</item>
         <item>WB</item>
@@ -75,21 +74,30 @@ This file is part of BASIC! for Android
         <item>Sans Serif</item>
         <item>Serif</item>
     </string-array>
-    
+
     <string-array name="csfvalues_list_preference">
         <item>MS</item>
         <item>SS</item>
         <item>S</item>
     </string-array>
-        
+
+    <string-array name="empty_console_list_preference">
+        <item>Use text background color</item>
+        <item>Use separator line color</item>
+    </string-array>
+
+    <string-array name="empty_console_values_list_preference">
+        <item>background</item>
+        <item>line</item>
+    </string-array>
+
     <string-array name="base_drive_names">
         <item>/mnt/sdcard</item>
         <item>/mnt/sdcard</item>
     </string-array>
-    
+
     <string-array name="base_drive_values">
         <item>/mnt/sdcard</item>
     </string-array>
-        
-    
+
 </resources>

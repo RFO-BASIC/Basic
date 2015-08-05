@@ -248,6 +248,11 @@ public class Settings extends PreferenceActivity {
 				.getBoolean("gr_accel", false);
 	}
 
+	public static String getEmptyConsoleColor(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context)
+				.getString("empty_color_pref", "background");
+	}
+
 	public static String getColorScheme(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getString("es_pref", "BW");
