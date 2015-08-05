@@ -34,6 +34,7 @@ package com.rfo.basic;
 
 //Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
+import android.util.AttributeSet;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -112,7 +113,6 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
-import android.app.ListActivity;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -187,7 +187,6 @@ import android.view.MenuItem;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
@@ -206,15 +205,15 @@ import android.widget.Toast;
  * This leads to a little complication.
  */
 
-public class Run extends ListActivity {
+public class Run extends Activity {
 
 	public static boolean isOld = false;
 	private static final String LOGTAG = "Run";
 	private static final String CLASSTAG = Run.class.getSimpleName();
 //	Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer.line());
 
-	public static Object LOCK = new Object();
-	public static boolean mWaitForLock;
+	public static final Object LOCK = new Object();
+	public static boolean mWaitForLock;						// semaphore for Input, TGet, and Dialogs
 
 	// ********************* Message types for the Handler *********************
 
@@ -240,6 +239,43 @@ public class Run extends ListActivity {
 	private static final int MESSAGE_INPUT_DIALOG      = MESSAGE_DIALOG_GROUP + 1;	// for INPUT command
 	private static final int MESSAGE_ALERT_DIALOG      = MESSAGE_DIALOG_GROUP + 2;	// for DIALOG.* commands
 
+	// ************************* ConsoleListView class *************************
+	// Custom ListView, just to handle the BACK key
+
+	private final KeyboardManager.KeyboardChangeListener mKeyboardChangeListener =
+		new KeyboardManager.KeyboardChangeListener() {
+			public void kbChanged() {						// required by KeyboardManager.Callbacks interface
+				triggerInterrupt(Interrupt.KB_CHANGE_BIT);
+			}
+	};
+
+	public static class ConsoleListView extends ListView {
+		private final static String LOGTAG = "ConsoleListView";
+
+		private KeyboardManager mKB;
+
+		public ConsoleListView(Context context) {
+			this(context, null);
+		}
+
+		public ConsoleListView(Context context, AttributeSet attrs) {
+			super(context, attrs);
+		}
+
+		public ConsoleListView(Context context, AttributeSet attrs, int defStyle) {
+			super(context, attrs, defStyle);
+		}
+
+		public void setKeyboardManager(KeyboardManager.KeyboardChangeListener listener) {
+			mKB = new KeyboardManager(getContext(), this, listener);
+		}
+
+		@Override
+		public boolean onKeyPreIme(int keyCode, KeyEvent event) {
+			return (mKB != null) && mKB.onKeyPreIme(keyCode, event); // delegate to KeyboardManager
+		}
+	}
+
 	// *************************** EventHolder class ***************************
 	// Used to carry events between Activities.
 
@@ -248,10 +284,11 @@ public class Run extends ListActivity {
 		public static final int KEY_UP = 2;
 		public static final int BACK_KEY_PRESSED = 3;
 		public static final int GR_BACK_KEY_PRESSED = 4;
-		public static final int GR_TOUCH = 5;
-		public static final int GR_STATE = 6;
-		public static final int WEB_STATE = 7;
-		public static final int DATALINK_ADD = 8;
+		public static final int GR_KB_CHANGED = 5;
+		public static final int GR_TOUCH = 6;
+		public static final int GR_STATE = 7;
+		public static final int WEB_STATE = 8;
+		public static final int DATALINK_ADD = 9;
 
 		public static final int ON_PAUSE = 1;
 		public static final int ON_RESUME = 2;
@@ -333,7 +370,8 @@ public class Run extends ListActivity {
 		public final static Integer BT_READY_BIT	= 0x0040;
 		public final static Integer CONS_TOUCH_BIT	= 0x0080;
 		public final static Integer BACKGROUND_BIT	= 0x0100;	// background state change
-		public final static Integer LOW_MEM_BIT		= 0x0200;
+		public final static Integer KB_CHANGE_BIT	= 0x0200;
+		public final static Integer LOW_MEM_BIT		= 0x0400;
 		public final static Integer FN_RTN_BIT		= 0x1000;	// for user-defined function,  not an interrupt
 
 		protected final int mLine;						// ISR entry line
@@ -683,6 +721,7 @@ public class Run extends ListActivity {
 	private static final String BKW_ONCONSOLETOUCH = "onconsoletouch:";
 	private static final String BKW_ONERROR = "onerror:";
 	private static final String BKW_ONGRTOUCH = "ongrtouch:";
+	private static final String BKW_ONKBCHANGE = "onkbchange:";
 	private static final String BKW_ONKEYPRESS = "onkeypress:";
 	private static final String BKW_ONLOWMEM = "onlowmemory:";
 	private static final String BKW_ONMENUKEY = "onmenukey:";
@@ -784,7 +823,7 @@ public class Run extends ListActivity {
 		BKW_ONERROR,											// Interrupt labels are listed for formatter, but have no Command objects
 		BKW_ONBACKKEY, BKW_ONBACKGROUND, BKW_ONBTREADREADY,
 		BKW_ONCONSOLETOUCH, BKW_ONGRTOUCH,
-		BKW_ONKEYPRESS, BKW_ONLOWMEM,
+		BKW_ONKEYPRESS, BKW_ONKBCHANGE, BKW_ONLOWMEM,
 		BKW_ONMENUKEY, BKW_ONTIMER,
 	};
 
@@ -1056,7 +1095,7 @@ public class Run extends ListActivity {
 	private final ArrayList<String> mConsoleBuffer = new ArrayList<String>();	// carries output from mInterpreter to UI
 
 	public Basic.ColoredTextAdapter mConsole;			// The output screen array adapter
-	private ListView lv;								// The output screen list view
+	private ConsoleListView lv;							// The output screen list view
 	private Interpreter mInterpreter;					// the program runner, runs in a separate Thread
 	private boolean SyntaxError = false;				// Set true when Syntax Error message has been output
 
@@ -1097,7 +1136,6 @@ public class Run extends ListActivity {
 	private int WatchedBundle;
 	// end debugger ui vars
 
-	private InputMethodManager IMM;
 	private HashMap<String,Integer> Labels;				// A list of all labels and associated line numbers
 
 	public static ArrayList<Interpreter.Var> Vars;		// All scalar the variables
@@ -1247,15 +1285,14 @@ public class Run extends ListActivity {
 	// ********************** KB Command variables *********************************
 
 	private static final String BKW_KB_HIDE = "hide";
+	private static final String BKW_KB_RESUME = "resume";
 	private static final String BKW_KB_SHOW = "show";
-	private static final String BKW_KB_SHOWING = "showing";	// future use
+	private static final String BKW_KB_SHOWING = "showing";
 	private static final String BKW_KB_TOGGLE = "toggle";
 
 	private static final String KB_KW[] = {			// KB command list for Format
-		BKW_KB_HIDE, BKW_KB_SHOW, BKW_KB_TOGGLE
+		BKW_KB_HIDE, BKW_KB_RESUME, BKW_KB_SHOWING, BKW_KB_SHOW, BKW_KB_TOGGLE
 	};
-
-	private boolean kbShown = false;
 
 	// ******************** Input Command variables ********************************
 
@@ -2189,8 +2226,6 @@ public class Run extends ListActivity {
 				}
 			}
 			mConsole.notifyDataSetChanged();
-			// setListAdapter(AA);						// show the output
-			lv.setSelection(mConsole.getCount() - 1);	// set last line as the selected line to scroll
 		}
 	}
 
@@ -2242,16 +2277,16 @@ public class Run extends ListActivity {
 		InitRunVars();
 
 															// Establish the output screen
+		setContentView(R.layout.console);
 		TextStyle style = new TextStyle(Basic.defaultTextStyle, Settings.getConsoleTypeface(this));
 		mConsole = new Basic.ColoredTextAdapter(this, mOutput, style);
 		clearConsole();
-		setListAdapter(mConsole);
-		lv = getListView();
+		lv = (ConsoleListView)findViewById(R.id.console);
+		lv.setAdapter(mConsole);
+		lv.setKeyboardManager(mKeyboardChangeListener);
 		lv.setTextFilterEnabled(false);
-		lv.setFocusable(true);
-		lv.setFocusableInTouchMode(true);
-		lv.setSelection(0);
 		lv.setBackgroundColor(mConsole.getBackgroundColor());
+		// lv.setBackgroundColor(mConsole.getLineColor());
 		if (Settings.getLinedConsole(this)) {
 			lv.setDivider(new ColorDrawable(mConsole.getLineColor()));	// override default from theme, sometimes it's invisible
 			if (lv.getDividerHeight() < 1) { lv.setDividerHeight(1); }	// make sure the divider shows
@@ -2259,7 +2294,6 @@ public class Run extends ListActivity {
 			lv.setDividerHeight(0);							// don't show the divider
 		}
 
-//		kbHide();
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		setRequestedOrientation(Settings.getSreenOrientation(this));
 
@@ -2293,7 +2327,6 @@ public class Run extends ListActivity {
 	} // end onCreate
 
 	private void InitRunVars() {							// init vars needed for Run
-		IMM = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
 		clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		mInterpreter = null;								// reference to Interpreter Thread
@@ -2361,10 +2394,6 @@ public class Run extends ListActivity {
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			return super.onKeyUp(keyCode, event);
 		}
-
-//		if (kbShown) {
-//			IMM.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-//		}
 
 		char c;
 		String theKey = "@";
@@ -2479,8 +2508,7 @@ public class Run extends ListActivity {
 		}
 	*/
 		Log.v(LOGTAG, CLASSTAG + " onPause " + this.toString());
-		IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0);
-		kbShown = false;
+		if (lv.mKB != null) { lv.mKB.forceHide(); }
 
 		// If there is a Media Player running, pause it and hope
 		// that it works.
@@ -2501,10 +2529,9 @@ public class Run extends ListActivity {
 
 	@Override
 	protected void onStop() {
-		Log.v(LOGTAG, CLASSTAG + " onStop " + this.toString() + " kbShown: " + kbShown);
+		Log.v(LOGTAG, CLASSTAG + " onStop " + this.toString());
 		if (!GR.Running) {
 			triggerInterrupt(Interrupt.BACKGROUND_BIT);
-//			if (kbShown) { IMM.hideSoftInputFromWindow(lv.getWindowToken(), 0); }
 		}
 		super.onStop();
 	}
@@ -2615,31 +2642,6 @@ public class Run extends ListActivity {
 	private void checkpointMessage() {
 		mMessagePending = true;
 		sendMessage(MESSAGE_CHECKPOINT);
-	}
-
-	private boolean kbHide() {
-		View view = GRFront ? GR.drawView : lv;
-		InputMethodManager imm = GRFront ? GR.GraphicsImm : IMM;
-//		imm.toggleSoftInputFromWindow(view.getWindowToken(), InputMethodManager.SHOW_FORCED, 0);
-		boolean result = imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-		Log.d(LOGTAG, "kbHide: GRFront " + GRFront + ", result " + result);
-		kbShown = false;
-		return true;
-	}
-
-	private boolean kbShow() {
-		if (kbShown)					return true;
-		InputMethodManager imm = GRFront ? GR.GraphicsImm : IMM;
-//		View view = GRFront ? GR.drawView : lv;
-//		if (!view.isFocused()) { view.requestFocus(); }
-
-//		imm.showSoftInputFromInputMethod(view.getWindowToken(), InputMethodManager.SHOW_FORCED);
-//		boolean result = imm.showSoftInput(view, 0, mImmResult);
-//		Log.d(LOGTAG, "kbShow: GRFront " + GRFront + ", result " + result);
-//		imm.toggleSoftInputFromWindow(view.getWindowToken(), InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_NOT_ALWAYS);
-		imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-		kbShown = true;
-		return true;
 	}
 
 	private static void trimArray(ArrayList array, int start) {
@@ -3632,6 +3634,7 @@ public class Run extends ListActivity {
 			getInterruptLabel(BKW_ONCONSOLETOUCH, Interrupt.CONS_TOUCH_BIT);
 			getInterruptLabel(BKW_ONBTREADREADY,  Interrupt.BT_READY_BIT);
 			getInterruptLabel(BKW_ONBACKGROUND,   Interrupt.BACKGROUND_BIT);
+			getInterruptLabel(BKW_ONKBCHANGE,     Interrupt.KB_CHANGE_BIT);
 			getInterruptLabel(BKW_ONLOWMEM,       Interrupt.LOW_MEM_BIT);
 		}
 
@@ -3758,6 +3761,7 @@ public class Run extends ListActivity {
 							case EventHolder.KEY_UP:			onKeyUp(e.mCode, e.mEvent);		break;
 							case EventHolder.GR_BACK_KEY_PRESSED: GR_BackPressed();				break;
 							case EventHolder.BACK_KEY_PRESSED:	onBackPressed();				break;
+							case EventHolder.GR_KB_CHANGED:		triggerInterrupt(Interrupt.KB_CHANGE_BIT); break;
 							case EventHolder.GR_TOUCH:			triggerInterrupt(Interrupt.GR_TOUCH_BIT); break;
 							case EventHolder.GR_STATE:			grStateChange(e.mCode);			break;
 							case EventHolder.WEB_STATE:			webStateChange(e.mCode);		break;
@@ -4010,6 +4014,15 @@ public class Run extends ListActivity {
 		mEventList.clear();								// events from other Activities
 		mIntT.clear();									// clear all pending interrupts
 		mIntA.clear();									// disable all interrupts
+
+		if ((lv != null) && (lv.mKB != null)) {
+			lv.mKB.release();
+			lv.mKB = null;
+		}
+		if ((GR.drawView != null) && (GR.drawView.mKB != null)) {
+			GR.drawView.mKB.release();
+			GR.drawView.mKB = null;
+		}
 
 		if (theMP != null) {
 			try { theMP.stop(); } catch (IllegalStateException e) {}
@@ -4503,6 +4516,8 @@ public class Run extends ListActivity {
 
 	private final Command[] KB_cmd = new Command[] {	// Map KB command keywords to their execution functions
 		new Command(BKW_KB_HIDE)                { public boolean run() { return executeKB_HIDE(); } },
+		new Command(BKW_KB_RESUME)              { public boolean run() { return executeKB_RESUME(); } },
+		new Command(BKW_KB_SHOWING)             { public boolean run() { return executeKB_SHOWING(); } },
 		new Command(BKW_KB_SHOW)                { public boolean run() { return executeKB_SHOW(); } },
 		new Command(BKW_KB_TOGGLE)              { public boolean run() { return executeKB_TOGGLE(); } },
 	};
@@ -9596,6 +9611,10 @@ public class Run extends ListActivity {
 		return doResume("Back key not hit");
 	}
 
+	private boolean executeKB_RESUME() {
+		return doResume("No keyboard change");
+	}
+
 	private boolean executeLOWMEM_RESUME() {
 		return doResume("No Low Memory signal");
 	}
@@ -9669,7 +9688,7 @@ public class Run extends ListActivity {
 		return true;
 	}
 
-	public boolean executeCLS() {							// Clear Screen
+	public boolean executeCLS() {						// Clear Screen
 		if (!checkEOL()) return false;
 		sendMessage(MESSAGE_CLEAR_CONSOLE);				// tell the UI thread to clear the Console
 		return true;
@@ -9862,24 +9881,55 @@ public class Run extends ListActivity {
 		return executeCommand(KB_cmd, "KB");					// and execute the command
 	}
 
+	private KeyboardManager getKeyboardManager() {
+		KeyboardManager kb = GRFront ? GR.drawView.mKB : lv.mKB;
+		if (kb == null) { RunTimeError("No keyboard manager"); }
+		return kb;
+	}
+
 	private boolean executeKB_TOGGLE() {
 		if (!checkEOL())				return false;
-		Log.v(LOGTAG, CLASSTAG + " KB_TOGGLE " + kbShown );
-
-		return (kbShown ? kbHide() : kbShow());
+		KeyboardManager kb = getKeyboardManager();
+		return (kb != null) && (kb.showing() ? kbHide(kb) : kbShow(kb));
 	}
 
 	private boolean executeKB_HIDE() {
 		if (!checkEOL())				return false;
-		Log.v(LOGTAG, CLASSTAG + " KBHIDE " + kbShown);
-		kbHide();
-		return true;
+		return kbHide(getKeyboardManager());
+	}
+
+	private boolean kbHide(KeyboardManager kb) {
+		if (kb == null)					return false;
+		kb.hide();
+		return true;									// even if kb.hide() return false
 	}
 
 	private boolean executeKB_SHOW() {
 		if (!checkEOL())				return false;
-		Log.v(LOGTAG, CLASSTAG + " KBSHOW " + kbShown);
-		kbShow();
+		return kbShow(getKeyboardManager());
+	}
+
+	private boolean kbShow(KeyboardManager kb) {
+		if (kb == null)					return false;
+		if (!kb.show()) {
+			checkpointMessage();						// allow any pending Console activity to complete
+			while (mMessagePending) { Thread.yield(); }	// wait for checkpointMessage semaphore to clear
+
+			if (mConsole.getCount() == 0) {
+				return RunTimeError("You must PRINT before you can show the soft keyboard");
+			}
+		}
+		return true;
+	}
+
+	private boolean executeKB_SHOWING() {
+		if (!getNVar())					return false;
+		Var var = Vars.get(theValueIndex);
+		if (!checkEOL())				return false;
+
+		KeyboardManager kb = getKeyboardManager();
+		if (kb == null)					return false;
+		var.val(kb.showing() ? 1.0 : 0.0);
 		return true;
 	}
 

@@ -53,7 +53,6 @@ import android.graphics.Region;
 import android.graphics.Typeface;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.graphics.RectF;
 import android.graphics.Bitmap;
 
@@ -79,7 +78,6 @@ public class GR extends Activity {
 	public static float scaleY = 1f;
 	public static boolean Running = false;
 	public static boolean NullBitMap = false;
-	public static InputMethodManager GraphicsImm ;
 	public static float Brightness = -1;
 
 	public static boolean doSTT = false;
@@ -434,6 +432,7 @@ public class GR extends Activity {
 	protected void onPause() {
 		Log.v(LOGTAG, " " + CLASSTAG + " onPause " + this.toString());
 		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_PAUSE, null));
+		if (drawView.mKB != null) { drawView.mKB.forceHide(); }
 		super.onPause();
 	}
 
@@ -543,7 +542,6 @@ public class GR extends Activity {
 	private void releaseLOCK() {
 		if (waitForLock) {
 			synchronized (LOCK) {
-//				Log.d(LOGTAG, "releaseLOCK");
 				waitForLock = false;
 				LOCK.notify();							// release GR.OPEN or .CLOSE if it is waiting
 			}
@@ -586,12 +584,19 @@ public class GR extends Activity {
 	public class DrawView extends View {
 		private static final String LOGTAG = "GR.DrawView";
 
+		public KeyboardManager mKB;
+
 		@SuppressLint("NewApi")
 		public DrawView(Context context) {
 			super(context);
 			setFocusable(true);
 			setFocusableInTouchMode(true);
-			GraphicsImm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+			mKB = new KeyboardManager(context, this, new KeyboardManager.KeyboardChangeListener() {
+				public void kbChanged() {
+					Run.mEventList.add(new Run.EventHolder(GR_KB_CHANGED, 0, null));
+				}
+			});
+
 			if (android.os.Build.VERSION.SDK_INT >= 11) {	// Hardware acceleration is supported starting API 11
 				// Assume hardware acceleration is enabled for the app.
 				// Choose whether to use it in DrawView based on user Preference.
@@ -611,6 +616,11 @@ public class GR extends Activity {
 				case -1: orientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR; break;
 			}
 			setRequestedOrientation(orientation);
+		}
+
+		@Override
+		public boolean onKeyPreIme(int keyCode, KeyEvent event) {
+			return (mKB != null) && mKB.onKeyPreIme(keyCode, event); // delegate to KeyboardManager
 		}
 
 		@SuppressWarnings("deprecation")
@@ -638,7 +648,7 @@ public class GR extends Activity {
 			for (int i = 0; i < numPointers; i++) {
 				int pid = event.getPointerId(i);
 				if (pid > 1)  { continue; }				// currently, we allow only two pointers
-//				Log.v(LOGTAG, " " + i + "," + pid + "," + action);
+
 				Run.TouchX[pid] = (double)event.getX(i);
 				Run.TouchY[pid] = (double)event.getY(i);
 				if (action == MotionEvent.ACTION_DOWN ||
@@ -665,7 +675,6 @@ public class GR extends Activity {
 
 		@Override
 		synchronized public void onDraw(Canvas canvas) {
-//			Log.d(LOGTAG,"onDraw");
 			if (doEnableBT) {							// If this activity is running
 				enableBT();								// Bluetooth must be enabled here
 				doEnableBT = false;
@@ -713,8 +722,6 @@ public class GR extends Activity {
 		} // onDraw()
 
 		public boolean doDraw(Canvas canvas, BDraw b) {
-//			Log.v(LOGTAG, "DrawIntoCanvas " + canvas + ", " + b);
-
 			float fx1;
 			float fy1;
 			RectF rectf;
