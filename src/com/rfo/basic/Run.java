@@ -1847,8 +1847,6 @@ public class Run extends Activity {
 		BKW_TTS_SPEAK, BKW_TTS_STOP
 	};
 
-	public static boolean ttsInit;
-
 	// *********************************************** FTP Client *************************************
 
 	private static final String BKW_FTP_OPEN = "open";
@@ -3934,7 +3932,6 @@ public class Run extends Activity {
 		ServerBufferedReader = null ;
 		ServerPrintWriter = null ;
 
-		ttsInit = false;
 		mFTPClient = null;
 		FTPdir = null;
 
@@ -14553,7 +14550,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeCLIPBOARD_PUT() {
-		int v = Integer.valueOf(Build.VERSION.SDK_INT);
+		int v = Build.VERSION.SDK_INT);
 		if (!getStringArg()) return false;					// Get the string to put into the clipboard
 		ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 		CharSequence cs = StringConstant;
@@ -15093,12 +15090,8 @@ public class Run extends Activity {
 		if (!checkEOL())				return false;
 		if (theTTS != null)				return true;			// done if already opened
 
-		ttsInit = false;
-		theTTS = new TextToSpeechActivity(Run.this);
+		theTTS = new TextToSpeechActivity(Run.this);			// blocks until initialized
 		if (theTTS == null)				return false;
-		while (!ttsInit) {
-			Thread.yield();
-		}
 
 		switch (theTTS.mStatus) {
 		case TextToSpeech.SUCCESS:            break;
@@ -15123,15 +15116,11 @@ public class Run extends Activity {
 		}
 		if (!checkEOL())				return false;
 
-		if (!ttsWaitForDone())			return false;			// wait for any previous speaking to finish
-
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		HashMap<String, String> params = new HashMap<String, String>();
 		params.put(TextToSpeech.Engine.KEY_PARAM_STREAM, String.valueOf(AudioManager.STREAM_MUSIC));
 
-		theTTS.mDone = false;
-		theTTS.speak(speech, params);
-		if (block) { ttsWaitForDone(); }						// if requested, wait for speech to complete
+		theTTS.speak(speech, params, block);
 		return true;
 	}
 
@@ -15148,14 +15137,9 @@ public class Run extends Activity {
 		} else { theFileName = "tts.wav"; }						// default file name
 		if (!checkEOL())				return false;
 
-		if (!ttsWaitForDone())			return false;			// wait for any previous speaking to finish
-
 		HashMap<String, String> params = new HashMap<String, String>();
-
 		theFileName = Basic.getDataPath(theFileName);
-		theTTS.mDone = false;
-		theTTS.speakToFile(speech, params, theFileName);
-		ttsWaitForDone();										// wait for speech to complete
+		theTTS.speakToFile(speech, params, theFileName);		// always blocks
 		return true;
 	}
 
@@ -15164,9 +15148,8 @@ public class Run extends Activity {
 	}
 
 	private boolean ttsWaitForDone() {							// wait for any outstanding speaking to finish
-		while (theTTS != null) {								// because cleanup() can kill theTTS while we're not looking
-			if (theTTS.mDone) break;
-			Thread.yield();
+		if (theTTS != null) {									// because cleanup() can kill theTTS while we're not looking
+			theTTS.waitForDone();
 		}
 		return (theTTS != null);
 	}

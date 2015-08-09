@@ -34,6 +34,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.media.AudioManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.util.DisplayMetrics;
@@ -59,7 +60,6 @@ import android.graphics.Bitmap;
 
 public class GR extends Activity {
 	private static final String LOGTAG = "GR";
-	private static final String CLASSTAG = GR.class.getSimpleName();
 
 	public static final String EXTRA_SHOW_STATUSBAR = "statusbar";
 	public static final String EXTRA_ORIENTATION = "orientation";
@@ -399,7 +399,7 @@ public class GR extends Activity {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
-		Log.v(LOGTAG, " " + CLASSTAG + " onCreate");
+		Log.v(LOGTAG, "onCreate");
 		super.onCreate(savedInstanceState);
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -430,7 +430,7 @@ public class GR extends Activity {
 
 	@Override
 	protected void onPause() {
-		Log.v(LOGTAG, " " + CLASSTAG + " onPause " + this.toString());
+		Log.v(LOGTAG, "onPause " + this.toString());
 		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_PAUSE, null));
 		if (drawView.mKB != null) { drawView.mKB.forceHide(); }
 		super.onPause();
@@ -439,23 +439,23 @@ public class GR extends Activity {
 	@Override
 	protected void onStart() {
 		super.onStart();
-		Log.v(LOGTAG, " " + CLASSTAG + " onStart");
+		Log.v(LOGTAG, "onStart");
 	}
 
 	@Override
 	protected void onRestart() {
 		super.onRestart();
-		Log.v(LOGTAG, " " + CLASSTAG + " onRestart");
+		Log.v(LOGTAG, "onRestart");
 	}
 
 	protected void onStop() {
-		Log.v(LOGTAG, " " + CLASSTAG + " onStop");
+		Log.v(LOGTAG, "onStop");
 		super.onStop();
 	}
 
 	@Override
 	protected void onResume() {
-		Log.v(LOGTAG, " " + CLASSTAG + " onResume " + this.toString());
+		Log.v(LOGTAG, "onResume " + this.toString());
 		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_RESUME, null));
 		context = this;
 		super.onResume();
@@ -463,7 +463,7 @@ public class GR extends Activity {
 
 	@Override
 	protected void onDestroy() {
-		Log.v(LOGTAG, " " + CLASSTAG + " onDestroy " + this.toString());
+		Log.v(LOGTAG, "onDestroy " + this.toString());
 		// if a new instance has started, don't let this one mess it up
 		if (context == this) {
 			Running = false;
@@ -479,7 +479,7 @@ public class GR extends Activity {
 
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)  {
-		// Log.v(LOGTAG, " " + CLASSTAG + " keyDown " + keyCode);
+		// Log.v(LOGTAG, "keyDown " + keyCode);
 		if ((keyCode == KeyEvent.KEYCODE_BACK) ||
 			(keyCode == KeyEvent.KEYCODE_VOLUME_UP) ||
 			(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN))
@@ -494,7 +494,7 @@ public class GR extends Activity {
 	}
 
 	public boolean onKeyUp(int keyCode, KeyEvent event)  {						// The user hit a key
-		// Log.v(LOGTAG, " " + CLASSTAG + " keyUp " + keyCode);
+		// Log.v(LOGTAG, "keyUp " + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			return super.onKeyUp(keyCode, event);
 		}
@@ -597,7 +597,7 @@ public class GR extends Activity {
 				}
 			});
 
-			if (android.os.Build.VERSION.SDK_INT >= 11) {	// Hardware acceleration is supported starting API 11
+			if (Build.VERSION.SDK_INT >= 11) {				// Hardware acceleration is supported starting API 11
 				// Assume hardware acceleration is enabled for the app.
 				// Choose whether to use it in DrawView based on user Preference.
 				int layerType = Settings.getGraphicAcceleration(context)
@@ -629,8 +629,7 @@ public class GR extends Activity {
 			// This can be called when the DrawView does not yet know what size it is,
 			// so get the size from the WindowManager.
 			Display display = getWindowManager().getDefaultDisplay();
-			int level = Integer.valueOf(android.os.Build.VERSION.SDK_INT);
-			if (level < 13) {
+			if (Build.VERSION.SDK_INT < 13) {
 				outSize.set(display.getWidth(), display.getHeight());
 			} else {
 				display.getSize(outSize);
