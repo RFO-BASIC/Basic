@@ -317,35 +317,84 @@ public class Run extends Activity {
 
 	public static class ProgramLine {
 		private String mLine;							// full text, after preprocessing
-		private int mLineLength;						// length of mLine
 		private Command mCommand;						// Command object, once known
 		private int mKeywordLength;						// skip past command keyword after Command is known
+		private Command mSubCommand;					// sub-Command object, if mCommand is a group
+		private int mSubKeywordLength;					// length of subcommand keyword(s)
 
 		public ProgramLine() {
 			this(null);
 		}
 		public ProgramLine(String line) {
 			mLine = line;
-			mLineLength = (mLine == null) ? 0 : mLine.length();
 			mCommand = null;
 			mKeywordLength = 0;
+			mSubCommand = null;
+			mSubKeywordLength = 0;
 		}
 
+		// Getters.
 		public String line() { return mLine; }
-		public int length() { return mLineLength; }
+		public int length() { return (mLine == null) ? 0 : mLine.length(); }
 		public Command cmd() { return mCommand; }
+		public Command subcmd() { return mSubCommand; }
 		public int offset() { return mKeywordLength; }
+		public int subOffset() { return mSubKeywordLength; }
+
+		// Delegates.
+		public boolean startsWith(String prefix) { return mLine.startsWith(prefix); }
+		public boolean startsWith(String prefix, int start) { return mLine.startsWith(prefix, start); }
+
+		// Replace the remembered command with a new one; look up its keyword length.
 		public void cmd(Command command) {
-			mCommand = command;
-			mKeywordLength = command.name.length();
+			cmd(command, command.name.length());
 		}
+
+		// Replace the remembered command with a new one; use the length provided.
 		public void cmd(Command command, int length) {
 			mCommand = command;
 			mKeywordLength = length;
+			mSubCommand = null;
+			mSubKeywordLength = 0;
 		}
 
-		public boolean startsWith(String prefix) { return mLine.startsWith(prefix); }
-		public boolean startsWith(String prefix, int start) { return mLine.startsWith(prefix, start); }
+		// Replace the remembered subcommand (one of a group) with a new one.
+		// Add the subcommand keyword length to the remembered subcommand keyword length;
+		// this allows getting a member of a subgroup.
+		// Total keyword length is group command length plus sub-command(s) length.
+		public void subcmd(Command sub) {
+			mSubCommand = sub;
+			mSubKeywordLength += (sub == null) ? 0 : sub.name.length();
+		}
+
+		// Replace the remembered command with the remembered subcommand.
+		// Add the subcommand keyword length to the current command keyword length.
+		public void promoteSubCommand() {
+			cmd(mSubCommand, mKeywordLength + mSubKeywordLength);
+		}
+
+		private Command searchCommands(Command[] commands, int start) {
+			for (Command c : commands) {					// loop through the command list
+				if (mLine.startsWith(c.name, start)) { return c; }
+			}
+			return null;									// no keyword found
+		}
+
+		public Command findCommand(Command[] commands, int start) {
+			if (mCommand == null) {
+				Command c = searchCommands(commands, start);
+				if (c != null) { cmd(c); }					// remember the Command object
+			}
+			return mCommand;		// return remembered command, or null if no keyword found
+		}
+
+		public Command findSubCommand(Command[] commands, int start) {
+			if (mSubCommand == null) {
+				Command c = searchCommands(commands, start);
+				subcmd(c);									// remember the Command object
+			}
+			return mSubCommand;		// return remembered command, or null if no keyword found
+		}
 	} // class ProgramLine
 
 	// ***************************** Command class *****************************
@@ -3724,13 +3773,12 @@ public class Run extends Activity {
 		} // end RunLoop()
 
 		private boolean StatementExecuter() {				// Execute one basic line (statement)
-			Command c = ExecutingLineBuffer.cmd();			// use remembered command if possible
-			if (c != null) {
-				LineIndex += ExecutingLineBuffer.offset();
+			Command c = ExecutingLineBuffer.findCommand(BASIC_cmd, LineIndex);
+			if (c == null) {
+				 c = CMD_IMPLICIT;							// no keyword, assume pseudo LET or CALL
+				 ExecutingLineBuffer.cmd(c);				// and remember it
 			} else {
-				c = findCommand(BASIC_cmd);					// get the keyword that may start the line
-				if (c == null) { c = CMD_IMPLICIT; }		// no keyword, assume pseudo LET or CALL
-				ExecutingLineBuffer.cmd(c);					// remember the command to bypass future searches
+				LineIndex += ExecutingLineBuffer.offset();	// skip keyword length
 			}
 
 			if (!IfElseStack.empty()) {						// if inside IF-ELSE-ENDIF
@@ -4956,6 +5004,34 @@ public class Run extends Activity {
 	};
 
 	//*********************************************************************************************
+	// Methods used by execution functions of group commands
+
+	private Command findSubcommand(Command[] commands, String type) {
+		Command c = ExecutingLineBuffer.findSubCommand(commands, LineIndex);
+		if (c == null) { RunTimeError("Unknown " + type + " command"); }	// no keyword found
+		LineIndex += ExecutingLineBuffer.subOffset();
+		return c;
+	}
+
+	private boolean executeSubcommand(Command[] commands, String type) {
+		Command c = findSubcommand(commands, type);
+		if (c == null) return false;
+
+		ExecutingLineBuffer.promoteSubCommand();			// replace the group command with the subcommand
+		return c.run();
+	}
+
+	// Very special case: <group>.<subgroup>.<subcommand> where the <group> needs a validity check.
+	// For example, GR.TEXT.SIZE: statementExecuter() must run executeGR() every time.
+	private boolean executeSubgoupCommand(Command[] commands, String type) {
+		int groupOffset = ExecutingLineBuffer.subOffset();	// get offset of <subgroup> keyword
+		ExecutingLineBuffer.subcmd(null);					// force findSubcommand to search
+		Command c = findSubcommand(commands, type);			// replace subcmd field with <subcommand>
+		LineIndex -= groupOffset;							// got counted twice
+		return (c != null) && c.run();
+	}
+
+	//*********************************************************************************************
 	// The methods starting here are the core code for running a Basic program
 
 	// Variable names consist of letters, digits, and these non-alphanumeric characters.
@@ -4983,34 +5059,7 @@ public class Run extends Activity {
 		return line.substring(start, li);
 	}
 
-	// If the current line starts with a keyword in a command list execute the command.
-	// The "type" is used only to report errors.
-	private boolean executeCommand(Command[] commands, String type) {
-		Command c = findCommand(commands, type);
-		return (c != null) ? c.run() : false;
-	}
-
-	// If the current line starts with a keyword in a command list return the Command object.
-	// If not found return null and set an error. The "type" is used only for the error message.
-	private Command findCommand(Command[] commands, String type) {
-		Command c = findCommand(commands);
-		if (c == null) { RunTimeError("Unknown " + type + " command"); }	// no keyword found
-		return c;
-	}
-
-	// If the current line starts with a keyword in a command list return the Command object.
-	// If not found return null.
-	private Command findCommand(Command[] commands) {
-		for (Command c : commands) {								// loop through the command list
-			if (ExecutingLineBuffer.startsWith(c.name, LineIndex)) {// if there is a match
-				LineIndex += c.name.length();						// move the line index to end of keyword
-				return c;											// return the Command object
-			}
-		}
-		return null;												// no keyword found
-	}
-
-	private void PrintShow(String... strs) {			// write the console
+	private void PrintShow(String... strs) {				// write the console
 		synchronized (mConsoleBuffer) {
 			if (strs != null) {
 				for (String str : strs) {
@@ -7995,7 +8044,7 @@ public class Run extends Activity {
 	// ************************************** Dialog Commands *************************************
 
 	private boolean executeDIALOG() {						// Get Dialog command keyword if it is there
-		return executeCommand(Dialog_cmd, "Dialog");
+		return executeSubcommand(Dialog_cmd, "Dialog");
 	}
 
 	private boolean executeDIALOG_MESSAGE() {				// Show a Dialog with title, message, and 0 - 3 buttons
@@ -8063,7 +8112,7 @@ public class Run extends Activity {
 	// ************************************** Read Commands ***************************************
 
 	private boolean executeREAD() {								// Get READ command keyword if it is there
-		return executeCommand(read_cmd, "Read");				// and execute the command
+		return executeSubcommand(read_cmd, "Read");				// and execute the command
 	}
 
 	// Parse and bundle the data list of a READ.DATA statement
@@ -8133,7 +8182,7 @@ public class Run extends Activity {
 	// ********************************** User-Defined Functions **********************************
 
 	private boolean executeFN() {									// Get User-defined Function (FN) command keyword if it is there
-		return executeCommand(fn_cmd, "FN");
+		return executeSubcommand(fn_cmd, "FN");
 	}
 
 	private boolean  executeFN_DEF() {								// Define Function
@@ -8335,7 +8384,7 @@ public class Run extends Activity {
 	// ************************************ Switch Statements *************************************
 
 	private boolean executeSW() {								// Get Switch (SW) command keyword if it is there
-		return executeCommand(sw_cmd, "SW");
+		return executeSubcommand(sw_cmd, "SW");
 	}
 
 	private boolean executeSW_BEGIN() {
@@ -8452,7 +8501,7 @@ public class Run extends Activity {
 	// ************************************* Text Stream I/O **************************************
 
 	private boolean executeTEXT() {									// Get Text command keyword if it is there
-		return executeCommand(text_cmd, "Text");
+		return executeSubcommand(text_cmd, "Text");
 	}
 
 	private boolean executeTEXT_OPEN() {							// Open a file
@@ -8703,7 +8752,7 @@ public class Run extends Activity {
 	// ************************************* Byte Stream I/O **************************************
 
 	private boolean executeBYTE() {							// Get Byte command keyword if it is there
-		return executeCommand(byte_cmd, "Byte");
+		return executeSubcommand(byte_cmd, "Byte");
 	}
 
 	private boolean executeBYTE_OPEN() {							// Open a file
@@ -9211,7 +9260,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeFILE() {							// Get File command keyword if it is there
-		return executeCommand(file_cmd, "File");
+		return executeSubcommand(file_cmd, "File");
 	}
 
 	private boolean executeFILE_EXISTS() {
@@ -9567,7 +9616,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeTIMEZONE() {							// Get TimeZone command keyword if it is there
-		return executeCommand(TimeZone_cmd, "TimeZone");
+		return executeSubcommand(TimeZone_cmd, "TimeZone");
 	}
 
 	private boolean executeTIMEZONE_SET() {						// Set a global Time Zone string for TIME and TIME(
@@ -9877,7 +9926,7 @@ public class Run extends Activity {
 	// ************************************ Keyboard Commands *************************************
 
 	private boolean executeKB() {								// Get kb command keyword if it is there
-		return executeCommand(KB_cmd, "KB");					// and execute the command
+		return executeSubcommand(KB_cmd, "KB");					// and execute the command
 	}
 
 	private KeyboardManager getKeyboardManager() {
@@ -10278,7 +10327,7 @@ public class Run extends Activity {
 	// ************************************************ SQL Package ***************************************
 
 	private boolean executeSQL() {									// Get SQL command keyword if it is there
-		return executeCommand(SQL_cmd, "SQL");
+		return executeSubcommand(SQL_cmd, "SQL");
 	}
 
 	private boolean getDbPtrArg() {									// first arg of command is DB Pointer Variable
@@ -10707,34 +10756,33 @@ public class Run extends Activity {
 	// ************************************  Graphics Package ***********************************
 
 	private boolean executeGR() {
-		Command c = findCommand(GR_cmd, "GR");
-		if (c != null) {
-			if (!GRopen && (c.id != CID_OPEN)) {
-				return RunTimeError("Graphics not opened at:");
-			}
-			return c.run();
+		Command c = findSubcommand(GR_cmd, "GR");
+		if (c == null) return false;
+
+		if (!GRopen && (c.id != CID_OPEN)) {
+			return RunTimeError("Graphics not opened at:");
 		}
-		return false;
+		return c.run();
 	}
 
-	private boolean executeGR_BITMAP() {
-		return executeCommand(GrBitmap_cmd, "Gr.Bitmap");
+	private boolean executeGR_BITMAP() {				// GR group, BITMAP subgroup
+		return executeSubgoupCommand(GrBitmap_cmd, "Gr.Bitmap");
 	}
 
-	private boolean executeGR_CAMERA() {
-		return executeCommand(GrCamera_cmd, "Gr.Camera");
+	private boolean executeGR_CAMERA() {				// GR group, CAMERA subgroup
+		return executeSubgoupCommand(GrCamera_cmd, "Gr.Camera");
 	}
 
-	private boolean executeGR_GET() {
-		return executeCommand(GrGet_cmd, "Gr.Get");
+	private boolean executeGR_GET() {					// GR group, GET subgroup
+		return executeSubgoupCommand(GrGet_cmd, "Gr.Get");
 	}
 
-	private boolean executeGR_GROUP() {
-		return executeCommand(GrGroup_cmd, "Gr.Group");
+	private boolean executeGR_GROUP() {					// GR group, GROUP subgroup
+		return executeSubgoupCommand(GrGroup_cmd, "Gr.Group");
 	}
 
-	private boolean executeGR_TEXT() {
-		return executeCommand(GrText_cmd, "Gr.Text");
+	private boolean executeGR_TEXT() {					// GR group, TEXT subgroup
+		return executeSubgoupCommand(GrText_cmd, "Gr.Text");
 	}
 
 	private void DisplayListAdd(GR.BDraw b) {
@@ -12725,8 +12773,8 @@ public class Run extends Activity {
 
 	// ****************************************** Audio *******************************************
 
-	private boolean executeAUDIO() {							// Get Audio command keyword if it is there
-		return executeCommand(audio_cmd, "Audio");				// and execute the command
+	private boolean executeAUDIO() {								// Get Audio command keyword if it is there
+		return executeSubcommand(audio_cmd, "Audio");				// and execute the command
 	}
 
 	private MediaPlayer getMP(String fileName) {
@@ -13039,7 +13087,7 @@ public class Run extends Activity {
 	// ************************************* Sensors Package **************************************
 
 	private boolean executeSENSORS() {							// Get Sensor command keyword if it is there
-		return executeCommand(sensors_cmd, "Sensors");			// and execute the command
+		return executeSubcommand(sensors_cmd, "Sensors");		// and execute the command
 	}
 
 	private boolean execute_sensors_list() {
@@ -13175,14 +13223,13 @@ public class Run extends Activity {
 	// *************************************** GPS Package ****************************************
 
 	private boolean executeGPS() {
-		Command c = findCommand(GPS_cmd, "GPS");
-		if (c != null) {
-			if ((theGPS == null) && (c.id != CID_OPEN)) {
-				return RunTimeError("GPS not opened at:");
-			}
-			return c.run();
+		Command c = findSubcommand(GPS_cmd, "GPS");
+		if (c == null) return false;
+
+		if ((theGPS == null) && (c.id != CID_OPEN)) {
+			return RunTimeError("GPS not opened at:");
 		}
-		return false;
+		return c.run();
 	}
 
 	public boolean execute_gps_open() {
@@ -13445,8 +13492,8 @@ public class Run extends Activity {
 
 	// ************************************* Array Package ****************************************
 
-	private boolean executeARRAY() {							// Get array command keyword if it is there
-		return executeCommand(array_cmd, "Array");				// and execute the command
+	private boolean executeARRAY() {								// Get array command keyword if it is there
+		return executeSubcommand(array_cmd, "Array");				// and execute the command
 	}
 
 	private boolean execute_array_length() {
@@ -13773,7 +13820,7 @@ public class Run extends Activity {
 	// *************************************** List Package ***************************************
 
 	private boolean executeLIST() {								// Get list command keyword if it is there
-		return executeCommand(list_cmd, "List");				// and execute the command
+		return executeSubcommand(list_cmd, "List");				// and execute the command
 	}
 
 	private boolean execute_LIST_NEW() {
@@ -14184,7 +14231,7 @@ public class Run extends Activity {
 	// ************************************** Bundle Package **************************************
 
 	private boolean executeBUNDLE() {							// Get bundle command keyword if it is there
-		return executeCommand(bundle_cmd, "Bundle");			// and execute the command
+		return executeSubcommand(bundle_cmd, "Bundle");			// and execute the command
 	}
 
 	private boolean execute_BUNDLE_CREATE() {
@@ -14370,7 +14417,7 @@ public class Run extends Activity {
 	// ************************************** Stack Package ***************************************
 
 	private boolean executeSTACK() {							// Get stack command keyword if it is there
-		return executeCommand(stack_cmd, "Stack");				// and execute the command
+		return executeSubcommand(stack_cmd, "Stack");			// and execute the command
 	}
 
 	private boolean execute_STACK_CREATE() {
@@ -14610,15 +14657,15 @@ public class Run extends Activity {
 	// ************************************* Socket Commands **************************************
 
 	private boolean executeSOCKET() {								// Get Socket command keyword if it is there
-		return executeCommand(Socket_cmd, "Socket");
+		return executeSubcommand(Socket_cmd, "Socket");
 	}
 
 	private boolean executeSocketServer() {							// Get Socket Server command keyword if it is there
-		return executeCommand(SocketServer_cmd, "Socket.Server");
+		return executeSubcommand(SocketServer_cmd, "Socket.Server");
 	}
 
 	private boolean executeSocketClient() {							// Get Socket Client command keyword if it is there
-		return executeCommand(SocketClient_cmd, "Socket.Client");
+		return executeSubcommand(SocketClient_cmd, "Socket.Client");
 	}
 
 	private boolean isServerSocketConnected() {
@@ -15083,7 +15130,7 @@ public class Run extends Activity {
 	//****************************************** TTS *******************************************
 
 	private boolean executeTTS() {								// Get TTS command keyword if it is there
-		return executeCommand(tts_cmd, "TTS");
+		return executeSubcommand(tts_cmd, "TTS");
 	}
 
 	private boolean executeTTS_INIT() {
@@ -15164,8 +15211,8 @@ public class Run extends Activity {
 
 	// ******************************************* FTP ********************************************
 
-	private boolean executeFTP() {								// Get FTP command keyword if it is there
-		return executeCommand(ftp_cmd, "FTP");					// and execute the command
+	private boolean executeFTP() {									// Get FTP command keyword if it is there
+		return executeSubcommand(ftp_cmd, "FTP");					// and execute the command
 	}
 
 	private boolean executeFTP_OPEN() {
@@ -15462,14 +15509,13 @@ public class Run extends Activity {
 	// **************************************** Bluetooth *****************************************
 
 	private boolean executeBT() {
-		Command c = findCommand(bt_cmd, "BT");
-		if (c != null) {
-			if ((mChatService == null) && (c.id != CID_OPEN) && (c.id != CID_STATUS)) {
-				return RunTimeError("Bluetooth not opened");
-			}
-			return c.run();
+		Command c = findSubcommand(bt_cmd, "BT");
+		if (c == null) return false;
+
+		if ((mChatService == null) && (c.id != CID_OPEN) && (c.id != CID_STATUS)) {
+			return RunTimeError("Bluetooth not opened");
 		}
-		return false;
+		return c.run();
 	}
 
 	private synchronized boolean execute_BT_status() {
@@ -15695,15 +15741,14 @@ public class Run extends Activity {
 	// *********************************** Superuser and System ***********************************
 
 	private boolean executeSU(boolean isSU) {	// SU command (isSU true) or system comand (isSU false)
-		Command c = findCommand(SU_cmd, (isSU ? "SU" : "System"));
-		if (c != null) {
-			if (SUprocess == null) {
-				if (c.id == CID_OPEN) { mIsSU = isSU; }
-				else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
-			}
-			return c.run();									// run the function and report back
+		Command c = findSubcommand(SU_cmd, (isSU ? "SU" : "System"));
+		if (c == null) return false;
+
+		if (SUprocess == null) {
+			if (c.id == CID_OPEN) { mIsSU = isSU; }
+			else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
 		}
-		return false;
+		return c.run();									// run the function and report back
 	}
 
 	private boolean execute_SU_open() {
@@ -15800,7 +15845,7 @@ public class Run extends Activity {
 	// *************************************** FONT Commands **************************************
 
 	private boolean executeFONT() {							// Get Console command keyword if it is there
-		return executeCommand(font_cmd, "Font");
+		return executeSubcommand(font_cmd, "Font");
 	}
 
 	private boolean executeFONT_LOAD() {
@@ -15868,7 +15913,7 @@ public class Run extends Activity {
 	// ************************************* CONSOLE Commands *************************************
 
 	private boolean executeCONSOLE() {							// Get Console command keyword if it is there
-		return executeCommand(Console_cmd, "Console");
+		return executeSubcommand(Console_cmd, "Console");
 	}
 
 	private boolean executeCONSOLE_TITLE() {					// Set the console title string
@@ -15989,7 +16034,7 @@ public class Run extends Activity {
 	// ************************************* Ringer Commands **************************************
 
 	private boolean executeRINGER() {							// Get RINGER command keyword if it is there
-		return executeCommand(ringer_cmd, "Ringer");			// and execute the command
+		return executeSubcommand(ringer_cmd, "Ringer");			// and execute the command
 	}
 
 	private boolean executeRINGER_GET_MODE() {
@@ -16066,14 +16111,13 @@ public class Run extends Activity {
 	// **************************************** SOUND POOL ****************************************
 
 	private boolean executeSOUNDPOOL() {
-		Command c = findCommand(sp_cmd, "Soundpool");
-		if (c != null) {
-			if ((theSoundPool == null) && (c.id != CID_OPEN)) {
-				return RunTimeError("SoundPool not opened");
-			}
-			return c.run();
+		Command c = findSubcommand(sp_cmd, "Soundpool");
+		if (c == null) return false;
+
+		if ((theSoundPool == null) && (c.id != CID_OPEN)) {
+			return RunTimeError("SoundPool not opened");
 		}
-		return false;
+		return c.run();
 	}
 
 	private boolean execute_SP_open() {
@@ -16326,7 +16370,7 @@ public class Run extends Activity {
 	// ******************************************* SMS ********************************************
 
 	private boolean executeSMS() {								// Get SMS command keyword if it is there
-		return executeCommand(sms_cmd, "SMS");					// and execute the command
+		return executeSubcommand(sms_cmd, "SMS");				// and execute the command
 	}
 
 	private boolean executeSMS_SEND() {
@@ -16400,7 +16444,7 @@ public class Run extends Activity {
 	// *********************************** Phone Calls and Info ***********************************
 
 	private boolean executePHONE() {							// Get phone command keyword if it is there
-		return executeCommand(phone_cmd, "Phone");				// and execute the command
+		return executeSubcommand(phone_cmd, "Phone");			// and execute the command
 	}
 
 	private boolean executePHONE_DIAL(String action) {			// Dial or call a phone number
@@ -16664,20 +16708,19 @@ public class Run extends Activity {
 			htmlOpening = false;
 		}
 
-		Command c = findCommand(html_cmd, "HTML");
-		if (c != null) {
-			if ((htmlIntent == null) || (Web.aWebView == null)) {
-				if (c.id == CID_CLOSE) {					// Allow close if already closed
-					return true;
-				}
-				if ((c.id != CID_OPEN) &&					// Allow open and get.datalink if not opened
-					(c.id != CID_DATALINK)) {
-					return RunTimeError("html not opened");
-				}
+		Command c = findSubcommand(html_cmd, "HTML");
+		if (c == null) return false;
+
+		if ((htmlIntent == null) || (Web.aWebView == null)) {
+			if (c.id == CID_CLOSE) {					// Allow close if already closed
+				return true;
 			}
-			return c.run();
+			if ((c.id != CID_OPEN) &&					// Allow open and get.datalink if not opened
+					(c.id != CID_DATALINK)) {
+				return RunTimeError("html not opened");
+			}
 		}
-		return false;
+		return c.run();
 	}
 
 	private boolean execute_html_open() {
@@ -17015,7 +17058,7 @@ public class Run extends Activity {
 	// ************************************** Timer Commands **************************************
 
 	private boolean executeTIMER() {								// Get Timer command keyword if it is there
-		return executeCommand(Timer_cmd, "Timer");
+		return executeSubcommand(Timer_cmd, "Timer");
 	}
 
 	private boolean executeTIMER_SET() {
@@ -17077,7 +17120,7 @@ public class Run extends Activity {
 	// ***************************** Android Application Manager (AM) *****************************
 
 	private boolean executeAM() {								// Get Intent command keyword if it is there
-		return executeCommand(am_cmd, "AM");
+		return executeSubcommand(am_cmd, "AM");
 	}
 
 	private Intent buildIntentForAM() {
@@ -17129,7 +17172,7 @@ public class Run extends Activity {
 	// ************************************** Debug Commands **************************************
 
 	private boolean executeDEBUG() {							// Get debug command keyword if it is there
-		return executeCommand(debug_cmd, "Debug");				// and execute the command
+		return executeSubcommand(debug_cmd, "Debug");			// and execute the command
 	}
 
 	private boolean executeDEBUG_ON() {
