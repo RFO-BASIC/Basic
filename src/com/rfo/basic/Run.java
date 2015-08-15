@@ -1871,7 +1871,7 @@ public class Run extends Activity {
 	private static final String BKW_DEBUG_STATS = "stats";
 
 	private static final String Debug_KW[] = {			// Command list for Format
-		// Do not include BKW_PRINT_SHORTCUT, but add BKW_DEBUG_GROUP last
+		// Do not include BKW_PRINT_SHORTCUT
 		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_PRINT, BKW_DEBUG_ECHO_ON,
 		BKW_DEBUG_ECHO_OFF, BKW_DEBUG_DUMP_SCALARS,
 		BKW_DEBUG_DUMP_ARRAY, BKW_DEBUG_DUMP_LIST,
@@ -1880,8 +1880,7 @@ public class Run extends Activity {
 		BKW_DEBUG_SHOW_ARRAY, BKW_DEBUG_SHOW_LIST, BKW_DEBUG_SHOW_STACK,
 		BKW_DEBUG_SHOW_BUNDLE, BKW_DEBUG_SHOW_WATCH, BKW_DEBUG_SHOW_PROGRAM,
 		BKW_DEBUG_SHOW, BKW_DEBUG_CONSOLE,
-		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS,
-		BKW_DEBUG_GROUP		// capitalize "DEBUG." in case of "DEBUG.?"
+		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS
 	};
 
 	// *********************************************** Text to Speech *******************************
