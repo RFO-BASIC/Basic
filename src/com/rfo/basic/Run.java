@@ -2426,7 +2426,7 @@ public class Run extends Activity {
 	public boolean onKeyDown(int keyCode, KeyEvent event) {		// The user hit a key
 		// Log.v(LOGTAG, CLASSTAG + " onKeyDown" + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
-			return handleMenuKey(event);
+			return true;				// eat the MENU key Down event, will handle the Up event
 		}
 		// If event is null, we called this directly from runLoop(),
 		// so the return value does not matter.
