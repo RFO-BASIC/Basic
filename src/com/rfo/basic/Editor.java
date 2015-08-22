@@ -54,7 +54,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Scroller;
 import android.widget.Toast;
@@ -372,7 +371,8 @@ public class Editor extends Activity {
 		if (mSavedInstanceState != null) {
 			Log.d(LOGTAG, CLASSTAG + ".onResume: found savedInstanceState");
 			ProgramFileName = mSavedInstanceState.getString(STATE_PROGRAM_FILE_NAME);
-			mText.setText(mSavedInstanceState.getString(STATE_MTEXT_DATA));
+			String text = mSavedInstanceState.getString(STATE_MTEXT_DATA);
+			if (text != null) { mText.setText(text); }
 			InitialProgramSize = mSavedInstanceState.getInt(STATE_INITIAL_SIZE);
 			SyntaxErrorDisplacement = mSavedInstanceState.getInt(STATE_ERROR_DISPLACEMENT);
 			Saved = mSavedInstanceState.getBoolean(STATE_SAVED);

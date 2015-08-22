@@ -5465,7 +5465,7 @@ public class Run extends Activity {
 		char c = ExecutingLineBuffer.line().charAt(LineIndex);
 		if (c == '\n' || c == ')') { return false; }		// If eol or starts with ')', there is not an expression
 
-		Stack<Double> ValueStack = new Stack<Double>();     // Each call to eval gets its own stack
+		Stack<Double> ValueStack = new Stack<Double>();		// Each call to eval gets its own stack
 		Stack<Integer>OpStack = new Stack<Integer>();		// thus we can recursively call eval
 		int SaveIndex = LineIndex;
 
@@ -5561,11 +5561,10 @@ public class Run extends Activity {
 			return handleOp(EOL, theOpStack, theValueStack);
 		}
 
-		int k = LineIndex;
 		if (!getOp()) { return false; }						// If operator does not follow, then fail
 
 		switch (OperatorValue) {							// Handle special case operators
-															// (This is probably reduntant given the above)
+															// (This is probably redundant given the above)
 		case EOL:
 			if (!handleOp(EOL,  theOpStack, theValueStack)) { return false; }
 			--LineIndex;
@@ -13247,14 +13246,14 @@ public class Run extends Activity {
 			isComma = isNext(',');
 			if (!isComma) {
 				if (!evalNumericExpression()) return false;	// get the minTime arg
-				minTime = EvalNumericExpressionIntValue.longValue();
+				minTime = EvalNumericExpressionValue.longValue();
 				if (minTime < 0) { return RunTimeError("Time less than zero"); }
 				isComma = isNext(',');
 			}
 		}
 		if (isComma) {
 			if (!evalNumericExpression()) return false;		// get the minDistance arg
-			minDistance = EvalNumericExpressionIntValue.longValue();
+			minDistance = EvalNumericExpressionValue.longValue();
 			if (minDistance < 0) { return RunTimeError("Distance less than zero"); }
 		}
 		if (!checkEOL())				return false;
