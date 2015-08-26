@@ -80,7 +80,6 @@ import java.security.spec.KeySpec;
 public class Basic extends Activity {
 
 	private static final String LOGTAG = "Basic";
-	private static final String CLASSTAG = Basic.class.getSimpleName();
 
 	public static final String SOURCE_DIR    = "source";
 	public static final String DATA_DIR      = "data";
@@ -99,11 +98,13 @@ public class Basic extends Activity {
 
 	public static ArrayList<Run.ProgramLine> lines;			// Program lines for execution
 
-	public static Context BasicContext;						// saved so we do not have to pass it around
+	public static Object mItsAlive = null;					// Allows other Editor to see if we got killed
 	public static Context theRunContext;
 	public static String mBasicPackage = "";				// not valid but not null
 
-	public static String SD_ProgramPath = "";	// Used by Load/Save
+	public static String SD_ProgramPath = "";				// Used by Load/Save
+
+	private static Context BasicContext;					// saved for use in static classes/methods
 
 	private TextView mProgressText;
 	private Dialog mProgressDialog;
@@ -196,8 +197,9 @@ public class Basic extends Activity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);					// Set up of fresh start
-		Log.v(LOGTAG, CLASSTAG + " onCreate");
+		Log.v(LOGTAG, "onCreate");
 
+		mItsAlive = true;
 		initVars();
 		Settings.setDefaultValues(this, isAPK);				// if isAPK, force to default settings
 
@@ -240,14 +242,14 @@ public class Basic extends Activity {
 		}
 
 		if ((FileName != null) && !FileName.equals("")) {				// launched by shortcut or as a file share intent
-			AutoRun autoRun = new AutoRun(FileName, false, null);
+			AutoRun autoRun = new AutoRun(this, FileName, false, null);
 			Intent intent = autoRun.load();								// load the program
 			DoAutoRun = true;
 			startActivity(intent);										// run the program
 			finish();
 		} else if (AreSamplesLoaded()) {								// this is not a launcher short cut
 			DoAutoRun = false;
-			Intent intent = new Intent(BasicContext, Editor.class);
+			Intent intent = new Intent(this, Editor.class);
 			if (savedState != null) {									// if restarted by Editor
 				intent.putExtra(Editor.EXTRA_RESTART, savedState);		// send saved state back
 			}
@@ -532,7 +534,7 @@ public class Basic extends Activity {
 				out.flush();
 				out.close();
 			} catch (IOException e) {
-				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 4");
+				//Log.v(LOGTAG, "I/O Exception 4");
 				if (ex == null) { ex = e; }
 			}
 		}
@@ -550,7 +552,7 @@ public class Basic extends Activity {
 				out.flush();
 				out.close();
 			} catch (IOException e) {
-				//Log.v(LOGTAG, CLASSTAG + " I/O Exception 4");
+				//Log.v(LOGTAG, "I/O Exception 4");
 				if (ex == null) { ex = e; }
 			}
 		}
@@ -572,7 +574,7 @@ public class Basic extends Activity {
 
 		@Override
 		protected void onPreExecute() {
-			mRes = BasicContext.getResources();
+			mRes = Basic.this.getResources();
 			String[] loadingMsg = mRes.getStringArray(R.array.loading_msg);	// Displayed while files are loading
 			mProgressMarker = mRes.getString(R.string.progress_marker);
 			mDisplayProgress = (loadingMsg != null) && (loadingMsg.length != 0);
@@ -636,7 +638,7 @@ public class Basic extends Activity {
 				doCantLoad();									// Can't load: show an error message
 			}
 			DoAutoRun = false;
-			return new Intent(BasicContext, Editor.class);		// Goto the Editor
+			return new Intent(Basic.this, Editor.class);		// Goto the Editor
 		}
 
 		private Intent doBGforAPK() {								// Background code of APK
@@ -658,7 +660,7 @@ public class Basic extends Activity {
 			}
 			theRunContext = null;
 			DoAutoRun = true;
-			return new Intent(BasicContext, Run.class);			// Go run the program
+			return new Intent(Basic.this, Run.class);			// Go run the program
 		}
 
 		private void copyAssets(String path) {	// Recursively copy all the assets in the named subdirectory to the SDCard

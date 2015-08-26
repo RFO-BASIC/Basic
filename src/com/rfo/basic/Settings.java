@@ -98,7 +98,7 @@ public class Settings extends PreferenceActivity {
 		baseDrivePref.setEntries(entries);
 		baseDrivePref.setEntryValues(values);
 
-		String value = getBaseDrive(Basic.BasicContext);
+		String value = getBaseDrive(getApplicationContext());
 		if (value.equals("none")) {
 			baseDrivePref.setValueIndex(0);
 		}

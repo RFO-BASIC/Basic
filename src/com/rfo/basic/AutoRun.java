@@ -28,6 +28,7 @@ package com.rfo.basic;
 
 import java.util.ArrayList;
 
+import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
@@ -38,13 +39,15 @@ import android.util.Log;
 public class AutoRun {
 	private static final String LOGTAG = "AutoRun";
 
+	private final Context mContext;
 	private final String mFileName;
 	private final boolean mFromRun;						// false if started by shortcut,
 														// true if started by RUN command
 	private final String mData;							// RUN command can add a data string
 
-	public AutoRun(String filename, boolean fromRun, String data) {
+	public AutoRun(Context context, String filename, boolean fromRun, String data) {
 		Log.v(AutoRun.LOGTAG, filename);
+		mContext = context;
 		mFileName = filename;
 		mFromRun = fromRun;
 		mData = data;
@@ -83,10 +86,10 @@ public class AutoRun {
 			if (Basic.lines.size() == 0) {							// If the program is empty
 				Basic.lines.add(new Run.ProgramLine("rem\n"));		// add a single REM line
 			}														// to keep Run happy
-			intent = new Intent(Basic.BasicContext, Run.class);		// create Intent to run the program
+			intent = new Intent(mContext, Run.class);				// create Intent to run the program
 		} else {													// File not found
 			Basic.DoAutoRun = false;								// Load error message program
-			intent = new Intent(Basic.BasicContext, Editor.class);	// into Editor so user can see it.
+			intent = new Intent(mContext, Editor.class);			// into Editor so user can see it.
 		}
 		return intent;
 	}

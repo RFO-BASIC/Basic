@@ -355,7 +355,7 @@ public class Editor extends Activity {
 	protected void onResume() {
 		super.onResume();
 
-		if (Basic.BasicContext == null) {						// if we have lost context then restart Basic Activity
+		if (Basic.mItsAlive == null) {							// if we have lost context then restart Basic Activity
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Restarting BASIC!.");
 			Intent intent = new Intent(getApplicationContext(), Basic.class);
 			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -867,7 +867,7 @@ public class Editor extends Activity {
 		.setPositiveButton("Restart Now", new DialogInterface.OnClickListener() {
 			public void onClick(DialogInterface dialog, int id) {
 				dialog.cancel();
-				Intent restart = new Intent(Basic.BasicContext, Basic.class);
+				Intent restart = new Intent(getApplicationContext(), Basic.class);
 				startActivity(restart);
 				finish();
 			}

@@ -467,6 +467,7 @@ public class GR extends Activity {
 		// if a new instance has started, don't let this one mess it up
 		if (context == this) {
 			Running = false;
+			context = null;
 			releaseLOCK();								// don't leave GR.command hanging
 		}
 		super.onDestroy();

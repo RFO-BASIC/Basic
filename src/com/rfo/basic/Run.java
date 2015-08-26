@@ -1400,7 +1400,7 @@ public class Run extends Activity {
 
 	// ******************************** Graphics Declarations **********************************
 
-	public static boolean GRopen = false;				// Graphics Open Flag
+	private boolean GRopen = false;
 	private boolean GRFront;
 
 	public static ArrayList<GR.BDraw> DisplayList;
@@ -1560,6 +1560,10 @@ public class Run extends Activity {
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_WIDTH,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_SETFONT,
 	};
+
+	// ******************************** Variables for HTML commands *****************************
+
+	private boolean mWebFront;
 
 	// ******************************** Variables for Audio commands ****************************
 
@@ -2158,7 +2162,9 @@ public class Run extends Activity {
 	private BroadcastsHandler headsetBroadcastReceiver = null;
 
 	private Context getContext() {
-		return GRFront ? GR.context : this;
+		Context context = (GRopen && GRFront) ? GR.context
+						: ((htmlIntent != null) && mWebFront) ? Web.mContext : this;
+		return (context == null) ? this : context;
 	}
 
 	// These sendMessage methods are used by mInterpreter to send messages to mHandler.
@@ -3491,7 +3497,6 @@ public class Run extends Activity {
 
 		public ArrayList<String> htmlData_Buffer;
 		private boolean htmlOpening;
-		private boolean mWebFront;
 
 		// ******************************* Audio command variables ********************************
 
@@ -3841,6 +3846,7 @@ public class Run extends Activity {
 						if (key == null) continue;			// huh? should not happen
 						intrpt = mIntT.remove(key);
 						if (intrpt == null) continue;		// huh? should not happen
+						break;
 					}
 				}
 				if (intrpt != null) {
@@ -8098,7 +8104,7 @@ public class Run extends Activity {
 		args.putStringArray("list", array);
 
 		mWaitForLock = true;
-		sendMessage(MESSAGE_ALERT_DIALOG, args);				// signal UI to start the dialog
+		sendMessage(MESSAGE_ALERT_DIALOG, args);			// signal UI to start the dialog
 
 		waitForLOCK();										// wait for the user to exit the Dialog
 
@@ -12778,17 +12784,18 @@ public class Run extends Activity {
 	private MediaPlayer getMP(String fileName) {
 		String errMsg = null;
 		MediaPlayer mp = null;
+		Context context = getApplicationContext();
 		File file = new File(Basic.getDataPath(fileName));
 		if (file.exists()) {
 			Uri uri = Uri.fromFile(file);								// Create Uri for the file
 			if (uri != null) {
-				mp = MediaPlayer.create(Basic.BasicContext, uri);		// Create a new Media Player
+				mp = MediaPlayer.create(context, uri);		// Create a new Media Player
 			}
 		} else {														// the file does not exist
 			if (Basic.isAPK) {											// we are in APK
 				int resID = Basic.getRawResourceID(fileName);			// try to load the file from a raw resource
 				if (resID != 0) {
-					mp = MediaPlayer.create(Basic.BasicContext, resID);
+					mp = MediaPlayer.create(context, resID);
 				} else {												// try to load the file from assets
 					AssetFileDescriptor afd = null;
 					try {
@@ -16147,7 +16154,7 @@ public class Run extends Activity {
 			if (Basic.isAPK) {											// and this is a user APK
 				int resID = Basic.getRawResourceID(fileName);			// try to load the file from a raw resource
 				if (resID != 0) {
-					SoundID = theSoundPool.load(Basic.BasicContext, resID, 1);
+					SoundID = theSoundPool.load(getApplicationContext(), resID, 1);
 				} else {												// try to load the file from assets
 					AssetFileDescriptor afd = null;
 					try {
@@ -16921,7 +16928,8 @@ public class Run extends Activity {
 
 		// This AutoRun will be used later to load the new program
 		// and to get an Intent to create a new Interpreter to run it.
-		mAutoRun = new AutoRun(fileName, true, data);						// use file name without path
+		Context context = getApplicationContext();
+		mAutoRun = new AutoRun(context, fileName, true, data);				// use file name without path
 		Exit = true;														// do not allow interrupt processing
 		return true;
 	}

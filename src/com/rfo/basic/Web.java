@@ -54,14 +54,15 @@ import android.webkit.WebViewClient;
 
 public class Web extends Activity {
 	//Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
-
-	WebView engine;
-	public static TheWebView aWebView = null;
 	private static final String LOGTAG = "Web";
 	private static final String CLASSTAG = Web.class.getSimpleName();
 
 	public static final String EXTRA_SHOW_STATUSBAR = "statusbar";
 	public static final String EXTRA_ORIENTATION = "orientation";
+
+	public static Context mContext = null;
+	public static TheWebView aWebView = null;
+	private WebView engine;
 
 	//******************************** Intercept BACK Key *************************************
 
@@ -128,6 +129,7 @@ public class Web extends Activity {
 	protected void onPause() {
 		Log.v(LOGTAG, " " + CLASSTAG + " onPause");
 		Run.mEventList.add(new Run.EventHolder(WEB_STATE, ON_PAUSE, null));
+		mContext = null;
 		super.onPause();
 	}
 
@@ -135,6 +137,7 @@ public class Web extends Activity {
 	protected void onResume() {
 		Log.v(LOGTAG, " " + CLASSTAG + " onResume");
 		Run.mEventList.add(new Run.EventHolder(WEB_STATE, ON_RESUME, null));
+		mContext = this;
 		super.onResume();
 	}
 
