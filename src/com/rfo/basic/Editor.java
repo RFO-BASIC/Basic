@@ -32,7 +32,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -393,11 +393,7 @@ public class Editor extends Activity {
 			finish();
 		} else {
 			setTitle(ProgramFileName);
-
-			if (mMenu != null) {
-				menuItemsToActionBar(mMenu);
-				onPrepareOptionsMenu(mMenu);
-			}
+			menuItemsToActionBar(mMenu);
 
 			mText.getPreferences(this);
 			int SO = Settings.getSreenOrientation(this);
@@ -479,40 +475,24 @@ public class Editor extends Activity {
 	}
 */
 
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private void menuItemsToActionBar(Menu menu) {
+		if (menu == null) return;
+		if (Build.VERSION.SDK_INT < 11) return;				// no action needed
+
+		if (Settings.menuItemsToActionBar(this, menu)) {
+			invalidateOptionsMenu();
+		}
+	}
+
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {			// When the user presses Menu
 		super.onCreateOptionsMenu(menu);					// set up and display the Menu
 		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.main, menu);
+		inflater.inflate(R.menu.editor, menu);
 		mMenu = menu;
-		menuItemsToActionBar(menu);
+		Settings.menuItemsToActionBar(this, menu);
 		return true;
-	}
-
-	@SuppressLint({ "NewApi", "InlinedApi" })
-	private void menuItemsToActionBar(Menu menu) {
-		if (menu == null) return;
-		if (Build.VERSION.SDK_INT < 11) return;
-
-		MenuItem item = menu.findItem(R.id.run);
-		int action = Settings.getEditorRunOnActionBar(this)
-				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
-		item.setShowAsAction(action);
-
-		item = menu.findItem(R.id.load);
-		action = Settings.getEditorLoadOnActionBar(this)
-				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
-		item.setShowAsAction(action);
-
-		item = menu.findItem(R.id.save);
-		action = Settings.getEditorSaveOnActionBar(this)
-				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
-		item.setShowAsAction(action);
-
-		item = menu.findItem(R.id.exit);
-		action = Settings.getEditorExitOnActionBar(this)
-				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
-		item.setShowAsAction(action);
 	}
 
 	@Override

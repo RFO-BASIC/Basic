@@ -3048,8 +3048,8 @@ public class Run extends Activity {
 			});
 
 		dbDialog = builder.show();
-		dbDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
-									   WindowManager.LayoutParams.FILL_PARENT);
+		dbDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+									   WindowManager.LayoutParams.MATCH_PARENT);
 	}
 
 	private void doDebugSwapDialog() {
@@ -3119,8 +3119,8 @@ public class Run extends Activity {
 			});
 */
 		dbSwapDialog = builder.show();
-		dbSwapDialog.getWindow().setLayout(WindowManager.LayoutParams.FILL_PARENT,
-										   WindowManager.LayoutParams.FILL_PARENT);
+		dbSwapDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+										   WindowManager.LayoutParams.MATCH_PARENT);
 	}
 
 	private void doDebugSelectDialog() {

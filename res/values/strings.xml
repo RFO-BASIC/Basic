@@ -72,24 +72,49 @@ This file is part of BASIC! for Android
 
     <string name="stt_prompt">"BASIC! Speech To Text"</string>
 
-<string name="run">Run</string>
-<string name="load">Load</string>
-<string name="save">Save</string>
-<string name="delete">Delete</string>
-<string name="search">Search</string>
-<string name="format">Format</string>
-<string name="clear">Clear</string>
-<string name="load_run">Load and Run</string>
-<string name="save_run">Save and Run</string>
-<string name="settings">Preferences</string>
-<string name="spawn">Create Application</string>
-<string name="help">Commands</string>
-<string name="about">About</string>
-<string name="exit">Exit</string>
+	<!-- Editor menu items -->
+	<string name="run">Run</string>
+	<string name="load">Load</string>
+	<string name="save">Save</string>
+	<string name="delete">Delete</string>
+	<string name="search">Search</string>
+	<string name="format">Format</string>
+	<string name="clear">Clear</string>
+	<string name="load_run">Load and Run</string>
+	<string name="save_run">Save and Run</string>
+	<string name="settings">Preferences</string>
+	<string name="spawn">Create Application</string>
+	<string name="help">Commands</string>
+	<string name="about">About</string>
+	<string name="exit">Exit</string>
 
-<string name="stop">Stop</string>
-<string name="editor">Editor</string>
-<string name="pause">Pause</string>
+	<!-- Console menu items -->
+	<string name="stop">Stop</string>
+	<string name="editor">Editor</string>
+	<string name="pause">Pause</string>
+
+	<!-- Preference options to put Editor menu items on Action Bar -->
+	<string name="pref_MAB_key">editor_items_on_action_bar</string>
+	<string name="pref_MAB_title">Menu Items on Action Bar</string>
+	<string name="pref_MAB_summary">Editor menu items to show on action bar</string>
+	<string name="pref_MAB_run_key">editor_menu_run_on_action_bar</string>
+	<string name="pref_MAB_run_title">RUN on action bar</string>
+	<string name="pref_MAB_run_summary">Show RUN on action bar if it fits</string>
+	<string name="pref_MAB_load_key">editor_menu_load_on_action_bar</string>
+	<string name="pref_MAB_load_title">LOAD on action bar</string>
+	<string name="pref_MAB_load_summary">Show LOAD on action bar if it fits</string>
+	<string name="pref_MAB_save_key">editor_menu_save_on_action_bar</string>
+	<string name="pref_MAB_save_title">SAVE on action bar</string>
+	<string name="pref_MAB_save_summary">Show SAVE on action bar if it fits</string>
+	<string name="pref_MAB_clear_key">editor_menu_clear_on_action_bar</string>
+	<string name="pref_MAB_clear_title">CLEAR on action bar</string>
+	<string name="pref_MAB_clear_summary">Show CLEAR on action bar if it fits</string>
+	<string name="pref_MAB_search_key">editor_menu_search_on_action_bar</string>
+	<string name="pref_MAB_search_title">SEARCH on action bar</string>
+	<string name="pref_MAB_search_summary">Show SEARCH on action bar if it fits</string>
+	<string name="pref_MAB_exit_key">editor_menu_exit_on_action_bar</string>
+	<string name="pref_MAB_exit_title">EXIT on action bar</string>
+	<string name="pref_MAB_exit_summary">Show EXIT on action bar if it fits</string>
 
 	<!-- Shortcut warnings -->
 	<string name="no_prog_name">You have not entered a BASIC! program name.</string>
@@ -100,12 +125,5 @@ This file is part of BASIC! for Android
 	<string name="no_icon">Could not create icon from icon file.</string>
 	<string name="instr_1">Select Cancel to go back to setup</string>
 	<string name="instr_2">or OK to try to create the shortcut anyway.</string>
-
-<string name="use_sdcard">Use SD Card</string>
-<string name="use_sdcard_summary">Use SD Card for files</string>
-<string name="echo">Echo Source</string>
-<string name="echo_summary">Print executing source code</string>
-<string name="restricted">Restricted SD Card I/O</string>
-<string name="restricted_summary">Restrict SD Card I/O to BASIC! directory</string>
 
 </resources>

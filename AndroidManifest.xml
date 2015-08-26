@@ -136,7 +136,8 @@ This file is part of BASIC! for Android
         <activity
             android:id="@+id/editor_screen"
             android:name=".Editor"
-            android:label="@string/editor_name" >
+            android:label="@string/editor_name"
+            android:hardwareAccelerated="false" >
         </activity>
 
         <activity
@@ -171,7 +172,8 @@ This file is part of BASIC! for Android
             android:name="Search"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/search_name"
-            android:windowSoftInputMode="stateVisible|adjustResize" >
+            android:windowSoftInputMode="stateVisible|adjustResize"
+            android:hardwareAccelerated="false" >
         </activity>
 
         <activity

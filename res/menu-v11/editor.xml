@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!--  *********************************************************************************
-
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
@@ -21,27 +20,53 @@ This file is part of BASIC! for Android
 
     You should have received a copy of the GNU General Public License
     along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
-	
 
     You may contact the author or current maintainers at http://rfobasic.freeforums.org
-    
+	
 	**********************************************************************************
 	-->
 	
-<view xmlns:android="http://schemas.android.com/apk/res/android"
-    class="com.rfo.basic.Editor$LinedEditText"
-    android:id="@+id/basic_text"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#FFFFFFFF"
-    android:padding="5dip"
-    style="@style/edit_text_l"
 
-    android:scrollbars="vertical"
-    android:fadingEdge="vertical"
-    android:typeface="monospace"
-    android:gravity="top"
-    android:textSize="18sp"
-    android:inputType="textMultiLine"
-    android:scrollHorizontally = "true"
-/>
+<!-- This is the layout for devices with the menu in the Action Bar overflow -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:id="@+id/run"
+    android:title="@string/run"/>
+
+    <item android:id="@+id/load"
+    android:title="@string/load"/>
+
+    <item android:id="@+id/load_run"
+    android:title="@string/load_run"/>
+
+    <item android:id="@+id/save"
+    android:title="@string/save"/>
+
+    <item android:id="@+id/save_run"
+    android:title="@string/save_run"/>
+
+    <item android:id="@+id/clear"
+    android:title="@string/clear"/>
+
+    <item android:id="@+id/search"
+    android:title="@string/search"/>
+
+    <item android:id="@+id/format"
+    android:title="@string/format"/>
+
+    <item android:id="@+id/delete"
+    android:title="@string/delete"/>
+ 
+    <item android:id="@+id/settings"
+    android:title="@string/settings"/>
+
+    <item android:id="@+id/help"
+    android:title="@string/help"/>
+
+    <item android:id="@+id/about"
+    android:title="@string/about"/>
+
+    <item android:id="@+id/exit"
+    android:title="@string/exit"/>
+
+</menu>

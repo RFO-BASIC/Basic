@@ -34,11 +34,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Resources;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.ListPreference;
@@ -48,6 +51,8 @@ import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 
 
 // Called from Editor when user presses Menu->Settings
@@ -213,24 +218,29 @@ public class Settings extends PreferenceActivity {
 				.getBoolean("lined_editor", true);
 	}
 
-	public static boolean getEditorRunOnActionBar(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context)
-				.getBoolean("editor_menu_run_on_action_bar", false);
-	}
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	public static boolean menuItemsToActionBar(Context context, Menu menu) {
+		if (menu == null) return false;				// no action needed
+		if (Build.VERSION.SDK_INT < 11) return false;
 
-	public static boolean getEditorLoadOnActionBar(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context)
-				.getBoolean("editor_menu_load_on_action_bar", false);
-	}
-
-	public static boolean getEditorSaveOnActionBar(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context)
-				.getBoolean("editor_menu_save_on_action_bar", false);
-	}
-
-	public static boolean getEditorExitOnActionBar(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context)
-				.getBoolean("editor_menu_exit_on_action_bar", false);
+		int[][] idMap = {
+			{ R.string.pref_MAB_run_key,    R.id.run    },
+			{ R.string.pref_MAB_load_key,   R.id.load   },
+			{ R.string.pref_MAB_save_key,   R.id.save   },
+			{ R.string.pref_MAB_clear_key,  R.id.clear  },
+			{ R.string.pref_MAB_search_key, R.id.search },
+			{ R.string.pref_MAB_exit_key,   R.id.exit   },
+		};
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+		Resources res = context.getResources();
+		for (int[] ids : idMap) {
+			MenuItem item = menu.findItem(ids[1]);
+			String key = res.getString(ids[0]);
+			int action = prefs.getBoolean(key, false)
+				? MenuItem.SHOW_AS_ACTION_IF_ROOM : MenuItem.SHOW_AS_ACTION_NEVER;
+			item.setShowAsAction(action);
+		}
+		return true;
 	}
 
 	public static boolean getEditorLineWrap(Context context) {
