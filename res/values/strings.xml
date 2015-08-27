@@ -40,9 +40,6 @@ This file is part of BASIC! for Android
     <string name="search_name">BASIC! Search</string>
     <string name="format_name">BASIC! Format</string>
     <string name="gr_name">Graphics</string>
-    <string name="cs_name">ClientSocket</string>
-    <string name="auto_run_name">Auto Run</string>
-    <string name="sensors_name">Sensors</string>
     <string name="debug_name">BASIC! Debugger</string>
     <string name="play_sound_name"> </string>
     <string name="select_device"> Select Device</string>
