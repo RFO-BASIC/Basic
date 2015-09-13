@@ -8558,10 +8558,9 @@ public class Run extends Activity {
 
 		else if (FileMode == FMW) {									// Write Selected
 			TextWriterInfo fInfo = new TextWriterInfo(FileMode);	// Prepare the FileTable object
+			// fInfo.mPosition is 1: absolute if 'w' and relative to old EOF if 'a'.
 			FileWriter writer = null;
-			if (append && file.exists()) {
-				fInfo.position(file.length() + 1);
-			} else {												// if not appending overwrite existing file
+			if (!append || !file.exists()) {						// if not appending overwrite existing file
 				try { file.createNewFile(); }						// if no file create a new one
 				catch (IOException e) { writeErrorMsg(e); }
 			}
@@ -8711,20 +8710,20 @@ public class Run extends Activity {
 	}
 
 	private boolean executeTGET() {
-		if (!getSVar()) return false;
+		if (!getSVar())					return false;
 		Var var = Vars.get(theValueIndex);							// variable to hold the data
 
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;
 		TextInputString = StringConstant;
 		String Prompt = StringConstant;
 
 		String title = null;
 		if (isNext(',')) {
-			if (!getStringArg()) return false;
+			if (!getStringArg())		return false;
 			title = StringConstant;
 		}
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		checkpointMessage();							// allow any pending Console activity to complete
 		while (mMessagePending) { Thread.yield(); }		// wait for checkpointMessage semaphore to clear
@@ -8773,15 +8772,15 @@ public class Run extends Activity {
 			FileMode = FMR;
 			++LineIndex;
 		}
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;								// Next parameter is the FileNumber variable
+		if (!isNext(','))				return false;
+		if (!getNVar())					return false;				// Next parameter is the FileNumber variable
 		Var var = Vars.get(theValueIndex);
 		double fileNumber = FileTable.size();
 
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;							// Final parameter is the filename
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;				// Final parameter is the filename
 		String fileName = StringConstant;
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		if (FileMode == FMR) {										// Read was selected
 			ByteReaderInfo fInfo = new ByteReaderInfo(FileMode);	// Prepare the FileTable object
@@ -8818,11 +8817,10 @@ public class Run extends Activity {
 
 		else if (FileMode == FMW) {									// Write Selected
 			ByteWriterInfo fInfo = new ByteWriterInfo(FileMode);	// Prepare the FileTable object
+			// fInfo.mPosition is 1: absolute if 'w' and relative to old EOF if 'a'.
 			FileOutputStream fos = null;
 			File file = new File(Basic.getDataPath(fileName));
-			if (append && file.exists()) {
-				fInfo.position(file.length() + 1);
-			} else {												// if not appending overwrite existing file
+			if (!append || !file.exists()) {						// if not appending overwrite existing file
 				try { file.createNewFile(); }						// if no file create a new one
 				catch (IOException e) { writeErrorMsg(e); }
 			}
@@ -8842,13 +8840,13 @@ public class Run extends Activity {
 	}
 
 	private boolean executeBYTE_COPY() {
-		if (!evalNumericExpression()) return false;					// First parm is the source filenumber expression
+		if (!evalNumericExpression())	return false;				// First parm is the source filenumber expression
 		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
+		if (!checkReadFile(FileNumber))	return false;				// Check runtime errors
 
-		if (!isNext(',')) return false;
-		if (!evalStringExpression()) return false;					// Second parm is the destination file name
-		if (!checkEOL()) return false;
+		if (!isNext(','))				return false;
+		if (!evalStringExpression())	return false;				// Second parm is the destination file name
+		if (!checkEOL())				return false;
 
 		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
 		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
@@ -9122,7 +9120,7 @@ public class Run extends Activity {
 		if (fInfo.isClosed())				return true;			// Already closed
 
 		IOException e = fInfo.close(fInfo.flush(null));				// flush is no-op on read types
-		if (e != null) return RunTimeError(e);
+		if (e != null) { return RunTimeError(e); }
 		return true;
 	}
 
@@ -17140,7 +17138,7 @@ public class Run extends Activity {
 
 		Intent intent = new Intent();
 		if (sVal[0] != null) { intent.setAction(sVal[0]); }
-		if (sVal[1] != null) { intent.setData(Uri.parse(StringConstant)); }
+		if (sVal[1] != null) { intent.setData(Uri.parse(sVal[1])); }
 		if (sVal[3] != null) {									// component name
 			if (sVal[2] != null) {
 				intent.setClassName(sVal[2], sVal[3]);			// package name given
