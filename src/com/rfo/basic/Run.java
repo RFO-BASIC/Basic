@@ -34,13 +34,13 @@ package com.rfo.basic;
 
 //Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
 
-import android.util.AttributeSet;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.Closeable;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.Flushable;
@@ -178,6 +178,7 @@ import android.telephony.gsm.GsmCellLocation;
 import android.text.format.Time;
 import android.text.ClipboardManager;
 
+import android.util.AttributeSet;
 import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -405,6 +406,7 @@ public class Run extends Activity {
 		public Command(String name) { this(name, 0); }
 		public Command(String name, int id) { this.name = name; this.id = id; }
 		public boolean run() { return false; }			// Run the command execution function
+		public boolean run(int arg) { return false; }	// Run the command execution function with an argument
 	}
 
 	// **************************** Interrupt class ****************************
@@ -643,6 +645,12 @@ public class Run extends Activity {
 	public static class ByteReaderInfo extends FileInfo {
 		public BufferedInputStream mByteReader;
 		public ByteReaderInfo(int mode) { super(mode, false); }	// false means it is byte, not text
+		private DataInputStream mDIStream;
+
+		public DataInputStream getDIS() {
+			if (mDIStream == null) { mDIStream = new DataInputStream(mByteReader); }
+			return mDIStream;
+		}
 
 		public IOException close(IOException ex) {
 			IOException e = closeStream(mByteReader, ex);
@@ -4326,8 +4334,11 @@ public class Run extends Activity {
 	private final int CID_GROUP = 3;
 	private final int CID_OPEN = 4;
 	private final int CID_CLOSE = 5;
-	private final int CID_STATUS = 6;
-	private final int CID_DATALINK = 7;
+	private final int CID_EX = 6;				// EXception within its command group
+	private final int CID_READ = 7;
+	private final int CID_WRITE = 8;
+	private final int CID_STATUS = 9;
+	private final int CID_DATALINK = 10;
 
 	/* Special case: what to do if no command keyword at the beginning of the line. */
 	private final Command CMD_IMPLICIT = new Command("")         { public boolean run() { return executeImplicitCommand(); } };
@@ -4498,32 +4509,32 @@ public class Run extends Activity {
 	// **************** TEXT Group - text file operations
 
 	private final Command[] text_cmd = new Command[] {	// Map Text I/O command keywords to their execution functions
-		new Command(BKW_OPEN)               { public boolean run() { return executeTEXT_OPEN(); } },
-		new Command(BKW_CLOSE)              { public boolean run() { return executeCLOSE(FileType.FILE_TEXT); } },
-		new Command(BKW_TEXT_READLN)        { public boolean run() { return executeTEXT_READLN(); } },
-		new Command(BKW_TEXT_WRITELN)       { public boolean run() { return executeTEXT_WRITELN(); } },
-		new Command(BKW_EOF)                { public boolean run() { return executeEOF(FileType.FILE_TEXT); } },
-		new Command(BKW_TEXT_INPUT)         { public boolean run() { return executeTEXT_INPUT(); } },
-		new Command(BKW_POSITION_GET)       { public boolean run() { return executePOSITION_GET(FileType.FILE_TEXT); } },
-		new Command(BKW_POSITION_SET)       { public boolean run() { return executeTEXT_POSITION_SET(); } },
-		new Command(BKW_POSITION_MARK)      { public boolean run() { return executePOSITION_MARK(FileType.FILE_TEXT); } },
+		new Command(BKW_OPEN, CID_EX)           { public boolean run()        { return executeTEXT_OPEN(); } },
+		new Command(BKW_CLOSE, CID_EX)          { public boolean run()        { return executeCLOSE(FileType.FILE_TEXT); } },
+		new Command(BKW_TEXT_READLN, CID_READ)  { public boolean run(int fId) { return executeTEXT_READLN(fId); } },
+		new Command(BKW_TEXT_WRITELN,CID_WRITE) { public boolean run(int fId) { return executeTEXT_WRITELN(fId); } },
+		new Command(BKW_EOF, CID_WRITE)         { public boolean run(int fId) { return executeEOF(fId, FileType.FILE_TEXT); } },
+		new Command(BKW_TEXT_INPUT, CID_EX)     { public boolean run()        { return executeTEXT_INPUT(); } },
+		new Command(BKW_POSITION_GET, CID_READ) { public boolean run(int fId) { return executePOSITION_GET(fId, FileType.FILE_TEXT); } },
+		new Command(BKW_POSITION_SET, CID_READ) { public boolean run(int fId) { return executeTEXT_POSITION_SET(fId); } },
+		new Command(BKW_POSITION_MARK, CID_EX)  { public boolean run()        { return executePOSITION_MARK(FileType.FILE_TEXT); } },
 	};
 
 	// **************** BYTE Group - binary file operations
 
 	private final Command[] byte_cmd = new Command[] {	// Map Byte I/O command keywords to their execution functions
-		new Command(BKW_OPEN)               { public boolean run() { return executeBYTE_OPEN(); } },
-		new Command(BKW_CLOSE)              { public boolean run() { return executeCLOSE(FileType.FILE_BYTE); } },
-		new Command(BKW_BYTE_READ_BYTE)     { public boolean run() { return executeBYTE_READ_BYTE(); } },
-		new Command(BKW_BYTE_WRITE_BYTE)    { public boolean run() { return executeBYTE_WRITE_BYTE(); } },
-		new Command(BKW_BYTE_READ_BUFFER)   { public boolean run() { return executeBYTE_READ_BUFFER(); } },
-		new Command(BKW_BYTE_WRITE_BUFFER)  { public boolean run() { return executeBYTE_WRITE_BUFFER(); } },
-		new Command(BKW_EOF)                { public boolean run() { return executeEOF(FileType.FILE_BYTE); } },
-		new Command(BKW_BYTE_COPY)          { public boolean run() { return executeBYTE_COPY(); } },
-		new Command(BKW_BYTE_TRUNCATE)      { public boolean run() { return executeBYTE_TRUNCATE(); } },
-		new Command(BKW_POSITION_GET)       { public boolean run() { return executePOSITION_GET(FileType.FILE_BYTE); } },
-		new Command(BKW_POSITION_SET)       { public boolean run() { return executeBYTE_POSITION_SET(); } },
-		new Command(BKW_POSITION_MARK)      { public boolean run() { return executePOSITION_MARK(FileType.FILE_BYTE); } },
+		new Command(BKW_OPEN, CID_EX)               { public boolean run()        { return executeBYTE_OPEN(); } },
+		new Command(BKW_CLOSE, CID_EX)              { public boolean run()        { return executeCLOSE(FileType.FILE_BYTE); } },
+		new Command(BKW_BYTE_READ_BYTE, CID_READ)   { public boolean run(int fId) { return executeBYTE_READ_BYTE(fId); } },
+		new Command(BKW_BYTE_WRITE_BYTE,CID_WRITE)  { public boolean run(int fId) { return executeBYTE_WRITE_BYTE(fId); } },
+		new Command(BKW_BYTE_READ_BUFFER, CID_READ) { public boolean run(int fId) { return executeBYTE_READ_BUFFER(fId); } },
+		new Command(BKW_BYTE_WRITE_BUFFER,CID_WRITE){ public boolean run(int fId) { return executeBYTE_WRITE_BUFFER(fId); } },
+		new Command(BKW_EOF, CID_WRITE)             { public boolean run(int fId) { return executeEOF(fId, FileType.FILE_BYTE); } },
+		new Command(BKW_BYTE_COPY, CID_READ)        { public boolean run(int fId) { return executeBYTE_COPY(fId); } },
+		new Command(BKW_BYTE_TRUNCATE, CID_WRITE)   { public boolean run(int fId) { return executeBYTE_TRUNCATE(fId); } },
+		new Command(BKW_POSITION_GET, CID_READ)     { public boolean run(int fId) { return executePOSITION_GET(fId, FileType.FILE_BYTE); } },
+		new Command(BKW_POSITION_SET, CID_READ)     { public boolean run(int fId) { return executeBYTE_POSITION_SET(fId); } },
+		new Command(BKW_POSITION_MARK, CID_EX)      { public boolean run()        { return executePOSITION_MARK(FileType.FILE_BYTE); } },
 	};
 
 	// **************** READ Group - READ.DATA
@@ -8456,20 +8467,20 @@ public class Run extends Activity {
 		return true;
 	}
 
-	// *****************************  End of core Basic Methods ****************************
+	// ****************************  End of core Basic Methods *****************************
 
-	// ***************************** Data I/O Operations ***********************************
+	// ******************************** Data I/O Operations ********************************
 
-	private boolean checkReadFile(int FileNumber) {							// Validate input file for read commands
+	private boolean checkReadFile(int fileNumber) {							// Validate input file for read commands
 		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
-		else if (FileNumber < 0)                    { RunTimeError("Read file did not exist"); }
-		else if (FileNumber >= FileTable.size())    { RunTimeError("Invalid File Number at"); }
+		else if (fileNumber < 0)                    { RunTimeError("Read file did not exist"); }
+		else if (fileNumber >= FileTable.size())    { RunTimeError("Invalid File Number at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
 	}
 
-	private boolean checkFile(int FileNumber) {								// Validate input file number for read or write commands
+	private boolean checkFile(int fileNumber) {								// Validate input file number for read or write commands
 		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
-		else if (FileNumber >= FileTable.size() || FileNumber < 0)
+		else if (fileNumber >= FileTable.size() || fileNumber < 0)
 													{ RunTimeError("Invalid File Number at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
 	}
@@ -8505,7 +8516,20 @@ public class Run extends Activity {
 	// ************************************* Text Stream I/O **************************************
 
 	private boolean executeTEXT() {									// Get Text command keyword if it is there
-		return executeSubcommand(text_cmd, "Text");
+		Command c = findSubcommand(text_cmd, "Text");
+		if (c == null)						return false;
+		if (c.id == CID_EX) {										// can't do common processing
+			return c.run();											// just run it
+		}
+
+		if (!evalNumericExpression())		return false;			// first parm is the file number expression
+		int fileNumber = EvalNumericExpressionValue.intValue();
+		if (c.id == CID_READ) {
+			if (!checkReadFile(fileNumber))	return false;			// check runtime errors
+		} else if (c.id == CID_WRITE) {
+			if (!checkFile(fileNumber))		return false;			// check runtime errors
+		}
+		return c.run(fileNumber);
 	}
 
 	private boolean executeTEXT_OPEN() {							// Open a file
@@ -8522,15 +8546,15 @@ public class Run extends Activity {
 			FileMode = FMR;
 			++LineIndex;
 		}
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;								// Next parameter is the FileNumber variable
+		if (!isNext(','))				return false;
+		if (!getNVar())					return false;				// Next parameter is the file number variable
 		Var var = Vars.get(theValueIndex);
 		double fileNumber = FileTable.size();
 
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;							// Final parameter is the filename
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;				// Final parameter is the filename
 		String fileName = StringConstant;
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		File file = new File(Basic.getDataPath(fileName));
 
@@ -8579,42 +8603,46 @@ public class Run extends Activity {
 		return true;												// Done
 	}
 
-	private boolean executeTEXT_READLN() {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
-
-		if (!isNext(',')) return false;
-		if (!getSVar()) return false;								// Second parm is the string variable
-		Var var = Vars.get(theValueIndex);							// to hold the data
-		if (!checkEOL()) return false;
-
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkReadAttributes(fInfo, FileType.FILE_TEXT)) return false;	// Check runtime errors
-
-		String data = null;
-		if (fInfo.isEOF()) {										// If already eof don't read
-			data = "EOF";											// but force returned data to "EOF"
-		} else {
-			BufferedReader buf = ((TextReaderInfo)fInfo).mTextReader;
-			try { data = buf.readLine(); }							// Read a line
-			catch (IOException e) { return RunTimeError("I/O error at:"); }
-			if (data == null) {
-				data = "EOF";										// Hit eof, force returned data
-				fInfo.eof(true);									// and mark fInfo
-			} else {
-				fInfo.incPosition();								// Not eof, update position in fInfo
-			}
+	private boolean executeTEXT_READLN(int fileNumber) {			// first parameter: file table index
+		List<Var> varList = new ArrayList<Var>();
+		while (isNext(',')) {										// list of zero or more
+			if (!getSVar())				return false;				// numeric variable
+			varList.add(Vars.get(theValueIndex));					// to hold the data
 		}
-		var.val(data);												// Give the data to the user
+		if (!checkEOL())				return false;
+
+		FileInfo fInfo = FileTable.get(fileNumber);
+		if (!checkReadAttributes(fInfo, FileType.FILE_TEXT)) return false;
+
+		int expect = varList.size();
+		int actual = 0;
+		if (!fInfo.isEOF()) {										// if already eof don't read
+			BufferedReader buf = ((TextReaderInfo)fInfo).mTextReader;
+			String[] values = new String[expect];
+			try {
+				for (; actual < expect; ++actual) {
+					values[actual] = buf.readLine();				// read a line
+					if (values[actual] == null) {					// hit eof
+						fInfo.eof(true);							// mark fInfo
+						break;
+					}
+				}
+			}
+			catch (IOException e) { return RunTimeError("I/O error at:"); }
+
+			for (int i = 0; i < actual; ++i) {
+				varList.get(i).val(values[i]);						// give the data to the user
+			}
+			fInfo.incPosition(actual);								// update position in Bundle
+		}
+		for (int i = actual; i < expect; ++i) {						// if any array space is left
+			varList.get(i).val("EOF");								// fill it with EOF markers
+		}
 		return true;
 	}
 
-	private boolean executeTEXT_WRITELN() {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-
-		if (!isNext(',')) return false;								// Set up to parse the stuff to print
+	private boolean executeTEXT_WRITELN(int fileNumber) {			// first parameter: file table index
+		if (!isNext(','))				return false;				// set up to parse the stuff to print
 
 		if (!buildPrintLine(textPrintLine, "\r\n")) return false;	// build up the text line in StringConstant
 		if (!PrintLineReady) {										// flag set by buildPrintLine
@@ -8623,12 +8651,11 @@ public class Run extends Activity {
 		}
 		textPrintLine = "";											// clear the accumulated text print line
 
-		if (!checkFile(FileNumber)) return false;					// Check runtime errors
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkWriteAttributes(fInfo, FileType.FILE_TEXT)) return false;	// Check runtime errors
+		FileInfo fInfo = FileTable.get(fileNumber);
+		if (!checkWriteAttributes(fInfo, FileType.FILE_TEXT)) return false;
 
 		FileWriter writer =  ((TextWriterInfo)fInfo).mTextWriter;
-		try { writer.write(StringConstant); }						// Oh, and write the line
+		try { writer.write(StringConstant); }
 		catch (IOException e) { return RunTimeError("I/O error at"); }
 
 		fInfo.incPosition();										// update position in fInfo
@@ -8636,7 +8663,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeTEXT_INPUT() {
-		if (!getSVar()) return false;
+		if (!getSVar())					return false;
 		Var var = Vars.get(theValueIndex);							// variable to hold the data
 
 		TextInputString = "";
@@ -8645,12 +8672,12 @@ public class Run extends Activity {
 			boolean isComma = isNext(',');							// Look for second comma, two commas together
 																	// mean initial text is skipped, use empty string
 			if (!isComma) {
-				if (!getStringArg()) return false;					// One comma so far; get initial input text
+				if (!getStringArg())	return false;				// One comma so far; get initial input text
 				TextInputString = StringConstant;
 				isComma = isNext(',');								// Look again for second comma
 			}
 			if (isComma) {
-				if (!getStringArg()) return false;					// Second comma; get title
+				if (!getStringArg())	return false;				// Second comma; get title
 				title = StringConstant;
 			}
 		}
@@ -8667,21 +8694,17 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private boolean executeTEXT_POSITION_SET() {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
-
-		if (!isNext(',')) return false;								// Second parm is the position var expression
-		if (!evalNumericExpression()) return false;
+	private boolean executeTEXT_POSITION_SET(int fileNumber) {		// first parameter: file table index
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;				// second parm is the position var expression
 		long pto = EvalNumericExpressionValue.longValue();
 		if (pto < 1) {
 			return RunTimeError("Set position must be >= 1");
 		}
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkReadAttributes(fInfo, FileType.FILE_TEXT)) return false;	// Check runtime errors
+		FileInfo fInfo = FileTable.get(fileNumber);
+		if (!checkReadAttributes(fInfo, FileType.FILE_TEXT)) return false;
 
 		long pnow = fInfo.position();
 		boolean eof = fInfo.isEOF();
@@ -8696,12 +8719,12 @@ public class Run extends Activity {
 		}
 		String data = null;
 		while ((pnow < pto) && !eof) {
-			try { data = buf.readLine(); }							// Read a line
+			try { data = buf.readLine(); }							// read a line
 			catch (Exception e) { return RunTimeError(e); }
 			if (data == null) {
-				eof = true;											// Hit eof, mark Bundle
+				eof = true;											// hit eof, mark Bundle
 			} else {
-				++pnow;												// Not eof, update position for Bundle
+				++pnow;												// not eof, update position for Bundle
 			}
 		}
 		fInfo.position(pnow);										// update fInfo
@@ -8755,7 +8778,20 @@ public class Run extends Activity {
 	// ************************************* Byte Stream I/O **************************************
 
 	private boolean executeBYTE() {							// Get Byte command keyword if it is there
-		return executeSubcommand(byte_cmd, "Byte");
+		Command c = findSubcommand(byte_cmd, "Byte");
+		if (c == null)						return false;
+		if (c.id == CID_EX) {										// can't do common processing
+			return c.run();											// just run it
+		}
+
+		if (!evalNumericExpression())		return false;			// first parm is the file number expression
+		int fileNumber = EvalNumericExpressionValue.intValue();
+		if (c.id == CID_READ) {
+			if (!checkReadFile(fileNumber))	return false;			// check runtime errors
+		} else if (c.id == CID_WRITE) {
+			if (!checkFile(fileNumber))		return false;			// check runtime errors
+		}
+		return c.run(fileNumber);
 	}
 
 	private boolean executeBYTE_OPEN() {							// Open a file
@@ -8773,7 +8809,7 @@ public class Run extends Activity {
 			++LineIndex;
 		}
 		if (!isNext(','))				return false;
-		if (!getNVar())					return false;				// Next parameter is the FileNumber variable
+		if (!getNVar())					return false;				// Next parameter is the file number variable
 		Var var = Vars.get(theValueIndex);
 		double fileNumber = FileTable.size();
 
@@ -8820,7 +8856,9 @@ public class Run extends Activity {
 			// fInfo.mPosition is 1: absolute if 'w' and relative to old EOF if 'a'.
 			FileOutputStream fos = null;
 			File file = new File(Basic.getDataPath(fileName));
-			if (!append || !file.exists()) {						// if not appending overwrite existing file
+			if (append && file.exists()) {
+				fInfo.position(file.length() + 1);
+			} else {												// if not appending overwrite existing file
 				try { file.createNewFile(); }						// if no file create a new one
 				catch (IOException e) { writeErrorMsg(e); }
 			}
@@ -8839,18 +8877,13 @@ public class Run extends Activity {
 		return true;												// Done
 	}
 
-	private boolean executeBYTE_COPY() {
-		if (!evalNumericExpression())	return false;				// First parm is the source filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber))	return false;				// Check runtime errors
-
+	private boolean executeBYTE_COPY(int srcFileNumber) {			// first parameter: source file table index
 		if (!isNext(','))				return false;
-		if (!evalStringExpression())	return false;				// Second parm is the destination file name
+		if (!evalStringExpression())	return false;				// second parm is the destination file name
 		if (!checkEOL())				return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
-
+		FileInfo fInfo = FileTable.get(srcFileNumber);				// source file info
+		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;
 		if (fInfo.isEOF()) { return RunTimeError("Attempt to read beyond the EOF at:"); }
 
 		BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
@@ -8901,173 +8934,176 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private boolean executeBYTE_READ_BYTE() {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
+	private FileInfo getByteReadParams(int fileNumber, List<Var> varList) {
+																// return FileInfo or null if error
+																// return list of variables in varList
+		while (isNext(',')) {										// list of zero or more
+			if (!getNVar())				return null;				// numeric variable
+			varList.add(Vars.get(theValueIndex));					// to hold the data
+		}
+		if (!checkEOL())				return null;
 
-		if (!isNext(',')) return false;
-		if (!getNVar()) return false;								// Second parm is the return data var
-		Var var = Vars.get(theValueIndex);							// variable to hold the data
-		if (!checkEOL()) return false;
+		FileInfo fInfo = FileTable.get(fileNumber);
+		return (checkReadAttributes(fInfo, FileType.FILE_BYTE)) ? fInfo : null;
+	}
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
-
-		int data = -1;
-		if (!fInfo.isEOF()) {										// If already eof don't read
-			BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
-			try { data = bis.read(); }								// Read a byte
-			catch (Exception e) { return RunTimeError(e); }
-			if (data < 0) {
-				fInfo.eof(true);									// Hit eof, mark fInfo
-			} else {
-				fInfo.incPosition();								// Not eof, update position in fInfo
+	private FileInfo getByteWriteParams(int fileNumber, List<Double> nvalList, List<String> svalList) {
+																// return FileInfo or null if error
+																// return list of numeric values in nvalList
+																// or single string value in svalList
+		boolean isComma = isNext(',');
+		if (isComma) {
+			byte b = 0;
+			if (evalNumericExpression()) {							// second param may be numeric expression
+				nvalList.add(EvalNumericExpressionValue);
+				while (isComma = isNext(',')) {
+					if (!evalNumericExpression()) break;			// list of numeric expressions
+					nvalList.add(EvalNumericExpressionValue);
+				}
+			}
+			if (isComma) {											// last param may be string expression
+				if (!getStringArg())	return null;				// note: potential double-evaluation
+				if (svalList != null) { svalList.add(StringConstant); }
 			}
 		}
-		var.val(data);												// Give the data to the user
+		if (!checkEOL())				return null;
+
+		FileInfo fInfo = FileTable.get(fileNumber);
+		return (checkWriteAttributes(fInfo, FileType.FILE_BYTE)) ? fInfo : null;
+	}
+
+	private boolean executeBYTE_READ_BYTE(int fileNumber) {			// first parameter: file table index
+		List<Var> varList = new ArrayList<Var>();
+		FileInfo fInfo = getByteReadParams(fileNumber, varList);	// zero or more variables for data bytes
+		if (fInfo == null)				return false;
+
+		int expect = varList.size();
+		int actual = 0;
+		if (!fInfo.isEOF()) {										// if already eof don't read
+			DataInputStream dis = ((ByteReaderInfo)fInfo).getDIS();
+			byte[] values = new byte[expect];
+			try { actual = dis.read(values); }						// read the byte(s)
+			catch (IOException e) { return RunTimeError(e); }
+			if (actual < 0) { actual = 0; }							// -1 if started at EOF
+			if (actual < expect) { fInfo.eof(true); }				// hit eof, mark fInfo
+
+			for (int i = 0; i < actual; ++i) {
+				varList.get(i).val(values[i]);						// give the data to the user
+			}
+			fInfo.incPosition(actual);								// update position in fInfo
+		}
+		for (int i = actual; i < expect; ++i) {
+			varList.get(i).val(-1);									// eof markers if needed
+		}
 		return true;
 	}
 
-	private boolean executeBYTE_READ_BUFFER() {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
+	private boolean executeBYTE_READ_BUFFER(int fileNumber) {		// first parameter: file table index
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;				// second parm is the byte count
+		int expect = EvalNumericExpressionValue.intValue();
 
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;					// Second parm is the byte count
-		int byteCount = EvalNumericExpressionValue.intValue();
-
-		if (!isNext(',')) return false;								// Third parm is the return buffer string variable
-		if (!getSVar()) return false;
+		if (!isNext(','))				return false;				// third parm is the return buffer string variable
+		if (!getSVar())					return false;
 		Var var = Vars.get(theValueIndex);
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
+		FileInfo fInfo = FileTable.get(fileNumber);
+		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;
 
 		String buff = "";
-		if (!fInfo.isEOF()) {										// If already eof don't read
-			BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
-			byte[] byteArray = new byte[byteCount];
-			int count = 0;
-			try { count = bis.read(byteArray, 0, byteCount); }		// Read the bytes
-			catch (Exception e) { return RunTimeError(e); }
-			if (count < 0) {
-				fInfo.eof(true);									// Hit eof, mark fInfo
-			} else {
-				fInfo.incPosition(count);							// Not eof, update position in Bundle
-				try { buff = new String(byteArray, "ISO-8859-1"); }	// convert bytes to String for user
+		if (!fInfo.isEOF()) {										// if already eof don't read
+			DataInputStream dis = ((ByteReaderInfo)fInfo).getDIS();
+			byte[] values = new byte[expect];
+			int actual = 0;
+			try { actual = dis.read(values); }						// read the bytes
+			catch (IOException e) { return RunTimeError(e); }
+			if (actual < 0) { actual = 0; }							// -1 if started at EOF
+			if (actual > 0) {
+				try { buff = new String(values, "ISO-8859-1"); }	// convert bytes to string for user
 				catch (UnsupportedEncodingException ex) {
 					return RunTimeError(ex);						// can't happen: "ISO-8859-1" is supported
 				}
-				if (count < byteCount) {
-					buff = buff.substring(0, count);
+				if (actual < expect) {
+					buff = buff.substring(0, actual);
+					fInfo.eof(true);								// hit eof, mark fInfo
 				}
+				fInfo.incPosition(actual);							// update position in fInfo
 			}
 		}
-		var.val(buff);												// Give the data to the user
+		var.val(buff);												// give the data to the user
 		return true;
 	}
 
-	private boolean executeBYTE_WRITE_BYTE() {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkFile(FileNumber)) return false;					// Check runtime errors
+	private boolean executeBYTE_WRITE_BYTE(int fileNumber) {		// first parameter: file table index
+		List<Double> nvalList = new ArrayList<Double>();
+		List<String> svalList = new ArrayList<String>();
+		FileInfo fInfo = getByteWriteParams(fileNumber, nvalList, svalList); // expect zero or more nval and zero or one sval
+		if (fInfo == null)				return false;
+		if (svalList.size() > 1)		return false;
+		if ((nvalList.size() == 0) &&
+			(svalList.size() == 0))		return true;				// nothing to do
+		return writeBytes(fInfo, nvalList, svalList);
+	}
 
-		if (!isNext(',')) return false;								// Second parm is the byte var
+	private boolean executeBYTE_WRITE_BUFFER(int fileNumber) {		// first parameter: file table index
+		List<String> svalList = new ArrayList<String>();
+		FileInfo fInfo = getByteWriteParams(fileNumber, null, svalList); // expect no nvals and a single sval
+		if (fInfo == null)				return false;
+		if (svalList.size() == 0)		return true;				// nothing to do
+		if (svalList.size() != 1)		return false;
 
-		byte b = 0;
-		boolean OutputIsByte = true;
-		if (evalNumericExpression()) {
-			b = EvalNumericExpressionValue.byteValue();
-		} else {
-			if (!evalStringExpression()) return false;
-			OutputIsByte = false;
-		}
-		if (!checkEOL()) return false;
+		return writeBytes(fInfo, null, svalList);
+	}
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkWriteAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
-
+	private boolean writeBytes(FileInfo fInfo, List<Double> nvalList, List<String> svalList) {
 		FileOutputStream fos = ((ByteWriterInfo)fInfo).mByteWriter;
-		try {
-			if (OutputIsByte) {
-				fos.write(b);										// Oh, and write the byte
-				fInfo.incPosition();
-			} else {
-				int len = StringConstant.length();
-				for (int k = 0; k < len; ++k) {						// or bytes
-					b = (byte)StringConstant.charAt(k);
-					fos.write(b);
+		if ((nvalList != null) && (nvalList.size() != 0)) {
+			for (Double val : nvalList) {							// write the numeric byte(s)
+				try { fos.write(val.byteValue()); }
+				catch (IOException e) {	return RunTimeError("I/O error at"); }
+			}
+			fInfo.incPosition(nvalList.size());
+		}
+		if ((svalList != null) && (svalList.size() != 0)) {
+			for (String s : svalList) {								// write the bytes from the string(s)
+				int len = s.length();
+				for (int k = 0; k < len; ++k) {
+					try { fos.write((byte)s.charAt(k)); }
+					catch (IOException e) {	return RunTimeError("I/O error at"); }
 				}
 				fInfo.incPosition(len);
 			}
-		} catch (IOException e) {
-			return RunTimeError("I/O error at");
 		}
 		return true;
 	}
 
-	private boolean executeBYTE_WRITE_BUFFER() {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkFile(FileNumber)) return false;					// Check runtime errors
-
-		if (!isNext(',')) return false;								// Second parm is the buffer
-		if (!evalStringExpression()) return false;
-		if (!checkEOL()) return false;
-
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkWriteAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
-
-		FileOutputStream fos = ((ByteWriterInfo)fInfo).mByteWriter;
-		int len = StringConstant.length();
-		try {
-			for (int k = 0; k < len; ++k) {							// Write the buffer
-				byte b = (byte)StringConstant.charAt(k);
-				fos.write(b);
-			}
-		} catch (IOException e) {
-			return RunTimeError("I/O error at");
-		}
-		fInfo.incPosition(len);										// update position in Bundle
-		return true;
-	}
-
-	private boolean executeBYTE_TRUNCATE() {				// truncate a file opened for write
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkFile(FileNumber)) return false;					// Check runtime errors
-		if (!isNext(',')) return false;
-
-		if (!evalNumericExpression()) return false;					// Second parm is the truncation length
+	private boolean executeBYTE_TRUNCATE(int fileNumber) {	// truncate a file opened for write
+																	// first parameter: file table index
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;				// second parm is the truncation length
 		long length = EvalNumericExpressionValue.longValue();
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkWriteAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
+		FileInfo fInfo = FileTable.get(fileNumber);
+		if (!checkWriteAttributes(fInfo, FileType.FILE_BYTE)) return false;
 
 		try { ((ByteWriterInfo)fInfo).truncateFile(length); }
 		catch (IOException ex) { return RunTimeError(ex); }
 		return true;
 	}
 
-	private boolean executeBYTE_POSITION_SET() {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
-
-		if (!isNext(',')) return false;								// Second parm is the position var expression
-		if (!evalNumericExpression()) return false;
+	private boolean executeBYTE_POSITION_SET(int fileNumber) {		// first parameter: file table index
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;				// second parm is the position var expression
 		long pto = EvalNumericExpressionValue.longValue();
 		if (pto < 1) {
 			return RunTimeError("Set position must be >= 1");
 		}
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
-		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
+		FileInfo fInfo = FileTable.get(fileNumber);
+		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;
 
 		BufferedInputStream bis = ((ByteReaderInfo)fInfo).mByteReader;
 		long pnow = fInfo.position();
@@ -9107,14 +9143,12 @@ public class Run extends Activity {
 	private boolean executeCLOSE(FileType fType) {
 		if (FileTable.size() == 0)			return true;
 
-		if (!evalNumericExpression())		return false;			// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (FileNumber >= FileTable.size() || FileNumber < 0 ) {
-			return RunTimeError("Invalid File Number at");
-		}
+		if (!evalNumericExpression())		return false;			// First parm is the file number expression
+		int fileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkFile(fileNumber))			return false;			// Check runtime errors
 		if (!checkEOL())					return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		FileInfo fInfo = FileTable.get(fileNumber);					// Get the file info
 		if (!checkFileType(fInfo, fType))	return false;			// Type TEXT or BYTE as requested?
 
 		if (fInfo.isClosed())				return true;			// Already closed
@@ -9124,16 +9158,12 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private boolean executeEOF(FileType fType) {
-		if (!evalNumericExpression())		return false;			// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkFile(FileNumber))			return false;			// Check runtime errors
-
+	private boolean executeEOF(int fileNumber, FileType fType) {
 		if (!isNext(',') || !getNVar())		return false;			// Second parm is the logical (numeric) variable
 		Var var = Vars.get(theValueIndex);							// to hold the return value
 		if (!checkEOL())					return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		FileInfo fInfo = FileTable.get(fileNumber);					// Get the file info
 		if (!checkFileType(fInfo, fType))	return false;			// Type TEXT or BYTE as requested?
 
 		boolean eof = fInfo.isClosed() || fInfo.isEOF();			// if closed or eof return true, else false
@@ -9141,17 +9171,13 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private boolean executePOSITION_GET(FileType fType) {
-		if (!evalNumericExpression()) return false;					// First parm is the filenumber expression
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkReadFile(FileNumber)) return false;				// Check runtime errors
-
-		if (!isNext(',')) return false;								// Second parm is the position var
-		if (!getNVar()) return false;
+	private boolean executePOSITION_GET(int fileNumber, FileType fType) {
+		if (!isNext(','))					return false;			// Second parm is the position var
+		if (!getNVar())						return false;
 		Var var = Vars.get(theValueIndex);
-		if (!checkEOL()) return false;
+		if (!checkEOL())					return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		FileInfo fInfo = FileTable.get(fileNumber);					// Get the file info
 		if (!checkFileType(fInfo, fType))	return false;			// Type TEXT or BYTE as requested?
 
 		var.val(fInfo.position());
@@ -9159,26 +9185,26 @@ public class Run extends Activity {
 	}
 
 	private boolean executePOSITION_MARK(FileType fType) {
-		int FileNumber;
+		int fileNumber;
 		int markLimit = -1;
 		boolean isComma = isNext(',');
 		if (!isComma && !isEOL()) {									// there is a file pointer arg
-			if (!evalNumericExpression()) return false;
-			FileNumber = EvalNumericExpressionValue.intValue();
+			if (!evalNumericExpression())	return false;
+			fileNumber = EvalNumericExpressionValue.intValue();
 			isComma = isNext(',');
 		} else {
-			FileNumber = FileTable.size() - 1;						// default if no file pointer arg
+			fileNumber = FileTable.size() - 1;						// default if no file pointer arg
 		}
-		if (!checkReadFile(FileNumber)) return false;				// check runtime errors
+		if (!checkReadFile(fileNumber))		return false;			// check runtime errors
 
 		if (isComma) {												// second parm is the mark limit
-			if (!evalNumericExpression()) return false;
+			if (!evalNumericExpression())	return false;
 			markLimit = EvalNumericExpressionValue.intValue();
 			if (markLimit < 0) { markLimit = 0; }
 		}
-		if (!checkEOL()) return false;
+		if (!checkEOL())					return false;
 
-		FileInfo fInfo = FileTable.get(FileNumber);					// Get the file info
+		FileInfo fInfo = FileTable.get(fileNumber);					// Get the file info
 		if (!checkReadAttributes(fInfo, fType)) return false;		// Check runtime errors
 
 		if (markLimit < 0) {
@@ -9208,9 +9234,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executeMKDIR() {
-		if (!getStringArg()) return false;					// get the path
+		if (!getStringArg())			return false;		// get the path
 		String path = StringConstant;
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		File file = new File(Basic.getDataPath(path));
 		file.mkdirs();
@@ -9221,15 +9247,15 @@ public class Run extends Activity {
 	}
 
 	private boolean executeRENAME() {
-		if (!getStringArg()) return false;					// get the old file name
+		if (!getStringArg())			return false;		// get the old file name
 		String Old = StringConstant;
 
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;					// get the new file name
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;		// get the new file name
 		String New = StringConstant;
 
-		if (!checkEOL()) return false;
-		if (!checkSDCARD('w')) return false;
+		if (!checkEOL())				return false;
+		if (!checkSDCARD('w'))			return false;
 
 		File oldFile = new File(Basic.getDataPath(Old));
 		if (!oldFile.exists()) {							// does the file exist?
@@ -9245,15 +9271,15 @@ public class Run extends Activity {
 
 	private boolean executeDELETE() {
 
-		if (!getNVar()) return false;						// get the var to put the result into
+		if (!getNVar())					return false;		// get the var to put the result into
 		Var var = Vars.get(theValueIndex);
 
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;					// get the file name
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;		// get the file name
 		String fileName = StringConstant;
 
-		if (!checkEOL()) return false;
-		if (!checkSDCARD('w')) return false;
+		if (!checkEOL())				return false;
+		if (!checkSDCARD('w'))			return false;
 
 		File file = new File(Basic.getDataPath(fileName));
 		double result = file.delete() ? 1 : 0;				// try to delete it
@@ -9266,15 +9292,15 @@ public class Run extends Activity {
 	}
 
 	private boolean executeFILE_EXISTS() {
-		if (!getNVar()) return false;						// get the var to put the result into
+		if (!getNVar())					return false;		// get the var to put the result into
 		Var var = Vars.get(theValueIndex);
 
-		if (!isNext(',')) return false;
-		if (!getStringArg()) return false;					// get the file name
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;		// get the file name
 		String fileName = StringConstant;
 
-		if (!checkEOL()) return false;
-		if (!checkSDCARD('r')) return false;
+		if (!checkEOL())				return false;
+		if (!checkSDCARD('r'))			return false;
 
 		double exists = 0.0;								// "false"
 		if (!fileName.equals("")) {							// empty file name would report parent dir exists; catch it and report false
@@ -9627,13 +9653,13 @@ public class Run extends Activity {
 			TimeZone tz = TimeZone.getTimeZone(StringConstant);	// if arg, use it as TimeZone ID
 			zone = tz.getID();									// read back ID, "GMT" if user-string invalid
 		}
-		if (!checkEOL()) { return false; }
+		if (!checkEOL())				return false;
 		theTimeZone = zone;
 		return true;
 	}
 
 	private boolean executeTIMEZONE_GET() {						// Get the time zone setting
-		if (!(getSVar() && checkEOL())) { return false; }
+		if (!(getSVar() && checkEOL()))	return false;
 		String zone = theTimeZone;
 		if (zone.equals("")) {
 			zone = Time.getCurrentTimezone();					// If user never set a time zone, use local
@@ -9644,8 +9670,8 @@ public class Run extends Activity {
 
 	private boolean executeTIMEZONE_LIST() {					// Get a list of all valid time zone strings
 		int listIndex = getListArg(VarType.STR);				// get a reusable List pointer - may create new list
-		if (listIndex < 0) return false;						// failed to get or create a list
-		if (!checkEOL()) return false;
+		if (listIndex < 0)				return false;			// failed to get or create a list
+		if (!checkEOL())				return false;
 
 		ArrayList<String> theList = new ArrayList<String>();
 		theLists.set(listIndex, theList);
@@ -14943,14 +14969,14 @@ public class Run extends Activity {
 
 	private boolean socketPutFile(Socket socket) {
 
-		if (!evalNumericExpression())	return false;						// Parm is the filenumber variable
+		if (!evalNumericExpression())	return false;						// Parm is the file number variable
 		Var var = Vars.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		int FileNumber = (int)var.nval();
-		if (!checkReadFile(FileNumber))	return false;						// Check runtime errors
+		int fileNumber = (int)var.nval();
+		if (!checkReadFile(fileNumber))	return false;						// Check runtime errors
 
-		FileInfo fInfo = FileTable.get(FileNumber);							// Get the file info
+		FileInfo fInfo = FileTable.get(fileNumber);							// Get the file info
 		if (!checkReadAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
 
 		if (fInfo.isEOF()) { return RunTimeError("Attempt to read beyond the EOF at:"); }
@@ -14978,13 +15004,13 @@ public class Run extends Activity {
 
 	private boolean socketGetFile(Socket socket) {
 
-		if (!evalNumericExpression())	return false;						// Parm is the filenumber variable
+		if (!evalNumericExpression())	return false;						// Parm is the file number variable
 		if (!checkEOL())				return false;
 
-		int FileNumber = EvalNumericExpressionValue.intValue();
-		if (!checkFile(FileNumber))		return false;						// Check runtime errors
+		int fileNumber = EvalNumericExpressionValue.intValue();
+		if (!checkFile(fileNumber))		return false;						// Check runtime errors
 
-		FileInfo fInfo = FileTable.get(FileNumber);							// Get the file info
+		FileInfo fInfo = FileTable.get(fileNumber);							// Get the file info
 		if (!checkWriteAttributes(fInfo, FileType.FILE_BYTE)) return false;	// Check runtime errors
 
 		DataOutputStream dos = ((ByteWriterInfo)fInfo).getDOS();
