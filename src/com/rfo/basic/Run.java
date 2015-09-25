@@ -32,7 +32,7 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-//Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
+//Log.v(LOGTAG, "Line Buffer  " + ExecutingLineBuffer);
 
 import android.util.Log;
 
@@ -210,8 +210,7 @@ public class Run extends Activity {
 
 	public static boolean isOld = false;
 	private static final String LOGTAG = "Run";
-	private static final String CLASSTAG = Run.class.getSimpleName();
-//	Log.v(LOGTAG, CLASSTAG + " Line Buffer  " + ExecutingLineBuffer.line());
+//	Log.v(LOGTAG, "Line Buffer  " + ExecutingLineBuffer.line());
 
 	public static final Object LOCK = new Object();
 	public static boolean mWaitForLock;						// semaphore for Input, TGet, and Dialogs
@@ -2312,15 +2311,15 @@ public class Run extends Activity {
 	public void onCreate(Bundle savedInstanceState) {
 
 		super.onCreate(savedInstanceState);
-		Log.v(LOGTAG, CLASSTAG + " onCreate " + this.toString());
+		Log.v(LOGTAG, "onCreate " + this.toString());
 
 		if (Basic.lines == null) {
-			Log.e(LOGTAG, CLASSTAG + ".onCreate: Lost context. Bail out.");
+			Log.e(LOGTAG, "onCreate: Lost context. Bail out.");
 			finish();
 			return;
 		}
 
-//		Log.v(LOGTAG, CLASSTAG + " isOld  " + isOld);
+//		Log.v(LOGTAG, "isOld  " + isOld);
 		if (isOld) {
 			if (theWakeLock != null) {
 				theWakeLock.release();
@@ -2362,7 +2361,7 @@ public class Run extends Activity {
 		headsetBroadcastReceiver = new BroadcastsHandler();
 		this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
 
-		Basic.theRunContext = this;
+		Basic.getContextManager().setContext(Basic.ContextManager.ACTIVITY_RUN, this);
 
 		// Listeners for Console Touch
 
@@ -2438,7 +2437,7 @@ public class Run extends Activity {
 
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {		// The user hit a key
-		// Log.v(LOGTAG, CLASSTAG + " onKeyDown" + keyCode);
+		// Log.v(LOGTAG, "onKeyDown" + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			return true;				// eat the MENU key Down event, will handle the Up event
 		}
@@ -2449,7 +2448,7 @@ public class Run extends Activity {
 
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event) {
-		// Log.v(LOGTAG, CLASSTAG + " onKeyUp" + keyCode);
+		// Log.v(LOGTAG, "onKeyUp" + keyCode);
 		if (keyCode == KeyEvent.KEYCODE_MENU) {
 			return handleMenuKey(event);
 		}
@@ -2537,7 +2536,7 @@ public class Run extends Activity {
 			}
 
 			// TODO: This can't possibly be enough. Shouldn't we run cleanup() or equivalent?
-			Basic.theRunContext = null;
+			Basic.clearContextManager();
 			if (mChatService != null) {
 				mChatService.stop();
 				mChatService = null;
@@ -2551,7 +2550,7 @@ public class Run extends Activity {
 
 	@Override
 	protected void onResume() {
-		Log.v(LOGTAG, CLASSTAG + " onResume " + this.toString());
+		Log.v(LOGTAG, "onResume " + this.toString());
 
 		RunPaused = false;
 		triggerInterrupt(Interrupt.BACKGROUND_BIT);
@@ -2569,7 +2568,7 @@ public class Run extends Activity {
 			InputDismissed = true;
 		}
 	*/
-		Log.v(LOGTAG, CLASSTAG + " onPause " + this.toString());
+		Log.v(LOGTAG, "onPause " + this.toString());
 		if (lv.mKB != null) { lv.mKB.forceHide(); }
 
 		// If there is a Media Player running, pause it and hope
@@ -2585,13 +2584,13 @@ public class Run extends Activity {
 
 	@Override
 	protected void onStart() {
-		Log.v(LOGTAG, CLASSTAG + " onStart " + this.toString());
+		Log.v(LOGTAG, "onStart " + this.toString());
 		super.onStart();
 	}
 
 	@Override
 	protected void onStop() {
-		Log.v(LOGTAG, CLASSTAG + " onStop " + this.toString());
+		Log.v(LOGTAG, "onStop " + this.toString());
 		if (!GR.Running) {
 			triggerInterrupt(Interrupt.BACKGROUND_BIT);
 		}
@@ -2600,13 +2599,13 @@ public class Run extends Activity {
 
 	@Override
 	protected void onRestart() {
-		Log.v(LOGTAG, CLASSTAG + " onRestart " + this.toString());
+		Log.v(LOGTAG, "onRestart " + this.toString());
 		super.onRestart();
 	}
 
 	@Override
 	protected void onDestroy() {
-		Log.v(LOGTAG, CLASSTAG + " onDestroy " + this.toString());
+		Log.v(LOGTAG, "onDestroy " + this.toString());
 
 		if (theSensors != null) {
 			theSensors.stop();
@@ -3597,7 +3596,7 @@ public class Run extends Activity {
 
 			InitVars();
 
-//			Basic.Echo = Settings.getEcho(Basic.BasicContext);
+//			Basic.Echo = Settings.getEcho(getApplicationContext());
 			Echo = false;
 			VarSearchStart = 0;
 			fnRTN = false;
@@ -4157,7 +4156,7 @@ public class Run extends Activity {
 		audioRecordStop();
 
 		Stop = true;								// make sure the interpreter thread stops
-		Basic.theRunContext = null;
+		Basic.clearContextManager();
 		mMessagePending = false;
 
 		if (theGPS != null) {
@@ -12920,7 +12919,7 @@ public class Run extends Activity {
 		if (theMP != null)	{ return RunTimeError("Stop Current Audio Before Starting New Audio"); }
 
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
-//		Log.v(LOGTAG, CLASSTAG + " play " + aMP);
+//		Log.v(LOGTAG, "play " + aMP);
 
 		try { aMP.prepare(); } catch (Exception e) { }
 		aMP.start();
@@ -12941,7 +12940,7 @@ public class Run extends Activity {
 				PlayIsDone = true;
 			}
 		});
-//		Log.v(LOGTAG, CLASSTAG + " is playing " + theMP.isPlaying());
+//		Log.v(LOGTAG, "is playing " + theMP.isPlaying());
 		PlayIsDone = false;
 		theMP = aMP;
 
@@ -16036,7 +16035,7 @@ public class Run extends Activity {
 		} catch (Exception e) {
 			return RunTimeError(e);
 		}
-		// Log.d(LOGTAG, CLASSTAG + " executeCONSOLE_DUMP: file " + theFileName + " written");
+		// Log.d(LOGTAG, "executeCONSOLE_DUMP: file " + theFileName + " written");
 
 		return true;
 	}

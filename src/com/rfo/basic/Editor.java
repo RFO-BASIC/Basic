@@ -355,7 +355,7 @@ public class Editor extends Activity {
 	protected void onResume() {
 		super.onResume();
 
-		if (Basic.mItsAlive == null) {							// if we have lost context then restart Basic Activity
+		if (Basic.getContextManager() == null) {				// if we have lost context then restart Basic Activity
 			Log.e(LOGTAG, CLASSTAG + ".onCreate: lost Context. Restarting BASIC!.");
 			Intent intent = new Intent(getApplicationContext(), Basic.class);
 			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -683,7 +683,6 @@ public class Editor extends Activity {
 			Basic.lines.add(new Run.ProgramLine("@@@"));		// add Nothing to run command
 		}
 
-		Basic.theRunContext = null;								// Run will set theRunContext to non-null value
 		SyntaxErrorDisplacement = -1;
 		startActivity(new Intent(this, Run.class));				// now go run the program
 	}
