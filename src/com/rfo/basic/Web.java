@@ -40,7 +40,6 @@ import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.DownloadListener;
@@ -53,9 +52,8 @@ import android.webkit.WebViewClient;
 
 
 public class Web extends Activity {
-	//Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " Line Buffer  " + ExecutingLineBuffer);
+	//Log.v(LOGTAG, "Line Buffer " + ExecutingLineBuffer);
 	private static final String LOGTAG = "Web";
-	private static final String CLASSTAG = Web.class.getSimpleName();
 
 	public static final String EXTRA_SHOW_STATUSBAR = "statusbar";
 	public static final String EXTRA_ORIENTATION = "orientation";
@@ -80,9 +78,13 @@ public class Web extends Activity {
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
+		Log.v(LOGTAG, "onCreate");
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.web);
+		ContextManager cm = Basic.getContextManager();
+		cm.registerContext(ContextManager.ACTIVITY_WEB, this);
+		cm.setCurrent(ContextManager.ACTIVITY_WEB);
 
+		setContentView(R.layout.web);
 		View v = findViewById(R.id.web_engine);
 
 		Intent intent = getIntent();
@@ -126,19 +128,21 @@ public class Web extends Activity {
 	}
 
 	@Override
-	protected void onPause() {
-		Log.v(LOGTAG, " " + CLASSTAG + " onPause");
-		Run.mEventList.add(new Run.EventHolder(WEB_STATE, ON_PAUSE, null));
-		mContext = null;
-		super.onPause();
-	}
-
-	@Override
 	protected void onResume() {
-		Log.v(LOGTAG, " " + CLASSTAG + " onResume");
+		Log.v(LOGTAG, "onResume " + this);
+		Basic.getContextManager().onResume(ContextManager.ACTIVITY_WEB);
 		Run.mEventList.add(new Run.EventHolder(WEB_STATE, ON_RESUME, null));
 		mContext = this;
 		super.onResume();
+	}
+
+	@Override
+	protected void onPause() {
+		Log.v(LOGTAG, "onPause");
+		Basic.getContextManager().onPause(ContextManager.ACTIVITY_WEB);
+		Run.mEventList.add(new Run.EventHolder(WEB_STATE, ON_PAUSE, null));
+		mContext = null;
+		super.onPause();
 	}
 
 	private void setOrientation(int orientation) {	// Convert and apply orientation setting
@@ -205,15 +209,22 @@ public class Web extends Activity {
 
 	@Override
 	protected void onStop() {
-		//	aWebView = null; // otherwise html.load doses not work after a return to BASIC! Thanks to LUCA! !! 2013-10-11 gt
-		Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " onStop ");
+		//	aWebView = null; // otherwise html.load does not work after a return to BASIC! Thanks to LUCA! !! 2013-10-11 gt
+		Log.v(Web.LOGTAG, "onStop ");
 		super.onStop();
+	}
+
+	@Override
+	public void finish() {
+		// Tell the ContextManager we're done, if it doesn't already know.
+		Basic.getContextManager().unregisterContext(ContextManager.ACTIVITY_WEB, this);
+		super.finish();
 	}
 
 	@Override
 	protected void onDestroy() {
 		aWebView = null;
-		Log.v(Web.LOGTAG, " " + Web.CLASSTAG + " onDestroy ");
+		Log.v(Web.LOGTAG, "onDestroy ");
 		if (engine != null) engine.destroy();
 		super.onDestroy();
 	}

@@ -401,6 +401,10 @@ public class GR extends Activity {
 	public void onCreate(Bundle savedInstanceState) {
 		Log.v(LOGTAG, "onCreate");
 		super.onCreate(savedInstanceState);
+		ContextManager cm = Basic.getContextManager();
+		cm.registerContext(ContextManager.ACTIVITY_GR, this);
+		cm.setCurrent(ContextManager.ACTIVITY_GR);
+
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
 		Intent intent = getIntent();
@@ -429,23 +433,30 @@ public class GR extends Activity {
 	}
 
 	@Override
-	protected void onPause() {
-		Log.v(LOGTAG, "onPause " + this.toString());
-		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_PAUSE, null));
-		if (drawView.mKB != null) { drawView.mKB.forceHide(); }
-		super.onPause();
-	}
-
-	@Override
 	protected void onStart() {
 		super.onStart();
 		Log.v(LOGTAG, "onStart");
 	}
 
 	@Override
-	protected void onRestart() {
-		super.onRestart();
-		Log.v(LOGTAG, "onRestart");
+	protected void onResume() {
+		Log.v(LOGTAG, "onResume " + this.toString());
+		if (context != this) {
+			Log.d(LOGTAG, "Context changed from " + context + " to " + this);
+			context = this;
+		}
+		Basic.getContextManager().onResume(ContextManager.ACTIVITY_GR);
+		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_RESUME, null));
+		super.onResume();
+	}
+
+	@Override
+	protected void onPause() {
+		Log.v(LOGTAG, "onPause " + this.toString());
+		Basic.getContextManager().onPause(ContextManager.ACTIVITY_GR);
+		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_PAUSE, null));
+		if (drawView.mKB != null) { drawView.mKB.forceHide(); }
+		super.onPause();
 	}
 
 	protected void onStop() {
@@ -454,11 +465,16 @@ public class GR extends Activity {
 	}
 
 	@Override
-	protected void onResume() {
-		Log.v(LOGTAG, "onResume " + this.toString());
-		Run.mEventList.add(new Run.EventHolder(GR_STATE, ON_RESUME, null));
-		context = this;
-		super.onResume();
+	protected void onRestart() {
+		super.onRestart();
+		Log.v(LOGTAG, "onRestart");
+	}
+
+	@Override
+	public void finish() {
+		// Tell the ContextManager we're done, if it doesn't already know.
+		Basic.getContextManager().unregisterContext(ContextManager.ACTIVITY_GR, this);
+		super.finish();
 	}
 
 	@Override

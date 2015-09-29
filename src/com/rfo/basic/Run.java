@@ -2169,9 +2169,8 @@ public class Run extends Activity {
 	private BroadcastsHandler headsetBroadcastReceiver = null;
 
 	private Context getContext() {
-		Context context = (GRopen && GRFront) ? GR.context
-						: ((htmlIntent != null) && mWebFront) ? Web.mContext : this;
-		return (context == null) ? this : context;
+		ContextManager cm = Basic.getContextManager();
+		return cm.getContext();
 	}
 
 	// These sendMessage methods are used by mInterpreter to send messages to mHandler.
@@ -2332,6 +2331,10 @@ public class Run extends Activity {
 		theWifiLock = null;
 		isOld = true;
 
+		ContextManager cm = Basic.getContextManager();
+		cm.registerContext(ContextManager.ACTIVITY_RUN, this);
+		cm.setCurrent(ContextManager.ACTIVITY_RUN);
+
 		mConsoleIntent = getIntent();						// keep a reference to the Intent that started Run
 		InitRunVars();
 
@@ -2360,8 +2363,6 @@ public class Run extends Activity {
 
 		headsetBroadcastReceiver = new BroadcastsHandler();
 		this.registerReceiver(headsetBroadcastReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
-
-		Basic.getContextManager().setContext(Basic.ContextManager.ACTIVITY_RUN, this);
 
 		// Listeners for Console Touch
 
@@ -2536,7 +2537,7 @@ public class Run extends Activity {
 			}
 
 			// TODO: This can't possibly be enough. Shouldn't we run cleanup() or equivalent?
-			Basic.clearContextManager();
+			Basic.clearContextManager();					// unregister all Context references
 			if (mChatService != null) {
 				mChatService.stop();
 				mChatService = null;
@@ -2549,11 +2550,18 @@ public class Run extends Activity {
 	}
 
 	@Override
+	protected void onStart() {
+		Log.v(LOGTAG, "onStart " + this.toString());
+		super.onStart();
+	}
+
+	@Override
 	protected void onResume() {
 		Log.v(LOGTAG, "onResume " + this.toString());
 
 		RunPaused = false;
 		triggerInterrupt(Interrupt.BACKGROUND_BIT);
+		Basic.getContextManager().onResume(ContextManager.ACTIVITY_RUN);
 
 //		if (WaitForInput) { theAlertDialog = doInputDialog().show(); } maybe???
 		super.onResume();
@@ -2570,6 +2578,7 @@ public class Run extends Activity {
 	*/
 		Log.v(LOGTAG, "onPause " + this.toString());
 		if (lv.mKB != null) { lv.mKB.forceHide(); }
+		Basic.getContextManager().onPause(ContextManager.ACTIVITY_RUN);
 
 		// If there is a Media Player running, pause it and hope
 		// that it works.
@@ -2580,12 +2589,6 @@ public class Run extends Activity {
 		RunPaused = true;
 
 		super.onPause();
-	}
-
-	@Override
-	protected void onStart() {
-		Log.v(LOGTAG, "onStart " + this.toString());
-		super.onStart();
 	}
 
 	@Override
@@ -2723,6 +2726,7 @@ public class Run extends Activity {
 
 	private void doInputDialog(Bundle args) {
 		Context context = getContext();
+		Log.d(LOGTAG, "InputDialog context " + context);
 
 		EditText text = new EditText(context);
 		text.setText(args.getString("default"));
@@ -2797,6 +2801,7 @@ public class Run extends Activity {
 
 	private void doAlertDialog(Bundle args) {
 		Context context = getContext();
+		Log.d(LOGTAG, "AlertDialog context " + context);
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(context);
 		String positive = args.getString("button1");		// default null
@@ -5168,7 +5173,7 @@ public class Run extends Activity {
 	//
 	// In Paul's original design, this function handled all cases of scalar and array
 	// variables, and user-defined function names for FN.DEF (but not function calls)
-	// with special cases directed by global these global flags:
+	// with special cases directed by these global flags:
 	//     doingDim, unDiming, SkipArrayValues, DoingDef
 	// This implementation behaves as the original did when all flags were set false.
 	// There are now dedicated functions for some of the special cases.
@@ -8721,9 +8726,9 @@ public class Run extends Activity {
 			try { data = buf.readLine(); }							// read a line
 			catch (Exception e) { return RunTimeError(e); }
 			if (data == null) {
-				eof = true;											// hit eof, mark Bundle
+				eof = true;											// hit eof, record in fInfo
 			} else {
-				++pnow;												// not eof, update position for Bundle
+				++pnow;												// not eof, update position in fInfo
 			}
 		}
 		fInfo.position(pnow);										// update fInfo

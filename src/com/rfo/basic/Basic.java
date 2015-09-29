@@ -183,7 +183,6 @@ public class Basic extends Activity {
 
 	public static void clearContextManager() {
 		mContextMgr.clear();
-		mContextMgr = null;
 	}
 
 	private void initVars() {
@@ -874,51 +873,6 @@ public class Basic extends Activity {
 			}
 		}
 	} // class Loader
-
-	/************************************** utility classes **************************************/
-
-	/* Keeps track of context for the Interpreter.
-	 * Knows the current Activity, even if none is awake.
-	 */
-	public static class ContextManager {
-		public static final int ACTIVITY_NONE	= 0;
-		public static final int ACTIVITY_APP	= 1; // for setting mAppContext
-		public static final int ACTIVITY_RUN	= 2; // Console
-		public static final int ACTIVITY_GR		= 3; // Graphics
-		public static final int ACTIVITY_WEB	= 4; // HTML
-		public static final int ACTIVITY_OTHER	= 5;
-
-		private int mCurrentActivity = ACTIVITY_NONE;
-
-		private Context[] mContext = { null, null, null, null, null, null };
-
-		public ContextManager(Context appContext) {
-			setContext(ACTIVITY_APP, appContext);
-		}
-
-		public Context getContext() {
-			Context context = mContext[mCurrentActivity];
-			if (context == null) { throw new IllegalStateException("No context"); }
-			return context;
-		}
-
-		public Context getContext(int activity) {
-			return mContext[activity];
-		}
-
-		public void setContext(int activity, Context context) {
-			if ((activity < 0) || (activity > ACTIVITY_OTHER)) {
-				activity = ACTIVITY_OTHER;
-			}
-			mContext[activity] = context;
-		}
-
-		public void clear() {						// null all the Context references
-			int n = mContext.length;
-			for (int i = 0; i < n; ++i) { mContext[i] = null; }
-			mCurrentActivity = ACTIVITY_NONE;
-		}
-	}
 
 	/************************************** utility classes **************************************/
 
