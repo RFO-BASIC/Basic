@@ -17158,24 +17158,49 @@ public class Run extends Activity {
 	}
 
 	private Intent buildIntentForAM() {
-		// Five optional string expressions:
-		// the action, the data, the package, the component, and "other" (not yet implemented)
-		byte[] type = { 2, 2, 2, 2, 2 };
-		Double[] nVal = new Double[5];							// not used
-		String[] sVal = { null, null, null, null, null };
+		// Six optional string expressions and two optional numeric expressions:
+		// the action, data, package, component, type, categories, bundle pointer, flags
+		byte[] type = { 2, 2, 2, 2, 2, 2, 1, 1 };
+		Double[] nVal = { null, null, null, null, null, null, null, null  };
+		String[] sVal = { null, null, null, null, null, null, null, null };
 
 		if (!getOptExprs(type, nVal, sVal)) return null;
+		String action = sVal[0];
+		String data   = sVal[1];
+		String pkg    = sVal[2];
+		String comp   = sVal[3];
+		String mime   = sVal[4];
+		String cats   = sVal[5];
+		Double bIdx   = nVal[6];
+		Double flags  = nVal[7];
 
 		Intent intent = new Intent();
-		if (sVal[0] != null) { intent.setAction(sVal[0]); }
-		if (sVal[1] != null) { intent.setData(Uri.parse(sVal[1])); }
-		if (sVal[3] != null) {									// component name
-			if (sVal[2] != null) {
-				intent.setClassName(sVal[2], sVal[3]);			// package name given
+		if (action != null) { intent.setAction(action); }		// am -a
+		if (data != null) {										// am -d and -t
+			Uri dataUri = Uri.parse(data);
+			if (mime == null) { intent.setData(dataUri); }			// data, no MIME type
+			else              { intent.setDataAndType(dataUri, mime); } // data and MIME type
+		}
+		else if (mime != null) { intent.setType(mime); }			// MIME type, no data
+		if (comp != null) {											// component name for am -n
+			if (pkg != null) {
+				intent.setClassName(pkg, comp);						// package name given
 			} else {
-				intent.setClassName(Run.this, sVal[3]);			// no package given
+				intent.setClassName(Run.this, comp);				// no package given
 			}
 		}
+		if (cats != null) {										// am -c (multiple allowed)
+			String[] catArray = sVal[5].split("\\s+,\\s+", 0);		// comma-separated list of categories
+			for (String cat : catArray) { intent.addCategory(cat); }
+		}
+		if (bIdx != null) {										// am -e (limited subset)
+			int bundleIndex = bIdx.intValue();						// index of a bundle of extras
+			if ((bundleIndex <= 0) || (bundleIndex >= theBundles.size())) {
+				return null;										// expression is not valid Bundle pointer
+			}
+			intent.putExtras(theBundles.get(bundleIndex));
+		}
+		if (flags != null) { intent.addFlags(flags.intValue()); } // am -f
 		return intent;
 	}
 
