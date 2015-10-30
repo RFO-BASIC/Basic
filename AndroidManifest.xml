@@ -29,8 +29,8 @@ This file is part of BASIC! for Android
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.rfo.basic"
-    android:versionCode="1881"
-    android:versionName="1.88.01" >
+    android:versionCode="1882"
+    android:versionName="1.88.02" >
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -225,7 +225,8 @@ This file is part of BASIC! for Android
             android:name="Web"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/web_view_name"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:hardwareAccelerated="false" >
         </activity>
 
         <activity
