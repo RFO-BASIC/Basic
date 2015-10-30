@@ -42,6 +42,7 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.Flushable;
 import java.io.InputStream;
@@ -704,7 +705,7 @@ public class Run extends Activity {
 
 	// First, an alphabetical list of all of the top-level keywords.
 	// Every constant in this list must appear in both BasicKeyWords[] and BASIC_cmd[].
-	private static final String BKW_AM_GROUP = "am.";
+	private static final String BKW_APP_GROUP = "app.";
 	private static final String BKW_ARRAY_GROUP = "array.";
 	private static final String BKW_AUDIO_GROUP = "audio.";
 	private static final String BKW_BACK_RESUME = "back.resume";
@@ -871,7 +872,7 @@ public class Run extends Activity {
 		BKW_INCLUDE, BKW_PAUSE, BKW_REM,
 		BKW_WIFI_INFO, BKW_HEADSET, BKW_MYPHONENUMBER,
 		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
-		BKW_AM_GROUP,
+		BKW_APP_GROUP,
 		BKW_BACK_RESUME, BKW_BACKGROUND_RESUME,
 		BKW_CONSOLETOUCH_RESUME, BKW_KEY_RESUME,
 		BKW_LOWMEM_RESUME, BKW_MENUKEY_RESUME,
@@ -889,7 +890,7 @@ public class Run extends Activity {
 		if (keywordLists == null) {
 			keywordLists = new HashMap<String, String[]>();		// If you add a new keyword group, add it to this list!
 
-			keywordLists.put(BKW_AM_GROUP,        am_KW);
+			keywordLists.put(BKW_APP_GROUP,       app_KW);
 			keywordLists.put(BKW_ARRAY_GROUP,     Array_KW);
 			keywordLists.put(BKW_AUDIO_GROUP,     Audio_KW);
 			keywordLists.put(BKW_BT_GROUP,        bt_KW);
@@ -1289,6 +1290,8 @@ public class Run extends Activity {
 	private static final String BKW_BYTE_WRITE_BYTE = "write.byte";
 	private static final String BKW_BYTE_READ_BUFFER = "read.buffer";
 	private static final String BKW_BYTE_WRITE_BUFFER = "write.buffer";
+	private static final String BKW_BYTE_READ_NUMBER = "read.number";
+	private static final String BKW_BYTE_WRITE_NUMBER = "write.number";
 	private static final String BKW_BYTE_COPY = "copy";
 	private static final String BKW_BYTE_TRUNCATE = "truncate";
 
@@ -1296,6 +1299,7 @@ public class Run extends Activity {
 		BKW_OPEN, BKW_CLOSE, BKW_EOF,
 		BKW_BYTE_READ_BYTE, BKW_BYTE_WRITE_BYTE,
 		BKW_BYTE_READ_BUFFER, BKW_BYTE_WRITE_BUFFER,
+		BKW_BYTE_READ_NUMBER, BKW_BYTE_WRITE_NUMBER,
 		BKW_BYTE_COPY, BKW_BYTE_TRUNCATE,
 		BKW_POSITION_GET, BKW_POSITION_SET,
 		BKW_POSITION_MARK,
@@ -2141,13 +2145,13 @@ public class Run extends Activity {
 		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT, BKW_PHONE_INFO
 	};
 
-	//************************ am variables ******************************
+	//*********************** App command variables ***********************
 
-	private static final String BKW_AM_BROADCAST = "broadcast";
-	private static final String BKW_AM_START = "start";
+	private static final String BKW_APP_BROADCAST = "broadcast";
+	private static final String BKW_APP_START = "start";
 
-	private static final String am_KW[] = {				// Command list for Format
-		BKW_AM_BROADCAST, BKW_AM_START
+	private static final String app_KW[] = {			// Command list for Format
+		BKW_APP_BROADCAST, BKW_APP_START
 	};
 
 	// ****************** Headset Broadcast Receiver ***********************
@@ -4469,7 +4473,7 @@ public class Run extends Activity {
 		new Command(BKW_EMAIL_SEND)             { public boolean run() { return executeEMAIL_SEND(); } },
 		new Command(BKW_PHONE_GROUP, CID_GROUP) { public boolean run() { return executePHONE(); } },
 		new Command(BKW_SMS_GROUP, CID_GROUP)   { public boolean run() { return executeSMS(); } },
-		new Command(BKW_AM_GROUP,CID_GROUP)     { public boolean run() { return executeAM(); } },
+		new Command(BKW_APP_GROUP,CID_GROUP)    { public boolean run() { return executeAPP(); } },
 
 		new Command(BKW_BACK_RESUME)            { public boolean run() { return executeBACK_RESUME(); } },
 		new Command(BKW_BACKGROUND_RESUME)      { public boolean run() { return executeBACKGROUND_RESUME(); } },
@@ -4533,6 +4537,8 @@ public class Run extends Activity {
 		new Command(BKW_BYTE_WRITE_BYTE,CID_WRITE)  { public boolean run(int fId) { return executeBYTE_WRITE_BYTE(fId); } },
 		new Command(BKW_BYTE_READ_BUFFER, CID_READ) { public boolean run(int fId) { return executeBYTE_READ_BUFFER(fId); } },
 		new Command(BKW_BYTE_WRITE_BUFFER,CID_WRITE){ public boolean run(int fId) { return executeBYTE_WRITE_BUFFER(fId); } },
+		new Command(BKW_BYTE_READ_NUMBER)           { public boolean run(int fId) { return executeBYTE_READ_NUMBER(fId); } },
+		new Command(BKW_BYTE_WRITE_NUMBER)          { public boolean run(int fId) { return executeBYTE_WRITE_NUMBER(fId); } },
 		new Command(BKW_EOF, CID_WRITE)             { public boolean run(int fId) { return executeEOF(fId, FileType.FILE_BYTE); } },
 		new Command(BKW_BYTE_COPY, CID_READ)        { public boolean run(int fId) { return executeBYTE_COPY(fId); } },
 		new Command(BKW_BYTE_TRUNCATE, CID_WRITE)   { public boolean run(int fId) { return executeBYTE_TRUNCATE(fId); } },
@@ -5019,8 +5025,8 @@ public class Run extends Activity {
 	// **************** AM Group - activity manager commands
 
 	private final Command[] am_cmd = new Command[] {	// Map am command keywords to their execution functions
-		new Command(BKW_AM_BROADCAST)           { public boolean run() { return executeAM_BROADCAST(); } },
-		new Command(BKW_AM_START)               { public boolean run() { return executeAM_START(); } },
+		new Command(BKW_APP_BROADCAST)          { public boolean run() { return executeAPP_BROADCAST(); } },
+		new Command(BKW_APP_START)              { public boolean run() { return executeAPP_START(); } },
 	};
 
 	//*********************************************************************************************
@@ -8957,7 +8963,6 @@ public class Run extends Activity {
 																// or single string value in svalList
 		boolean isComma = isNext(',');
 		if (isComma) {
-			byte b = 0;
 			if (evalNumericExpression()) {							// second param may be numeric expression
 				nvalList.add(EvalNumericExpressionValue);
 				while (isComma = isNext(',')) {
@@ -8998,6 +9003,35 @@ public class Run extends Activity {
 		}
 		for (int i = actual; i < expect; ++i) {
 			varList.get(i).val(-1);									// eof markers if needed
+		}
+		return true;
+	}
+
+	private boolean executeBYTE_READ_NUMBER(int fileNumber) {		// first parameter: file table index)
+		List<Var> varList = new ArrayList<Var>();
+		FileInfo fInfo = getByteReadParams(fileNumber, varList);
+		if (fInfo == null)				return false;
+
+		int expect = varList.size();
+		int actual = 0;
+		if (!fInfo.isEOF()) {										// if already eof don't read
+			DataInputStream dis = ((ByteReaderInfo)fInfo).getDIS();
+			double[] values = new double[expect];
+			try {
+				for (; actual < expect; ++actual) {
+					values[actual] = dis.readDouble();				// read a double
+				}
+			}
+			catch (EOFException eof) { fInfo.eof(true); }			// hit eof, mark fInfo
+			catch (IOException e) { return RunTimeError("I/O error at:"); }
+
+			for (int i = 0; i < actual; ++i) {
+				varList.get(i).val(values[i]);						// give the data to the user
+			}
+			fInfo.incPosition(actual * 8);							// update position in Bundle
+		}
+		for (int i = actual; i < expect; ++i) {						// if any array space is left
+			varList.get(i).val(-1);									// fill it with EOF markers
 		}
 		return true;
 	}
@@ -9048,6 +9082,23 @@ public class Run extends Activity {
 		if ((nvalList.size() == 0) &&
 			(svalList.size() == 0))		return true;				// nothing to do
 		return writeBytes(fInfo, nvalList, svalList);
+	}
+
+	private boolean executeBYTE_WRITE_NUMBER(int fileNumber) {		// first parameter: file table index
+		List<Double> nvalList = new ArrayList<Double>();
+		List<String> svalList = new ArrayList<String>();
+		FileInfo fInfo = getByteWriteParams(fileNumber, nvalList, svalList); // expect zero or more nval and no sval
+		if (fInfo == null)				return false;
+		if (svalList.size() != 0)		return false;
+		if (nvalList.size() == 0)		return true;				// nothing to do
+
+		DataOutputStream dos = ((ByteWriterInfo)fInfo).getDOS();
+		for (Double val : nvalList) {
+			try { dos.writeDouble(val); }							// write the number
+			catch (IOException e) { return RunTimeError("I/O error at"); }
+		}
+		fInfo.incPosition(8 * nvalList.size());						// size of numbers written by dos.writeDouble
+		return true;
 	}
 
 	private boolean executeBYTE_WRITE_BUFFER(int fileNumber) {		// first parameter: file table index
@@ -17153,11 +17204,11 @@ public class Run extends Activity {
 
 	// ***************************** Android Application Manager (AM) *****************************
 
-	private boolean executeAM() {								// Get Intent command keyword if it is there
-		return executeSubcommand(am_cmd, "AM");
+	private boolean executeAPP() {								// Get APPlication command keyword if it is there
+		return executeSubcommand(am_cmd, "APP");
 	}
 
-	private Intent buildIntentForAM() {
+	private Intent buildIntentForAPP() {
 		// Six optional string expressions and two optional numeric expressions:
 		// the action, data, package, component, type, categories, bundle pointer, flags
 		byte[] type = { 2, 2, 2, 2, 2, 2, 1, 1 };
@@ -17174,7 +17225,7 @@ public class Run extends Activity {
 		Double bIdx   = nVal[6];
 		Double flags  = nVal[7];
 
-		Intent intent = new Intent();
+		Intent intent = new Intent();							// corresponding adb "am start" parameters
 		if (action != null) { intent.setAction(action); }		// am -a
 		if (data != null) {										// am -d and -t
 			Uri dataUri = Uri.parse(data);
@@ -17204,10 +17255,10 @@ public class Run extends Activity {
 		return intent;
 	}
 
-	private boolean executeAM_BROADCAST() {						// Broadcast an Intent
+	private boolean executeAPP_BROADCAST() {					// Broadcast an Intent to application(s)
 		if (isEOL()) return true;								// nothing to do
 
-		Intent intent = buildIntentForAM();
+		Intent intent = buildIntentForAPP();
 		if (intent != null) {
 			try { Run.this.sendBroadcast(intent); }
 			catch (Exception e) { return RunTimeError(e); }
@@ -17216,10 +17267,10 @@ public class Run extends Activity {
 		return false;
 	}
 
-	private boolean executeAM_START() {							// Start an Activity via Intent
+	private boolean executeAPP_START() {						// Start an Application's Activity via Intent
 		if (isEOL()) return true;								// nothing to do
 
-		Intent intent = buildIntentForAM();
+		Intent intent = buildIntentForAPP();
 		if (intent != null) {
 			try { Run.this.startActivity(intent); }
 			catch (Exception e) { return RunTimeError(e); }
