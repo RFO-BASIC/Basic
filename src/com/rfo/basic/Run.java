@@ -59,6 +59,7 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -89,8 +90,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.nio.channels.FileChannel;
-
-import java.security.InvalidParameterException;
 
 import javax.crypto.Cipher;
 
@@ -454,7 +453,7 @@ public class Run extends Activity {
 			int length = 1;
 			for (int d = dimList.size() - 1; d >= 0; --d) {	// for each Dim from last to first
 				int dim = dimList.get(d);				// get the Dim
-				if (dim < 1) { throw new InvalidParameterException(); }
+				if (dim < 1) { throw new InvalidParameterException("ArrayDescriptor dimList"); }
 				arraySizes.add(0, length);				// insert the previous total in the ArraySizes List
 				length *= dim;							// multiply this dimension by the previous size
 			}
@@ -686,7 +685,7 @@ public class Run extends Activity {
 
 		// Use this to get standardized error message.
 		public VarType isNS() {								// allows only NUM or STR
-			if (this == NOVAR) { throw new InvalidParameterException("Internal problem. Notify developer."); }
+			if (this == NOVAR) { throw new InvalidParameterException("Untyped variable."); }
 			return this;
 		}
 
@@ -3214,6 +3213,8 @@ public class Run extends Activity {
 		// **************************** Variable class ****************************
 
 		public abstract class Var {
+			protected static final String WRONG_TYPE = "Wrong type for this Var.";
+
 			public Var(double val) { }
 			public Var(String val) { }
 
@@ -3244,13 +3245,13 @@ public class Run extends Activity {
 			public boolean isString() { return false; }
 
 			public void val(double val) { mVal = val; }
-			public void val(String val) { throw new InvalidParameterException(); }
+			public void val(String val) { throw new InvalidParameterException(WRONG_TYPE); }
 
 			public void addval(double val) { mVal += val; }
-			public void addval(String val) { throw new InvalidParameterException(); }
+			public void addval(String val) { throw new InvalidParameterException(WRONG_TYPE); }
 
 			public double nval() { return mVal; }
-			public String sval() { throw new InvalidParameterException(); }
+			public String sval() { throw new InvalidParameterException(WRONG_TYPE); }
 		} // class NumVar
 
 		public class StrVar extends Var {
@@ -3268,13 +3269,13 @@ public class Run extends Activity {
 			public boolean isNumeric() { return false; }
 			public boolean isString() { return true; }
 
-			public void val(double val) { throw new InvalidParameterException(); }
+			public void val(double val) { throw new InvalidParameterException(WRONG_TYPE); }
 			public void val(String val) { mVal = val; }
 
-			public void addval(double val) { throw new InvalidParameterException(); }
+			public void addval(double val) { throw new InvalidParameterException(WRONG_TYPE); }
 			public void addval(String val) { mVal += val; }
 
-			public double nval() { throw new InvalidParameterException(); }
+			public double nval() { throw new InvalidParameterException(WRONG_TYPE); }
 			public String sval() { return mVal; }
 		} // class StrVar
 
@@ -3338,7 +3339,7 @@ public class Run extends Activity {
 				}
 			}
 
-			public void global(boolean isGlobal) { mIsGlobal = isGlobal; }
+			public void isGlobal(boolean isGlobal) { mIsGlobal = isGlobal; }
 			public void varIndex(int index) { mVarIndex = index; }
 
 			public String name() { return mName; }
@@ -3578,13 +3579,17 @@ public class Run extends Activity {
 
 		private UncaughtExceptionHandler mUncaughtExceptionHandler =
 			new UncaughtExceptionHandler() {
+				private static final String INTERNAL_ERROR = "Internal error! Please notify developer.";
+
 				public void uncaughtException(Thread thread, Throwable ex) {
 					if (ex instanceof OutOfMemoryError) {
 						handleHere("Out of memory");
 					} else if (ex instanceof NullPointerException) {
-						PrintShow("Internal error! Please notify developer.",
-								  Log.getStackTraceString(ex));
+						PrintShow(INTERNAL_ERROR, Log.getStackTraceString(ex));
 						handleHere("Null pointer exception");
+					} else if (ex instanceof InvalidParameterException) {
+						PrintShow(INTERNAL_ERROR, Log.getStackTraceString(ex));
+						handleHere("Invalid parameter exception");
 					} else {
 						Log.e(LOGTAG, Log.getStackTraceString(ex));
 						mDefaultExceptionHandler.uncaughtException(thread, ex);
@@ -8177,17 +8182,9 @@ public class Run extends Activity {
 			if (!getVar()) return false;						// Get the variable
 			Var var = Vars.get(theValueIndex);
 			if (VarIsNumeric) {									// If var is numeric
-				try {
-					var.val(v.nval());							// copy the numeric value to the variable
-				} catch (InvalidParameterException ex) {		// data is not a number
-					return RunTimeError("Data type (String) does match variable type (Number)");
-				}
+				var.val(v.nval());								// copy the numeric value to the variable
 			} else {											// else var is string
-				try {
-					var.val(v.sval());							// copy the string value to the variable
-				} catch (InvalidParameterException ex) {		// data is not a string
-					return RunTimeError("Data type (Number) does match variable type (String)");
-				}
+				var.val(v.sval());								// copy the string value to the variable
 			}
 		} while (isNext(','));									// loop while there are variables
 
@@ -8251,7 +8248,7 @@ public class Run extends Activity {
 		return RunTimeError("No fn.end for this function");			// end of program, fn.end not found
 	}
 
-	private boolean  executeFN_RTN() {
+	private boolean executeFN_RTN() {
 		if (FunctionStack.empty()) {						// Insure RTN actually called from executing function
 			return RunTimeError("misplaced fn.rtn");
 		}
@@ -8331,7 +8328,7 @@ public class Run extends Activity {
 
 				boolean isGlobal = isNext('&');							// optional for scalars, ignored for arrays
 				FunctionParameter parm = parms.get(i);
-				parm.global(isGlobal);
+				parm.isGlobal(isGlobal);
 				boolean typeIsNumeric = parm.var().isNumeric();
 				if (parm.isArray()) {									// if this parm is an array
 					if (getArrayVarForRead() == null) return false;		// get the array name var
@@ -8369,7 +8366,7 @@ public class Run extends Activity {
 					}
 				} // end non-global
 
-				++i;													//  Keep going while calling parms exist
+				++i;													// Keep going while calling parms exist
 
 			} while ( isNext(','));
 			// Now that all new variables have been created in main name space,
@@ -8691,7 +8688,7 @@ public class Run extends Activity {
 				title = StringConstant;
 			}
 		}
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		Intent intent = new Intent(Run.this, TextInput.class);
 		if (title != null) { intent.putExtra("title", title); }
@@ -11147,7 +11144,6 @@ public class Run extends Activity {
 		else if (style == 1)  { tPaint.setStyle(Paint.Style.FILL); }
 		else if (style != -1) { tPaint.setStyle(Paint.Style.FILL_AND_STROKE); }
 
-		Paint.Style tStyle = tPaint.getStyle();
 		aPaint = tPaint;											// set the new current paint
 		PaintList.add(aPaint);										// and add it to the paint list
 		return true;
@@ -14037,8 +14033,7 @@ public class Run extends Activity {
 		int found = -1;
 
 		VarType type;
-		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		type = theListsType.get(listIndex).isNS();					// ensure either numeric or sring
 
 		if (type == VarType.STR) {									// String type list
 			ArrayList<String> SValues = theLists.get(listIndex);	// Get the string list
@@ -14096,8 +14091,7 @@ public class Run extends Activity {
 		if (!isNext(','))				return false;				// move to the result value
 
 		VarType type;
-		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		type = theListsType.get(listIndex).isNS();					// ensure either numeric or sring
 
 		if (type == VarType.NUM) {
 			ArrayList<Double> Values = theLists.get(listIndex);		// Get the numeric list
@@ -14121,8 +14115,7 @@ public class Run extends Activity {
 		if (!isNext(','))				return false;
 
 		VarType type;
-		try { type = theListsType.get(listIndex).isNS(); }			// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		type = theListsType.get(listIndex).isNS();					// ensure either numeric or sring
 
 		if (type == VarType.STR) {									// String type list
 			if (!evalStringExpression()) {
@@ -14164,8 +14157,7 @@ public class Run extends Activity {
 		if (!checkEOL())				return false;
 
 		VarType listType;											// Get this list's type
-		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		listType = theListsType.get(listIndex).isNS();				// ensure either numeric or sring
 
 		boolean isListNumeric = listType.isNumeric();
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
@@ -14198,8 +14190,7 @@ public class Run extends Activity {
 		Var var = Vars.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		try { var.val(theListsType.get(listIndex).typeNS()); }
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		var.val(theListsType.get(listIndex).typeNS());
 		return true;
 	}
 
@@ -14242,8 +14233,7 @@ public class Run extends Activity {
 		if (!isNext(','))				return false;
 
 		VarType listType;											// Get this list's type
-		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		listType = theListsType.get(listIndex).isNS();				// ensure either numeric or sring
 
 		if (listType == VarType.STR) {								// String type list
 			if (!getStringArg()) {
@@ -14297,8 +14287,7 @@ public class Run extends Activity {
 		if (!checkEOL())				return false;				// line must end with ']'
 
 		VarType listType;											// Get this list's type
-		try { listType = theListsType.get(listIndex).isNS(); }		// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		listType = theListsType.get(listIndex).isNS();				// ensure either numeric or sring
 
 		boolean isListNumeric = listType.isNumeric();
 		if (isListNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
@@ -14544,8 +14533,7 @@ public class Run extends Activity {
 		Stack thisStack = theStacks.get(stackIndex);			// get the stack
 
 		VarType type;
-		try { type = theStacksType.get(stackIndex).isNS(); }	// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		type = theStacksType.get(stackIndex).isNS();			// ensure either numeric or sring
 
 		if (type == VarType.STR) {								// string stack
 			if (!getStringArg()) {
@@ -14574,8 +14562,7 @@ public class Run extends Activity {
 		}
 
 		VarType stackType;
-		try { stackType = theStacksType.get(stackIndex).isNS(); }// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		stackType = theStacksType.get(stackIndex).isNS();		// ensure either numeric or sring
 		boolean isStackNumeric = stackType.isNumeric();
 
 		if (!getVar())					return false;
@@ -14604,8 +14591,7 @@ public class Run extends Activity {
 		}
 
 		VarType stackType;
-		try { stackType = theStacksType.get(stackIndex).isNS(); }// ensure either numeric or sring
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		stackType = theStacksType.get(stackIndex).isNS();		// ensure either numeric or sring
 		boolean isStackNumeric = stackType.isNumeric();
 
 		if (!getVar())					return false;
@@ -14631,8 +14617,7 @@ public class Run extends Activity {
 		Var var = Vars.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		try { var.val(theStacksType.get(stackIndex).typeNS()); }
-		catch (InvalidParameterException ex) { return RunTimeError(ex); }
+		var.val(theStacksType.get(stackIndex).typeNS());
 		return true;
 	}
 
