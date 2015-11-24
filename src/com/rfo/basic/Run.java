@@ -65,6 +65,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -8214,8 +8215,10 @@ public class Run extends Activity {
 		int fVarNumber = createNewVar(var);							// Save the VarNumber of the function name
 		VarType fType = VarIsNumeric ? VarType.NUM : VarType.STR;
 
+		// Make a list of the parameters to put in the FunctionDefinition.
 		ArrayList<FunctionParameter> fParms = new ArrayList<FunctionParameter>();
 		if (!isNext(')')) {
+			Set<String> uParms = new HashSet<String>();				// Keep a set of unique parameter names
 			do {													// Get each of the parameter names
 				String name = parseVar(!USER_FN_OK);				// without creating any new vars
 				if (name == null)		return false;
@@ -8224,8 +8227,12 @@ public class Run extends Activity {
 				}
 				VarType type = VarIsNumeric ? VarType.NUM : VarType.STR;
 				fParms.add(new FunctionParameter(name, type, VarIsArray));
+				uParms.add(name);
 			} while (isNext(','));
 			if ( !(isNext(')') && checkEOL()) ) return false;
+			// If there are duplicate parameter names, the list of unique names will be
+			// shorter than the list of parameters. (Bug fix provided by Nicolas Mougin.)
+			if (uParms.size() < fParms.size()) { return RunTimeError("Duplicate parameter names at:"); }
 		}
 
 		FunctionDefinition fnDef = new FunctionDefinition(
