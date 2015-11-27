@@ -2712,18 +2712,31 @@ public class Run extends Activity {
 		sendMessage(MESSAGE_CHECKPOINT);
 	}
 
-	private static void trimArray(ArrayList array, int start) {
-		for (int k = array.size() - 1; k >= start; --k) {
-			array.remove(k);
-		}
-	}
-
 	private static String chomp(String str) {
 		return str.substring(0, str.length() - 1);
 	}
 
 	private static String quote(String str) {
 		return '\"' + str + '\"';
+	}
+
+	// ********************************************************************************************
+	// Static methods that would be attached to a class if we didn't nest everything.
+	// When this file is broken up, these should be attached to appropriate top-level classes.
+
+	// Get the absolute index of the point where name can be inserted into
+	// a sublist of names to preserve alphabetical order within the sublist.
+	// The name must not already be in names.
+	//
+	// Use of Collections.binarySearch for speed: thanks to Nicolas Mougino.
+	public static int newVarIndex(String name, ArrayList<String> names, int sublistStart) {
+		int index = Collections.binarySearch(names.subList(sublistStart, names.size()), name);
+		if (index >= 0) { throw new RuntimeException("newVarIndex: variable " + name + " already exists"); }
+		return sublistStart - index - 1;					// return the absolute index
+//		Alternate ending to add log:
+//		index = sublistStart - index - 1;					// make the index absolute
+//		Log.v(LOGTAG, CLASSTAG + " newVarIndex() create var " + name + " at index " + index + "/" + vNames.size() + "(start=" + vStart + ")");
+//		return index;
 	}
 
 	// ***************** Dialogs *****************
@@ -3411,6 +3424,10 @@ public class Run extends Activity {
 				trimArray(VarIndex, mSVI);
 				trimArray(Vars, mSV);
 				trimArray(ArrayTable, mAT);
+			}
+
+			private /* static */ void trimArray(ArrayList<?> array, int start) {
+				array.subList(start, array.size()).clear();
 			}
 		}
 
@@ -5335,24 +5352,28 @@ public class Run extends Activity {
 	}
 
 	private boolean searchVar(String name) {		// search for a variable by name
-		int j = VarSearchStart;						// VarSearchStart is usually zero but will change when executing User Function
-		for ( ; j < VarNames.size(); ++j) {			// look up this var in the variable table
-			if (name.equals(VarNames.get(j))) {		// found it
-				if (VarIsArray) {
-					ArrayDescriptor array = ArrayTable.get(VarIndex.get(j));
-					if (!array.valid()) {			// array invalidated through a different variable
-						VarNames.set(j, " ");		// clear this variable so a new one with the same name can be created
-						break;
-					}
-				}
-				VarIsNew = false;
-				VarNumber = j;
-				theValueIndex = VarIndex.get(j);	// get the value index from the var table
-				return true;
+		ArrayList<String> vNames = VarNames;
+		// VarSearchStart is usually zero but will change when executing User Function
+		int j = Collections.binarySearch(vNames.subList(VarSearchStart, vNames.size()), name);
+		if (j < 0) {								// not in list of variable names
+			VarIsNew = true;						// must be new
+			return false;
+		}
+		j += VarSearchStart;						// else found it: make the index absolute
+
+		if (VarIsArray) {
+			ArrayDescriptor array = ArrayTable.get(VarIndex.get(j));
+			if (!array.valid()) {					// array invalidated through a different variable
+				vNames.set(j, " ");					// clear this variable so a new one with the same name can be created
+				VarIsNew = true;
+				return false;
 			}
 		}
-		VarIsNew = true;
-		return false;								// not in list of variable names
+
+		VarIsNew = false;
+		VarNumber = j;
+		theValueIndex = VarIndex.get(j);			// get the value index from the var table
+		return true;
 	}
 
 	// ************************* bottom half of getVar() **********************
@@ -5391,10 +5412,14 @@ public class Run extends Activity {
 	}
 
 	private int createNewVar(String name, int val) {// make a new var table entry; val is an index into one of the lists
-		VarNumber = VarNames.size();				// index into both name list and index list
-		VarNames.add(name);							// create entry in list of variable names
-		VarIndex.add(val);							// create corresponding index list entry
-		return VarNumber;
+		// Get insertion point (-index - 1) so VarNames.subList will still be in alphabetical order.
+		// VarSearchStart is usually zero but will change when executing User Function
+		int index = newVarIndex(name, VarNames, VarSearchStart);
+
+		VarNames.add(index, name);					// create entry in list of variable names
+		VarIndex.add(index, val);					// create corresponding index list entry
+		VarNumber = index;
+		return index;
 	}
 
 	// ************************************* end of getVar() **************************************
@@ -8376,17 +8401,21 @@ public class Run extends Activity {
 				++i;													// Keep going while calling parms exist
 
 			} while ( isNext(','));
+
 			// Now that all new variables have been created in main name space,
 			// start the function name space with the function parameter names.
 			sVarNames = VarNames.size();
 			for (FunctionParameter parm : parms) {
+				// Get insertion point (-index - 1) so VarNames.subList will still be in alphabetical order.
+				int index = newVarIndex(parm.name(), VarNames, sVarNames);
+
 				if (!parm.isArray() && !parm.isGlobal()) {
-					VarIndex.add(Vars.size());							// new scalar
+					VarIndex.add(index, Vars.size());						// new scalar
 					Vars.add(parm.var().clone());
 				} else {
-					VarIndex.add(parm.varIndex());						// array or global scalar
+					VarIndex.add(index, parm.varIndex());					// array or global scalar
 				}
-				VarNames.add(parm.name());
+				VarNames.add(index, parm.name());
 			}
 		} // end if
 
