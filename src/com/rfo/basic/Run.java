@@ -1446,7 +1446,6 @@ public class Run extends Activity {
 	private static final String BKW_GR_OPEN = "open";
 	private static final String BKW_GR_ORIENTATION = "orientation";
 	private static final String BKW_GR_OVAL = "oval";
-	private static final String BKW_GR_PAINT_GET = "paint.get";
 	private static final String BKW_GR_POINT = "point";
 	private static final String BKW_GR_POLY = "poly";
 	private static final String BKW_GR_RECT = "rect";
@@ -1500,6 +1499,11 @@ public class Run extends Activity {
 	private static final String BKW_GR_GROUP_GROUP = "group.";
 	private static final String BKW_GR_GROUP_LIST = "list";
 	// use existing constants for getdl and newdl
+	// gr paint group
+	private static final String BKW_GR_PAINT_GROUP = "paint.";
+	private static final String BKW_GR_PAINT_COPY = "copy";
+	private static final String BKW_GR_PAINT_GET = "get";
+	private static final String BKW_GR_PAINT_RESET = "reset";
 	// gr text group
 	private static final String BKW_GR_TEXT_GROUP = "text.";
 	private static final String BKW_GR_TEXT_ALIGN = "align";
@@ -1525,7 +1529,7 @@ public class Run extends Activity {
 		BKW_GR_HIDE, BKW_GR_SHOW_TOGGLE, BKW_GR_SHOW,
 		BKW_GR_LINE, BKW_GR_ONGRTOUCH_RESUME,
 		BKW_GR_OPEN, BKW_GR_ORIENTATION, BKW_GR_OVAL,
-		BKW_GR_PAINT_GET, BKW_GR_POINT, BKW_GR_POLY,
+		BKW_GR_POINT, BKW_GR_POLY,
 		BKW_GR_RECT, BKW_GR_ROTATE_START, BKW_GR_ROTATE_END,
 		BKW_GR_SAVE, BKW_GR_SCALE,
 		BKW_GR_SCREEN, BKW_GR_SCREEN_TO_BITMAP,
@@ -1559,6 +1563,9 @@ public class Run extends Activity {
 		BKW_GR_GROUP_GROUP + BKW_GR_GROUP_LIST,
 		BKW_GR_GROUP_GROUP + BKW_GR_GETDL,
 		BKW_GR_GROUP_GROUP + BKW_GR_NEWDL,
+		BKW_GR_PAINT_GROUP + BKW_GR_PAINT_COPY,
+		BKW_GR_PAINT_GROUP + BKW_GR_PAINT_GET,
+		BKW_GR_PAINT_GROUP + BKW_GR_PAINT_RESET,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_ALIGN,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_BOLD,
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_DRAW,
@@ -3210,13 +3217,29 @@ public class Run extends Activity {
 	2.	Command lines are in the Basic.lines array. Line 0 is valid.
 		To jump to a new line, set ExecutingLineIndex to the line before.
 		RunLoop() increments the index before loading ExecutingLineBuffer.
-	3.	Interrupts: OnError is special, so it is in a named variable.
+	3.	A command line is a ProgramLine object. The first time a line runs,
+		it is fully parsed from the text to locate the right Command object.
+		The ProgramLine stores the Command for future runs of the same line.
+		Some commands use a second Command reference for a sub-command.
+		The THEN and ELSE statements of a single-line IF are fully-parsed.
+	4.	Interrupts: OnError is special, so it is in a named variable.
 		The others are all anonymous. All, including OnError, are in
 		mIntA for "armed" interrupts, i.e, those that have interrupt labels.
 		All except OnError can be in mIntT, the triggered interrupts.
 		Triggering copies the Interrupt object from mIntA to mIntT.
 		Servicing removes it from mIntT. OnError is always serviced first.
 		The rest are serviced in the order they occur.
+	5.	Activity instances other than Run send events to the Interpreter
+		through static Run.mEventList, and instance of Run.EventHoder.
+	6.	Basic.mContextMgr is a static instance of ContextManager.
+		The three major Activity instances (Run, GR, Web) are required
+		to register actions with the ContextManager. The Interpreter
+		uses these actions to track which context is active (if any).
+	7.	Paint objects are in the PaintList array. Object 0 cannot be attached
+		to graphics objects, but is accessible otherwise. Objects 0 and 1 are
+		initially opaque black, antialias on, style.FILL, stroke weight 0.0.
+	8.	GR.OPEN adds another Paint the color of the background.
+		GR.CLS reinitializes Paints 0 and 1 but does not add t
  */
 
 	public class Interpreter extends Thread {
@@ -3525,7 +3548,6 @@ public class Run extends Activity {
 
 		private Intent mGrIntent;							// Graphics Activity (GR) Intent
 		private boolean mShowStatusBar;
-		private Paint aPaint;
 		private Canvas drawintoCanvas = null;
 
 		// ******************************** HTML command variables ********************************
@@ -4090,8 +4112,6 @@ public class Run extends Activity {
 		FontList = new ArrayList<Typeface>();
 		clearFontList();
 
-		aPaint = new Paint();
-
 		theMPList = new ArrayList<MediaPlayer>();
 		theMPNameList = new ArrayList<String>();
 		theMPList.add(null);								// We don't use the [0] element of these Lists
@@ -4651,6 +4671,7 @@ public class Run extends Activity {
 		new Command(BKW_GR_CAMERA_GROUP, CID_GROUP) { public boolean run() { return executeGR_CAMERA(); } },
 		new Command(BKW_GR_GET_GROUP, CID_GROUP)    { public boolean run() { return executeGR_GET(); } },
 		new Command(BKW_GR_GROUP_GROUP, CID_GROUP)  { public boolean run() { return executeGR_GROUP(); } },
+		new Command(BKW_GR_PAINT_GROUP, CID_GROUP)  { public boolean run() { return executeGR_PAINT(); } },
 		new Command(BKW_GR_TEXT_GROUP, CID_GROUP)   { public boolean run() { return executeGR_TEXT(); } },
 
 		new Command(BKW_GR_ARC)                     { public boolean run() { return execute_gr_arc(); } },
@@ -4670,7 +4691,6 @@ public class Run extends Activity {
 		new Command(BKW_GR_OPEN, CID_OPEN)          { public boolean run() { return execute_gr_open(); } },
 		new Command(BKW_GR_ORIENTATION)             { public boolean run() { return execute_gr_orientation(); } },
 		new Command(BKW_GR_OVAL)                    { public boolean run() { return execute_gr_oval(); } },
-		new Command(BKW_GR_PAINT_GET)               { public boolean run() { return execute_paint_get(); } },
 		new Command(BKW_GR_POINT)                   { public boolean run() { return execute_gr_point(); } },
 		new Command(BKW_GR_POLY)                    { public boolean run() { return execute_gr_poly(); } },
 		new Command(BKW_GR_RECT)                    { public boolean run() { return execute_gr_rect(); } },
@@ -4727,18 +4747,24 @@ public class Run extends Activity {
 		new Command(BKW_GR_NEWDL)                   { public boolean run() { return execute_gr_group_newdl(); } },
 	};
 
+	private final Command[] GrPaint_cmd = new Command[] {	// Map GR.paint command keywords to their execution functions
+		new Command(BKW_GR_PAINT_COPY)              { public boolean run() { return execute_gr_paint_copy(); } },
+		new Command(BKW_GR_PAINT_GET)               { public boolean run() { return execute_gr_paint_get(); } },
+		new Command(BKW_GR_PAINT_RESET)             { public boolean run() { return execute_gr_paint_reset(); } },
+	};
+
 	private final Command[] GrText_cmd = new Command[] {	// Map GR.text command keywords to their execution functions
 		new Command(BKW_GR_TEXT_ALIGN)              { public boolean run() { return execute_gr_text_align(); } },
 		new Command(BKW_GR_TEXT_BOLD)               { public boolean run() { return execute_gr_text_bold(); } },
 		new Command(BKW_GR_TEXT_DRAW)               { public boolean run() { return execute_gr_text_draw(); } },
 		new Command(BKW_GR_TEXT_HEIGHT)             { public boolean run() { return execute_gr_text_height(); } },
+		new Command(BKW_GR_TEXT_SETFONT)            { public boolean run() { return execute_gr_text_setfont(); } },
 		new Command(BKW_GR_TEXT_SIZE)               { public boolean run() { return execute_gr_text_size(); } },
 		new Command(BKW_GR_TEXT_SKEW)               { public boolean run() { return execute_gr_text_skew(); } },
 		new Command(BKW_GR_TEXT_STRIKE)             { public boolean run() { return execute_gr_text_strike(); } },
 		new Command(BKW_GR_TEXT_TYPEFACE)           { public boolean run() { return execute_gr_text_typeface(); } },
 		new Command(BKW_GR_TEXT_UNDERLINE)          { public boolean run() { return execute_gr_text_underline(); } },
 		new Command(BKW_GR_TEXT_WIDTH)              { public boolean run() { return execute_gr_text_width(); } },
-		new Command(BKW_GR_TEXT_SETFONT)            { public boolean run() { return execute_gr_text_setfont(); } },
 	};
 
 	// **************** AUDIO Group
@@ -5072,7 +5098,7 @@ public class Run extends Activity {
 
 	// Very special case: <group>.<subgroup>.<subcommand> where the <group> needs a validity check.
 	// For example, GR.TEXT.SIZE: statementExecuter() must run executeGR() every time.
-	private boolean executeSubgoupCommand(Command[] commands, String type) {
+	private boolean executeSubgroupCommand(Command[] commands, String type) {
 		int groupOffset = ExecutingLineBuffer.subOffset();	// get offset of <subgroup> keyword
 		ExecutingLineBuffer.subcmd(null);					// force findSubcommand to search
 		Command c = findSubcommand(commands, type);			// replace subcmd field with <subcommand>
@@ -5352,9 +5378,8 @@ public class Run extends Activity {
 	}
 
 	private boolean searchVar(String name) {		// search for a variable by name
-		ArrayList<String> vNames = VarNames;
 		// VarSearchStart is usually zero but will change when executing User Function
-		int j = Collections.binarySearch(vNames.subList(VarSearchStart, vNames.size()), name);
+		int j = Collections.binarySearch(VarNames.subList(VarSearchStart, VarNames.size()), name);
 		if (j < 0) {								// not in list of variable names
 			VarIsNew = true;						// must be new
 			return false;
@@ -5364,7 +5389,7 @@ public class Run extends Activity {
 		if (VarIsArray) {
 			ArrayDescriptor array = ArrayTable.get(VarIndex.get(j));
 			if (!array.valid()) {					// array invalidated through a different variable
-				vNames.set(j, " ");					// clear this variable so a new one with the same name can be created
+				VarNames.set(j, " ");				// clear this variable so a new one with the same name can be created
 				VarIsNew = true;
 				return false;
 			}
@@ -10882,23 +10907,27 @@ public class Run extends Activity {
 	}
 
 	private boolean executeGR_BITMAP() {				// GR group, BITMAP subgroup
-		return executeSubgoupCommand(GrBitmap_cmd, "Gr.Bitmap");
+		return executeSubgroupCommand(GrBitmap_cmd, "Gr.Bitmap");
 	}
 
 	private boolean executeGR_CAMERA() {				// GR group, CAMERA subgroup
-		return executeSubgoupCommand(GrCamera_cmd, "Gr.Camera");
+		return executeSubgroupCommand(GrCamera_cmd, "Gr.Camera");
 	}
 
 	private boolean executeGR_GET() {					// GR group, GET subgroup
-		return executeSubgoupCommand(GrGet_cmd, "Gr.Get");
+		return executeSubgroupCommand(GrGet_cmd, "Gr.Get");
 	}
 
 	private boolean executeGR_GROUP() {					// GR group, GROUP subgroup
-		return executeSubgoupCommand(GrGroup_cmd, "Gr.Group");
+		return executeSubgroupCommand(GrGroup_cmd, "Gr.Group");
+	}
+
+	private boolean executeGR_PAINT() {					// GR group, PAINT subgroup
+		return executeSubgroupCommand(GrPaint_cmd, "Gr.Paint");
 	}
 
 	private boolean executeGR_TEXT() {					// GR group, TEXT subgroup
-		return executeSubgoupCommand(GrText_cmd, "Gr.Text");
+		return executeSubgroupCommand(GrText_cmd, "Gr.Text");
 	}
 
 	private void DisplayListAdd(GR.BDraw b) {
@@ -10939,14 +10968,19 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private Paint newPaint(Paint fromPaint) {						// does a new Paint
-		Typeface tf = fromPaint.getTypeface();						// while preserving the type face
-		Paint rPaint = new Paint(fromPaint);
-		rPaint.setTypeface(tf);
+	private Paint newPaint(Paint fromPaint) {						// Android bug workaround?
+		Typeface tf = fromPaint.getTypeface();
+		Paint rPaint = new Paint(fromPaint);						// creates a new Paint
+		rPaint.setTypeface(tf);										// while preserving the type face
 		return rPaint;
 	}
 
-	private Paint initPaint(Paint paint, int a, int r, int g, int b) {
+	private Paint initPaint() {
+		return initPaint(255, 0, 0, 0);								// new opaque black Paint with default settings
+	}
+
+	private Paint initPaint(int a, int r, int g, int b) {
+		Paint paint = new Paint();
 		paint.setARGB(a, r, g, b);									// set the colors, etc
 		paint.setAntiAlias(true);
 		paint.setStyle(Paint.Style.FILL);
@@ -10965,14 +10999,12 @@ public class Run extends Activity {
 		synchronized (DisplayList) {
 			DisplayList.clear();									// Clear the Display List
 			RealDisplayList.clear();
+			PaintList.clear();										// and the Paint List
 
-			PaintList.clear();										// and the Paint list
-			PaintList.add(aPaint);									// Add dummy element 0
+			PaintList.add(initPaint());								// add default Paint at 0
+			PaintList.add(initPaint());								// add default current Paint at entry 1
 
-			aPaint = initPaint(newPaint(aPaint), 255, 0, 0, 0);		// Create a new Paint object
-			PaintList.add(aPaint);									// Add to the Paint List as element 1
-
-			GR.BDraw b = new GR.BDraw(type);						// Create a new Display list
+			GR.BDraw b = new GR.BDraw(type);						// Start Display List
 			DisplayListAdd(b);										// with specified first entry
 		}
 	}
@@ -11077,8 +11109,8 @@ public class Run extends Activity {
 			BitmapListClear();
 			BitmapList.add(null);									// Set Zero entry as null
 
-			aPaint = initPaint(new Paint(), a, r, g, b);			// Create a new Paint object
-			PaintList.add(aPaint);									// Add to the Paint List as element 2
+			Paint paint = initPaint(a, r, g, b);					// Create a new Paint object, default except color
+			PaintList.add(paint);									// Add to the Paint List as element 2
 		}
 
 		mGrIntent = new Intent(Run.this, GR.class);					// Set up parameters for the Graphics Activity
@@ -11107,10 +11139,49 @@ public class Run extends Activity {
 		}
 	}
 
-	private boolean execute_paint_get() {
+	private boolean execute_gr_paint_get() {						// get the index of the current (latest) Paint
 		if (!getNVar()) return false;
 		if (!checkEOL()) return false;
 		Vars.get(theValueIndex).val(PaintList.size() - 1);
+		return true;
+	}
+
+	private boolean execute_gr_paint_copy() {						// copy a Paint or make a new one
+		int[] args = { -1, -1 };									// default: src, dst both current Paint
+		if (!getOptExprs(args))			return false;
+
+		int current = PaintList.size() - 1;
+		int src = args[0];
+		int dst = args[1];
+
+		if (src != -1) {
+			if (!checkPaintIndex(src))	return false;				// ERROR: out of range
+		} else {
+			src = current;
+		}
+		Paint srcPaint = newPaint(PaintList.get(src));				// make a copy
+
+		if (dst != -1) {
+			if (!checkPaintIndex(dst))	return false;				// ERROR: out of range
+			PaintList.set(dst, srcPaint);							// replace destination Paint with the copy
+		} else {
+			PaintList.add(srcPaint);								// add the copy to the Paint list
+		}
+		return true;
+	}
+
+	private boolean execute_gr_paint_reset() {
+		int[] args = { -1 };										// default: reset current Paint;
+		if (!getOptExprs(args))			return false;
+
+		Paint paint = initPaint();									// create a new default Paint
+		int index = args[0];
+		if (index == -1) {
+			PaintList.add(paint);									// add the new Paint to the List
+		} else {
+			if (!checkPaintIndex(index)) return false;
+			PaintList.set(index, paint);							// replace the existing Paint
+		}
 		return true;
 	}
 
@@ -11162,52 +11233,80 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private boolean execute_gr_color() {
-		int[] args = { -1, -1, -1, -1, -1 };						// default to current color and style
-		if (!getOptExprs(args)) return false;
+	private boolean checkPaintIndex(int index) {
+		return ((index >= 0) && (index < PaintList.size())) ? true :
+				RunTimeError("Paint Number out of range");
+	}
 
-		int color = aPaint.getColor();
+	private Paint getWorkingPaint(int index) {					// get specified Paint
+																// if none specified, clone current Paint as new current Paint
+		Paint paint;
+		if (index != -1) {											// get an existing Paint
+			if (!checkPaintIndex(index)) return null;				// ERROR: out of range
+			paint = PaintList.get(index);
+		} else {
+			paint = newPaint(PaintList.get(PaintList.size() - 1));	// get a copy of the latest Paint
+			PaintList.add(paint);									// add the copy to the Paint list
+		}
+		return paint;
+	}
+
+	private boolean execute_gr_color() {
+		int[] args = { -1, -1, -1, -1, -1, -1 };					// default to current color and style, new Paint
+		if (!getOptExprs(args))			return false;
+
+		int paintIdx = args[5];
+		Paint paint = getWorkingPaint(paintIdx);
+		if (paint == null)				return false;				// index out of range
+
+		int color = paint.getColor();
 		int a = (args[0] != -1) ? args[0] : 255 & (color >>> 24);
 		int r = (args[1] != -1) ? args[1] : 255 & (color >>> 16);
 		int g = (args[2] != -1) ? args[2] : 255 & (color >>> 8);
 		int b = (args[3] != -1) ? args[3] : 255 & (color);
+		paint.setARGB(a, r, g, b);									// set the colors
+
 		int style = args[4];
+		if      (style == 0)  { paint.setStyle(Paint.Style.STROKE); }
+		else if (style == 1)  { paint.setStyle(Paint.Style.FILL); }
+		else if (style != -1) { paint.setStyle(Paint.Style.FILL_AND_STROKE); }
 
-		Paint tPaint = newPaint(aPaint);							// clone the current paint
-		tPaint.setARGB(a, r, g, b);									// set the colors, etc
-//		tPaint.setAntiAlias(true);
-		if      (style == 0)  { tPaint.setStyle(Paint.Style.STROKE); }
-		else if (style == 1)  { tPaint.setStyle(Paint.Style.FILL); }
-		else if (style != -1) { tPaint.setStyle(Paint.Style.FILL_AND_STROKE); }
-
-		aPaint = tPaint;											// set the new current paint
-		PaintList.add(aPaint);										// and add it to the paint list
 		return true;
 	}
 
 	private boolean execute_gr_antialias() {
-		if (!evalNumericExpression()) return false;					// Get the boolean
-		if (!checkEOL()) return false;
+		int[] args = { -1, -1 };									// default to toggle and new Paint
+		if (!getOptExprs(args)) return false;
 
-		Paint tPaint = newPaint(aPaint);
-		tPaint.setAntiAlias(EvalNumericExpressionValue != 0);
-		aPaint = tPaint;
-		PaintList.add(aPaint);										// Add the new Paint to the Paint List
+		int select = args[0];
+		int paintIdx = args[1];
+
+		Paint paint = getWorkingPaint(paintIdx);
+		if (paint == null)				return false;				// index out of range
+
+		// -1 toggles antialias, 0 clears it, anything else sets it.
+		boolean flag = (select == -1) ? !paint.isAntiAlias() : (select != 0);
+		paint.setAntiAlias(flag);
+
 		return true;
 	}
 
 	private boolean execute_gr_stroke_width() {
-		if (!evalNumericExpression()) return false;					// Get the width
-		if (!checkEOL()) return false;
+		byte[] type = { 1, 1 };										// two optional numeric arguments
+		Double[] args = { null, null };
+		String[] dummy = { null, null };							// not used, no String arguments
+		if (!getOptExprs(type, args, dummy)) return false;
 
-		float width = EvalNumericExpressionValue.floatValue();
-		if (width < 0) {
-			return RunTimeError("Width must be >= 0");
+		int paintIdx = (args[1] != null) ? args[1].intValue() : -1;	// default to current Paint
+		Paint paint = getWorkingPaint(paintIdx);					// null if invalid index
+
+		if (args[0] != null) {										// if width provided
+			float width = args[0].floatValue();						// get width
+			if (width < 0.0f) { return RunTimeError("Width must be >= 0"); }
+			if (paint != null) paint.setStrokeWidth(width);
 		}
-		Paint tPaint = newPaint(aPaint);							// Create a new Paint object
-		tPaint.setStrokeWidth(width);								// Set the stroke width
-		aPaint = tPaint;
-		PaintList.add(aPaint);										// Add the new Paint to the Paint List
+		if (paint == null)				return false;				// error reporting is in parameter order
+
 		return true;
 	}
 
@@ -11744,88 +11843,110 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_gr_text_align() {
-		if (!evalNumericExpression()) return false;					// get Align parameter
-		if (!checkEOL()) return false;
+		int[] args = { -1, -1 };									// default to unchanged alignment and new Paint
+		if (!getOptExprs(args))			return false;
 
-		int align = EvalNumericExpressionValue.intValue();
-		Paint tPaint = newPaint(aPaint);							// clone the current paint
-		if      (align == 1) { tPaint.setTextAlign(Paint.Align.LEFT); }
-		else if (align == 2) { tPaint.setTextAlign(Paint.Align.CENTER); }
-		else if (align == 3) { tPaint.setTextAlign(Paint.Align.RIGHT); }
-		else {
-			return RunTimeError( "Align value not 1, 2 or 3 at ");
-		}
+		int alignCode = args[0];
+		int paintIdx = args[1];
 
-		aPaint = tPaint;											// set the new current paint
-		PaintList.add(aPaint);										// and add it to the paint list
+		Paint.Align align = null;									// validate and convert alignment parameter
+		if      (alignCode == 1)  { align = Paint.Align.LEFT; }
+		else if (alignCode == 2)  { align = Paint.Align.CENTER; }
+		else if (alignCode == 3)  { align = Paint.Align.RIGHT; }
+		else if (alignCode != -1) { return RunTimeError( "Align value not 1, 2 or 3 at "); }
+
+		Paint paint = getWorkingPaint(paintIdx);					// validate Paint index parameter and get Paint
+		if (paint == null)				return false;				// index out of range
+
+		if (align != null) { paint.setTextAlign(align); }
 		return true;
 	}
 
 	private boolean execute_gr_text_size() {
-		if (!evalNumericExpression()) return false;					// get desired size
-		if (!checkEOL()) return false;
+		byte[] type = { 1, 1 };										// two optional numeric arguments
+		Double[] args = { null, null };
+		String[] dummy = { null, null };							// not used, no String arguments
+		if (!getOptExprs(type, args, dummy)) return false;
 
-		float size = EvalNumericExpressionValue.floatValue();
-		if (size < 1.0f) {
-			return RunTimeError( "must be > 0");
+		int paintIdx = (args[1] != null) ? args[1].intValue() : -1;	// default to current Paint
+		Paint paint = getWorkingPaint(paintIdx);					// null if invalid index
+
+		if (args[0] != null) {										// if size provided
+			float size = args[0].floatValue();						// get size
+			if (size <= 0.0f) { return RunTimeError( "Size must be > 0"); }
+			if (paint != null) paint.setTextSize(size);
 		}
-		Paint tPaint = newPaint(aPaint);							// clone the current paint
-		tPaint.setTextSize(size);
-
-		aPaint = tPaint;											// set the new current paint
-		PaintList.add(aPaint);										// and add it to the paint list
+		if (paint == null)				return false;				// error reporting is in parameter order
 		return true;
+
 	}
 
 	private boolean execute_gr_text_underline() {
-		if (!evalNumericExpression()) return false;					// get Underline parameter
-		if (!checkEOL()) return false;
+		int[] args = { -1, -1 };									// default to toggle and new Paint
+		if (!getOptExprs(args)) return false;
 
-		boolean flag = (EvalNumericExpressionValue != 0.0);			// do underline if non-zero
-		Paint tPaint = newPaint(aPaint);							// clone the current paint
-		tPaint.setUnderlineText(flag);
+		int select = args[0];
+		int paintIdx = args[1];
 
-		aPaint = tPaint;											// set the new current paint
-		PaintList.add(aPaint);										// and add it to the paint list
+		Paint paint = getWorkingPaint(paintIdx);
+		if (paint == null)				return false;				// index out of range
+
+		// -1 toggles underlining, 0 clears it, anything else sets it.
+		boolean flag = (select == -1) ? !paint.isUnderlineText() : (select != 0);
+		paint.setUnderlineText(flag);
+
 		return true;
 	}
 
 	private boolean execute_gr_text_skew() {
-		if (!evalNumericExpression()) return false;					// get Skew parameter
-		if (!checkEOL()) return false;
+		byte[] type = { 1, 1 };										// two optional numeric arguments
+		Double[] args = { null, null };
+		String[] dummy = { null, null };							// not used, no String arguments
+		if (!getOptExprs(type, args, dummy)) return false;
 
-		float skew = EvalNumericExpressionValue.floatValue();
-		Paint tPaint = newPaint(aPaint);							// clone the current paint
-		tPaint.setTextSkewX(skew);
+		int paintIdx = (args[1] != null) ? args[1].intValue() : -1;	// default to current Paint
+		Paint paint = getWorkingPaint(paintIdx);					// null if invalid index
+		if (paint == null)				return false;
 
-		aPaint = tPaint;											// set the new current paint
-		PaintList.add(aPaint);										// and add it to the paint list
+		if (args[0] != null) {										// if skew provided
+			float skew = args[0].floatValue();						// get skew
+			paint.setTextSize(skew);
+		}
+
 		return true;
 	}
 
 	private boolean execute_gr_text_bold() {
-		if (!evalNumericExpression()) return false;					// get Bold parameter
-		if (!checkEOL()) return false;
+		int[] args = { -1, -1 };									// default to toggle and new Paint
+		if (!getOptExprs(args)) return false;
 
-		boolean flag = (EvalNumericExpressionValue != 0.0);			// do bold if non-zero
-		Paint tPaint = newPaint(aPaint);							// clone the current paint
-		tPaint.setFakeBoldText(flag);
+		int select = args[0];
+		int paintIdx = args[1];
 
-		aPaint = tPaint;											// set the new current paint
-		PaintList.add(aPaint);										// and add it to the paint list
+		Paint paint = getWorkingPaint(paintIdx);
+		if (paint == null)				return false;				// index out of range
+
+		// -1 toggles bold, 0 clears it, anything else sets it.
+		boolean flag = (select == -1) ? !paint.isFakeBoldText() : (select != 0);
+		paint.setFakeBoldText(flag);
+
 		return true;
 	}
 
 	private boolean execute_gr_text_strike() {
-		if (!evalNumericExpression()) return false;					// get Strike parameter
-		if (!checkEOL()) return false;
+		int[] args = { -1, -1 };									// default to toggle and new Paint
+		if (!getOptExprs(args)) return false;
 
-		boolean flag = (EvalNumericExpressionValue != 0.0);			// do strike if non-zero
-		Paint tPaint = newPaint(aPaint);
-		tPaint.setStrikeThruText(flag);
+		int select = args[0];
+		int paintIdx = args[1];
 
-		aPaint = tPaint;											// set the new current paint
-		PaintList.add(aPaint);										// and add it to the paint list
+		Paint paint = getWorkingPaint(paintIdx);
+		if (paint == null)				return false;				// index out of range
+
+		// -1 toggles strike, 0 clears it, anything else sets it.
+		boolean flag = (select == -1) ? !paint.isStrikeThruText() : (select != 0);
+		paint.setStrikeThruText(flag);
+
 		return true;
 	}
 
@@ -11855,7 +11976,7 @@ public class Run extends Activity {
 			if (SyntaxError) return false;
 			if (!getStringArg()) return false;
 			text = StringConstant;									// argument is the text to measure
-			paint = aPaint;											// use current Paint
+			paint = PaintList.get(PaintList.size() - 1);			// use current Paint
 		}
 
 		if (!isNext(',')) return false;
@@ -11883,8 +12004,9 @@ public class Run extends Activity {
 		int nArgs = index.length;
 		if (!getOptVars(type, index)) return false;
 
-		Paint.FontMetrics fm = aPaint.getFontMetrics();
-		float height = aPaint.getTextSize();
+		Paint currentPaint = PaintList.get(PaintList.size() - 1);
+		Paint.FontMetrics fm = currentPaint.getFontMetrics();
+		float height = currentPaint.getTextSize();
 		float ascent = fm.ascent;
 		float descent = fm.descent;
 
@@ -11912,7 +12034,7 @@ public class Run extends Activity {
 			if (SyntaxError) return false;
 			if (!getStringArg()) return false;
 			text = StringConstant;									// argument is the text to measure
-			paint = aPaint;											// use current Paint
+			paint = PaintList.get(PaintList.size() - 1);			// use current Paint
 		}
 		if (!checkEOL()) return false;
 
@@ -12091,7 +12213,8 @@ public class Run extends Activity {
 		if (!checkBitmapPoint(bmp, xy))	return false;				// is point in bitmap?
 
 		int targetColor = bmp.getPixel(xy[0], xy[1]);				// get the original color of the bitmap pixel
-		int replacementColor = aPaint.getColor();					// get the color to change to
+		Paint currentPaint = PaintList.get(PaintList.size() - 1);
+		int replacementColor = currentPaint.getColor();				// get the color to change to
 		if (targetColor == replacementColor) return true;			// nothing to do
 
 		int width = bmp.getWidth();									// get the bitmap dimensions
@@ -12771,20 +12894,12 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_gr_text_typeface() {
-		int face = 1;												// default typeface
-		int style = 1;												// default style
+		int[] args = { 1, 1, -1 };									// default typeface and style, new Paint
+		if (!getOptExprs(args)) return false;
 
-		boolean isComma = isNext(',');
-		if (!isComma && !isEOL()) {									// there is a typeface arg
-			if (!evalNumericExpression()) return false;				// get type
-			face = EvalNumericExpressionValue.intValue();
-			isComma = isNext(',');
-		}
-		if (isComma) {
-			if (!evalNumericExpression()) return false;				// get the style
-			style = EvalNumericExpressionValue.intValue();
-		}
-		if (!checkEOL()) { return false; }
+		int face = args[0];
+		int style = args[1];
+		int paintIdx = args[2];
 
 		Typeface tf;												// interpret typeface
 		switch (face) {
@@ -12801,13 +12916,14 @@ public class Run extends Activity {
 			case 4: style = Typeface.BOLD_ITALIC; break;
 			default: return RunTimeError("Style must be 1, 2, 3 or 4");
 		}
+
+		Paint paint = getWorkingPaint(paintIdx);
+		if (paint == null)				return false;				// index out of range
+
+		// Done with error messages.
 		tf = Typeface.create(tf, style);
+		paint.setTypeface(tf);										// put the typeface into Paint
 
-		Paint tPaint = newPaint(aPaint);							// clone the current Paint
-		tPaint.setTypeface(tf);										// put the typeface into Paint
-
-		aPaint = tPaint;											// set the new current Paint
-		PaintList.add(aPaint);										// and add it to the Paint list
 		return true;
 	}
 
@@ -12844,27 +12960,33 @@ public class Run extends Activity {
 		int fontPtr = 0;
 		String familyName = null;									// default if no font arg
 		int style = Typeface.NORMAL;								// default if no style arg
+		int paintIdx = -1;											// default to current Paint
 
 		boolean isComma = isNext(',');
 		if (!isComma && !isEOL()) {									// there is a font arg
 			int saveLI = LineIndex;
 			fontPtr = getFontArg();									// get the font number
-			if (fontPtr == -1) return false;						// invalid font pointer
+			if (fontPtr == -1)			return false;				// invalid font pointer
 			if (fontPtr == -2) {									// not a numeric argument
 				LineIndex = saveLI;
-				if (!getStringArg()) return false;					// get the font family name
+				if (!getStringArg())	return false;				// get the font family name
 				familyName = StringConstant.trim();
 			}
 			isComma = isNext(',');
 		}
 		if (isComma) {
-			if (!getStringArg()) return false;						// get the optional style
+			if (!getStringArg())		return false;				// get the optional style
 			String str = StringConstant.trim().toLowerCase(Locale.US);
 			if      (str.equals("b")  || str.equals("bold"))        { style = Typeface.BOLD; }
 			else if (str.equals("i")  || str.equals("italic"))      { style = Typeface.ITALIC; }
 			else if (str.equals("bi") || str.equals("bold_italic")) { style = Typeface.BOLD_ITALIC; }
+			isComma = isNext(',');
 		}
-		if (!checkEOL()) return false;
+		if (isComma) {
+			if (!evalNumericExpression()) return false;
+			paintIdx = EvalNumericExpressionValue.intValue();
+		}
+		if (!checkEOL())				return false;
 
 		Typeface tf = null;
 		if (fontPtr > 0) {
@@ -12879,10 +13001,11 @@ public class Run extends Activity {
 			tf = Typeface.create(familyName, style);				// get the system font for this family name
 		}															// null family name sets system default
 
-		Paint tPaint = newPaint(aPaint);
-		tPaint.setTypeface(tf);
-		aPaint = tPaint;
-		PaintList.add(aPaint);										// add the new Paint to the PaintList
+		Paint paint = getWorkingPaint(paintIdx);					// null if invalid index
+		if (paint == null)				return false;
+
+		paint.setTypeface(tf);
+
 		return true;
 	}
 
