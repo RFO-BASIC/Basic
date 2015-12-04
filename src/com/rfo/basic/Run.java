@@ -3934,6 +3934,7 @@ public class Run extends Activity {
 			ExecutingLineIndex = interruptResume;
 			interruptResume = -1;
 			VarSearchStart = interruptVarSearchStart;
+			interruptVarSearchStart = 0;
 			// Pull the IEinterrupt from the If Else stack
 			// It is possible that IFs were executed in the interrupt code
 			// so pop entries until we get to the IEinterrupt
@@ -5389,7 +5390,8 @@ public class Run extends Activity {
 		if (VarIsArray) {
 			ArrayDescriptor array = ArrayTable.get(VarIndex.get(j));
 			if (!array.valid()) {					// array invalidated through a different variable
-				VarNames.set(j, " ");				// clear this variable so a new one with the same name can be created
+				VarNames.remove(j);					// delete this variable so a new one with the same name can be created
+				VarIndex.remove(j);
 				VarIsNew = true;
 				return false;
 			}
@@ -7560,12 +7562,16 @@ public class Run extends Activity {
 			if ((getVarAndType() == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
 			if (!isNext(']'))								{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 			if (!VarIsNew) {											// if DIMed, UNDIM it
-				// Clear the variable name so it can't be used to access this array any more.
+				if (VarNumber < interruptVarSearchStart) {				// In ISR and array is not in innermost function.
+					return RunTimeError("Cannot UNDIM in an interrupt.");	// Deletinng variable would corrupt call stack.
+				}
 				// Mark the array invalid in case any other variable is looking at it.
-				VarNames.set(VarNumber, " ");
 				ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber));
 				array.clear();
 				array.invalidate();
+				// Delete the variable so it can't be used to access this array any more.
+				VarNames.remove(VarNumber);
+				VarIndex.remove(VarNumber);
 			}
 		} while (isNext(','));											// continue while there are arrays to be UNDIMed
 
