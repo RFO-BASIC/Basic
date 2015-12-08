@@ -471,7 +471,7 @@ public class Run extends Activity {
 
 		public void clear() {							// free as much storage as possible
 			for (int idx = mBase; idx < mLength; ++idx) {
-				Vars.get(idx).clear();
+				Vals.get(idx).clear();
 			}
 		}
 
@@ -1195,7 +1195,7 @@ public class Run extends Activity {
 
 	private HashMap<String,Integer> Labels;				// A list of all labels and associated line numbers
 
-	public static ArrayList<Interpreter.Var> Vars;		// All scalar the variables
+	public static ArrayList<Interpreter.Val> Vals;		// List of all variable values, both scalars and array elements
 	private ArrayList<ArrayDescriptor> ArrayTable;		// Each DIMed array has an entry in this table
 	private int ArrayValueStart = 0;					// Value index for newly created array
 
@@ -2795,13 +2795,13 @@ public class Run extends Activity {
 		private final AlertDialog mmDialog;
 		private final EditText mmText;
 		private final boolean mmIsNumeric;
-		private final Interpreter.Var mmVar;
+		private final Interpreter.Val mmVal;
 		public InputDialogClickListener(AlertDialog dialog, EditText text, Bundle args) {
 			mmDialog = dialog;
 			mmText = text;
 			mmIsNumeric = args.getBoolean("isNumeric");		// default false
 			int varIndex = args.getInt("varIndex");			// default 0
-			mmVar = Vars.get(varIndex);
+			mmVal = Vals.get(varIndex);
 		}
 
 		public void onClick(View view) {
@@ -2809,14 +2809,14 @@ public class Run extends Activity {
 			if (mmIsNumeric) {								// Numeric Input Handling
 				try {
 					double d = Double.parseDouble(theInput.trim());	// have java parse it into a double
-					mmVar.val(d);
+					mmVal.val(d);
 				} catch (Exception e) {
 					Log.d(LOGTAG, "Input Dialog bad input");
 					Toaster("Not a number. Try Again.").show();
 					return;
 				}
 			} else {										// String Input Handling
-				mmVar.val(theInput);
+				mmVal.val(theInput);
 			}
 			mmDialog.dismiss();
 			Log.d(LOGTAG, "Input Dialog done, positive");
@@ -3235,11 +3235,18 @@ public class Run extends Activity {
 		The three major Activity instances (Run, GR, Web) are required
 		to register actions with the ContextManager. The Interpreter
 		uses these actions to track which context is active (if any).
-	7.	Paint objects are in the PaintList array. Object 0 cannot be attached
+	7.	Variables. The symbol table is two lists: VarNames and VarIndex.
+		VarIndex is an index into another list: Vals (values of scalars),
+		ArrayTable (array descriptors), or FunctionTable (fn descriptors).
+		Array data (element values) are also held in the Vals ArrayList.
+		All of these ArrayLists are internal, so index 0 is valid.
+	8.	A scalar value is a Val object. Sometimes variables are named
+		as if the value and the variable are the same, but they are not.
+	9.	Paint objects are in the PaintList array. Object 0 cannot be attached
 		to graphics objects, but is accessible otherwise. Objects 0 and 1 are
 		initially opaque black, antialias on, style.FILL, stroke weight 0.0.
-	8.	GR.OPEN adds another Paint the color of the background.
-		GR.CLS reinitializes Paints 0 and 1 but does not add t
+	10.	GR.OPEN adds another Paint the color of the background at index 2.
+		GR.CLS reinitializes Paints 0 and 1 but does not add PaintList[2].
  */
 
 	public class Interpreter extends Thread {
@@ -3247,35 +3254,36 @@ public class Run extends Activity {
 		// The execution of the basic program is done by this background Thread.
 		// This is done to keep the UI responsive.
 
-		// **************************** Variable class ****************************
+		// ******************************* Val class *******************************
+		// An object of this class holds the value of a scalar variable or an array element.
 
-		public abstract class Var {
-			protected static final String WRONG_TYPE = "Wrong type for this Var.";
+		protected abstract class Val {
+			protected static final String WRONG_TYPE = "Wrong type for this variable.";
 
-			public Var(double val) { }
-			public Var(String val) { }
+			protected Val(double val) { }
+			protected Val(String val) { }
 
-			public abstract Var clone();
-			public abstract void clear();
-			public abstract boolean isNumeric();
-			public abstract boolean isString();
-			public abstract void val(double val);
-			public abstract void addval(double val);
-			public abstract void val(String val);
-			public abstract double nval();
-			public abstract String sval();
-		} // class Var
+			protected abstract Val clone();
+			protected abstract void clear();
+			protected abstract boolean isNumeric();
+			protected abstract boolean isString();
+			protected abstract void val(double val);
+			protected abstract void addval(double val);
+			protected abstract void val(String val);
+			protected abstract double nval();
+			protected abstract String sval();
+		} // class Val
 
-		public class NumVar extends Var {
+		public class NumVal extends Val {
 			private double mVal;
 
-			public NumVar() { this(0.0); }
-			public NumVar(double val) {
+			public NumVal() { this(0.0); }
+			public NumVal(double val) {
 				super(val);
 				mVal = val;
 			}
 
-			public Var clone() { return new NumVar(mVal); }
+			public Val clone() { return new NumVal(mVal); }
 			public void clear() { mVal = 0.0; }
 
 			public boolean isNumeric() { return true; }
@@ -3289,18 +3297,18 @@ public class Run extends Activity {
 
 			public double nval() { return mVal; }
 			public String sval() { throw new InvalidParameterException(WRONG_TYPE); }
-		} // class NumVar
+		} // class NumVal
 
-		public class StrVar extends Var {
+		public class StrVal extends Val {
 			private String mVal;
 
-			public StrVar() { this(""); }
-			public StrVar(String val) {
+			public StrVal() { this(""); }
+			public StrVal(String val) {
 				super(val);
 				mVal = val;
 			}
 
-			public Var clone() { return new StrVar(mVal); }
+			public Val clone() { return new StrVal(mVal); }
 			public void clear() { mVal = ""; }
 
 			public boolean isNumeric() { return false; }
@@ -3314,29 +3322,29 @@ public class Run extends Activity {
 
 			public double nval() { throw new InvalidParameterException(WRONG_TYPE); }
 			public String sval() { return mVal; }
-		} // class StrVar
+		} // class StrVal
 
 		// ***************************** ForNext class *****************************
 		// Records information about a For/Next loop. Objects go on the ForNextStack.
 
 		private class ForNext {
 			private int mLine;								// loop return location
-			private Interpreter.Var mVar;					// loop index
+			private Interpreter.Val mVal;					// loop index
 			private double mStep;							// step value
 			private double mLimit;							// limit value
 
 			public ForNext(int line, int varIndex, double step, double limit) {
 				mLine = line;
-				mVar = Vars.get(varIndex);
+				mVal = Vals.get(varIndex);
 				mStep = step;
 				mLimit = limit;
 			}
 
 			public int line() { return mLine; }
 			public boolean doStep() {
-				double idx = mVar.nval();						// get the loop index
+				double idx = mVal.nval();						// get the loop index
 				idx += mStep;									// do the STEP
-				mVar.val(idx);									// update the loop index
+				mVal.val(idx);									// update the loop index
 				return (((mStep > 0) && (idx > mLimit)) ||		// test limit
 						((mStep <= 0) && (idx < mLimit)));		// return true if stepped past limit
 			}
@@ -3362,7 +3370,7 @@ public class Run extends Activity {
 
 		private class FunctionParameter {
 			private final String mName;					// parameter name
-			private final Var mVar;						// parameter type and value
+			private final Val mVal;						// parameter type and value
 			private final boolean mIsArray;
 			private boolean mIsGlobal = false;
 			private int mVarIndex = -1;					// for global and array params
@@ -3370,9 +3378,9 @@ public class Run extends Activity {
 			public FunctionParameter(String name, VarType type, boolean isArray) {
 				mName = name; mIsArray = isArray;
 				switch (type) {
-					case NUM: mVar = new NumVar(); break;
-					case STR: mVar = new StrVar(); break;
-					default: mVar = null; break;
+					case NUM: mVal = new NumVal(); break;
+					case STR: mVal = new StrVal(); break;
+					default: mVal = null; break;
 				}
 			}
 
@@ -3380,7 +3388,7 @@ public class Run extends Activity {
 			public void varIndex(int index) { mVarIndex = index; }
 
 			public String name() { return mName; }
-			public Var var() { return mVar; }
+			public Val val() { return mVal; }			// return value object
 			public boolean isArray() { return mIsArray; }
 			public boolean isGlobal() { return mIsGlobal; }
 			public int varIndex() { return mVarIndex; };
@@ -3417,7 +3425,7 @@ public class Run extends Activity {
 			private int mVSS;									// record VarSearchStart
 			private int mSVN;									// number of variable names
 			private int mSVI;									// number of variable values
-			private int mSV;									// number of variables
+			private int mSVV;									// number of variable values
 			private int mAT;									// number of arrays
 
 			public FunctionDefinition fnDef() { return mFnDef; }
@@ -3431,7 +3439,7 @@ public class Run extends Activity {
 				mVSS = VarSearchStart;
 				mSVN = VarNames.size();
 				mSVI = VarIndex.size();
-				mSV = Vars.size();
+				mSVV = Vals.size();
 				mAT = ArrayTable.size();
 			}
 			public void storeLI() {
@@ -3445,7 +3453,7 @@ public class Run extends Activity {
 				VarSearchStart = mVSS;
 				trimArray(VarNames, mSVN);
 				trimArray(VarIndex, mSVI);
-				trimArray(Vars, mSV);
+				trimArray(Vals, mSVV);
 				trimArray(ArrayTable, mAT);
 			}
 
@@ -3478,22 +3486,22 @@ public class Run extends Activity {
 
 		private ArrayList<String> VarNames;					// Each entry has the variable name string
 		private ArrayList<Integer> VarIndex;				// Each entry is an index into
-															// Vars or
+															// Scalars or
 															// ArrayTable or
 															// FunctionTable
-		private int VarNumber = 0;							// An index for Vars
+		private int VarNumber = 0;							// An index for VarNames and VarIndex
 		private boolean VarIsNew = true;					// Signal from getVar() that this var is new
 		private boolean VarIsNumeric = true;				// if false, var is a string
 		private boolean VarIsInt = false;					// temporary integer status used only by fprint
 		private boolean VarIsArray = false;					// if true, var is an array
-															// if the var is an array, the VarIndex is
+															// if the var is an array, the VarIndex entry is
 															// an index into ArrayTable
 		private boolean VarIsFunction = false;				// Flag set by parseVar() when var is a user function
 		private int VarSearchStart = 0;						// Used to limit search for var names to executing function vars
 		private int interruptVarSearchStart = 0;			// Save VarSearchStart across interrupt
 
 		private int theValueIndex = 0;						// The index into the value table for the current var
-		private String StringConstant = "";						// Storage for a string constant
+		private String StringConstant = "";					// Storage for a string constant
 		private boolean SEisLE = false;						// If a String expression result is a logical expression
 
 		private Double EvalNumericExpressionValue;			// Return value from EvalNumericExprssion()
@@ -3528,7 +3536,7 @@ public class Run extends Activity {
 
 		// ******************************** Read command variables ********************************
 
-		private ArrayList<Var> readData;
+		private ArrayList<Val> readData;
 		private int readNext;
 
 		// ********************************** File I/O variables **********************************
@@ -4015,7 +4023,7 @@ public class Run extends Activity {
 		// end debugger ui vars
 
 		Labels = new HashMap<String, Integer>();		// A list of all labels and associated line numbers
-		Vars = new ArrayList<Var>();					// All the scalar variables
+		Vals = new ArrayList<Val>();					// List of all variable values, both scalars and array elements
 		ArrayTable = new ArrayList<ArrayDescriptor>();	// Each DIMed array has an entry in this table
 		ArrayValueStart = 0;							// Value index for newly created array
 
@@ -4103,7 +4111,7 @@ public class Run extends Activity {
 		theStacksType = new ArrayList<VarType>();
 		theStacksType.add(VarType.NOVAR);
 
-		readData = new ArrayList<Var>();
+		readData = new ArrayList<Val>();
 
 		FileTable = new ArrayList<FileInfo>() ;				// File table list
 
@@ -5296,7 +5304,7 @@ public class Run extends Activity {
 		String var = getVarAndType();
 		if (validArrayVarForRead(var)) { return var; }	// no error, return name, array index is in theValueIndex
 		LineIndex = LI;
-		return null;									// error, theVarIndex is not valid
+		return null;									// error, theValueIndex is not valid
 	}
 
 	private boolean validArrayVarForRead(String var) {
@@ -5416,20 +5424,20 @@ public class Run extends Activity {
 				return GetArrayValue();				// set theValueIndex based upon user's index values
 			}
 		} else if (VarIsNew) {
-			createNewScalar(name);					// create new scalar with real VarIndex, theVarIndex is valid
+			createNewScalar(name);					// create new scalar with real VarIndex, theValueIndex is valid
 		}
 		return true;
 	}
 
 	private void createNewScalar(String name) {		// make a new var table entry and put a scalar in it
-		Var var;
+		Val val;
 		if (!VarIsNumeric) {						// if var is string
-			var = new StrVar();						// new scalar initialized to empty string
+			val = new StrVal();						// new scalar initialized to empty string
 		} else {									// else var is numeric
-			var = new NumVar();						// new scalar initialized to 0.0
+			val = new NumVal();						// new scalar initialized to 0.0
 		}
-		int kk = Vars.size();						// index into the list of scalar variables
-		Vars.add(var);								// add new scalar to list
+		int kk = Vals.size();						// index into the list of variable values
+		Vals.add(val);								// add new value to list
 		createNewVar(name, kk);						// make a new var table entry
 		theValueIndex = kk;
 	}
@@ -5590,18 +5598,18 @@ public class Run extends Activity {
 		}
 
 		if (getNVar()) {										// Try numeric variable
-			Var var = Vars.get(theValueIndex);
-			double value = var.nval();
+			Val val = Vals.get(theValueIndex);
+			double value = val.nval();
 			if (incdec != 0) {
 				value += incdec;								// pre-inc or dec
-				var.val(value);
+				val.val(value);
 			}
 			if (ExecutingLineBuffer.startsWith(OP_INC, LineIndex)) {
-				var.val(value + 1);								// post-increment
+				val.val(value + 1);								// post-increment
 				LineIndex += 2;
 			}
 			else if (ExecutingLineBuffer.startsWith(OP_DEC, LineIndex)) {
-				var.val(value - 1);								// post-decrement
+				val.val(value - 1);								// post-decrement
 				LineIndex += 2;
 			}
 			theValueStack.push(value);							// push the value
@@ -5976,7 +5984,7 @@ public class Run extends Activity {
 				return false;
 			}
 			if (getVarValue(var)) {								// bottom half of getVar()
-				StringConstant = Vars.get(theValueIndex).sval();
+				StringConstant = Vals.get(theValueIndex).sval();
 				return true;
 			}
 		}
@@ -7294,14 +7302,14 @@ public class Run extends Activity {
 		catch (InvalidParameterException ex) { return RunTimeError("DIMs must be >= 1 at"); }
 		int TotalElements = array.length();
 
-		ArrayValueStart = Vars.size();
+		ArrayValueStart = Vals.size();
 		if (IsNumeric) {									// Initialize Numeric Array Values
 			for (int i = 0; i < TotalElements; ++i) {
-				Vars.add(new NumVar());						// Numbers initalized to 0.0
+				Vals.add(new NumVal());						// Numbers initalized to 0.0
 			}
 		} else {											// Initialize String Array Values
 			for (int i = 0; i < TotalElements; ++i) {
-				Vars.add(new StrVar());						// Strings inited to empty
+				Vals.add(new StrVal());						// Strings inited to empty
 			}
 		}
 		array.setArray(ArrayValueStart);
@@ -7323,7 +7331,7 @@ public class Run extends Activity {
 		if (!BuildBasicArray(name, true, length)) return false;			// go build an array of the proper size and type
 		int i = ArrayValueStart;
 		for (Double d : Values) {										// stuff the array
-			Vars.get(i++).val(d);
+			Vals.get(i++).val(d);
 		}
 		return true;
 	}
@@ -7332,12 +7340,14 @@ public class Run extends Activity {
 		if (!BuildBasicArray(name, false, length)) return false;		// go build an array of the proper size and type
 		int i = ArrayValueStart;
 		for (String s : Values) {										// stuff the array
-			Vars.get(i++).val(s);
+			Vals.get(i++).val(s);
 		}
 		return true;
 	}
 
 	private boolean GetArrayValue() {				// Get the value of an array element using its index values
+		ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber)); // Get the descriptor for this array
+
 		ArrayList<Integer> indices = new ArrayList<Integer>();
 		if (!isNext(']')) {								// Parse out the index values for this call
 			int avn = VarNumber;						// preserve the array's VarNumber
@@ -7351,7 +7361,6 @@ public class Run extends Activity {
 			VarIsNumeric = avt;							// and type
 		}
 
-		ArrayDescriptor array = ArrayTable.get(VarIndex.get(VarNumber)); // Get the descriptor for this array
 		ArrayList<Integer> dims = array.dimList();
 		ArrayList<Integer> sizes = array.arraySizes();
 
@@ -7405,12 +7414,12 @@ public class Run extends Activity {
 		return (isBracket);											// must end with ']'
 	}
 
-	private boolean getArraySegment(int arrayTableIndex, Integer[] pair) { // get var base and length of array segment
+	private boolean getArraySegment(int arrayTableIndex, Integer[] pair) { // get val base and length of array segment
 																	// pair in is [start, length], out is [base, length]
 		ArrayDescriptor array = ArrayTable.get(arrayTableIndex);	// get the descriptor for this array
 		if (array == null) { return RunTimeError("Array does not exist"); }
 		int length = array.length();								// get the array length
-		int base = array.base();									// and the start of the array in the variable space
+		int base = array.base();									// and the start of the array in the variable value list
 		int max = base + length;
 
 		if (pair[0] != null) {
@@ -7473,22 +7482,22 @@ public class Run extends Activity {
 		 */
 		boolean islval = (nval == 0.0);						// assignable only if no inc/dec
 
-		if (!getVar()) return false;						// get or create the variable to assign a value to
-		Var var = Vars.get(theValueIndex);					// variable to assign to
+		if (!getVar())					return false;		// get or create the variable to assign a value to
+		Val val = Vals.get(theValueIndex);					// variable's value
 
 		if (VarIsNumeric) {
 			double postincdec = incdec();					// check for post-increment/decrement
 			if (postincdec != 0) { nval += postincdec; islval = false; }
-		} else if (!islval) return false;					// can't inc/dec a string
+		} else if (!islval)				return false;		// can't inc/dec a string
 
 		if (isEOL()) {										// no more to parse, may have created variable
 			if (VarIsNumeric && (nval != 0.0)) {			// pre/post inc/dec of numeric variable
-				var.addval(nval);
+				val.addval(nval);
 			}
 			return true;
 		}
-		else if (!islval) return false;						// can't be label or assignment if already inc/dec
-		else if (isNext(':')) return checkEOL();			// if label, must end line
+		else if (!islval)				return false;		// can't be label or assignment if already inc/dec
+		else if (isNext(':'))			return checkEOL();	// if label, must end line
 
 		// Implementation note: this should probably be put in a Java enum type. (TODO)
 		int op = ASSIGN;
@@ -7496,8 +7505,8 @@ public class Run extends Activity {
 		if (!isNext('=')) {									// require some kind of assignment operator
 			// NOTE: The lvalue before assignment is the ORIGINAL value of the variable,
 			// not the value as modified by and '++' or '--' in the rvalue expression.
-			if (VarIsNumeric) { nval += var.nval(); }
-			else              { sval  = var.sval(); }
+			if (VarIsNumeric) { nval += val.nval(); }
+			else              { sval  = val.sval(); }
 			if (ExecutingLineBuffer.startsWith("+=", LineIndex))			{ op = PLUS; }
 			else if (VarIsNumeric) {
 				if (ExecutingLineBuffer.startsWith("-=", LineIndex))		{ op = MINUS; }
@@ -7506,31 +7515,31 @@ public class Run extends Activity {
 				else if (ExecutingLineBuffer.startsWith("^=", LineIndex))	{ op = EXP; }
 				else if (ExecutingLineBuffer.startsWith("&=", LineIndex))	{ op = AND; }
 				else if (ExecutingLineBuffer.startsWith("|=", LineIndex))	{ op = OR; }
-				else return false;
-			} else return false;
+				else					return false;
+			} else						return false;
 			LineIndex += 2;
 		}
 
-		if (VarIsNumeric) {									// if var is number then
-			if (!evalNumericExpression()) { return false; }	// evaluate following numeric expression
+		if (VarIsNumeric) {									// if variable is numeric then
+			if (!evalNumericExpression()) return false;		// evaluate following numeric expression
 			if (op != ASSIGN) {
-				double val = EvalNumericExpressionValue;
+				double rval = EvalNumericExpressionValue;
 				switch (op) {								// apply the required operation
-					case PLUS:  nval += val; break;
-					case MINUS: nval -= val; break;
-					case MUL:   nval *= val; break;
-					case DIV:   nval /= val; break;
-					case EXP:   nval = Math.pow(nval, val); break;
-					case AND:   nval = ((nval != 0) && (val != 0)) ? 1.0 : 0.0;
-					case OR:    nval = ((nval != 0) || (val != 0)) ? 1.0 : 0.0;
+					case PLUS:  nval += rval; break;
+					case MINUS: nval -= rval; break;
+					case MUL:   nval *= rval; break;
+					case DIV:   nval /= rval; break;
+					case EXP:   nval = Math.pow(nval, rval); break;
+					case AND:   nval = ((nval != 0) && (rval != 0)) ? 1.0 : 0.0;
+					case OR:    nval = ((nval != 0) || (rval != 0)) ? 1.0 : 0.0;
 				}
 				EvalNumericExpressionValue = nval;
 			}
-			var.val(EvalNumericExpressionValue);			// assign result to the numeric var
+			val.val(EvalNumericExpressionValue);			// assign result to the numeric var
 		} else {											// var is string
-			if (!getStringArg()) { return false; }			// evaluate the string expression
+			if (!getStringArg())		return false;		// evaluate the string expression
 			if (op == PLUS) { StringConstant = sval + StringConstant; }
-			var.val(StringConstant);						// assign result to the string var
+			val.val(StringConstant);						// assign result to the string var
 		}
 		return checkEOL();
 	} // executeLET
@@ -7538,7 +7547,7 @@ public class Run extends Activity {
 	private boolean executeDIM() {									// DIM
 																		// Execute a DIM Comman
 		do {									// Multiple Arrays can be DIMed in one DIM statement separated by commas
-			String var = getVarAndType();								// get the array name var
+			String var = getVarAndType();								// get the array variable name
 			if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
 			if (!VarIsNew)						{ return RunTimeError(EXPECT_NEW_ARRAY); }
 			if (isNext(']'))					{ return false; }		// must have dimension(s)
@@ -7879,7 +7888,7 @@ public class Run extends Activity {
 
 		if (!checkEOL()) return false;
 
-		Vars.get(IndexValueIndex).val(fstart);				// assign start <exp> to Var
+		Vals.get(IndexValueIndex).val(fstart);				// assign start <exp> to Var
 		ForNext desc =										// An object to hold values for stack
 				new ForNext(fline, IndexValueIndex, fstep, flimit);
 
@@ -8104,14 +8113,14 @@ public class Run extends Activity {
 		waitForLOCK();										// wait for the user to exit the Dialog
 
 		if (canceledIndex >= 0) {							// use cancel var to report if canceled
-			Vars.get(canceledIndex).val(mInputCancelled ? 1.0 : 0.0);
+			Vals.get(canceledIndex).val(mInputCancelled ? 1.0 : 0.0);
 		}
 		if (mInputCancelled) {
-			Var var = Vars.get(varIndex);
+			Val val = Vals.get(varIndex);
 			if (isNumeric) {								// if canceled, listener did not set value
-				var.val(0.0);
+				val.val(0.0);
 			} else {
-				var.val("");
+				val.val("");
 			}
 
 			if (canceledIndex == -1) {						// no cancel var, report cancel as error
@@ -8150,7 +8159,7 @@ public class Run extends Activity {
 			if (!isNext(',')) return false;					// 2nd comma
 		}
 		if (!getNVar()) return false;						// variable for returned button number
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		for (int i = 0; (i < 3) && isNext(','); ++i) {
 			if (!getStringArg()) return false;
@@ -8173,7 +8182,7 @@ public class Run extends Activity {
 
 		waitForLOCK();										// wait for the user to exit the Dialog
 
-		var.val(mAlertItemID);
+		val.val(mAlertItemID);
 		return true;
 	}
 
@@ -8191,8 +8200,8 @@ public class Run extends Activity {
 
 		waitForLOCK();										// wait for the user to exit the Dialog
 
-		Var var = Vars.get(args.getInt("returnVarIndex"));
-		var.val(mAlertItemID);
+		Val val = Vals.get(args.getInt("returnValIndex"));
+		val.val(mAlertItemID);
 		return true;
 	}
 
@@ -8206,9 +8215,9 @@ public class Run extends Activity {
 	// Called from PreScan() and NOT from statementExecuter().
 	private boolean executeREAD_DATA() {
 		do {													// Sweep up the data values
-			Var v;
+			Val val;
 			if (GetStringConstant()) {							// If it is a string
-				v = new StrVar(StringConstant);					// create a Var object for it
+				val = new StrVal(StringConstant);				// create a Val object for it
 			}
 			else {												// Should be a number
 				double signum = 1.0;							// Assume positive
@@ -8216,13 +8225,13 @@ public class Run extends Activity {
 				else if (isNext('+')) { ; }						// If not negative, eat optional '+'
 
 				if (getNumber()) {								// If it is a number
-					v = new NumVar(signum * GetNumberValue);	// create a Var object for it
+					val = new NumVal(signum * GetNumberValue);	// create a Val object for it
 				}
 				else {											// else is a run time error
 					return RunTimeError("Invalid Data Value");
 				}
 			}
-			readData.add(v);									// Add the bundle to the list
+			readData.add(val);									// Add the bundle to the list
 		} while (isNext(','));									// and do again if more data
 		return true;
 	}
@@ -8233,15 +8242,15 @@ public class Run extends Activity {
 				return RunTimeError("No more data to read");
 			}
 
-			Var v = readData.get(readNext);						// Get the data object
+			Val readval = readData.get(readNext);				// Get the data object
 			++readNext;											// And increment to next object
 
 			if (!getVar()) return false;						// Get the variable
-			Var var = Vars.get(theValueIndex);
+			Val val = Vals.get(theValueIndex);
 			if (VarIsNumeric) {									// If var is numeric
-				var.val(v.nval());								// copy the numeric value to the variable
+				val.val(readval.nval());						// copy the numeric value to the variable
 			} else {											// else var is string
-				var.val(v.sval());								// copy the string value to the variable
+				val.val(readval.sval());						// copy the string value to the variable
 			}
 		} while (isNext(','));									// loop while there are variables
 
@@ -8392,7 +8401,7 @@ public class Run extends Activity {
 				boolean isGlobal = isNext('&');							// optional for scalars, ignored for arrays
 				FunctionParameter parm = parms.get(i);
 				parm.isGlobal(isGlobal);
-				boolean typeIsNumeric = parm.var().isNumeric();
+				boolean typeIsNumeric = parm.val().isNumeric();
 				if (parm.isArray()) {									// if this parm is an array
 					if (getArrayVarForRead() == null) return false;		// get the array name var
 					parm.varIndex(VarIndex.get(VarNumber));				// copy array table pointer
@@ -8413,18 +8422,18 @@ public class Run extends Activity {
 					parm.varIndex(theValueIndex);						// give it the value index of the calling var
 				} // end global
 				else {
-					Var var = parm.var();
+					Val val = parm.val();
 					if (!typeIsNumeric) {								// if parm is string
 						if (!evalStringExpression()) {					// get the string value
 							return RunTimeError("Parameter type mismatch at:");
 						} else {
-							var.val(StringConstant);					// put the value in parm's var
+							val.val(StringConstant);					// put the value in parm's var
 						}
 					} else {
 						if (!evalNumericExpression()) {					// if parm is number get the numeric value
 							return RunTimeError("Parameter type mismatch at:");
 						} else {
-							var.val(EvalNumericExpressionValue);		// put the value in parm's var
+							val.val(EvalNumericExpressionValue);		// put the value in parm's var
 						}
 					}
 				} // end non-global
@@ -8441,10 +8450,10 @@ public class Run extends Activity {
 				int index = newVarIndex(parm.name(), VarNames, sVarNames);
 
 				if (!parm.isArray() && !parm.isGlobal()) {
-					VarIndex.add(index, Vars.size());						// new scalar
-					Vars.add(parm.var().clone());
+					VarIndex.add(index, Vals.size());					// new local scalar
+					Vals.add(parm.val().clone());
 				} else {
-					VarIndex.add(index, parm.varIndex());					// array or global scalar
+					VarIndex.add(index, parm.varIndex());				// array or global scalar
 				}
 				VarNames.add(index, parm.name());
 			}
@@ -8622,7 +8631,7 @@ public class Run extends Activity {
 		}
 		if (!isNext(','))				return false;
 		if (!getNVar())					return false;				// Next parameter is the file number variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		double fileNumber = FileTable.size();
 
 		if (!isNext(','))				return false;
@@ -8673,22 +8682,22 @@ public class Run extends Activity {
 			}
 			FileTable.add(fInfo);
 		}
-		var.val(fileNumber);										// return the file index
+		val.val(fileNumber);										// return the file index
 		return true;												// Done
 	}
 
 	private boolean executeTEXT_READLN(int fileNumber) {			// first parameter: file table index
-		List<Var> varList = new ArrayList<Var>();
+		List<Val> valList = new ArrayList<Val>();
 		while (isNext(',')) {										// list of zero or more
 			if (!getSVar())				return false;				// numeric variable
-			varList.add(Vars.get(theValueIndex));					// to hold the data
+			valList.add(Vals.get(theValueIndex));					// to hold the data
 		}
 		if (!checkEOL())				return false;
 
 		FileInfo fInfo = FileTable.get(fileNumber);
 		if (!checkReadAttributes(fInfo, FileType.FILE_TEXT)) return false;
 
-		int expect = varList.size();
+		int expect = valList.size();
 		int actual = 0;
 		if (!fInfo.isEOF()) {										// if already eof don't read
 			BufferedReader buf = ((TextReaderInfo)fInfo).mTextReader;
@@ -8705,12 +8714,12 @@ public class Run extends Activity {
 			catch (IOException e) { return RunTimeError("I/O error at:"); }
 
 			for (int i = 0; i < actual; ++i) {
-				varList.get(i).val(values[i]);						// give the data to the user
+				valList.get(i).val(values[i]);						// give the data to the user
 			}
 			fInfo.incPosition(actual);								// update position in Bundle
 		}
 		for (int i = actual; i < expect; ++i) {						// if any array space is left
-			varList.get(i).val("EOF");								// fill it with EOF markers
+			valList.get(i).val("EOF");								// fill it with EOF markers
 		}
 		return true;
 	}
@@ -8738,7 +8747,7 @@ public class Run extends Activity {
 
 	private boolean executeTEXT_INPUT() {
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);							// variable to hold the data
+		Val val = Vals.get(theValueIndex);							// variable to hold the data
 
 		TextInputString = "";
 		String title = null;
@@ -8764,13 +8773,13 @@ public class Run extends Activity {
 
 		waitForLOCK();												// Wait for signal from TextInput.java thread
 
-		var.val(TextInputString);
+		val.val(TextInputString);
 		return true;
 	}
 
 	private boolean executeTEXT_POSITION_SET(int fileNumber) {		// first parameter: file table index
 		if (!isNext(','))				return false;
-		if (!evalNumericExpression())	return false;				// second parm is the position var expression
+		if (!evalNumericExpression())	return false;				// second parm is the position expression
 		long pto = EvalNumericExpressionValue.longValue();
 		if (pto < 1) {
 			return RunTimeError("Set position must be >= 1");
@@ -8808,7 +8817,7 @@ public class Run extends Activity {
 
 	private boolean executeTGET() {
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);							// variable to hold the data
+		Val val = Vals.get(theValueIndex);							// variable to hold the data
 
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;
@@ -8844,7 +8853,7 @@ public class Run extends Activity {
 			disableInterrupt(Interrupt.BACK_KEY_BIT);	// menu-selected stop is not trappable
 		} else {
 			PrintShow(Prompt + TextInputString);
-			var.val(TextInputString);
+			val.val(TextInputString);
 		}
 		return true;
 	}
@@ -8884,7 +8893,7 @@ public class Run extends Activity {
 		}
 		if (!isNext(','))				return false;
 		if (!getNVar())					return false;				// Next parameter is the file number variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		double fileNumber = FileTable.size();
 
 		if (!isNext(','))				return false;
@@ -8947,7 +8956,7 @@ public class Run extends Activity {
 			}
 			FileTable.add(fInfo);
 		}
-		var.val(fileNumber);										// return the file index
+		val.val(fileNumber);										// return the file index
 		return true;												// Done
 	}
 
@@ -9008,12 +9017,12 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private FileInfo getByteReadParams(int fileNumber, List<Var> varList) {
+	private FileInfo getByteReadParams(int fileNumber, List<Val> valList) {
 																// return FileInfo or null if error
 																// return list of variables in varList
 		while (isNext(',')) {										// list of zero or more
 			if (!getNVar())				return null;				// numeric variable
-			varList.add(Vars.get(theValueIndex));					// to hold the data
+			valList.add(Vals.get(theValueIndex));					// to hold the data
 		}
 		if (!checkEOL())				return null;
 
@@ -9046,11 +9055,11 @@ public class Run extends Activity {
 	}
 
 	private boolean executeBYTE_READ_BYTE(int fileNumber) {			// first parameter: file table index
-		List<Var> varList = new ArrayList<Var>();
-		FileInfo fInfo = getByteReadParams(fileNumber, varList);	// zero or more variables for data bytes
+		List<Val> valList = new ArrayList<Val>();
+		FileInfo fInfo = getByteReadParams(fileNumber, valList);	// zero or more variables for data bytes
 		if (fInfo == null)				return false;
 
-		int expect = varList.size();
+		int expect = valList.size();
 		int actual = 0;
 		if (!fInfo.isEOF()) {										// if already eof don't read
 			DataInputStream dis = ((ByteReaderInfo)fInfo).getDIS();
@@ -9061,22 +9070,22 @@ public class Run extends Activity {
 			if (actual < expect) { fInfo.eof(true); }				// hit eof, mark fInfo
 
 			for (int i = 0; i < actual; ++i) {
-				varList.get(i).val(values[i]);						// give the data to the user
+				valList.get(i).val(values[i]);						// give the data to the user
 			}
 			fInfo.incPosition(actual);								// update position in fInfo
 		}
 		for (int i = actual; i < expect; ++i) {
-			varList.get(i).val(-1);									// eof markers if needed
+			valList.get(i).val(-1);									// eof markers if needed
 		}
 		return true;
 	}
 
 	private boolean executeBYTE_READ_NUMBER(int fileNumber) {		// first parameter: file table index)
-		List<Var> varList = new ArrayList<Var>();
-		FileInfo fInfo = getByteReadParams(fileNumber, varList);
+		List<Val> valList = new ArrayList<Val>();
+		FileInfo fInfo = getByteReadParams(fileNumber, valList);
 		if (fInfo == null)				return false;
 
-		int expect = varList.size();
+		int expect = valList.size();
 		int actual = 0;
 		if (!fInfo.isEOF()) {										// if already eof don't read
 			DataInputStream dis = ((ByteReaderInfo)fInfo).getDIS();
@@ -9090,12 +9099,12 @@ public class Run extends Activity {
 			catch (IOException e) { return RunTimeError("I/O error at:"); }
 
 			for (int i = 0; i < actual; ++i) {
-				varList.get(i).val(values[i]);						// give the data to the user
+				valList.get(i).val(values[i]);						// give the data to the user
 			}
 			fInfo.incPosition(actual * 8);							// update position in Bundle
 		}
 		for (int i = actual; i < expect; ++i) {						// if any array space is left
-			varList.get(i).val(-1);									// fill it with EOF markers
+			valList.get(i).val(-1);									// fill it with EOF markers
 		}
 		return true;
 	}
@@ -9107,7 +9116,7 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;				// third parm is the return buffer string variable
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		FileInfo fInfo = FileTable.get(fileNumber);
@@ -9133,7 +9142,7 @@ public class Run extends Activity {
 				fInfo.incPosition(actual);							// update position in fInfo
 			}
 		}
-		var.val(buff);												// give the data to the user
+		val.val(buff);												// give the data to the user
 		return true;
 	}
 
@@ -9214,7 +9223,7 @@ public class Run extends Activity {
 
 	private boolean executeBYTE_POSITION_SET(int fileNumber) {		// first parameter: file table index
 		if (!isNext(','))				return false;
-		if (!evalNumericExpression())	return false;				// second parm is the position var expression
+		if (!evalNumericExpression())	return false;				// second parm is the position expression
 		long pto = EvalNumericExpressionValue.longValue();
 		if (pto < 1) {
 			return RunTimeError("Set position must be >= 1");
@@ -9279,27 +9288,27 @@ public class Run extends Activity {
 
 	private boolean executeEOF(int fileNumber, FileType fType) {
 		if (!isNext(',') || !getNVar())		return false;			// Second parm is the logical (numeric) variable
-		Var var = Vars.get(theValueIndex);							// to hold the return value
+		Val val = Vals.get(theValueIndex);							// to hold the return value
 		if (!checkEOL())					return false;
 
 		FileInfo fInfo = FileTable.get(fileNumber);					// Get the file info
 		if (!checkFileType(fInfo, fType))	return false;			// Type TEXT or BYTE as requested?
 
 		boolean eof = fInfo.isClosed() || fInfo.isEOF();			// if closed or eof return true, else false
-		var.val(eof ? 1.0 : 0.0);									// return boolean as numeric
+		val.val(eof ? 1.0 : 0.0);									// return boolean as numeric
 		return true;
 	}
 
 	private boolean executePOSITION_GET(int fileNumber, FileType fType) {
 		if (!isNext(','))					return false;			// Second parm is the position var
 		if (!getNVar())						return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())					return false;
 
 		FileInfo fInfo = FileTable.get(fileNumber);					// Get the file info
 		if (!checkFileType(fInfo, fType))	return false;			// Type TEXT or BYTE as requested?
 
-		var.val(fInfo.position());
+		val.val(fInfo.position());
 		return true;
 	}
 
@@ -9391,7 +9400,7 @@ public class Run extends Activity {
 	private boolean executeDELETE() {
 
 		if (!getNVar())					return false;		// get the var to put the result into
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;		// get the file name
@@ -9402,7 +9411,7 @@ public class Run extends Activity {
 
 		File file = new File(Basic.getDataPath(fileName));
 		double result = file.delete() ? 1 : 0;				// try to delete it
-		var.val(result);
+		val.val(result);
 		return true;
 	}
 
@@ -9412,7 +9421,7 @@ public class Run extends Activity {
 
 	private boolean executeFILE_EXISTS() {
 		if (!getNVar())					return false;		// get the var to put the result into
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;		// get the file name
@@ -9426,7 +9435,7 @@ public class Run extends Activity {
 			File file = new File(Basic.getDataPath(fileName));
 			if (file.exists()) exists = 1.0;				// if file exists, report "true"
 		}
-		var.val(exists);
+		val.val(exists);
 		return true;
 	}
 
@@ -9521,7 +9530,7 @@ public class Run extends Activity {
 
 	private boolean executeFILE_SIZE() {
 		if (!getNVar())					return false;		// get the var to put the size value into
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		long size = -1;
 
 		if (!isNext(','))				return false;
@@ -9545,13 +9554,13 @@ public class Run extends Activity {
 		if (size == -1) {									// not file, resource, or asset
 			return RunTimeError(fileName + " not found");
 		}
-		var.val(size);										// Put the file size into the var
+		val.val(size);										// Put the file size into the var
 		return true;
 	}
 
 	private boolean executeFILE_TYPE() {
 		if (!getSVar())					return false;		// get the var to put the type info into
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;		// get the file name
@@ -9577,18 +9586,18 @@ public class Run extends Activity {
 				}
 			}													// else "x", does not exist
 		}
-		var.val(type);											// put the file type into the var
+		val.val(type);											// put the file type into the var
 		return true;
 	}
 
 	private boolean executeFILE_ROOT() {
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!checkEOL())				return false;
 		if (!checkSDCARD('r'))			return false;
 
-		var.val(Basic.getDataPath(null));						// return canonical path to default data directory
+		val.val(Basic.getDataPath(null));						// return canonical path to default data directory
 		return true;
 	}
 
@@ -9640,7 +9649,7 @@ public class Run extends Activity {
 
 	private boolean executeGRABFILE() {
 		if (!getSVar())					return false;				// First parm is string var
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;				// Second parm is the filename
@@ -9670,13 +9679,13 @@ public class Run extends Activity {
 			if (ioex != null) { return RunTimeError(ioex); }		// Report first exception, if any, and if no previous RTE set
 			if (ex != null) { return RunTimeError(ex); }
 		}
-		var.val(result);
+		val.val(result);
 		return true;
 	}
 
 	private boolean executeGRABURL() {
 		if (!getSVar())					return false;				// First parm is string var
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;				// Second parm is the url
@@ -9714,7 +9723,7 @@ public class Run extends Activity {
 			IOException ex = FileInfo.closeStream(bis, null);		// Close stream if not already closed
 			if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
 		}
-		var.val(result);
+		val.val(result);
 		return true;
 	}
 
@@ -9748,16 +9757,16 @@ public class Run extends Activity {
 		int i = 0;
 		do {													// String vars for time components
 			if (getSVar()) {									// Commas hold places for up to six svars.
-				Vars.get(theValueIndex).val(theTime[i]);		// If svar, use it; if nothing, skip to next comma.
+				Vals.get(theValueIndex).val(theTime[i]);		// If svar, use it; if nothing, skip to next comma.
 			}
 		} while ((++i < 6) && isNext(','));						// Anything else will get caught by checkEOL
 		if (isNext(',') && getNVar()) {							// Another comma holds a place for an optional nvar
 			double weekDay = time.weekDay + 1;					// for day of week: 1 is Sunday
-			Vars.get(theValueIndex).val(weekDay);
+			Vals.get(theValueIndex).val(weekDay);
 		}
 		if (isNext(',') && getNVar()) {							// Another comma holds a place for an optional nvar
 																// For Daylight Saving Time flag
-			Vars.get(theValueIndex).val(Math.signum(time.isDst)); // 1 yes, 0 no, -1 unknown
+			Vals.get(theValueIndex).val(Math.signum(time.isDst)); // 1 yes, 0 no, -1 unknown
 		}
 		return checkEOL();
 	}
@@ -9783,7 +9792,7 @@ public class Run extends Activity {
 		if (zone.equals("")) {
 			zone = Time.getCurrentTimezone();					// If user never set a time zone, use local
 		}
-		Vars.get(theValueIndex).val(zone);
+		Vals.get(theValueIndex).val(zone);
 		return true;
 	}
 
@@ -9852,9 +9861,9 @@ public class Run extends Activity {
 	private boolean executeINKEY() {
 
 		if (!getSVar()) return false;						// get the var to put the key value into
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL()) return false;
-		var.val(InChar.isEmpty() ? "@" : InChar.remove(0));
+		val.val(InChar.isEmpty() ? "@" : InChar.remove(0));
 		return true;
 	}
 
@@ -9892,7 +9901,7 @@ public class Run extends Activity {
 	private boolean parseSelect(Bundle args, ArrayList<String> selectList) {	// get SELECT parameters from program line
 
 		if (!getNVar()) return false;								// get the var to put the key value into
-		int returnVarIndex = theValueIndex;
+		int returnValIndex = theValueIndex;
 		if (!isNext(',')) return false;
 
 		int saveLineIndex = LineIndex;
@@ -9906,7 +9915,7 @@ public class Run extends Activity {
 			int base = array.base();								// and the start of values in the value space
 
 			for (int i = 0; i < length; ++i) {						// Copy the array values into the list
-				selectList.add(Vars.get(base + i).sval());
+				selectList.add(Vals.get(base + i).sval());
 			}
 		} else {
 			LineIndex = saveLineIndex;
@@ -9951,7 +9960,7 @@ public class Run extends Activity {
 
 		args.putString("title", title);
 		args.putString("message", msg);
-		args.putInt("returnVarIndex", returnVarIndex);
+		args.putInt("returnValIndex", returnValIndex);
 		args.putInt("longClickVarIndex", isLongClickValueIndex);
 		return true;
 	}
@@ -9976,13 +9985,13 @@ public class Run extends Activity {
 
 		waitForLOCK();												// Wait for signal from Selected.java thread
 
-		Var var = Vars.get(args.getInt("returnVarIndex"));
-		var.val(SelectedItem);
+		Val val = Vals.get(args.getInt("returnValIndex"));
+		val.val(SelectedItem);
 
 		int isLongClickValueIndex = args.getInt("longClickVarIndex", -1);
 		if (isLongClickValueIndex != -1) {
-			var = Vars.get(isLongClickValueIndex);
-			var.val(SelectLongClick ? 1 : 0);						// Set the LongClick return value
+			val = Vals.get(isLongClickValueIndex);
+			val.val(SelectLongClick ? 1 : 0);						// Set the LongClick return value
 		}
 
 		return true;
@@ -10040,7 +10049,7 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;
 		if (!getSVar())					return false;				// get the string variable to hold the result
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		String args[] = { "", "" };									// optional separator and wrapper
 		if (isNext(',')) {											// any optional args?
@@ -10057,7 +10066,7 @@ public class Run extends Activity {
 		StringBuilder result = new StringBuilder(wrap);				// start with wrapper
 		boolean doSep = false;
 		for (int i = 0; i < length; ++i) {
-			String s = Vars.get(base + i).sval();					// get each array element
+			String s = Vals.get(base + i).sval();					// get each array element
 			if ((s.length() == 0) && !keepAll) continue;			// skip empty strings if told to do so
 
 			if (doSep) { result.append(sep); }						// separator before all but first substring
@@ -10065,7 +10074,7 @@ public class Run extends Activity {
 			doSep = true;
 		}
 		result.append(wrap);										// end with wrapper
-		var.val(result.toString());
+		val.val(result.toString());
 
 		return true;
 	}
@@ -10119,12 +10128,12 @@ public class Run extends Activity {
 
 	private boolean executeKB_SHOWING() {
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		KeyboardManager kb = getKeyboardManager();
 		if (kb == null)					return false;
-		var.val(kb.showing() ? 1.0 : 0.0);
+		val.val(kb.showing() ? 1.0 : 0.0);
 		return true;
 	}
 
@@ -10186,23 +10195,23 @@ public class Run extends Activity {
 		}
 
 		int arg = 0;
-		if (index[arg] >= 0)   { Vars.get(index[arg]).val(wi.getSSID()); }
-		if (index[++arg] >= 0) { Vars.get(index[arg]).val(wi.getBSSID()); }
-		if (index[++arg] >= 0) { Vars.get(index[arg]).val(wi.getMacAddress()); }
+		if (index[arg] >= 0)   { Vals.get(index[arg]).val(wi.getSSID()); }
+		if (index[++arg] >= 0) { Vals.get(index[arg]).val(wi.getBSSID()); }
+		if (index[++arg] >= 0) { Vals.get(index[arg]).val(wi.getMacAddress()); }
 		if (index[++arg] >= 0) {
-			Var var = Vars.get(index[arg]);					// IP address variable
+			Val val = Vals.get(index[arg]);					// IP address variable
 			int ip = wi.getIpAddress();
 			if (type[arg] == 1) {							// IP address variable is numeric
-				var.val(ip);
+				val.val(ip);
 			} else {										// convert to string
 				String ipString = "";
 				byte[] ipbytes = { (byte)(ip), (byte)(ip>>>8), (byte)(ip>>>16), (byte)(ip>>>24) };
 				try { ipString = InetAddress.getByAddress(ipbytes).getHostAddress(); }
 				catch (Exception e) { /* can't happen */ }
-				var.val(ipString);
+				val.val(ipString);
 			}
 		}
-		if (index[++arg] >= 0) { Vars.get(index[arg]).val(wi.getLinkSpeed()); }
+		if (index[++arg] >= 0) { Vals.get(index[arg]).val(wi.getLinkSpeed()); }
 		return (++arg == nArgs);							// sanity-check arg count
 	}
 
@@ -10356,7 +10365,7 @@ public class Run extends Activity {
 
 		long Pattern[] = new long[length];							// Pattern array
 		for (int i = 0; i < length; ++i) {							// Copy user array into pattern
-			Pattern[i] = (long)Vars.get(base + i).nval();
+			Pattern[i] = (long)Vals.get(base + i).nval();
 		}
 
 		try {
@@ -10382,7 +10391,7 @@ public class Run extends Activity {
 
 	private boolean executeDEVICE() {
 		if (!getVar() || !checkEOL()) return false;
-		Var var = Vars.get(theValueIndex);				// variable to hold the returned bundle pointer or string value
+		Val val = Vals.get(theValueIndex);				// variable to hold the returned bundle pointer or string value
 
 		Locale loc = Locale.getDefault();
 		TelephonyManager tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
@@ -10410,7 +10419,7 @@ public class Run extends Activity {
 			for (; i < len; ++i) {
 				b.putString(keys[i], vals[i]);
 			}
-			var.val(bundleIndex);
+			val.val(bundleIndex);
 		} else {													// string format
 			StringBuilder s = new StringBuilder();
 			while (true) {
@@ -10418,7 +10427,7 @@ public class Run extends Activity {
 				if (++i == len) break;
 				s.append('\n');
 			}
-			var.val(s.toString());
+			val.val(s.toString());
 		}
 		return true;
 	}
@@ -10445,7 +10454,7 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);				// variable to hold Result
+		Val val = Vals.get(theValueIndex);				// variable to hold Result
 		if (!checkEOL())				return false;
 
 		List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
@@ -10467,7 +10476,7 @@ public class Run extends Activity {
 			return RunTimeError("!", e);
 		}
 
-		var.val(Result);
+		val.val(Result);
 		return true;
 	}
 
@@ -10484,7 +10493,7 @@ public class Run extends Activity {
 			return RunTimeError(errStr);
 		}
 		if (!getNVar())					return false;				// variable that holds the DB table pointer
-		int i = (int)Vars.get(theValueIndex).nval();
+		int i = (int)Vals.get(theValueIndex).nval();
 		if (i == 0) {												// if pointer is zero
 			return RunTimeError(errStr);							// DB has been closed
 		}
@@ -10507,7 +10516,7 @@ public class Run extends Activity {
 		if (!getNVar())					return false;				// variable that holds the DB table pointer
 		args[1] = theValueIndex;
 
-		int i = (int)Vars.get(theValueIndex).nval();
+		int i = (int)Vals.get(theValueIndex).nval();
 		if (i == 0) {												// if pointer is zero
 			return RunTimeError(errStr);							// DB has been closed
 		}
@@ -10529,7 +10538,7 @@ public class Run extends Activity {
 		if (!getNVar())					return false;				// the DB cursor pointer
 		args[1] = theValueIndex;
 
-		int i = (int)Vars.get(theValueIndex).nval();
+		int i = (int)Vals.get(theValueIndex).nval();
 		if (i == 0) {												// If pointer is zero
 			return RunTimeError("Cursor done at:");					// then cursor is used up
 		}
@@ -10554,7 +10563,7 @@ public class Run extends Activity {
 	private boolean execute_sql_open() {
 
 		if (!getNVar())					return false;			// DB Pointer Variable
-		Var var = Vars.get(theValueIndex);						// for the DB table pointer
+		Val val = Vals.get(theValueIndex);						// for the DB table pointer
 
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;			// Get Data Base Name
@@ -10579,7 +10588,7 @@ public class Run extends Activity {
 		// The newly opened data base is added to the DataBases list.
 		// The list index of the new data base is added returned to the user
 
-		var.val(DataBases.size() + 1);
+		val.val(DataBases.size() + 1);
 		DataBases.add(db);
 		return true;
 	}
@@ -10587,22 +10596,22 @@ public class Run extends Activity {
 	private boolean execute_sql_close() {
 
 		if (!getDbPtrArg())				return false;			// get variable for the DB table pointer
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		int i = (int)var.nval();								// get the pointer
+		int i = (int)val.nval();								// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 		try { db.close(); }										// Try closing it
 		catch (Exception e) { return RunTimeError("SQL Exception:", e); }
 
-		var.val(0.0);											// Set the pointer to 0 to indicate closed.
+		val.val(0.0);											// Set the pointer to 0 to indicate closed.
 		return true;
 	}
 
 	private boolean execute_sql_insert() {
 
 		if (!getDbPtrArg())				return false;			// get variable for the DB table pointer
-		int i = (int)Vars.get(theValueIndex).nval();			// get the pointer
+		int i = (int)Vals.get(theValueIndex).nval();			// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 
 		if (!isNext(','))				return false;
@@ -10624,10 +10633,10 @@ public class Run extends Activity {
 
 		int[] args = new int[2];								// Get the first two args:
 		if (!getVarAndDbPtrArgs(args))	return false;
-		Var cursorVar = Vars.get(args[0]);						// Query Cursor Variable
+		Val cursorVar = Vals.get(args[0]);						// Query Cursor Variable
 		int DbTablePointerIndex = args[1];						// DB table pointer
 
-		int i = (int)Vars.get(DbTablePointerIndex).nval();		// get the pointer
+		int i = (int)Vals.get(DbTablePointerIndex).nval();		// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 
 		if (!isNext(','))				return false;
@@ -10687,8 +10696,8 @@ public class Run extends Activity {
 
 		int[] args = new int[2];								// Get the first two args:
 		if (!getVarAndCursorPtrArgs(args)) return false;
-		Var doneVar = Vars.get(args[0]);						// Done Flag variable
-		Var cursorVar = Vars.get(args[1]);						// DB Cursor pointer variable
+		Val doneVar = Vals.get(args[0]);						// Done Flag variable
+		Val cursorVar = Vals.get(args[1]);						// DB Cursor pointer variable
 
 		doneVar.val(0.0);										// set Not Done
 		int i = (int)cursorVar.nval();							// get the cursor pointer
@@ -10704,7 +10713,7 @@ public class Run extends Activity {
 					return RunTimeError("SQL Exception:", e);
 				}
 				if (result == null) { result = ""; }
-				Vars.get(theValueIndex).val(result);			// set result into var
+				Vals.get(theValueIndex).val(result);			// set result into var
 			}
 			return checkEOL();
 
@@ -10720,8 +10729,8 @@ public class Run extends Activity {
 	private boolean execute_sql_query_length() {				// Report the number of rows in a query result
 		int[] args = new int[2];								// Get the first two args:
 		if (!getVarAndCursorPtrArgs(args)) return false;
-		Var resultVar = Vars.get(args[0]);						// variable for number of rows
-		Var cursorVar = Vars.get(args[1]);						// DB Cursor pointer variable
+		Val resultVar = Vals.get(args[0]);						// variable for number of rows
+		Val cursorVar = Vals.get(args[1]);						// DB Cursor pointer variable
 		if (!checkEOL())				return false;
 
 		int i = (int)cursorVar.nval();							// get the cursor pointer
@@ -10734,8 +10743,8 @@ public class Run extends Activity {
 	private boolean execute_sql_query_position() {				// Report current position in query results
 		int[] args = new int[2];								// Get the first two args:
 		if (!getVarAndCursorPtrArgs(args)) return false;
-		Var resultVar = Vars.get(args[0]);						// variable for position
-		Var cursorVar = Vars.get(args[1]);						// DB Cursor pointer variable
+		Val resultVar = Vals.get(args[0]);						// variable for position
+		Val cursorVar = Vals.get(args[1]);						// DB Cursor pointer variable
 		if (!checkEOL())				return false;
 
 		int i = (int)cursorVar.nval();							// get the cursor pointer
@@ -10748,21 +10757,21 @@ public class Run extends Activity {
 	private boolean execute_sql_delete() {
 
 		if (!getDbPtrArg())				return false;			// get variable for the DB table pointer
-		int i = (int)Vars.get(theValueIndex).nval();			// get the pointer
+		int i = (int)Vals.get(theValueIndex).nval();			// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 
 		if (!isNext(','))				return false;
 		if (!getStringArg())			return false;			// Table Name
 		String TableName = StringConstant;
 
-		Var resultVar = null;
+		Val resultVar = null;
 		String Where = null;									// if no Where given, set null
 		if (isNext(',')) {										// if no comma, then no optional Where
 			if (!getStringArg())		return false;			// Where Value
 			Where = StringConstant;
 			if (isNext(',')) {									// if there's a where
 				if (!getNVar())			return false;			// there can be a return value
-				resultVar = Vars.get(theValueIndex);
+				resultVar = Vals.get(theValueIndex);
 			}
 		}
 		if (!checkEOL())				return false;
@@ -10783,7 +10792,7 @@ public class Run extends Activity {
 	private boolean execute_sql_update() {
 
 		if (!getDbPtrArg())				return false;			// get variable for the DB table pointer
-		int i = (int)Vars.get(theValueIndex).nval();			// get the pointer
+		int i = (int)Vals.get(theValueIndex).nval();			// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 
 		if (!isNext(','))				return false;
@@ -10807,7 +10816,7 @@ public class Run extends Activity {
 
 	private boolean execute_sql_exec() {
 		if (!getDbPtrArg())				return false;			// get variable for the DB table pointer
-		int i = (int)Vars.get(theValueIndex).nval();			// get the pointer
+		int i = (int)Vals.get(theValueIndex).nval();			// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 
 		if (!isNext(','))				return false;
@@ -10824,10 +10833,10 @@ public class Run extends Activity {
 
 		int[] args = new int[2];								// Get the first two args:
 		if (!getVarAndDbPtrArgs(args))	return false;
-		Var cursorVar = Vars.get(args[0]);						// Query Cursor Variable
+		Val cursorVar = Vals.get(args[0]);						// Query Cursor Variable
 		int DbTablePointerIndex = args[1];						// DB table pointer
 
-		int i = (int)Vars.get(DbTablePointerIndex).nval();		// get the pointer
+		int i = (int)Vals.get(DbTablePointerIndex).nval();		// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 
 		if (!isNext(','))				return false;
@@ -10850,7 +10859,7 @@ public class Run extends Activity {
 	private boolean execute_sql_drop_table() {
 
 		if (!getDbPtrArg())				return false;			// get variable for the DB table pointer
-		int i = (int)Vars.get(theValueIndex).nval();			// get the pointer
+		int i = (int)Vals.get(theValueIndex).nval();			// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 
 		if (!isNext(','))				return false;
@@ -10868,7 +10877,7 @@ public class Run extends Activity {
 	private boolean execute_sql_new_table() {
 
 		if (!getDbPtrArg())				return false;			// get variable for the DB table pointer
-		int i = (int)Vars.get(theValueIndex).nval();			// get the pointer
+		int i = (int)Vals.get(theValueIndex).nval();			// get the pointer
 		SQLiteDatabase db = DataBases.get(i - 1);				// get the data base
 
 		if (!isNext(','))				return false;
@@ -11054,7 +11063,7 @@ public class Run extends Activity {
 
 		if (!BuildBasicArray(vName, true, count)) return false;		// build the array
 		for (int i = 0, j = ArrayValueStart; i < count; ++i, ++j) {	// stuff the array
-			Vars.get(j).val(list[i]);								// count may be < list.length
+			Vals.get(j).val(list[i]);								// count may be < list.length
 		}
 		return true;
 	}
@@ -11078,7 +11087,7 @@ public class Run extends Activity {
 
 		synchronized (DisplayList) {
 			for (int i = 0; i < length; ++i) {						// Copy the object pointers
-				int id = (int)Vars.get(base + i).nval();
+				int id = (int)Vals.get(base + i).nval();
 				if (id < 0 || id >= DisplayList.size()) {
 					return RunTimeError("Invalid Object Number");
 				}
@@ -11148,7 +11157,7 @@ public class Run extends Activity {
 	private boolean execute_gr_paint_get() {						// get the index of the current (latest) Paint
 		if (!getNVar()) return false;
 		if (!checkEOL()) return false;
-		Vars.get(theValueIndex).val(PaintList.size() - 1);
+		Vals.get(theValueIndex).val(PaintList.size() - 1);
 		return true;
 	}
 
@@ -11325,17 +11334,17 @@ public class Run extends Activity {
 	}
 
 	// Common processing for the end of a command that creates a graphical object.
-	private boolean createGrObj_finish(GR.BDraw b, int varIndex) {
+	private boolean createGrObj_finish(GR.BDraw b, int valIndex) {
 		if (!checkEOL()) return false;
 		synchronized (DisplayList) {
-			Vars.get(varIndex).val(DisplayList.size());				// save the object index into the var
+			Vals.get(valIndex).val(DisplayList.size());				// save the object index into the var
 			DisplayListAdd(b);										// add the object to the Display List
 		}
 		return true;
 	}
 
 	// Common processing for the end of a command that creates a bitmap.
-	private boolean createBitmap_finish(Bitmap bitmap, Var var, String errMsg) {
+	private boolean createBitmap_finish(Bitmap bitmap, Val val, String errMsg) {
 		int value;
 		if (bitmap != null) {
 			value = BitmapList.size();								// save the bitmap index
@@ -11344,7 +11353,7 @@ public class Run extends Activity {
 			value = -1;
 			writeErrorMsg((errMsg != null) ? errMsg : "Failed to create bitmap");
 		}
-		if (var != null) { var.val(value); }						// give the bitmap pointer to the user
+		if (val != null) { val.val(value); }						// give the bitmap pointer to the user
 		return true;
 	}
 
@@ -11714,9 +11723,9 @@ public class Run extends Activity {
 		int obj = getObjectNumber();
 		if (obj < 0) return false;
 		if (!isNext(',') || !getNVar()) return false;
-		Var xVar = Vars.get(theValueIndex);
+		Val xVar = Vals.get(theValueIndex);
 		if (!isNext(',') || !getNVar()) return false;
-		Var yVar = Vars.get(theValueIndex);
+		Val yVar = Vals.get(theValueIndex);
 		if (!checkEOL()) return false;
 
 		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
@@ -11739,13 +11748,13 @@ public class Run extends Activity {
 			if (VarIsNumeric == parm.equals("text")) {					// error if numeric var and "text" tag
 				return RunTimeError("Wrong var type for tag: " + parm);	// or string var and not "text" tag
 			}
-			Var var = Vars.get(theValueIndex);
+			Val val = Vals.get(theValueIndex);
 			if (VarIsNumeric) {
 				double value = b.getValue(parm);
-				var.val(value);
+				val.val(value);
 			} else {
 				String theText = b.text();
-				var.val(theText);
+				val.val(theText);
 			}
 		}
 		return checkEOL();
@@ -11755,11 +11764,11 @@ public class Run extends Activity {
 		int obj = getObjectNumber();
 		if (obj < 0) return false;
 		if (!isNext(',') || !getVar() || !checkEOL()) return false;	// var for type string
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
 		GR.Type type = b.type();
-		var.val(type.type());
+		val.val(type.type());
 		return true;
 	}
 
@@ -11782,15 +11791,15 @@ public class Run extends Activity {
 
 	private boolean execute_gr_touch(int p) {
 		if (!getNVar()) return false;								// boolean variable
-		Var flagVar = Vars.get(theValueIndex);
+		Val flagVar = Vals.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		if (!getNVar()) return false;								// x variable
-		Var xVar = Vars.get(theValueIndex);
+		Val xVar = Vals.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		if (!getNVar()) return false;								// y variable
-		Var yVar = Vars.get(theValueIndex);
+		Val yVar = Vals.get(theValueIndex);
 		if (!checkEOL()) return false;
 
 		flagVar.val(NewTouch[p] ? 1.0 : 0.0);						// return touched flag as numerical value
@@ -11803,7 +11812,7 @@ public class Run extends Activity {
 
 	private boolean execute_gr_bound_touch(int p) {
 		if (!getNVar()) return false;								// boolean variable
-		Var flagVar = Vars.get(theValueIndex);
+		Val flagVar = Vals.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		int[] bounds = getArgs4I();									// [left, top, right, bottom]
@@ -11993,10 +12002,10 @@ public class Run extends Activity {
 		Rect bounds = new Rect();
 		paint.getTextBounds(text, 0, text.length(), bounds);
 
-		Vars.get(ind[0]).val(bounds.left);
-		Vars.get(ind[1]).val(bounds.top);
-		Vars.get(ind[2]).val(bounds.right);
-		Vars.get(ind[3]).val(bounds.bottom);
+		Vals.get(ind[0]).val(bounds.left);
+		Vals.get(ind[1]).val(bounds.top);
+		Vals.get(ind[2]).val(bounds.right);
+		Vals.get(ind[3]).val(bounds.bottom);
 
 		return true;
 	}
@@ -12018,14 +12027,14 @@ public class Run extends Activity {
 
 		float[] vals = { height, ascent, descent };
 		for (int arg = 0; arg < nArgs; ++arg) {
-			if (index[arg] >= 0) { Vars.get(index[arg]).val(vals[arg]); }
+			if (index[arg] >= 0) { Vals.get(index[arg]).val(vals[arg]); }
 		}
 		return true;
 	}
 
 	private boolean execute_gr_text_width() {
 		if (!getNVar()) return false;								// width return variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		Paint paint;
@@ -12045,14 +12054,14 @@ public class Run extends Activity {
 		if (!checkEOL()) return false;
 
 		double w = paint.measureText(text);							// get the string's width
-		var.val(w);													// save the width into the var
+		val.val(w);													// save the width into the var
 
 		return true;
 	}
 
 	private boolean execute_gr_bitmap_load() {
 		if (!getNVar()) return false;								// bitmap pointer variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		if (!getStringArg()) return false;							// get the file path
@@ -12075,7 +12084,7 @@ public class Run extends Activity {
 				catch (IOException e) { return RunTimeError(e); }
 			}
 		}
-		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
+		return createBitmap_finish(bitmap, val, errMsg);			// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_bitmap_delete() {
@@ -12094,7 +12103,7 @@ public class Run extends Activity {
 	private boolean execute_gr_bitmap_scale() {
 
 		if (!getNVar()) return false;								// destination bitmap pointer variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		int bitmapPtr = getBitmapArg();								// get source bitmap number
@@ -12132,7 +12141,7 @@ public class Run extends Activity {
 			// Scale 1:1 does not create a new bitmap. Make a copy.
 			bitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
 		}
-		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
+		return createBitmap_finish(bitmap, val, errMsg);			// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_bitmap_size() {
@@ -12143,11 +12152,11 @@ public class Run extends Activity {
 
 		if (!isNext(',')) return false;
 		if (!getNVar()) return false;								// get the width variable
-		Var wVar = Vars.get(theValueIndex);
+		Val wVar = Vals.get(theValueIndex);
 
 		if (!isNext(',')) return false;
 		if (!getNVar()) return false;								// get the height variable
-		Var hVar = Vars.get(theValueIndex);
+		Val hVar = Vals.get(theValueIndex);
 		if (!checkEOL()) return false;
 
 		int w = srcBitmap.getWidth();								// get the image width
@@ -12160,7 +12169,7 @@ public class Run extends Activity {
 
 	private boolean execute_gr_bitmap_crop() {
 		if (!getNVar()) return false;								// dest Graphic Object variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		int bitmapPtr = getBitmapArg("Invalid Source Bitmap Pointer");	// get source bitmap number
@@ -12185,7 +12194,7 @@ public class Run extends Activity {
 			// "Crop" to full image does not create a new bitmap. Make a copy.
 			bitmap = srcBitmap.copy(srcBitmap.getConfig(), false);
 		}
-		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
+		return createBitmap_finish(bitmap, val, errMsg);			// store the bitmap and return its index
 	}
 
 	private void fillscan(int[] arrPixels, int color, int sx, int ex, int y, int width, Stack<Point> q) {
@@ -12284,7 +12293,7 @@ public class Run extends Activity {
 
 	private boolean execute_gr_bitmap_create() {
 		if (!getNVar()) return false;								// get bitmap pointer variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!isNext(',')) return false;
 
 		if (!evalNumericExpression()) return false;					// get the width
@@ -12306,7 +12315,7 @@ public class Run extends Activity {
 		try { bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); }
 		catch (OutOfMemoryError oom) { errMsg = oom.getMessage(); }
 
-		return createBitmap_finish(bitmap, var, errMsg);			// store the bitmap and return its index
+		return createBitmap_finish(bitmap, val, errMsg);			// store the bitmap and return its index
 	}
 
 	private boolean execute_gr_rotate_start() {
@@ -12320,14 +12329,14 @@ public class Run extends Activity {
 		if (xy == null) return false;
 		b.xy(xy);
 
-		Var var = null;
+		Val val = null;
 		if (isNext(',')) {											// optional graphic object pointer variable
 			if (!getNVar()) return false;
-			var = Vars.get(theValueIndex);
+			val = Vals.get(theValueIndex);
 		}
 		if (!checkEOL()) return false;
 
-		if (var != null) { var.val(DisplayList.size()); }			// save the object number into the var
+		if (val != null) { val.val(DisplayList.size()); }			// save the object number into the var
 		DisplayListAdd(b);											// put the new object into the display list
 		return true;
 	}
@@ -12335,14 +12344,14 @@ public class Run extends Activity {
 	private boolean execute_gr_rotate_end() {
 		GR.BDraw b = new GR.BDraw(GR.Type.RotateEnd);				// create a new object of type Rotate End
 
-		Var var = null;
+		Val val = null;
 		if (!isEOL()) {
 			if (!getNVar()) return false;
-			var = Vars.get(theValueIndex);
+			val = Vals.get(theValueIndex);
 			if (!checkEOL()) return false;
 		}
 
-		if (var != null) { var.val(DisplayList.size()); }			// save the object number into the var
+		if (val != null) { val.val(DisplayList.size()); }			// save the object number into the var
 		DisplayListAdd(b);											// add the object to the display list
 		return true;
 	}
@@ -12450,16 +12459,16 @@ public class Run extends Activity {
 
 	private boolean execute_gr_screen() {
 		if (!getNVar()) return false;								// width variable
-		Var wVar = Vars.get(theValueIndex);
+		Val wVar = Vals.get(theValueIndex);
 
 		if (!isNext(',')) return false;
 		if (!getNVar()) return false;								// height variable
-		Var hVar = Vars.get(theValueIndex);
+		Val hVar = Vals.get(theValueIndex);
 
-		Var dVar = null;
+		Val dVar = null;
 		if (isNext(',')) {
 			if (!getNVar()) return false;							// optional density variable
-			dVar = Vars.get(theValueIndex);
+			dVar = Vals.get(theValueIndex);
 		}
 		if (!checkEOL()) return false;
 
@@ -12473,17 +12482,17 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_gr_statusbar() {
-		Var heightVar = null;
-		Var showingVar = null;
+		Val heightVar = null;
+		Val showingVar = null;
 		boolean isComma = isNext(',');
 		if (!isComma) {
 			if (!getNVar()) return false;							// height variable
-			heightVar = Vars.get(theValueIndex);
+			heightVar = Vals.get(theValueIndex);
 			isComma = isNext(',');
 		}
 		if (isComma) {
 			if (!getNVar()) return false;							// showing variable
-			showingVar = Vars.get(theValueIndex);
+			showingVar = Vals.get(theValueIndex);
 		}
 		if (!checkEOL()) return false;
 
@@ -12597,10 +12606,10 @@ public class Run extends Activity {
 
 		int pixel = b.getPixel(xy[0], xy[1]);						// get the pixel from the bitmap
 
-		Vars.get(argb[0]).val(Color.alpha(pixel));					// get the components of the pixel
-		Vars.get(argb[1]).val(Color.red(pixel));
-		Vars.get(argb[2]).val(Color.green(pixel));
-		Vars.get(argb[3]).val(Color.blue(pixel));
+		Vals.get(argb[0]).val(Color.alpha(pixel));					// get the components of the pixel
+		Vals.get(argb[1]).val(Color.red(pixel));
+		Vals.get(argb[2]).val(Color.green(pixel));
+		Vals.get(argb[3]).val(Color.blue(pixel));
 
 		return true;
 	}
@@ -12665,7 +12674,7 @@ public class Run extends Activity {
 
 	private boolean execute_screen_to_bitmap() {
 		if (!getNVar()) return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL()) return false;
 
 		String errMsg = null;
@@ -12677,7 +12686,7 @@ public class Run extends Activity {
 			catch (Exception e) { errMsg = e.getMessage(); }
 			catch (OutOfMemoryError oom) { errMsg = oom.getMessage(); }
 		}
-		createBitmap_finish(b, var, errMsg);						// store the bitmap and return its index
+		createBitmap_finish(b, val, errMsg);						// store the bitmap and return its index
 		GR.drawView.destroyDrawingCache();							// clean up DrawingCache
 		return true;
 	}
@@ -12841,7 +12850,7 @@ public class Run extends Activity {
 		int flashMode = 0;
 		int focusMode = 0;
 		if (!getNVar()) return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (isNext(',')) {
 			if (!evalNumericExpression()) { return false; }
@@ -12873,7 +12882,7 @@ public class Run extends Activity {
 			bitmapIndex = BitmapList.size();
 			BitmapList.add(CameraBitmap);
 		}
-		var.val(bitmapIndex);											// Save the GR Object index into the var
+		val.val(bitmapIndex);											// Save the GR Object index into the var
 
 		CameraBitmap = null;
 		return true;
@@ -13077,7 +13086,7 @@ public class Run extends Activity {
 //		AudioManager audioSM = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
 
 		if (!getNVar())					return false;		// get the Player Number variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!isNext(','))				return false;
 
 		if (!getStringArg())			return false;		// get the file path
@@ -13087,12 +13096,12 @@ public class Run extends Activity {
 		MediaPlayer aMP = getMP(fileName);
 
 		if (aMP == null) {
-			var.val(0);										// indicate error with 0 in Player Number var
+			val.val(0);										// indicate error with 0 in Player Number var
 		} else {
 			aMP.setAudioStreamType(AudioManager.STREAM_MUSIC);
 			setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-			var.val(theMPList.size());						// indicate success with list index in Player Number var
+			val.val(theMPList.size());						// indicate success with list index in Player Number var
 			theMPList.add(aMP);
 			theMPNameList.add(fileName);
 		}
@@ -13166,11 +13175,11 @@ public class Run extends Activity {
 
 	private boolean execute_audio_isdone() {
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		if (theMP == null) { PlayIsDone = true; }
-		var.val((PlayIsDone) ? 1 : 0);
+		val.val((PlayIsDone) ? 1 : 0);
 
 		return true;
 	}
@@ -13232,10 +13241,10 @@ public class Run extends Activity {
 			return RunTimeError("Audio not playing at:");
 		}
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		var.val(theMP.getCurrentPosition());
+		val.val(theMP.getCurrentPosition());
 		return true;
 	}
 
@@ -13253,7 +13262,7 @@ public class Run extends Activity {
 
 	private boolean execute_audio_length() {
 		if (!getNVar())					return false;				// Get the Player Number Var
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!isNext(','))				return false;
 		if (!evalNumericExpression())	return false;
@@ -13266,7 +13275,7 @@ public class Run extends Activity {
 			return RunTimeError("Audio not loaded at:");
 		}
 
-		var.val(aMP.getDuration());
+		val.val(aMP.getDuration());
 		return true;
 	}
 
@@ -13390,17 +13399,17 @@ public class Run extends Activity {
 			return RunTimeError("Sensor type not 0 to " + SensorActivity.MaxSensors);
 		}
 
-		Var[] var = new Var[4];									// 4 because that's what SensorActivity returns
+		Val[] val = new Val[4];									// 4 because that's what SensorActivity returns
 		for (int i = 1; i < 4; ++i) {
 			if (!isNext(','))			return false;
 			if (!getNVar())				return false;			// Sensor Variable
-			var[i] = Vars.get(theValueIndex);
+			val[i] = Vals.get(theValueIndex);
 		}
 		if (!checkEOL())				return false;
 
 		double[] SensorValues = theSensors.getValues(type);
 		for (int i = 1; i < 4; ++i) {
-			var[i].val(SensorValues[i]);
+			val[i].val(SensorValues[i]);
 		}
 		return true;
 	}
@@ -13442,15 +13451,15 @@ public class Run extends Activity {
 		final float rad2deg = (float)(180.0f/Math.PI);
 
 		if (!getNVar()) return false;
-		Vars.get(theValueIndex).val(mOrientation[0]);
+		Vals.get(theValueIndex).val(mOrientation[0]);
 		if (!isNext(',')) return false;
 
 		if (!getNVar()) return false;
-		Vars.get(theValueIndex).val(mOrientation[1]);
+		Vals.get(theValueIndex).val(mOrientation[1]);
 		if (!isNext(',')) return false;
 
 		if (!getNVar()) return false;
-		Vars.get(theValueIndex).val(mOrientation[2]);
+		Vals.get(theValueIndex).val(mOrientation[2]);
 		if (!checkEOL()) return false;
 
 		return true;
@@ -13478,7 +13487,7 @@ public class Run extends Activity {
 	}
 
 	public boolean execute_gps_open() {
-		Var statusVar = null;
+		Val statusVar = null;
 		double errorCode = 1.0;
 		long minTime = 0l;
 		float minDistance = 0.0f;
@@ -13486,7 +13495,7 @@ public class Run extends Activity {
 		boolean isComma = isNext(',');
 		if (!isComma && !isEOL()) {							// there is a status var
 			if (!getNVar())				return false;
-			statusVar = Vars.get(theValueIndex);
+			statusVar = Vals.get(theValueIndex);
 			isComma = isNext(',');
 		}
 		if (isComma) {
@@ -13530,7 +13539,7 @@ public class Run extends Activity {
 		if (!getNVar())					return false;		// Variable for returned value
 		if (!checkEOL())				return false;
 		double value = theGPS.getNumericValue(type);
-		Vars.get(theValueIndex).val(value);					// Set value into variable
+		Vals.get(theValueIndex).val(value);					// Set value into variable
 		return true;
 	}
 
@@ -13538,20 +13547,20 @@ public class Run extends Activity {
 		if (!getSVar())					return false;
 		if (!checkEOL())				return false;
 		String value = theGPS.getStringValue(type);
-		Vars.get(theValueIndex).val((value == null) ? "" : value);
+		Vals.get(theValueIndex).val((value == null) ? "" : value);
 		return true;
 	}
 
 	private boolean execute_gps_satellites() {
 		if (isEOL())					return true;		// user asked for no data
 
-		Var satCountVar = null;
+		Val satCountVar = null;
 		ArrayList<Object> sats = null;						// list of satellite bundles
 
 		boolean isComma = isNext(',');
 		if (!isComma) {
 			if (!getNVar())				return false;		// variable for returned satellite count value
-			satCountVar = Vars.get(theValueIndex);
+			satCountVar = Vals.get(theValueIndex);
 			isComma = isNext(',');
 		}
 		if (isComma) {
@@ -13587,11 +13596,11 @@ public class Run extends Activity {
 		for (int arg = 0; arg < nArgs; ++arg) {
 			int varIndex = index[arg];
 			if (varIndex >= 0) {
-				Var var = Vars.get(index[arg]);
+				Val val = Vals.get(index[arg]);
 				if (type[arg] == 1) {							// if numeric type
-					var.val(theGPS.getNumericValue(data[arg]));
+					val.val(theGPS.getNumericValue(data[arg]));
 				} else {										// else string type
-					var.val(theGPS.getStringValue(data[arg]));
+					val.val(theGPS.getStringValue(data[arg]));
 				}
 			}
 		}
@@ -13603,24 +13612,24 @@ public class Run extends Activity {
 
 		// returns status, count of satellites in fix, count of satellites in view,
 		// and list of satellite bundles
-		Var statusVar = null;
+		Val statusVar = null;
 		boolean statusIsNumeric = true;
-		Var inFixVar = null;
-		Var inViewVar = null;
+		Val inFixVar = null;
+		Val inViewVar = null;
 		ArrayList<Object> sats = null;						// list of satellite bundles
 
 		boolean isComma = isNext(',');
 		if (!isComma) {
 			if (!getVar())				return false;		// status variable
 			statusIsNumeric = VarIsNumeric;					// may be either numeric or string
-			statusVar = Vars.get(theValueIndex);
+			statusVar = Vals.get(theValueIndex);
 			isComma = isNext(',');
 		}
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
 				if (!getNVar())			return false;		// inFix variable, numeric
-				inFixVar = Vars.get(theValueIndex);
+				inFixVar = Vals.get(theValueIndex);
 				isComma = isNext(',');
 			}
 		}
@@ -13628,7 +13637,7 @@ public class Run extends Activity {
 			isComma = isNext(',');
 			if (!isComma) {
 				if (!getNVar())			return false;		// inView variable, numeric
-				inViewVar = Vars.get(theValueIndex);
+				inViewVar = Vals.get(theValueIndex);
 				isComma = isNext(',');
 			}
 		}
@@ -13744,7 +13753,7 @@ public class Run extends Activity {
 	private boolean execute_array_length() {
 
 		if (!getNVar())					return false;				// Length Variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!isNext(','))				return false;
 		if (getArrayVarForRead() == null) return false;				// Get the array variable
@@ -13757,7 +13766,7 @@ public class Run extends Activity {
 		if (!getArraySegment(arrayTableIndex, p)) return false;		// Get array base and length
 		int length = p[1].intValue();
 
-		var.val(length);											// Set the length into the var value
+		val.val(length);											// Set the length into the var value
 
 		return true;
 	}
@@ -13834,7 +13843,7 @@ public class Run extends Activity {
 			ArrayList <Double> Values = new ArrayList<Double>();	// Create a list to copy array values into
 
 			for (int i = 0; i < length; ++i) {						// Copy the array values into that list
-				Values.add(Vars.get(base + i).nval());
+				Values.add(Vals.get(base + i).nval());
 			}
 			switch (op) {											// Execute the command specific procedure
 				case DoReverse:		Collections.reverse(Values);	break;
@@ -13842,13 +13851,13 @@ public class Run extends Activity {
 				case DoShuffle:		Collections.shuffle(Values);	break;
 			}
 			for (int i = 0; i < length; ++i) {						// Copy the results back to the array
-				Vars.get(base + i).val(Values.get(i));
+				Vals.get(base + i).val(Values.get(i));
 			}
 
 		} else {													// Do the same stuff for a string array
 			ArrayList<String> Values = new ArrayList<String>();
 			for (int i = 0; i < length; ++i) {
-				Values.add(Vars.get(base + i).sval());
+				Values.add(Vals.get(base + i).sval());
 			}
 			switch (op) {											// Execute the command specific procedure
 				case DoReverse:		Collections.reverse(Values);	break;
@@ -13856,7 +13865,7 @@ public class Run extends Activity {
 				case DoShuffle:		Collections.shuffle(Values);	break;
 			}
 			for (int i = 0; i < length; ++i) {
-				Vars.get(base + i).val(Values.get(i));
+				Vals.get(base + i).val(Values.get(i));
 			}
 		}
 
@@ -13866,7 +13875,7 @@ public class Run extends Activity {
 	private boolean execute_array_sum(ArrayMathOps op) {
 
 		if (!getNVar())					return false;				// The value return variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (!isNext(','))				return false;
 		if (getArrayVarForRead() == null) return false;				// Get the array variable
@@ -13882,11 +13891,11 @@ public class Run extends Activity {
 		int length = p[1].intValue();
 
 		double Sum = 0;
-		double Min = Vars.get(base).nval();
+		double Min = Vals.get(base).nval();
 		double Max = Min;
 
 		for (int i = 0; i < length; ++i) {							// Loop through the array values
-			double d = Vars.get(base + i).nval();					// Pick up the elements value
+			double d = Vals.get(base + i).nval();					// Pick up the elements value
 			Sum += d;												// build the Sum
 			if (d < Min) { Min = d; }								// find the minimum value
 			if (d > Max) { Max = d; }								// and the maxium value
@@ -13894,24 +13903,24 @@ public class Run extends Activity {
 		double Average = Sum / length;								// Calculate the average
 
 		switch (op) {												// Set the return value according to the command
-			case DoAverage:	var.val(Average);	break;
-			case DoSum:		var.val(Sum);		break;
-			case DoMax:		var.val(Max);		break;
-			case DoMin:		var.val(Min);		break;
+			case DoAverage:	val.val(Average);	break;
+			case DoSum:		val.val(Sum);		break;
+			case DoMax:		val.val(Max);		break;
+			case DoMin:		val.val(Min);		break;
 			case DoVariance:
 			case DoStdDev:
 				double T = 0;
 				double W = 0;
 				for (int i = 0; i < length; ++i) {
-					double d = Vars.get(base + i).nval();			// Pick up the elements value
+					double d = Vals.get(base + i).nval();			// Pick up the elements value
 					W = d - Average;
 					T = T + W*W;
 				}
 				double variance = T/(length-1);
 				if (op == ArrayMathOps.DoVariance) {
-					var.val(variance);
+					val.val(variance);
 				} else {											// DoStdDev
-					var.val(Math.sqrt(variance));
+					val.val(Math.sqrt(variance));
 				}
 				break;
 		}
@@ -13986,11 +13995,11 @@ public class Run extends Activity {
 
 		if (SourceArrayNumeric) {									// Do numeric array
 			for (int i = 0; i < SourceLength; ++i) {				// Copy the source array values
-				Vars.get(destStart++).val(Vars.get(SourceBase + i).nval());
+				Vals.get(destStart++).val(Vals.get(SourceBase + i).nval());
 			}
 		} else {													// Do String array
 			for (int i = 0; i < SourceLength; ++i) {				// Copy the source array values
-				Vars.get(destStart++).val(Vars.get(SourceBase + i).sval());
+				Vals.get(destStart++).val(Vals.get(SourceBase + i).sval());
 			}
 		}
 		return true;
@@ -14010,7 +14019,7 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;				// move to the value
 
-		Var var = null;
+		Val val = null;
 		int start = 0;
 		int found = -1;
 
@@ -14020,7 +14029,7 @@ public class Run extends Activity {
 
 			if (!isNext(','))			return false;				// move to the result var
 			if (!getNVar())				return false;
-			var = Vars.get(theValueIndex);
+			val = Vals.get(theValueIndex);
 
 			if (isNext(',')) {										// move to the start index
 				if (!evalNumericExpression()) return false;
@@ -14030,7 +14039,7 @@ public class Run extends Activity {
 			if (!checkEOL())			return false;
 
 			for (int i = start; i < length; ++i) {					// Search the list for a match
-				if (sfind.equals(Vars.get(base + i).sval())) {
+				if (sfind.equals(Vals.get(base + i).sval())) {
 					found = i;
 					break;
 				}
@@ -14041,7 +14050,7 @@ public class Run extends Activity {
 
 			if (!isNext(','))			return false;				// move to the result var
 			if (!getNVar())				return false;
-			var = Vars.get(theValueIndex);
+			val = Vals.get(theValueIndex);
 
 			if (isNext(',')) {										// move to the start index
 				if (!evalNumericExpression()) return false;
@@ -14051,14 +14060,14 @@ public class Run extends Activity {
 			if (!checkEOL())			return false;
 
 			for (int i = start; i < length; ++i) {					// Search the list for a match
-				if (nfind == Vars.get(base + i).nval()) {
+				if (nfind == Vals.get(base + i).nval()) {
 					found = i;
 					break;
 				}
 			}
 		}
 
-		var.val(++found);											// return found as 1-based index
+		val.val(++found);											// return found as 1-based index
 		return true;
 	}
 
@@ -14077,14 +14086,14 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;
 		if (!getNVar())					return false;			// List pointer variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		int theIndex = createNewList(type, var);				// Try to create list, -1 if fail
+		int theIndex = createNewList(type, val);				// Try to create list, -1 if fail
 		return (theIndex >= 0);									// true if create succeeded
 	}
 
-	private int createNewList(VarType type, Var var) {			// Put a new ArrayList in global theLists
+	private int createNewList(VarType type, Val val) {			// Put a new ArrayList in global theLists
 																// Put its type in global theListsType
 																// Write its index to user variable var
 		int listIndex = theLists.size();
@@ -14094,7 +14103,7 @@ public class Run extends Activity {
 			default:	return -1;										// Unknown type, don't create anything
 		}
 		theListsType.add(type);									// Add the type
-		var.val(listIndex);										// tell the user where it is
+		val.val(listIndex);										// tell the user where it is
 		return listIndex;
 	}
 
@@ -14130,8 +14139,8 @@ public class Run extends Activity {
 			int endLI = LineIndex;
 			LineIndex = startLI;
 			if (getNVar() && (LineIndex == endLI)) {		// if NVar is entire expression
-				Var var = Vars.get(theValueIndex);
-				return createNewList(type, var);			// try to create list, -1 if fail
+				Val val = Vals.get(theValueIndex);
+				return createNewList(type, val);			// try to create list, -1 if fail
 			}												// create writes index to user variable
 			LineIndex = endLI;
 			RunTimeError("Invalid " + type.toString() + " List Pointer");
@@ -14161,11 +14170,11 @@ public class Run extends Activity {
 		ArrayList destList = theLists.get(listIndex);				// Copy array to list
 		if (isListNumeric) {
 			for (int i = 0; i < length; ++i ) {
-				destList.add(Vars.get(base + i).nval());
+				destList.add(Vals.get(base + i).nval());
 			}
 		} else {
 			for (int i = 0; i < length; ++i ) {
-				destList.add(Vars.get(base + i).sval());
+				destList.add(Vals.get(base + i).sval());
 			}
 		}
 		return true;
@@ -14193,7 +14202,7 @@ public class Run extends Activity {
 		if (listIndex < 0)				return false;
 		if (!isNext(','))				return false;				// move to the value
 
-		Var var = null;
+		Val val = null;
 		int start = 0;
 		int found = -1;
 
@@ -14207,7 +14216,7 @@ public class Run extends Activity {
 
 			if (!isNext(','))			return false;				// move to the result var
 			if (!getNVar())				return false;
-			var = Vars.get(theValueIndex);
+			val = Vals.get(theValueIndex);
 
 			if (isNext(',')) {										// move to the start index
 				if (!evalNumericExpression()) return false;
@@ -14229,7 +14238,7 @@ public class Run extends Activity {
 
 			if (!isNext(','))			return false;				// move to the result var
 			if (!getNVar())				return false;
-			var = Vars.get(theValueIndex);
+			val = Vals.get(theValueIndex);
 
 			if (isNext(',')) {										// move to the start index
 				if (!evalNumericExpression()) return false;
@@ -14246,7 +14255,7 @@ public class Run extends Activity {
 			}
 		}
 
-		var.val(++found);											// return found as 1-based index
+		val.val(++found);											// return found as 1-based index
 		return true;
 	}
 
@@ -14318,7 +14327,7 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;
 		if (!getVar())					return false;				// Get the return value variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		VarType listType;											// Get this list's type
@@ -14333,14 +14342,14 @@ public class Run extends Activity {
 				return RunTimeError("Index out of bounds");
 			}
 			String thisString = thisStringList.get(getIndex);		// Get the requested string
-			var.val(thisString);
+			val.val(thisString);
 		} else {													// Numeric type list
 			ArrayList<Double> thisNumericList = theLists.get(listIndex);// Get the numeric list
 			if (getIndex < 0 || getIndex >= thisNumericList.size()) {
 				return RunTimeError("Index out of bounds");
 			}
 			Double thisNumber = thisNumericList.get(getIndex);		// Get the requested number
-			var.val(thisNumber);
+			val.val(thisNumber);
 		}
 
 		return true;
@@ -14352,10 +14361,10 @@ public class Run extends Activity {
 		if (!isNext(','))				return false;
 
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		var.val(theListsType.get(listIndex).typeNS());
+		val.val(theListsType.get(listIndex).typeNS());
 		return true;
 	}
 
@@ -14433,11 +14442,11 @@ public class Run extends Activity {
 		if (!isNext(','))				return false;				// move to the return var
 
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		int size = theLists.get(listIndex).size();
-		var.val(size);
+		val.val(size);
 
 		return true;
 	}
@@ -14474,15 +14483,15 @@ public class Run extends Activity {
 
 	private boolean execute_BUNDLE_CREATE() {
 		if (!getNVar() || !checkEOL()) return false;			// get the Bundle pointer variable
-		Var var = Vars.get(theValueIndex);
-		createBundle(var);
+		Val val = Vals.get(theValueIndex);
+		createBundle(val);
 		return true;
 	}
 
-	private int createBundle(Var var) {							// create a new bundle and put it on the list
+	private int createBundle(Val val) {							// create a new bundle and put it on the list
 		int bundleIndex = theBundles.size();
 		theBundles.add(new Bundle());
-		var.val(bundleIndex);
+		val.val(bundleIndex);
 		return bundleIndex;
 	}
 
@@ -14501,8 +14510,8 @@ public class Run extends Activity {
 			int endLI = LineIndex;
 			LineIndex = startLI;
 			if (getNVar() && (LineIndex == endLI)) {			// if NVar is entire expression
-				Var var = Vars.get(theValueIndex);
-				return createBundle(var);						// create a new Bundle
+				Val val = Vals.get(theValueIndex);
+				return createBundle(val);						// create a new Bundle
 			}
 			LineIndex = endLI;
 			RunTimeError("Invalid Bundle Pointer");
@@ -14545,7 +14554,7 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;					// move to the value variable
 		if (!getVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		Bundle b = theBundles.get(bundleIndex);
@@ -14556,10 +14565,10 @@ public class Run extends Activity {
 		Object o = b.get(tag);
 		if (o instanceof Double) {
 			if (!VarIsNumeric) { return RunTimeError(tag + " is not a string"); }
-			var.val(((Double)o).doubleValue());
+			val.val(((Double)o).doubleValue());
 		} else {
 			if (VarIsNumeric) { return RunTimeError(tag + " is not numeric"); }
-			var.val((String)o);
+			val.val((String)o);
 		}
 		return true;
 	}
@@ -14578,14 +14587,14 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;					// move to the result var
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		Bundle b = theBundles.get(bundleIndex);
 		if (!b.containsKey(tag)) { return RunTimeError(tag + " not in bundle"); }
 
 		VarType type = (b.get(tag) instanceof Double) ? VarType.NUM : VarType.STR;
-		var.val(type.typeNS());
+		val.val(type.typeNS());
 		return true;
 	}
 
@@ -14629,11 +14638,11 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;					// move to the result var
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		Bundle b = theBundles.get(bundleIndex);
-		var.val((b.containsKey(tag)) ? 1.0 : 0.0);
+		val.val((b.containsKey(tag)) ? 1.0 : 0.0);
 
 		return true;
 	}
@@ -14667,7 +14676,7 @@ public class Run extends Activity {
 
 		if (!isNext(','))				return false;
 		if (!getNVar())					return false;			// stack pointer variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		Stack theStack = new Stack();
@@ -14675,7 +14684,7 @@ public class Run extends Activity {
 		theStacks.add(theStack);
 
 		theStacksType.add(type);								// add the type
-		var.val(theIndex);										// return the stack pointer
+		val.val(theIndex);										// return the stack pointer
 		return true;
 	}
 
@@ -14732,15 +14741,15 @@ public class Run extends Activity {
 
 		if (!getVar())					return false;
 		if (isStackNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		if (!isStackNumeric) {									// string stack
 			String thisString = (String) thisStack.pop();
-			var.val(thisString);
+			val.val(thisString);
 		} else {												// numeric stack
 			double thisNumber = ((Double)thisStack.pop()).doubleValue();
-			var.val(thisNumber);
+			val.val(thisNumber);
 		}
 		return true;
 	}
@@ -14761,15 +14770,15 @@ public class Run extends Activity {
 
 		if (!getVar())					return false;
 		if (isStackNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		if (!isStackNumeric) {									// string stack
 			String thisString = (String) thisStack.peek();
-			var.val(thisString);
+			val.val(thisString);
 		} else {												// numeric stack
 			double thisNumber = ((Double)thisStack.peek()).doubleValue();
-			var.val(thisNumber);
+			val.val(thisNumber);
 		}
 		return true;
 	}
@@ -14779,10 +14788,10 @@ public class Run extends Activity {
 		if (stackIndex < 0)				return false;
 		if (!isNext(','))				return false;			// move to the value
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		var.val(theStacksType.get(stackIndex).typeNS());
+		val.val(theStacksType.get(stackIndex).typeNS());
 		return true;
 	}
 
@@ -14791,11 +14800,11 @@ public class Run extends Activity {
 		if (stackIndex < 0)				return false;
 		if (!isNext(','))				return false;
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		Stack thisStack = theStacks.get(stackIndex);			// Get the Stack
-		var.val(thisStack.isEmpty() ? 1 : 0);
+		val.val(thisStack.isEmpty() ? 1 : 0);
 
 		return true;
 	}
@@ -14844,13 +14853,13 @@ public class Run extends Activity {
 
 	private boolean executeCLIPBOARD_GET() {
 		if (!getSVar())					return false;		// get the var to put the clip into
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 		String data;
 		if (clipboard.hasText()) {							// If clip board has text
 			data = clipboard.getText().toString();			// Get the clip
 		} else { data =""; }								// If no clip, set data to null
-		var.val(data);										// Return the result to user
+		val.val(data);										// Return the result to user
 		return true;
 	}
 
@@ -14875,7 +14884,7 @@ public class Run extends Activity {
 		if (!isNext(','))				return false;
 
 		if (!getSVar())					return false;		// get the destination string variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		String dest = null;
@@ -14884,7 +14893,7 @@ public class Run extends Activity {
 		} catch (Exception e) { return encryptionException(mode, e); }
 		if (dest == null)				return false;
 
-		var.val(dest);										// Put the encrypted string into the user variable
+		val.val(dest);										// Put the encrypted string into the user variable
 		return true;
 	}
 
@@ -14994,7 +15003,7 @@ public class Run extends Activity {
 	private boolean executeSERVER_STATUS() {
 
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		double status = (newSS == null)                         ? STATE_NOT_ENABLED
@@ -15002,21 +15011,21 @@ public class Run extends Activity {
 					  : (theServerSocket == null)               ? STATE_NONE
 					  : theServerSocket.isConnected()           ? STATE_CONNECTED
 					  :                                           STATE_NONE;
-		var.val(status);
+		val.val(status);
 		return true;
 	}
 
 	private boolean executeCLIENT_STATUS() {
 
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		double status = (clientSocketState == STATE_CONNECTING) ? STATE_CONNECTING
 					  : (theClientSocket == null)               ? STATE_NONE
 					  : theClientSocket.isConnected()           ? STATE_CONNECTED
 					  :                                           STATE_NONE;
-		var.val(status);
+		val.val(status);
 		return true;
 	}
 
@@ -15033,11 +15042,11 @@ public class Run extends Activity {
 	private boolean socketIP(Socket socket) {
 
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		InetAddress ia = socket.getInetAddress();
-		var.val(ia.toString());
+		val.val(ia.toString());
 		return true;
 	}
 
@@ -15054,7 +15063,7 @@ public class Run extends Activity {
 	private boolean socketReadReady(BufferedReader reader) {
 
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		double ready = 0 ;
@@ -15063,7 +15072,7 @@ public class Run extends Activity {
 		} catch (IOException e) {
 			return RunTimeError(e);
 		}
-		var.val(ready);
+		val.val(ready);
 		return true;
 	}
 
@@ -15080,7 +15089,7 @@ public class Run extends Activity {
 	private boolean socketReadLine(BufferedReader reader) {
 
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		String line = null;
@@ -15094,7 +15103,7 @@ public class Run extends Activity {
 			line = "NULL";
 		}
 
-		var.val(line);
+		val.val(line);
 		return true;
 	}
 
@@ -15175,10 +15184,10 @@ public class Run extends Activity {
 	private boolean socketPutFile(Socket socket) {
 
 		if (!evalNumericExpression())	return false;						// Parm is the file number variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
-		int fileNumber = (int)var.nval();
+		int fileNumber = (int)val.nval();
 		if (!checkReadFile(fileNumber))	return false;						// Check runtime errors
 
 		FileInfo fInfo = FileTable.get(fileNumber);							// Get the file info
@@ -15338,7 +15347,7 @@ public class Run extends Activity {
 
 	private boolean executeMYIP() {
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		String IP = "";
@@ -15357,7 +15366,7 @@ public class Run extends Activity {
 			return RunTimeError(e);
 		}
 
-		var.val(IP);
+		val.val(IP);
 		return true;
 	}
 
@@ -15531,8 +15540,8 @@ public class Run extends Activity {
 	private boolean executeFTP_DIR() {
 		if (FTPdir == null) { return RunTimeError("FTP not opened"); }
 
-		if (!getNVar())					return false;				// get the list VAR
-		Var var = Vars.get(theValueIndex);
+		if (!getNVar())					return false;				// get the list variable
+		Val val = Vals.get(theValueIndex);
 
 		String dirMark = "(d)";
 		if (isNext(',')) {											// optional directory marker
@@ -15546,7 +15555,7 @@ public class Run extends Activity {
 		theLists.add(theStringList);
 
 		theListsType.add(VarType.STR);								// add the type
-		var.val(theIndex);											// return the list pointer
+		val.val(theIndex);											// return the list pointer
 
 		FTPFile[] ftpFiles;
 		try { ftpFiles = mFTPClient.listFiles(); }					// get the list of files
@@ -15765,9 +15774,9 @@ public class Run extends Activity {
 		if (index[arg] >= 0) {
 			int state = (mBluetoothAdapter == null) ? STATE_NOT_ENABLED :
 						(mChatService == null)      ? STATE_NONE        : bt_state;
-			Var var = Vars.get(index[arg]);					// status return variable
+			Val val = Vals.get(index[arg]);					// status return variable
 			if (type[arg] == 1) {							// status variable is numeric
-				var.val(state);
+				val.val(state);
 			} else {
 				String st = "";								// string representation of state
 				switch (state) {
@@ -15780,16 +15789,16 @@ public class Run extends Activity {
 					case STATE_WRITING:		st = "Writing";		break;
 					default:									break;
 				}
-				var.val(st);
+				val.val(st);
 			}
 		}
 		if (index[++arg] >= 0) {
 			String name = (mBluetoothAdapter == null) ? "" : mBluetoothAdapter.getName();
-			Vars.get(index[arg]).val(name);
+			Vals.get(index[arg]).val(name);
 		}
 		if (index[++arg] >= 0) {
 			String address = (mBluetoothAdapter == null) ? "" : mBluetoothAdapter.getAddress();
-			Vars.get(index[arg]).val(address);
+			Vals.get(index[arg]).val(address);
 		}
 		return (++arg == nArgs);							// sanity-check arg count
 	} // execute_BT_status
@@ -15902,7 +15911,7 @@ public class Run extends Activity {
 		}
 
 		if (!getSVar() || !checkEOL())	return false;
-		Vars.get(theValueIndex).val(mConnectedDeviceName);
+		Vals.get(theValueIndex).val(mConnectedDeviceName);
 		return true;
 	}
 
@@ -15935,7 +15944,7 @@ public class Run extends Activity {
 				count = BT_Read_Buffer.size();
 			}
 		}
-		Vars.get(theValueIndex).val(count);
+		Vals.get(theValueIndex).val(count);
 		return true;
 	}
 
@@ -15961,7 +15970,7 @@ public class Run extends Activity {
 		}
 
 		if (!getSVar() || !checkEOL())	return false;
-		Vars.get(theValueIndex).val(msg);
+		Vals.get(theValueIndex).val(msg);
 		return true;
 	}
 
@@ -16029,7 +16038,7 @@ public class Run extends Activity {
 
 	private boolean execute_SU_read_ready() {
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		int bfrSize = 0;
@@ -16040,13 +16049,13 @@ public class Run extends Activity {
 			if (bfrSize != 0) break;							// data available
 			Thread.yield();										// give the SUreader another chance to read
 		}
-		var.val(bfrSize);										// return buffer size
+		val.val(bfrSize);										// return buffer size
 		return true;
 	}
 
 	private boolean execute_SU_read_line() {
 		if (!getSVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		boolean available;
@@ -16059,7 +16068,7 @@ public class Run extends Activity {
 		}
 		if (available) { Thread.yield(); }						// give the SUreader a chance to read again
 
-		var.val(msg);
+		val.val(msg);
 		return true;
 	}
 
@@ -16084,7 +16093,7 @@ public class Run extends Activity {
 
 	private boolean executeFONT_LOAD() {
 		if (!getNVar())					return false;				// font pointer variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!isNext(','))				return false;
 
 		if (!getStringArg())			return false;				// get the file path
@@ -16094,7 +16103,7 @@ public class Run extends Activity {
 		Typeface aFont = getTypeface(fileName);
 		if (aFont == null) { return RunTimeError(fileName + " Not Found at:"); }
 
-		var.val(FontList.size());
+		val.val(FontList.size());
 		FontList.add(aFont);
 		return true;
 	}
@@ -16164,13 +16173,13 @@ public class Run extends Activity {
 
 	private boolean executeCONSOLE_LINE_COUNT() {
 		if (!getNVar())					return false;			// variable to hold the number of lines
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		checkpointMessage();									// allow any pending Console activity to complete
 		while (mMessagePending) { Thread.yield(); }				// wait for checkpointMessage semaphore to clear
 
-		var.val(mConsole.getCount());							// number of lines written to console
+		val.val(mConsole.getCount());							// number of lines written to console
 		return true;
 	}
 
@@ -16178,24 +16187,24 @@ public class Run extends Activity {
 		if (!evalNumericExpression()) return false;				// line number to read
 		int lineNum = EvalNumericExpressionValue.intValue();
 		if (!isNext(',') || !getSVar() || !checkEOL()) return false; // variable for line content
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 
 		if (--lineNum < 0) {									// convert from 1-based user index to 0-based Java index
 			return RunTimeError("Line number must be >= 1");
 		}
 		int max = mConsole.getCount();							// number of lines written to console
 		String lineText = (lineNum < max) ? mConsole.getItem(lineNum) : "";
-		var.val(lineText);
+		val.val(lineText);
 		return true;
 	}
 
 	private boolean executeCONSOLE_LINE_TOUCHED() {
 		if (!getNVar())					return false;			// variable for last line number touched
-		Var lineVar = Vars.get(theValueIndex);
-		Var longTouchVar = null;
+		Val lineVar = Vals.get(theValueIndex);
+		Val longTouchVar = null;
 		if (isNext(',')) {
 			if (!getNVar())				return false;			// optional variable indicating short or long touch
-			longTouchVar = Vars.get(theValueIndex);
+			longTouchVar = Vals.get(theValueIndex);
 		}
 		if (!checkEOL())				return false;
 
@@ -16274,7 +16283,7 @@ public class Run extends Activity {
 	private boolean executeRINGER_GET_MODE() {
 
 		if (!getNVar())					return false;			// Mode return variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
@@ -16286,7 +16295,7 @@ public class Run extends Activity {
 			default:                               mode = RINGER_UNKNOWN; break;
 		}
 
-		var.val(mode);
+		val.val(mode);
 		return true;
 	}
 
@@ -16310,11 +16319,11 @@ public class Run extends Activity {
 	private boolean executeRINGER_GET_VOLUME() {
 
 		if (!getNVar())					return false;			// volume return variable
-		Var volVar = Vars.get(theValueIndex);
-		Var maxVar = null;
+		Val volVar = Vals.get(theValueIndex);
+		Val maxVar = null;
 		if (isNext(',')) {
 			if (!getNVar())				return false;			// optional max volume return variable
-			maxVar = Vars.get(theValueIndex);
+			maxVar = Vals.get(theValueIndex);
 		}
 		if (!checkEOL())				return false;
 
@@ -16370,7 +16379,7 @@ public class Run extends Activity {
 
 	private boolean execute_SP_load() {
 		if (!getNVar())					return false;
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!isNext(','))				return false;
 
 		if (!getStringArg())			return false;					// Get the file path
@@ -16398,18 +16407,18 @@ public class Run extends Activity {
 				}
 			}
 		}
-		var.val(SoundID);
+		val.val(SoundID);
 		return true;
 	}
 
 	private boolean execute_SP_play() {
 		if (isEOL())					return true;				// no parameters
 
-		Var streamVar = null;
+		Val streamVar = null;
 		boolean isComma = isNext(',');
 		if (!isComma) {
 			if (!getNVar())				return false;				// stream return variable
-			streamVar = Vars.get(theValueIndex);
+			streamVar = Vals.get(theValueIndex);
 			isComma = isNext(',');
 		}
 
@@ -16582,17 +16591,17 @@ public class Run extends Activity {
 
 	private boolean executeHEADSET() {
 
-		if (!getNVar()) return false;
-		Var stateVar = Vars.get(theValueIndex);
-		if (!isNext(',')) return false;
+		if (!getNVar())					return false;
+		Val stateVar = Vals.get(theValueIndex);
+		if (!isNext(','))				return false;
 
-		if (!getSVar()) return false;
-		Var nameVar = Vars.get(theValueIndex);
-		if (!isNext(',')) return false;
+		if (!getSVar())					return false;
+		Val nameVar = Vals.get(theValueIndex);
+		if (!isNext(','))				return false;
 
-		if (!getNVar()) return false;
-		Var micVar = Vars.get(theValueIndex);
-		if (!checkEOL()) return false;
+		if (!getNVar())					return false;
+		Val micVar = Vals.get(theValueIndex);
+		if (!checkEOL())				return false;
 
 		stateVar.val(headsetState);
 		nameVar.val(headsetName);
@@ -16609,13 +16618,13 @@ public class Run extends Activity {
 
 	private boolean executeSMS_SEND() {
 
-		if (!getStringArg()) return false;
+		if (!getStringArg())			return false;
 		String number = StringConstant;
-		if (!isNext(',')) return false;
+		if (!isNext(','))				return false;
 
-		if (!getStringArg()) return false;
+		if (!getStringArg())			return false;
 		String msg = StringConstant;
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		SmsManager sm = android.telephony.SmsManager.getDefault();
 		try {
@@ -16628,7 +16637,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeSMS_RCV_INIT() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		registerReceiver(receiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
 		smsRcvBuffer = new ArrayList <String>();
@@ -16640,15 +16649,15 @@ public class Run extends Activity {
 			return RunTimeError("SMS.RCV.INIT not executed)");
 		}
 
-		if (!getSVar()) return false;
-		Var var = Vars.get(theValueIndex);
-		if (!checkEOL()) return false;
+		if (!getSVar())					return false;
+		Val val = Vals.get(theValueIndex);
+		if (!checkEOL())				return false;
 
 		if (smsRcvBuffer.size() != 0) {
-			var.val(smsRcvBuffer.get(0));
+			val.val(smsRcvBuffer.get(0));
 			smsRcvBuffer.remove(0);
 		} else {
-			var.val("@");
+			val.val("@");
 		}
 		return true;
 	}
@@ -16682,8 +16691,8 @@ public class Run extends Activity {
 	}
 
 	private boolean executePHONE_DIAL(String action) {			// Dial or call a phone number
-		if (!getStringArg()) return false;
-		if (!checkEOL()) return false;
+		if (!getStringArg())			return false;
+		if (!checkEOL())				return false;
 		String number = "tel:" + StringConstant;
 
 		String encodedHash = Uri.encode("#");
@@ -16701,9 +16710,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executePHONE_RCV_INIT() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
-		if (phoneRcvInited) return true;
+		if (phoneRcvInited)				return true;
 		phoneRcvInited = true;
 
 		mTM = (TelephonyManager)Run.this.getSystemService(Context.TELEPHONY_SERVICE);
@@ -16733,13 +16742,13 @@ public class Run extends Activity {
 			return RunTimeError("phone.rcv.init not executed");
 		}
 
-		if (!getNVar()) return false;
-		Var stateVar = Vars.get(theValueIndex);
-		if (!isNext(',')) return false;
+		if (!getNVar())					return false;
+		Val stateVar = Vals.get(theValueIndex);
+		if (!isNext(','))				return false;
 
-		if (!getSVar()) return false;
-		Var numberVar = Vars.get(theValueIndex);
-		if (!checkEOL()) return false;
+		if (!getSVar())					return false;
+		Val numberVar = Vals.get(theValueIndex);
+		if (!checkEOL())				return false;
 
 		int callState = mTM.getCallState();
 		if (callState == TelephonyManager.CALL_STATE_IDLE) { phoneNumber = ""; }
@@ -16752,12 +16761,12 @@ public class Run extends Activity {
 
 	private boolean executeMYPHONENUMBER() {
 
-		if (!getSVar()) return false;
-		Var var = Vars.get(theValueIndex);
-		if (!checkEOL()) return false;
+		if (!getSVar())					return false;
+		Val val = Vals.get(theValueIndex);
+		if (!checkEOL())				return false;
 
 		String pn = getPhoneNumber(null, "Get phone number failed.");
-		var.val(pn);
+		val.val(pn);
 
 		return true;		// Leave theValueIndex intact for executeDEVICE
 	}
@@ -16765,8 +16774,8 @@ public class Run extends Activity {
 	private boolean executePHONE_INFO() {		// This is dynamic info. Some static
 												// phone info is available from executeDEVICE().
 		int bundleIndex = getBundleArg();						// get the Bundle pointer
-		if (bundleIndex < 0) return false;
-		if (!checkEOL()) return false;
+		if (bundleIndex < 0)			return false;
+		if (!checkEOL())				return false;
 
 		Bundle b = theBundles.get(bundleIndex);
 
@@ -16907,17 +16916,17 @@ public class Run extends Activity {
 
 	private boolean executeEMAIL_SEND() {
 
-		if (!getStringArg()) return false;
+		if (!getStringArg())			return false;
 		String recipiant = "mailto:" + StringConstant;
-		if (!isNext(',')) return false;
+		if (!isNext(','))				return false;
 
-		if (!getStringArg()) return false;
+		if (!getStringArg())			return false;
 		String subject = StringConstant;
-		if (!isNext(',')) return false;
+		if (!isNext(','))				return false;
 
-		if (!getStringArg()) return false;
+		if (!getStringArg())			return false;
 		String body = StringConstant;
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		Intent intent = new Intent(Intent.ACTION_SENDTO);	// it's not ACTION_SEND
 		intent.setType("text/plain");
@@ -16943,12 +16952,10 @@ public class Run extends Activity {
 		}
 
 		Command c = findSubcommand(html_cmd, "HTML");
-		if (c == null) return false;
+		if (c == null)					return false;
 
 		if ((htmlIntent == null) || (Web.aWebView == null)) {
-			if (c.id == CID_CLOSE) {					// Allow close if already closed
-				return true;
-			}
+			if (c.id == CID_CLOSE)		return true;	// Allow close if already closed
 			if ((c.id != CID_OPEN) &&					// Allow open and get.datalink if not opened
 					(c.id != CID_DATALINK)) {
 				return RunTimeError("html not opened");
@@ -16971,7 +16978,7 @@ public class Run extends Activity {
 				orientation = EvalNumericExpressionValue.intValue();
 			}
 		}
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		htmlIntent = new Intent(Run.this, Web.class);		// Intent variable used to tell if opened
 		htmlIntent.putExtra(Web.EXTRA_SHOW_STATUSBAR, showStatusBar);
@@ -17031,7 +17038,7 @@ public class Run extends Activity {
 	private boolean execute_html_get_datalink() {			// Gets a data sring from datalink queue
 
 		if (!getSVar())					return false;		// The string return variable
-		Var var = Vars.get(theValueIndex);
+		Val val = Vals.get(theValueIndex);
 		if (!checkEOL())				return false;
 
 		String data = "";
@@ -17042,7 +17049,7 @@ public class Run extends Activity {
 				}
 			}
 		}
-		var.val(data);										// return the data to the user
+		val.val(data);										// return the data to the user
 
 		if (Web.aWebView == null)		return true;		// if already closed, return now
 															// else check to see if we should close
@@ -17218,15 +17225,15 @@ public class Run extends Activity {
 
 	private boolean executeSWAP() {
 
-		if (!getVar()) return false;
-		Var aVar = Vars.get(theValueIndex);
+		if (!getVar())					return false;
+		Val aVar = Vals.get(theValueIndex);
 		boolean aIsNumeric = VarIsNumeric;
-		if (!isNext(',')) return false;
+		if (!isNext(','))				return false;
 
-		if (!getVar()) return false;
-		Var bVar = Vars.get(theValueIndex);
+		if (!getVar())					return false;
+		Val bVar = Vals.get(theValueIndex);
 		if (aIsNumeric != VarIsNumeric) { return RunTimeError("Type mismatch"); }
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		if (VarIsNumeric) {
 			double aValue = aVar.nval();
@@ -17248,9 +17255,9 @@ public class Run extends Activity {
 		if (isEOL()) {
 			sttPrompt = sttDefaultPrompt;
 		} else {
-			if (!getStringArg()) return false;
+			if (!getStringArg())		return false;
 			sttPrompt = StringConstant;
-			if (!checkEOL()) return false;
+			if (!checkEOL())			return false;
 		}
 
 		PackageManager pm = getPackageManager();
@@ -17276,8 +17283,8 @@ public class Run extends Activity {
 			return RunTimeError("STT_LISTEN not executed.");
 		}
 		int listIndex = getListArg(VarType.STR);		// reuse old list or create new one
-		if (listIndex < 0) return false;
-		if (!checkEOL()) return false;
+		if (listIndex < 0)				return false;
+		if (!checkEOL())				return false;
 
 		while (!sttDone) Thread.yield();
 		sttListening = false;
@@ -17323,7 +17330,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeTIMER_CLEAR() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 		cancelTimer();
 		return true;
 	}
@@ -17342,7 +17349,7 @@ public class Run extends Activity {
 	// *************************************** Home Command ***************************************
 
 	private boolean executeHOME() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		moveTaskToBack(true);
 		return true;
@@ -17406,7 +17413,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeAPP_BROADCAST() {					// Broadcast an Intent to application(s)
-		if (isEOL()) return true;								// nothing to do
+		if (isEOL())					return true;			// nothing to do
 
 		Intent intent = buildIntentForAPP();
 		if (intent != null) {
@@ -17418,7 +17425,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeAPP_START() {						// Start an Application's Activity via Intent
-		if (isEOL()) return true;								// nothing to do
+		if (isEOL())					return true;			// nothing to do
 
 		Intent intent = buildIntentForAPP();
 		if (intent != null) {
@@ -17436,13 +17443,13 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDEBUG_ON() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 		Debug = true;
 		return true;
 	}
 
 	private boolean executeDEBUG_OFF() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 		Debug = false;
 		Echo = false;
 		return true;
@@ -17454,26 +17461,26 @@ public class Run extends Activity {
 	}
 
 	private boolean executeECHO_ON() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 		if (Debug) Echo = true;
 		return true;
 	}
 
 	private boolean executeECHO_OFF() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 		Echo = false;
 		return true;
 	}
 
 	private boolean executeDEBUG_COMMANDS() {
-		if (!Debug) return true;
-		if (isEOL()) return true;							// user asked for no data
+		if (!Debug)						return true;
+		if (isEOL())					return true;		// user asked for no data
 
 		int listIndex = -1;
 		ArrayList<String> list = null;
 		if (!isNext(',')) {
 			listIndex = getListArg(VarType.STR);			// get a reusable List pointer - may create new list
-			if (listIndex < 0) return false;				// failed to get or create a list
+			if (listIndex < 0)			return false;		// failed to get or create a list
 			isNext(',');									// consume comma, if there is one
 		}
 
@@ -17481,7 +17488,7 @@ public class Run extends Activity {
 		byte[] type = { 1, 1, 1 };							// type of each variable
 		int[] index = { -1, -1, -1 };						// index (theValueIndex) of each variable
 		int nArgs = index.length;
-		if (!getOptVars(type, index)) return false;
+		if (!getOptVars(type, index))	return false;
 		int countVarIndex = index[nArgs - 1];				// keyword count var is last in array
 
 		int kwCount = 0;
@@ -17511,7 +17518,7 @@ public class Run extends Activity {
 		}
 		int[] vals = { MathFunctions.length, StringFunctions.length, kwCount };
 		for (int arg = 0; arg < nArgs; ++arg) {
-			if (index[arg] >= 0) { Vars.get(index[arg]).val(vals[arg]); }
+			if (index[arg] >= 0) { Vals.get(index[arg]).val(vals[arg]); }
 		}
 		return true;
 	} // executeDEBUG_COMMANDS
@@ -17527,7 +17534,7 @@ public class Run extends Activity {
 				"Mem class  : " + actvityManager.getMemoryClass(),
 				"# labels   : " + Labels.size(),
 				"# variables: " + VarNames.size(),
-				"  scalars  : " + Vars.size(),
+				"  scalars  : " + Vals.size(),
 				"  arrays   : " + ArrayTable.size(),
 				"  lists    : " + plusBase(theLists.size()),	// item 0 always present but not accessible
 				"  stacks   : " + plusBase(theStacks.size()),	// item 0 always present but not accessible
@@ -17546,8 +17553,8 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDUMP_SCALARS() {
-		if (!Debug) return true;
-		if (!checkEOL()) return false;
+		if (!Debug)						return true;
+		if (!checkEOL())				return false;
 
 		ArrayList<String> lines = dbDoScalars("");
 		for (String line : lines) {
@@ -17558,7 +17565,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDUMP_ARRAY() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		String var = getVarAndType();
 		if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
@@ -17575,11 +17582,11 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDUMP_LIST() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		int listIndex = getListArg();							// get the list pointer
-		if (listIndex < 0) return false;
-		if (!checkEOL()) return false;
+		if (listIndex < 0)				return false;
+		if (!checkEOL())				return false;
 
 		WatchedList = listIndex;
 		ArrayList<String> lines = dbDoList("");
@@ -17591,11 +17598,11 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDUMP_STACK() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		int stackIndex = getStackIndexArg();					// get the stack pointer
-		if (stackIndex < 0) return false;
-		if (!checkEOL()) return false;
+		if (stackIndex < 0)				return false;
+		if (!checkEOL())				return false;
 
 		WatchedStack = stackIndex;
 		ArrayList<String> lines = dbDoStack("");
@@ -17607,11 +17614,11 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDUMP_BUNDLE() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		int bundleIndex = getBundleArg();						// get the Bundle pointer
-		if (bundleIndex < 0) return false;
-		if (!checkEOL()) return false;
+		if (bundleIndex < 0)			return false;
+		if (!checkEOL())				return false;
 
 		WatchedBundle = bundleIndex;
 		ArrayList<String> lines = dbDoBundle("");
@@ -17625,8 +17632,8 @@ public class Run extends Activity {
 	//=====================DEBUGGER DIALOG STUFF========================
 
 	private boolean executeDEBUG_WATCH_CLEAR() {
-		if(!Debug) return true;
-		if (!checkEOL()) return false;
+		if(!Debug)						return true;
+		if (!checkEOL())				return false;
 
 		WatchVarIndex.clear();
 		Watch_VarNames.clear();
@@ -17634,7 +17641,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDEBUG_WATCH() {				// separate the names and store them
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		String line = ExecutingLineBuffer.line();
 		int max = line.length() - 1;
@@ -17664,7 +17671,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDEBUG_SHOW_ARRAY() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		String var = getVarAndType();
 		if ((var == null) || !VarIsArray)	{ return RunTimeError(EXPECT_ARRAY_VAR); }
@@ -17677,10 +17684,10 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDEBUG_SHOW_LIST() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		int listIndex = getListArg();							// get the list pointer
-		if (listIndex < 0) return false;
+		if (listIndex < 0)				return false;
 
 		WatchedList = listIndex;
 		DialogSelector(3);
@@ -17689,10 +17696,10 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDEBUG_SHOW_STACK() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		int stackIndex = getStackIndexArg();					// get the stack pointer
-		if (stackIndex < 0) return false;
+		if (stackIndex < 0)				return false;
 
 		WatchedStack = stackIndex;
 		DialogSelector(4);
@@ -17701,10 +17708,10 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDEBUG_SHOW_BUNDLE() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 
 		int bundleIndex = getBundleArg();						// get the Bundle pointer
-		if (bundleIndex < 0) return false;
+		if (bundleIndex < 0)			return false;
 
 		WatchedBundle = bundleIndex;
 		DialogSelector(5);
@@ -17713,28 +17720,28 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDEBUG_SHOW_WATCH() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 		DialogSelector(6);
 		executeDEBUG_SHOW();
 		return true;
 	}
 
 	private boolean executeDEBUG_CONSOLE() {
-		if (!Debug) return true;
+		if (!Debug)						return true;
 		DialogSelector(7);
 		executeDEBUG_SHOW();
 		return true;
 	}
 
 	private boolean executeDEBUG_SHOW_PROGRAM() {
-		if(!Debug) return true;
+		if(!Debug)						return true;
 		DialogSelector(8);
 		executeDEBUG_SHOW();
 		return true;
 	}
 
 	private boolean executeDEBUG_SHOW() {				// trigger do debug dialog
-		if (!Debug) return true;
+		if (!Debug)						return true;
 		WaitForDebugResume = true;						// make RunLoop() check debug flags
 		DebuggerStep = true;							// make RunLoop() start the debug dialog after this command
 		return true;
@@ -17803,8 +17810,8 @@ public class Run extends Activity {
 			} else {
 				int index = Index.intValue();
 				line += " = "
-					 + (isString ? quote(Vars.get(index).sval())
-								 : Vars.get(index).nval());
+					 + (isString ? quote(Vals.get(index).sval())
+								 : Vals.get(index).nval());
 			}
 			return line;
 		}
@@ -17829,8 +17836,8 @@ public class Run extends Activity {
 			boolean isString = var.endsWith("$[");
 			for (int i = 0; i < length; ++i) {
 				msg.add(prefix +
-						(isString ? quote(Vars.get(base + i).sval())
-								  : Vars.get(base + i).nval()));
+						(isString ? quote(Vals.get(base + i).sval())
+								  : Vals.get(base + i).nval()));
 			}
 		}
 		return msg;
