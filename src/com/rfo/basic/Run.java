@@ -8445,6 +8445,7 @@ public class Run extends Activity {
 			// Now that all new variables have been created in main name space,
 			// start the function name space with the function parameter names.
 			sVarNames = VarNames.size();
+			VarSearchStart = sVarNames;
 			for (FunctionParameter parm : parms) {
 				// Get insertion point (-index - 1) so VarNames.subList will still be in alphabetical order.
 				int index = newVarIndex(parm.name(), VarNames, sVarNames);

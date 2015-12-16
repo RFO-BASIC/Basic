@@ -228,8 +228,7 @@ This file is part of BASIC! for Android
             android:name="Web"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/web_view_name"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-            android:hardwareAccelerated="false" >
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
         </activity>
 
         <activity
