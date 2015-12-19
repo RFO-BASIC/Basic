@@ -2737,9 +2737,10 @@ public class Run extends Activity {
 	//
 	// Use of Collections.binarySearch for speed: thanks to Nicolas Mougino.
 	public static int newVarIndex(String name, ArrayList<String> names, int sublistStart) {
-		int index = Collections.binarySearch(names.subList(sublistStart, names.size()), name);
-		if (index >= 0) { throw new RuntimeException("newVarIndex: variable " + name + " already exists"); }
-		return sublistStart - index - 1;					// return the absolute index
+//		int index = Collections.binarySearch(names.subList(sublistStart, names.size()), name);
+//		if (index >= 0) { throw new RuntimeException("newVarIndex: variable " + name + " already exists"); }
+//		return sublistStart - index - 1;					// return the absolute index
+		return names.size();
 //		Alternate ending to add log:
 //		index = sublistStart - index - 1;					// make the index absolute
 //		Log.v(LOGTAG, CLASSTAG + " newVarIndex() create var " + name + " at index " + index + "/" + vNames.size() + "(start=" + vStart + ")");
@@ -5388,12 +5389,19 @@ public class Run extends Activity {
 
 	private boolean searchVar(String name) {		// search for a variable by name
 		// VarSearchStart is usually zero but will change when executing User Function
-		int j = Collections.binarySearch(VarNames.subList(VarSearchStart, VarNames.size()), name);
-		if (j < 0) {								// not in list of variable names
+//		int j = Collections.binarySearch(VarNames.subList(VarSearchStart, VarNames.size()), name);
+		int j = VarSearchStart;
+		for ( ; j < VarNames.size(); ++j) {			// look up this var in the variable table
+			if (name.equals(VarNames.get(j))) {		// found it
+				break;
+			}
+		}
+//		if (j < 0) {								// not in list of variable names
+		if (j >= VarNames.size()) {					// not in list of variable names
 			VarIsNew = true;						// must be new
 			return false;
 		}
-		j += VarSearchStart;						// else found it: make the index absolute
+//		j += VarSearchStart;						// else found it: make the index absolute
 
 		if (VarIsArray) {
 			ArrayDescriptor array = ArrayTable.get(VarIndex.get(j));
