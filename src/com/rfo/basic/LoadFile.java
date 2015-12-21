@@ -29,6 +29,7 @@ package com.rfo.basic;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Locale;
 
 import com.rfo.basic.Basic.ColoredTextAdapter;
 
@@ -39,20 +40,29 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Toast;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
 
+import static com.rfo.basic.Editor.GO_UP;
+import static com.rfo.basic.Editor.addDirMark;
+import static com.rfo.basic.Editor.isMarkedDir;
+import static com.rfo.basic.Editor.stripDirMark;
+import static com.rfo.basic.Editor.getDisplayPath;
+import static com.rfo.basic.Editor.goUp;
+import static com.rfo.basic.Editor.quote;
 
-//Log.v(LoadFile.LOGTAG, " " + LoadFile.CLASSTAG + " String Var Value =  " + d);
 
 // Loads a file. Called from the Editor when user selects Menu->Load
 
 public class LoadFile extends ListActivity {
 	private static final String LOGTAG = "Load File";
-	private static final String CLASSTAG = LoadFile.class.getSimpleName();
+
 	private Basic.ColoredTextAdapter mAdapter;
-	private String ProgramPath = "";								// Load file directory path
-	private ArrayList<String> FL1 = new ArrayList<String>();
+	private Toast mToast = null;
+
+	private String mProgramPath;										// load file directory path
+	private ArrayList<String> FL = new ArrayList<String>();
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -60,9 +70,10 @@ public class LoadFile extends ListActivity {
 		super.onCreate(savedInstanceState);
 		setRequestedOrientation(Settings.getSreenOrientation(this));
 
-		updateList();												// put file list in FL1
+		mProgramPath = Editor.ProgramPath;							// set Load path to current program path
+		updateList();												// put file list in FL
 
-		mAdapter = new ColoredTextAdapter(this, FL1, Basic.defaultTextStyle);	// Display the list
+		mAdapter = new ColoredTextAdapter(this, FL, Basic.defaultTextStyle);	// Display the list
 		setListAdapter(mAdapter);
 		ListView lv = getListView();
 		lv.setTextFilterEnabled(false);
@@ -73,17 +84,22 @@ public class LoadFile extends ListActivity {
 		lv.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
-				// User has selected a file.
+				// User has selected a line.
+				// If the selection is the top line, ignore it.
+				if (position == 0)		return;
+
 				// If the selection is a directory, change the program path
 				// and then display the list of files in that directory.
 				// Otherwise load the selected file and tell the Editor it was loaded.
 
-				if (!SelectionIsFile(position)){
-					Basic.SD_ProgramPath = ProgramPath;
+				String fileName = FL.get(position);
+				Log.i(LOGTAG, "Selection: " + quote(fileName));
+				if (!SelectionIsFile(fileName)) {
 					updateList();
 				} else {
-					FileLoader(FL1.get(position));
+					FileLoader(fileName);
 					setResult(RESULT_OK);
+					if (mToast != null) { mToast.cancel(); mToast = null; }
 					finish();									// LoadFile is done
 					return;
 				}
@@ -95,83 +111,75 @@ public class LoadFile extends ListActivity {
 
 	private void updateList() {
 
-		ProgramPath = Basic.SD_ProgramPath;						// Set Load path to current program path
-		File lbDir = new File(Basic.getSourcePath(ProgramPath));
-		lbDir.mkdirs();
+		File dir = new File(mProgramPath);
+		dir.mkdirs();
 
-		String[] FL = lbDir.list();								// Get the list of files in this dir
-		if (FL == null) {
-			String msg = lbDir.exists() ? "File not directory" : "Source directory does not exist";
-			Basic.toaster(this, "System Error: " + msg);
+		String[] fileList = dir.list();							// Get the list of files in this dir
+		if (fileList == null) {
+			String msg = dir.exists() ? "File not directory" : "Source directory does not exist";
+			if (mToast != null) { mToast.cancel(); }
+			mToast = Basic.toaster(this, "System Error: " + msg);
 			return;
 		}
 
-		// Go through the list of files and mark directories with (d)
-		// also only display files with the .bas extension
+		// Go through the list of files and mark directories with "(d)".
+		// Display only files with the .bas extension.
 		ArrayList<String> dirs = new ArrayList<String>();
 		ArrayList<String> files = new ArrayList<String>();
-		String absPath = lbDir.getAbsolutePath() + '/';
-		for (String s : FL) {
+		String absPath = dir.getAbsolutePath() + '/';
+		for (String s : fileList) {
 			File test = new File(absPath + s);
 			if (test.isDirectory()) {							// If file is a directory, add "(d)"
-				dirs.add(s + "(d)");							// and add to display list
+				dirs.add(addDirMark(s));						// and add to display list
 			} else {
-				if (s.toLowerCase().endsWith(".bas")) {			// 	Only put files ending in
+				if (s.toLowerCase(Locale.getDefault()).endsWith(".bas")) { // Only put files ending in
 					files.add(s);								// .bas into the display list
 				}
 			}
 		}
-		Collections.sort(dirs);									// Sort the directory list
-		Collections.sort(files);								// Sort the file list
+		Collections.sort(dirs);									// sort the directory list
+		Collections.sort(files);								// sort the file list
 
-		FL1.clear();
-		FL1.add("..");											// put  the ".." to the top of the list
-		FL1.addAll(dirs);										// copy the directory list to the adapter list
-		FL1.addAll(files);										// copy the file list to the end of the adapter list
+		FL.clear();
+		FL.add("Path: " + quote(getDisplayPath(mProgramPath))); // put the path at the top of the list - will not be selectable
+		FL.add(GO_UP);											// put  the ".." above the directory contents
+		FL.addAll(dirs);										// copy the directory list to the adapter list
+		FL.addAll(files);										// copy the file list to the end of the adapter list
 
 		if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
 
-		Basic.toaster(this, "Select File To Load");				// Tell the user what to do using Toast
+		if (mToast != null) { mToast.cancel(); }
+		mToast = Basic.toaster(this, "Select File To Load");	// tell the user what to do using Toast
 	}
 
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event) {						// If back key pressed
 		if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {	// and the key is the BACK key
 			setResult(RESULT_CANCELED);
+			if (mToast != null) { mToast.cancel(); mToast = null; }
 			finish();															// then done with LoadFile
 			return true;
 		}
 		return super.onKeyUp(keyCode, event);
 	}
 
-	public static String goUp(String path){					// Return the parent directory
-		if (path.equals("")) { return path; }					// if up at top level dir, just return
-		if (!path.contains("/")) {								// if path does not contain a /
-			return "";											// then path now empty
-		}
-		int k = path.lastIndexOf('/');							// find the right most /
-		return path.substring(0, k);							// eliminate / to end to make a new path
-	}
-
-	private boolean SelectionIsFile(int Index){
+	private boolean SelectionIsFile(String fileName) {
 		
 		// Test to see if the user selection is a file or a directory
 		// If is directory, then change the path so that the files
 		// in that directory will be displayed.
 		
-		String theFileName = FL1.get(Index);
-		if (Index == 0) {										// if GoUp is selected
-			ProgramPath = goUp(ProgramPath);					// change FilePath to its parent directory
+		if (fileName.equals(GO_UP)) {							// if GoUp is selected
+			mProgramPath = goUp(mProgramPath);					// change path to its parent directory
 			return false;										// report this is not a file
 		}
-																	// Not UP, is selection a dir
-		if (theFileName.endsWith("(d)")) {							// if has (d), then is directory
-			int k = theFileName.length() - 3;
-			theFileName = theFileName.substring(0, k);
-			ProgramPath = ProgramPath + "/" + theFileName;			// then add this dir to the path
-			return false;											// and report not a file
+																// Not UP, is selection a dir
+		if (isMarkedDir(fileName)) {							// if has (d), then is directory
+			fileName = stripDirMark(fileName);					// remove the (d)
+			mProgramPath = new File(mProgramPath, fileName).getPath();	// add dir to path
+			return false;										// and report not a file
 		}
-		return true;												// if none of the above, it is a file
+		return true;											// if none of the above, it is a file
 	}
 
 	private void FileLoader(String aFileName) {					// The user has selected a file to load, load it.
@@ -179,18 +187,17 @@ public class LoadFile extends ListActivity {
 		Basic.clearProgram(); 				// Clear the old program
 		Editor.DisplayText = "";			// Clear the display text buffer
 
+		Editor.ProgramPath = mProgramPath;
 		Editor.ProgramFileName = aFileName;
 
-		String FullFileName = Basic.getSourcePath( 							// Base Source dir 
-				Basic.SD_ProgramPath + File.separatorChar +					// plus load path
-				aFileName);													// plus filename
+		String FullFileName = new File(mProgramPath, aFileName).getPath();
 
 		ArrayList<String> lines = new ArrayList<String>();
 		int size = Basic.loadProgramFileToList(true, FullFileName, lines);	// is full path to the file to load
 		if (size == 0) {					// File not found - this should never happen
 			// Turn the program file into an error message
 			// and act as if we loaded a file.
-			String msg = "! Load Error: \"" + aFileName + "\" not found";
+			String msg = "! Load Error: " + quote(aFileName) + " not found";
 			lines.add(msg);
 			size = msg.length() + 1;
 		}

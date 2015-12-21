@@ -102,8 +102,6 @@ public class Basic extends Activity {
 	public static ContextManager mContextMgr = null;
 	public static String mBasicPackage = "";				// not valid but not null
 
-	public static String SD_ProgramPath = "";				// Used by Load/Save
-
 	private TextView mProgressText;
 	private Dialog mProgressDialog;
 	private ImageView mSplash;								// ImageView for splash screen
@@ -120,10 +118,11 @@ public class Basic extends Activity {
 
 	public static void setFilePaths(String basePath) {		// set both basePath and filePath
 															// public so LauncherShortcuts can use it
-		if (basePath.equals("none"))
+		if (basePath.equals("none")) {
 			basePath = Environment.getExternalStorageDirectory().getPath();
+		}
 		Basic.basePath = basePath;
-		Basic.filePath = basePath + File.separatorChar + AppPath;
+		Basic.filePath = new File(basePath, AppPath).getPath();	// add AppPath and fix slashes
 	}
 
 	public static String getBasePath() {
@@ -134,19 +133,20 @@ public class Basic extends Activity {
 		return filePath;
 	}
 
+	// A "" parameter adds a file separator. A null argument does not.
 	public static String getFilePath(String subdir, String subPath) {
+		String path = subPath;
 		// if (!subPath.startsWith("/"))	uncomment to enable absolute paths
 		{
-			StringBuilder path = new StringBuilder(filePath);
-			if (subdir != null) { path.append(File.separatorChar).append(subdir); }
-			if (subPath != null) { path.append(File.separatorChar).append(subPath); }
-			subPath = path.toString();
+			StringBuilder bldPath = new StringBuilder(filePath);
+			if (subdir != null) { bldPath.append(File.separatorChar).append(subdir); }
+			if (subPath != null) { bldPath.append(File.separatorChar).append(subPath); }
+			path = bldPath.toString();
 		}
-		try {
-			subPath = new File(subPath).getCanonicalPath();
-			if (subPath.length() == 0) { subPath = new File(subPath).getAbsolutePath(); }
-		} catch(IOException e) { /* use subPath */ }
-		return subPath;
+		File file = new File(path);
+		try                  { path = file.getCanonicalPath(); }
+		catch(IOException e) { path = file.getAbsolutePath(); }
+		return path;
 	}
 
 	public static String getSourcePath(String subPath) {
@@ -642,7 +642,6 @@ public class Basic extends Activity {
 		}
 
 		private Intent doBGforSB() {								// Background code for Standard Basic
-			SD_ProgramPath = SAMPLES_DIR;						// This setting will also force LoadFile to show the samples directory
 			if (new File(getFilePath()).exists()) {
 				copyAssets(AppPath);
 				doFirstLoad();									// First load shows a first load basic program
@@ -1008,11 +1007,12 @@ public class Basic extends Activity {
 		}
 	} // class ColoredTextAdapter
 
-	public static void toaster(Context context, CharSequence msg) {		// Tell the user "msg" via Toast
-		if ((context == null) || (msg == null) || msg.equals("")) return;
+	public static Toast toaster(Context context, CharSequence msg) {	// Tell the user "msg" via Toast
+		if ((context == null) || (msg == null) || msg.equals("")) return null;
 		Toast toast = Toast.makeText(context, msg, Toast.LENGTH_SHORT);
 		toast.setGravity(Gravity.TOP|Gravity.CENTER, 0, 50);			// default: short, high toast
 		toast.show();
+		return toast;
 	}
 
 	public static class Encryption {
