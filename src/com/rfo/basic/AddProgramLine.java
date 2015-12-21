@@ -60,6 +60,8 @@ public class AddProgramLine {
 	private static final Pattern ARRAY_LOAD_PATTERN	= Pattern.compile(ARRAY_LOAD_REGEX);
 	private static final String LIST_ADD_REGEX		= "^list" + WS_REGEX + "\\." + WS_REGEX + "add(.*)";
 	private static final Pattern LIST_ADD_PATTERN	= Pattern.compile(LIST_ADD_REGEX);
+	private static final String SENSORS_OPEN_REGEX	= "^sensors" + WS_REGEX + "\\." + WS_REGEX + "open.*";
+	private static final Pattern SENSORS_OPEN_PATTERN = Pattern.compile(SENSORS_OPEN_REGEX, Pattern.CASE_INSENSITIVE);
 	private static final String SQL_UPDATE_REGEX	= "^sql" + WS_REGEX + "\\." + WS_REGEX + "update.*";
 	private static final Pattern SQL_UPDATE_PATTERN = Pattern.compile(SQL_UPDATE_REGEX, Pattern.CASE_INSENSITIVE);
 
@@ -217,10 +219,15 @@ public class AddProgramLine {
 					  ( (SQL_UPDATE_PATTERN.matcher(line).matches()) ||	// unless command is SQL.Update
 					    ((mMerge != null) && (SQL_UPDATE_PATTERN.matcher(mMerge).matches()))
 					  )
-					) {
-					// If SQL.Update, assume first : is part of the command, even if it isn't.
-					sb.append(c);							// add it to the line
+					) { // If SQL.Update, assume first : is part of the command, even if it isn't.
+					sb.append(c);
 					firstColon = false;
+					continue;
+				} else
+				if  ( (SENSORS_OPEN_PATTERN.matcher(line).matches()) ||	// or command is Sensors.Open
+					  ((mMerge != null) && (SENSORS_OPEN_PATTERN.matcher(mMerge).matches()))
+					) {	// If Sensors.open, assume the rest of the line is part of the command, even if it isn't.
+					sb.append(c);
 					continue;
 				} else {									// it might be a label
 					int i2 = skipWhitespace(line, i + 1);	// skip following whitespace and/or comment
