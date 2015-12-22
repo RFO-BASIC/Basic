@@ -16109,11 +16109,16 @@ public class Run extends Activity {
 		String fileName = StringConstant;							// the filename as given by the user
 		if (!checkEOL())				return false;
 
+		int fontIdx;
 		Typeface aFont = getTypeface(fileName);
-		if (aFont == null) { return RunTimeError(fileName + " Not Found at:"); }
-
-		val.val(FontList.size());
-		FontList.add(aFont);
+		if (aFont == null) {
+			writeErrorMsg("Font file not found: " + fileName);
+			fontIdx = -1;
+		} else {
+			fontIdx = FontList.size();
+			FontList.add(aFont);
+		}
+		val.val(fontIdx);
 		return true;
 	}
 
