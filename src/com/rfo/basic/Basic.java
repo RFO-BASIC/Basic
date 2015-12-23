@@ -181,8 +181,8 @@ public class Basic extends Activity {
 		return mContextMgr;
 	}
 
-	public static void clearContextManager() {
-		mContextMgr.clear();
+	public static void clearContextManager() {			// unregister Run-related Contexts
+		mContextMgr.clearProgramContexts();				// but keep ACTIVITY_APP context
 	}
 
 	private void initVars() {
