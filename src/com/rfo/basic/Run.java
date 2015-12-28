@@ -3721,7 +3721,7 @@ public class Run extends Activity {
 				String line = ExecutingLineBuffer.line();
 
 				int li = line.indexOf(":");									// fast check
-				if ((li <= 0) && (line.charAt(0) != 'r')) { continue; }		// not label or READ.DATA, next line
+				if ((li <= 0) && (line.charAt(0) != 'r'))	{ continue; }	// not label or READ.DATA, next line
 
 				String word = getWord(line, 0, "");
 				LineIndex = word.length();
@@ -3731,14 +3731,13 @@ public class Run extends Activity {
 						Stop = true;										// non-recoverable error
 						return RunTimeError("Duplicate label");
 					}
-					ExecutingLineBuffer.cmd(CMD_LABEL, LineIndex);
-					if (!checkEOL())                   { return false; }
+					if (!checkEOL())					{ return false; }
 				}
 				else if (line.startsWith(READ_DATA)) {						// Is not a label. If it is READ.DATA
 					LineIndex = READ_DATA.length();							// set LineIndex just past READ.DATA
 					ExecutingLineBuffer.cmd(CMD_READ_DATA, LineIndex);		// store the command reference
-					if (!executeREAD_DATA())           { return false; }	// parse and store the data list
-					if (!checkEOL())                   { return false; }
+					if (!executeREAD_DATA())			{ return false; }	// parse and store the data list
+					if (!checkEOL())					{ return false; }
 				}
 			}
 			getInterruptLabels();
@@ -3746,19 +3745,18 @@ public class Run extends Activity {
 		}
 
 		private void getInterruptLabels() {								// check for interrupt labels
-			Integer line;
 			mOnErrorInt =												// OnError: gets a named Interrupt object
-			getInterruptLabel(BKW_ONERROR,        Interrupt.ERROR_BIT);
-			getInterruptLabel(BKW_ONBACKKEY,      Interrupt.BACK_KEY_BIT);	// the rest can be anonymous
-			getInterruptLabel(BKW_ONMENUKEY,      Interrupt.MENU_KEY_BIT);
-			getInterruptLabel(BKW_ONTIMER,        Interrupt.TIMER_BIT);
-			getInterruptLabel(BKW_ONKEYPRESS,     Interrupt.KEY_BIT);
-			getInterruptLabel(BKW_ONGRTOUCH,      Interrupt.GR_TOUCH_BIT);
-			getInterruptLabel(BKW_ONCONSOLETOUCH, Interrupt.CONS_TOUCH_BIT);
-			getInterruptLabel(BKW_ONBTREADREADY,  Interrupt.BT_READY_BIT);
-			getInterruptLabel(BKW_ONBACKGROUND,   Interrupt.BACKGROUND_BIT);
-			getInterruptLabel(BKW_ONKBCHANGE,     Interrupt.KB_CHANGE_BIT);
-			getInterruptLabel(BKW_ONLOWMEM,       Interrupt.LOW_MEM_BIT);
+			getInterruptLabel(BKW_ONERROR,			Interrupt.ERROR_BIT);
+			getInterruptLabel(BKW_ONBACKKEY,		Interrupt.BACK_KEY_BIT);	// the rest can be anonymous
+			getInterruptLabel(BKW_ONMENUKEY,		Interrupt.MENU_KEY_BIT);
+			getInterruptLabel(BKW_ONTIMER,			Interrupt.TIMER_BIT);
+			getInterruptLabel(BKW_ONKEYPRESS,		Interrupt.KEY_BIT);
+			getInterruptLabel(BKW_ONGRTOUCH,		Interrupt.GR_TOUCH_BIT);
+			getInterruptLabel(BKW_ONCONSOLETOUCH,	Interrupt.CONS_TOUCH_BIT);
+			getInterruptLabel(BKW_ONBTREADREADY,	Interrupt.BT_READY_BIT);
+			getInterruptLabel(BKW_ONBACKGROUND,		Interrupt.BACKGROUND_BIT);
+			getInterruptLabel(BKW_ONKBCHANGE,		Interrupt.KB_CHANGE_BIT);
+			getInterruptLabel(BKW_ONLOWMEM,			Interrupt.LOW_MEM_BIT);
 		}
 
 		private Interrupt getInterruptLabel(String label, Integer bit) {
@@ -7505,7 +7503,10 @@ public class Run extends Activity {
 			return true;
 		}
 		else if (!islval)				return false;		// can't be label or assignment if already inc/dec
-		else if (isNext(':'))			return checkEOL();	// if label, must end line
+		else if (isNext(':')) {
+			ExecutingLineBuffer.cmd(CMD_LABEL, LineIndex);	// it's a label
+			return checkEOL();								// must end line
+		}
 
 		// Implementation note: this should probably be put in a Java enum type. (TODO)
 		int op = ASSIGN;
@@ -17559,9 +17560,16 @@ public class Run extends Activity {
 				"  paints   : " + plusBase(PaintList.size()),	// item 0 present after GR.Open but not accessible
 				"  bitmaps  : " + plusBase(BitmapList.size()),	// item 0 present after GR.Open but not accessible
 				"DL size    : " + plusBase(DisplayList.size()),	// item 0 present after GR.Open but not accessible
-				"RealDL size: " + plusBase(RealDisplayList.size()),// item 0 present after GR.Open but not accessible
-				"InKey count: " + InChar.size()
+				"RealDL size: " + plusBase(RealDisplayList.size()) // item 0 present after GR.Open but not accessible
 			);
+			int c;
+			c = InChar.size();			if (c != 0) { PrintShow("InKey count: " + c); }
+			c = IfElseStack.size();		if (c != 0) { PrintShow("IF stack   : " + c); }
+			c = ForNextStack.size();	if (c != 0) { PrintShow("FOR stack  : " + c); }
+			c = WhileStack.size();		if (c != 0) { PrintShow("WHILE stack: " + c); }
+			c = DoStack.size();			if (c != 0) { PrintShow("DO stack   : " + c); }
+			c = GosubStack.size();		if (c != 0) { PrintShow("GOSUB stack: " + c); }
+			c = FunctionStack.size();	if (c != 0) { PrintShow("Call stack : " + c); }
 		}
 		return true;
 	}
