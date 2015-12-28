@@ -1655,6 +1655,7 @@ public class Run extends Activity {
 
 	private static final String BKW_ARRAY_LENGTH = "length";
 	private static final String BKW_ARRAY_LOAD = "load";
+	private static final String BKW_ARRAY_FILL = "fill";
 	private static final String BKW_ARRAY_SORT = "sort";
 	private static final String BKW_ARRAY_SUM = "sum";
 	private static final String BKW_ARRAY_AVERAGE = "average";
@@ -1669,9 +1670,10 @@ public class Run extends Activity {
 	private static final String BKW_ARRAY_SEARCH = "search";
 
 	private static final String Array_KW[] = {			// Command list for Format
-		BKW_ARRAY_LENGTH, BKW_ARRAY_LOAD, BKW_ARRAY_SORT,
-		BKW_ARRAY_SUM, BKW_ARRAY_AVERAGE, BKW_ARRAY_REVERSE,
-		BKW_ARRAY_SHUFFLE, BKW_ARRAY_MIN, BKW_ARRAY_MAX,
+		BKW_ARRAY_LENGTH, BKW_ARRAY_LOAD, BKW_ARRAY_FILL,
+		BKW_ARRAY_SORT, BKW_ARRAY_SUM, BKW_ARRAY_AVERAGE,
+		BKW_ARRAY_REVERSE, BKW_ARRAY_SHUFFLE,
+		BKW_ARRAY_MIN, BKW_ARRAY_MAX,
 		BKW_ARRAY_DELETE, BKW_ARRAY_VARIANCE, BKW_ARRAY_STD_DEV,
 		BKW_ARRAY_COPY, BKW_ARRAY_SEARCH
 	};
@@ -4827,6 +4829,7 @@ public class Run extends Activity {
 		new Command(BKW_ARRAY_LENGTH)           { public boolean run() { return execute_array_length(); } },
 		new Command(BKW_ARRAY_LOAD)             { public boolean run() { return execute_array_load(); } },
 		new Command(BKW_ARRAY_DELETE)           { public boolean run() { return executeUNDIM(); } },
+		new Command(BKW_ARRAY_FILL)             { public boolean run() { return execute_array_fill(); } },
 		new Command(BKW_ARRAY_REVERSE)          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoReverse); } },
 		new Command(BKW_ARRAY_SHUFFLE)          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoShuffle); } },
 		new Command(BKW_ARRAY_SORT)             { public boolean run() { return execute_array_collection(ArrayOrderOps.DoSort); } },
@@ -13935,6 +13938,43 @@ public class Run extends Activity {
 				break;
 		}
 
+		return true;
+	}
+
+	private boolean execute_array_fill() {
+		String destVar = getVarAndType();							// get the array variable
+		if (destVar == null)			return false;
+		if (!VarIsArray)				return RunTimeError(EXPECT_ARRAY_VAR);
+		if (VarIsNew)					return RunTimeError(EXPECT_DIM_ARRAY);
+		boolean isNumeric = VarIsNumeric;
+		int arrayTableIndex = VarIndex.get(VarNumber);
+
+		Integer[] p = new Integer[2];
+		if (!getIndexPair(p))			return false;				// get values inside [], if any
+
+		if (!getArraySegment(arrayTableIndex, p)) return false;		// get segment start and length
+		int start = p[0].intValue();
+		int length = p[1].intValue();
+
+		if (!isNext(','))				return false;				// move to the value
+
+		if (!isNumeric) {											// string type array
+			if (!getStringArg())		return RunTimeError("Array and fill must be same type");
+			String fill = StringConstant;							// get the string to put in array
+			if (!checkEOL())			return false;
+
+			for (int i = 0; i < length; ++i) {						// fill the array
+				Vals.get(start + i).val(fill);
+			}
+		} else {													// numeric type array
+			if (!evalNumericExpression()) return RunTimeError("Array and fill must be same type");
+			double fill = EvalNumericExpressionValue;				// get the value to put in array
+			if (!checkEOL())			return false;
+
+			for (int i = 0; i < length; ++i) {						// fill the array
+				Vals.get(start + i).val(fill);
+			}
+		}
 		return true;
 	}
 
