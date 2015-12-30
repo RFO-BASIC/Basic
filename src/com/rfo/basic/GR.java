@@ -156,9 +156,11 @@ public class GR extends Activity {
 		private String mText;							// for Type.Text
 		private int mClipOpIndex;						// for getValue
 		private Region.Op mClipOp;						// for Type.Clip
-		private int mListIndex;							// for getValue
-		private ArrayList<Double> mList;				// for Type.Poly
-		private Run.ArrayDescriptor mArray;				// for Type.SetPixels
+		private int mListIndex;
+		private ArrayList<Double> mList;
+		private Var.ArrayDef mArray;					// for Type.SetPixels
+		private int mArrayStart;						// position in array to start pixel array
+		private int mArraySublength;					// length of array segment to use as pixel array
 		private int mRadius;							// for Type.Circle
 		private float mAngle_1;							// for Type.Rotate, Arc
 		private float mAngle_2;							// for Type.Arc
@@ -188,7 +190,11 @@ public class GR extends Activity {
 		public void ltrb(int[] ltrb) { mLeft = ltrb[0]; mTop = ltrb[1]; mRight = ltrb[2]; mBottom = ltrb[3]; }
 		public void radius(int radius) { mRadius = radius; }
 		public void text(String text) { mText = text; }
-		public void array(Run.ArrayDescriptor array) { mArray = array; }
+		public void array(Var.ArrayDef array, int start, int sublength) {
+			mArray = array;
+			mArrayStart = start;
+			mArraySublength = sublength;
+		}
 		public void angle(float angle) { mAngle_1 = angle; }
 
 		public void show(VISIBLE show) {
@@ -247,18 +253,20 @@ public class GR extends Activity {
 		public boolean isVisible()	{ return mVisible; }
 
 		// type-specific getters
-		public String text()				{ return mText; }
-		public Region.Op clipOp()			{ return mClipOp; }
-		public ArrayList<Double> list()		{
+		public String text()		{ return mText; }
+		public Region.Op clipOp()	{ return mClipOp; }
+		public ArrayList<Double> list() {
 			if (mList == null) { mList = new ArrayList<Double>(); }
 			return mList;
 		}
-		public Run.ArrayDescriptor array()	{ return mArray; }
-		public int radius()					{ return mRadius; }
-		public float angle()				{ return mAngle_1; }
-		public float arcStart()				{ return mAngle_1; }
-		public float arcSweep()				{ return mAngle_2; }
-		public boolean useCenter()			{ return mUseCenter; }
+		public Var.ArrayDef array()	{ return mArray; }
+		public int arrayStart()		{ return mArrayStart; }
+		public int arraySublength()	{ return mArraySublength; }
+		public int radius()			{ return mRadius; }
+		public float angle()		{ return mAngle_1; }
+		public float arcStart()		{ return mAngle_1; }
+		public float arcSweep()		{ return mAngle_2; }
+		public boolean useCenter()	{ return mUseCenter; }
 
 		// coordinate getters
 		public int x()				{ return mLeft; }
@@ -795,14 +803,14 @@ public class GR extends Activity {
 				case SetPixels:
 					fx1 = b.x();
 					fy1 = b.y();
-					Run.ArrayDescriptor array = b.array();
-					int pBase = array.base();
-					int pLength = array.length();
+					Var.ArrayDef array = b.array();
+					int pBase = b.arrayStart();
+					int pLength = b.arraySublength();
 					float[] pixels = new float[pLength];
 					for (int j = 0; j < pLength; ++j) {
-						pixels[j] = (float)Run.Vals.get(pBase + j).nval() + fx1;
+						pixels[j] = (float)array.nval(pBase + j) + fx1;
 						++j;
-						pixels[j] = (float)Run.Vals.get(pBase + j).nval() + fy1;
+						pixels[j] = (float)array.nval(pBase + j) + fy1;
 					}
 					canvas.drawPoints(pixels, thePaint);
 					break;
