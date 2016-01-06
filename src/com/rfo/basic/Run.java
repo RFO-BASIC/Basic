@@ -7079,9 +7079,9 @@ public class Run extends Activity {
 	private boolean BuildBasicArray(Var var, ArrayList<Integer> DimList) {
 		Var.ArrayVar arrayVar = (Var.ArrayVar)var;
 		Var.ArrayDef array;
-		try { array = new Var.ArrayDef(DimList); }					// create a new array defintion
+		try { array = Var.ArrayDef.create(var.isNumeric(), DimList); }// create a new array defintion
 		catch (InvalidParameterException ex) { return RunTimeError("DIMs must be >= 1 at"); }
-		array.createArray(var.isNumeric());							// add an empty array of the proper size and type
+		array.createArray();										// add an empty array of the proper size and type
 
 		arrayVar.arrayDef(array);									// add the definition to the variable
 		createNewVar(arrayVar);										// put the variable in the symbol table
@@ -7305,13 +7305,16 @@ public class Run extends Activity {
 	}
 
 	private boolean executeUNDIM() {
-		do {									// Multiple Arrays can be UNDIMed in one Statement separated by commas
+		mVal = null;	// clear mVal just in case it's pointing at a big array that's about to be UNDIMed
+		do {															// Multiple arrays can be UNDIMed in one statement
 			Var var = getVarAndType();
 			if ((var == null) || !var.isArray()){ return RunTimeError(EXPECT_ARRAY_VAR); }
 			if (!isNext(']'))					{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 			if (!var.isNew()) {											// if DIMed, UNDIM it
-				if (VarSearchStart < interruptVarSearchStart) {			// In ISR from function
-					return RunTimeError("Cannot UNDIM in an interrupt.");	// Deleting variable could corrupt call stack.
+				if (VarSearchStart < interruptVarSearchStart) {
+					// In ISR from function. Deleting a variable could corrupt the call stack.
+					// TODO: resolve this!
+					return RunTimeError("Cannot UNDIM in an interrupt.");
 				}
 				// Mark the array invalid in case any other variable is looking at it.
 				var.arrayDef().invalidate();
@@ -11651,7 +11654,7 @@ public class Run extends Activity {
 
 		if (args[0] != null) {										// if skew provided
 			float skew = args[0].floatValue();						// get skew
-			paint.setTextSize(skew);
+			paint.setTextSkewX(skew);
 		}
 
 		return true;

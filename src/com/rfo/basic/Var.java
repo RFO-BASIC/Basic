@@ -138,71 +138,49 @@ public abstract class Var {
 		@Override public String sval() { return mVal; }
 	} // class StrVal
 
-	public static class ArrayVal extends Val {
+	public static class ArrayVal extends Val {			// refers to an array element by caching its index
 		private ArrayDef mArray;						// where the array data is
-		private Val mVal;								// a NumVal or StrVal, holds the value of an element
-		private int mIndex;								// the index of the element in the array in mArray
+		private int mIndex;								// the index of an element in the array in mArray
 
-		// Initialize with a new scalar Val.
-		public ArrayVal(ArrayDef array, boolean isNumeric) {
+		public ArrayVal(ArrayDef array) {
 			mArray = array;
-			mVal = (isNumeric) ? new NumVal() : new StrVal();
-			mIndex = -1;
-		}
-		// Initialize with an existing scalar Val.
-		public ArrayVal(ArrayDef array, Val val) {
-			mArray = array;
-			mVal = val;
 			mIndex = -1;
 		}
 
-		@Override public boolean isNumeric() { return (mVal != null) && mVal.isNumeric(); }
-		@Override public boolean isString() { return (mVal != null) && mVal.isString(); }
+		@Override public boolean isNumeric() { return (mArray != null) && mArray.isNumeric(); }
+		@Override public boolean isString() { return (mArray != null) && mArray.isString(); }
 
-		// Save a (1D) index and cache the current value of the array at that index.
-		public void index(int index, double val) {		// numeric array
-			mIndex = index;
-			mVal.val(val);
-		}
-		public void index(int index, String val) {		// string array
-			mIndex = index;
-			mVal.val(val);
-		}
+		public void index(int index) { mIndex = index; }					// set the (1D) index
 
-		@Override public void val(double val) {
-			mVal.val(val);								// write the local Val
-			mArray.val(val, mIndex);					// write the array, too
-		}
-		@Override public void val(String val) {
-			mVal.val(val);								// write the local Val
-			mArray.val(val, mIndex);					// write the array, too
-		}
+		// Write the array element value.
+		@Override public void val(double val) { mArray.val(val, mIndex); }	// numeric array
+		@Override public void val(String val) { mArray.val(val, mIndex); }	// string array
 
-		@Override public void addval(double val) {
-			mVal.addval(val);							// write the local Val
-			mArray.val(mVal.nval(), mIndex);			// write the array, too
-		}
-		@Override public void addval(String val) {
-			mVal.addval(val);							// write the local Val
-			mArray.val(mVal.sval(), mIndex);			// write the array, too
-		}
+		// Add a value to an array element.
+		@Override public void addval(double val) { val(nval() + val); }		// numeric array
+		@Override public void addval(String val) { val(nval() + val); }		// string array
 
-		@Override public double nval() { return mVal.nval(); }	// read the cached value
-		@Override public String sval() { return mVal.sval(); }	// read the cached value
+		// Read the array element value.
+		@Override public double nval() { return mArray.nval(mIndex); }		// numeric array
+		@Override public String sval() { return mArray.sval(mIndex); }		// string array
 	} // class StrVal
 
 	// **************************** ArrayDef class ****************************
 	// Array definition: metadata and data
 
-	public static class ArrayDef {
+	protected abstract static class ArrayDef {
+		protected static final String WRONG_TYPE = "Wrong type for this array.";
+
 		private ArrayList<Integer> mDimList;
 		private ArrayList<Integer> mArraySizes;
-		private int mLength;
-		private boolean mValid;
-		private double[] mNum;
-		private String[] mStr;
+		protected int mLength;
+		protected boolean mValid;
 
-		public ArrayDef(ArrayList<Integer> dimList) {
+		public static ArrayDef create(boolean isNumeric, ArrayList<Integer> dimList) {
+			return (isNumeric) ? new NumArrayDef(dimList) : new StrArrayDef(dimList);
+		}
+
+		protected ArrayDef(ArrayList<Integer> dimList) {
 			// Record the dimensions of a basic array and calculate the total length.
 			// Caller must call setArray(int, boolean) to attach a real array.
 
@@ -222,10 +200,11 @@ public abstract class Var {
 			invalidate();								// not yet valid
 		}
 
-		public void invalidate() {						// mark invalid and release all data
+		protected abstract boolean isNumeric();
+		protected abstract boolean isString();
+
+		protected void invalidate() {					// mark invalid
 			mValid = false;
-			mNum = null;
-			mStr = null;
 		}
 
 		public boolean valid() { return mValid; }
@@ -233,19 +212,9 @@ public abstract class Var {
 		public ArrayList<Integer> dimList() { return mDimList; }
 		public ArrayList<Integer> arraySizes() { return mArraySizes; }
 
-		public void createArray(boolean isNumeric) {	// create and initialize empty array
-			if (isNumeric) {
-				mStr = null;
-				mNum = new double[mLength];				// initialized to 0.0
-			} else {
-				mStr = new String[mLength];				// initialized to null
-				mNum = null;
-				for (int i = 0; i < mLength; ++i) { mStr[i] = ""; }
-			}
-			mValid = true;
-		}
+		protected abstract void createArray();			// create and initialize empty array
 
-		private int getIndex(ArrayList<Integer> indexList) {
+		protected int getIndex(ArrayList<Integer> indexList) {
 			int nDims = mDimList.size();
 			int nIndices = indexList.size();
 			if (nDims != nIndices) {					// insure index count = dim count
@@ -274,33 +243,75 @@ public abstract class Var {
 			return index;
 		}
 
-		// Index the array, put the index and current element value in the ArrayVal.
-		public void val(ArrayVal val, ArrayList<Integer> indexList) {
-			int index = getIndex(indexList);
-			if (val.isNumeric()) { val.index(index, mNum[index]); }
-			else                 { val.index(index, mStr[index]); }
+		// Index the array, put the index in a new ArrayVal.
+		public ArrayVal val(ArrayList<Integer> indexList) {
+			ArrayVal val = new ArrayVal(this);
+			val.index(getIndex(indexList));
+			return val;
 		}
 
 		// Raw element access: assume 1D, skip index calculation.
 		// Also skip index checking. Java will do it, but caller should
 		// check so user doesn't have to deal with the error.
-		public void val(double val, int index) {
-			mNum[index] = val;
-		}
-		public void val(String val, int index) {
-			mStr[index] = val;
-		}
-		public double nval(int index) {
-			return mNum[index];
-		}
-		public String sval(int index) {
-			return mStr[index];
-		}
+		private void wrongType() { throw new InvalidParameterException(WRONG_TYPE); }
+		protected void val(double val, int index) { wrongType(); }
+		protected void val(String val, int index) { wrongType(); }
+		protected double nval(int index) { wrongType(); return 0.0; }	// does not return
+		protected String sval(int index) { wrongType(); return ""; }	// does not return
 
 		// Raw array access.
-		public double[] getNumArray() { return mNum; }
-		public String[] getStrArray() { return mStr; }
+		protected double[] getNumArray() { wrongType(); return null; }	// does not return
+		protected String[] getStrArray() { wrongType(); return null; }	// does not return
 	} // class ArrayDef
+
+	public static class NumArrayDef extends ArrayDef {
+		private double[] mNum;
+
+		protected NumArrayDef(ArrayList<Integer> dimList) { super(dimList); }
+
+		@Override public boolean isNumeric() { return true; }
+		@Override public boolean isString() { return false; }
+
+		@Override public void invalidate() {			// mark invalid and release all data
+			super.invalidate();
+			mNum = null;
+		}
+
+		@Override public void createArray() {			// create and initialize empty array
+			mNum = new double[mLength];					// initialized to 0.0
+			mValid = true;
+		}
+
+		// Raw access.
+		@Override public void val(double val, int index) { mNum[index] = val; }
+		@Override public double nval(int index) { return mNum[index]; }
+		@Override public double[] getNumArray() { return mNum; }
+	} // class NumArrayDef
+
+	public static class StrArrayDef extends ArrayDef {
+		private String[] mStr;
+
+		protected StrArrayDef(ArrayList<Integer> dimList) { super(dimList); }
+
+		@Override public boolean isNumeric() { return false; }
+		@Override public boolean isString() { return true; }
+
+		@Override public void invalidate() {			// mark invalid and release all data
+			super.invalidate();
+			mStr = null;
+		}
+
+		@Override public void createArray() {			// create and initialize empty array
+			mStr = new String[mLength];					// initialized to null
+			for (int i = 0; i < mLength; ++i) { mStr[i] = ""; }
+			mValid = true;
+		}
+
+		// Raw access.
+		@Override public void val(String val, int index) { mStr[index] = val; }
+		@Override public String sval(int index) { return mStr[index]; }
+		@Override public String[] getStrArray() { return mStr; }
+	} // class StrArrayDef
 
 	// *********************** FunctionParameter class ************************
 
@@ -428,7 +439,6 @@ public abstract class Var {
 
 	public static class ArrayVar extends Var {
 		private ArrayDef mArrayDef = null;					// array metadata and data
-		private ArrayVal mVal;								// caches the index and data of an array element
 
 		public ArrayVar(String name, boolean isNumeric) {
 			super(name, isNumeric);
@@ -447,14 +457,13 @@ public abstract class Var {
 			throw new InvalidParameterException("ArrayVar.val(Val): must specify index(es)");
 		}
 		@Override public void val(Val val) { newVal(); }	// throw exception
-		@Override public void arrayDef(ArrayDef def) {		// attach an existing ArrayDef and create an ArrayVal
+		@Override public void arrayDef(ArrayDef def) {		// attach an existing ArrayDef
 			mArrayDef = def;
-			mVal = new Var.ArrayVal(def, isNumeric());		// create a new ArrayVal of the right type
 ;		}
 
 		@Override public Var clone() {						// make a new Var, shallow copy of this Var
 			ArrayVar var = new ArrayVar(mName, isNumeric());
-			var.arrayDef(mArrayDef);						// reference same ArrayDef, make a new Val
+			var.arrayDef(mArrayDef);						// reference same ArrayDef
 			return var;
 		}
 
@@ -463,10 +472,9 @@ public abstract class Var {
 		@Override public Val val() {
 			throw new InvalidParameterException("ArrayVar.val(): must specify index(es)");
 		}
-		// Replaces "Val val()": index an array, put the index and current element value in mVal.
+		// Replaces "Val val()": index an array, put the index and current element value in a new ArrayVal.
 		public Val val(ArrayList<Integer> indexList) {
-			mArrayDef.val(mVal, indexList);
-			return mVal;
+			return mArrayDef.val(indexList);
 		}
 
 		@Override public ArrayDef arrayDef() {				// return the ArrayDef attached to this ArrayVar
