@@ -6250,11 +6250,12 @@ public class Run extends Activity {
 
 	private boolean executeMF_ASCII() {
 		if (!getStringArg()) return false;				// Get and check the string expression
-		int len = StringConstant.length();
+		String arg = StringConstant;
+		int len = arg.length();
 		int index = getIndexArg(len);					// get 1-based string index, 0 if error
 		if (--index < 0) return false;					// convert to 0-based index
 
-		EvalNumericExpressionIntValue = (len == 0) ? 256L : (StringConstant.charAt(index) & 0x00FF);
+		EvalNumericExpressionIntValue = (len == 0) ? 256L : (arg.charAt(index) & 0x00FF);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
 		VarIsInt = true;
 		return true;
@@ -6262,11 +6263,12 @@ public class Run extends Activity {
 
 	private boolean executeMF_UCODE() {
 		if (!getStringArg()) return false;				// Get and check the string expression
-		int len = StringConstant.length();
+		String arg = StringConstant;
+		int len = arg.length();
 		int index = getIndexArg(len);					// get 1-based string index, 0 if error
 		if (--index < 0) return false;					// convert to 0-based index
 
-		EvalNumericExpressionIntValue = (len == 0) ? 0x10000L : StringConstant.charAt(index);
+		EvalNumericExpressionIntValue = (len == 0) ? 0x10000L : arg.charAt(index);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
 		VarIsInt = true;
 		return true;
