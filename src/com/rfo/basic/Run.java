@@ -14154,7 +14154,10 @@ public class Run extends Activity {
 		int listIndex = getListArg();								// Get the list pointer
 		if (listIndex < 0)				return false;
 		if (!checkEOL())				return false;
-		theLists.get(listIndex).clear();
+
+		ArrayList<?> list = theLists.get(listIndex);
+		list.clear();
+		list.trimToSize();
 		return true;
 	}
 
