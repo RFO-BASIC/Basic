@@ -10731,22 +10731,32 @@ public class Run extends Activity {
 	}
 
 	private void DisplayListClear(GR.Type type) {
-//		try {Thread.sleep(500);}catch(InterruptedException e) {}	// Give GR some time to do it
-//		BitmapList.clear();
-//		BitmapList.add(null);										// Set Zero entry as null
-
 		Log.d(LOGTAG, "DisplayListClear");
 		synchronized (DisplayList) {
 			DisplayList.clear();									// Clear the Display List
-			RealDisplayList.clear();
-			PaintList.clear();										// and the Paint List
+			DisplayList.trimToSize();
 
-			PaintList.add(initPaint());								// add default Paint at 0
-			PaintList.add(initPaint());								// add default current Paint at entry 1
+			RealDisplayList.clear();
+			RealDisplayList.trimToSize();
+
+			PaintListClear();										// clear and initialize the PaintList
 
 			GR.BDraw b = new GR.BDraw(type);						// Start Display List
 			DisplayListAdd(b);										// with specified first entry
 		}
+	}
+
+	private void PaintListClear() {
+		// Preserve user's current and working Paints if they exist.
+		int nPaints = PaintList.size();
+		Paint workingPaint = (nPaints == 0) ? initPaint() : PaintList.get(0); 
+		Paint currentPaint = (nPaints == 0) ? initPaint() : PaintList.get(nPaints - 1);
+
+		PaintList.clear();
+		PaintList.trimToSize();
+
+		PaintList.add(workingPaint);							// restore user's 
+		PaintList.add(currentPaint);							// add user's current Paint at entry 1
 	}
 
 	private void BitmapListClear() {
@@ -10929,10 +10939,8 @@ public class Run extends Activity {
 	}
 
 	private void GRstop() {											// stop GR, but don't wait for lock
-		if (GR.drawView != null) {
-			synchronized (DisplayList) {							// create a new display list
-				DisplayListClear(GR.Type.Close);					// that commands GR.java to close
-			}
+		if (GR.drawView != null) {									// create a new display list
+			DisplayListClear(GR.Type.Close);						// that commands GR.java to close
 			GR.drawView.postInvalidate();							// start the draw so the command will get executed
 		}
 		GRopen = false;
@@ -10941,11 +10949,9 @@ public class Run extends Activity {
 	private boolean execute_gr_close() {
 		if (!checkEOL()) return false;
 
-		if (GR.drawView != null) {
-			synchronized (DisplayList) {							// create a new display list
-				DisplayListClear(GR.Type.Close);					// that commands GR.java to close
-				GR.waitForLock = true;
-			}
+		if (GR.drawView != null) {									// create a new display list
+			DisplayListClear(GR.Type.Close);						// that commands GR.java to close
+			GR.waitForLock = true;
 			GR.drawView.postInvalidate();							// start the draw so the command will get executed
 			waitForGrLOCK();
 		}
