@@ -11303,12 +11303,17 @@ public class Run extends Activity {
 		return getObjectNumber("Object out of range");				// with the default error message
 	}
 
-	private int getObjectNumber(String errMsg) {					// get and validate the Graphics Object Number
+	private int getObjectNumber(String errMsg) {					// get Object Number, set RTE if out of range
+		int obj = getGraphicsObjectNumber();
+		if (obj == -1) { RunTimeError(errMsg); }					// forced to -1 if out of range
+		return obj;
+	}
+
+	private int getGraphicsObjectNumber() {							// get and validate the Graphics Object Number
 		if (!evalNumericExpression()) return -1;
 		int obj = EvalNumericExpressionValue.intValue();
-		if (obj < 0 || obj >= DisplayList.size()) {
-			RunTimeError(errMsg);
-			obj = -1;
+		if (obj < 0 || obj >= DisplayList.size()) {					// if invalid Object Number
+			obj = -1;												// force to standard error value (-1)
 		}
 		return obj;
 	}
@@ -11496,14 +11501,23 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_gr_get_type() {
-		int obj = getObjectNumber();
-		if (obj < 0) return false;
-		if (!isNext(',') || !getVar() || !checkEOL()) return false;	// var for type string
-		Var.Val val = mVal;
+		Var.Val val = null;
+		int obj = getGraphicsObjectNumber();						// forced to -1 if out of range
+		if (obj == -1) { writeErrorMsg("Not a graphical object"); }	// message for GetError$() function
+		if (isNext(',')) {
+			if (!getSVar())				return false;				// var for type string
+			val = mVal;
+		}
+		if (!checkEOL())				return false;
 
-		GR.BDraw b = DisplayList.get(obj);							// get the Graphics Object
-		GR.Type type = b.type();
-		val.val(type.type());
+		if (val != null) {											// if there is a return variable
+			String type;											// value to return
+			if (obj != -1) {										// if there is a valid object number
+				GR.BDraw b = DisplayList.get(obj);					// get the Graphics Object
+				type = b.type().type();								// get its type
+			} else { type = ""; }									// else no type (invalid object number)
+			val.val(type);
+		}
 		return true;
 	}
 
