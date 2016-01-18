@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2015 Paul Laughton
+Copyright (C) 2010 - 2016 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -76,7 +76,8 @@ public class GR extends Activity {
 //	public static double TouchY[] = {0,0};
 	public static float scaleX = 1f;
 	public static float scaleY = 1f;
-	public static boolean Running = false;
+	public static boolean Running = false;				// flag set when Open object runs
+	private boolean mCreated = false;					// flat set when onCreate is complete
 	public static boolean NullBitMap = false;
 	public static float Brightness = -1;
 
@@ -413,12 +414,13 @@ public class GR extends Activity {
 		cm.registerContext(ContextManager.ACTIVITY_GR, this);
 		cm.setCurrent(ContextManager.ACTIVITY_GR);
 
-		setVolumeControlStream(AudioManager.STREAM_MUSIC);
-
 		Intent intent = getIntent();
 		int showStatusBar = intent.getIntExtra(EXTRA_SHOW_STATUSBAR, 0);
 		int orientation = intent.getIntExtra(EXTRA_ORIENTATION, -1);
 		int backgroundColor = intent.getIntExtra(EXTRA_BACKGROUND_COLOR, 0xFF000000);
+
+		setOrientation(orientation);
+		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
 		showStatusBar = (showStatusBar == 0)
 				? WindowManager.LayoutParams.FLAG_FULLSCREEN			// do not show status bar
@@ -435,9 +437,11 @@ public class GR extends Activity {
 		drawView.requestFocus();
 		drawView.setBackgroundColor(backgroundColor);
 		drawView.setId(33);
-		drawView.setOrientation(orientation);		// Set orientation, get screen height and width
 
-		setVolumeControlStream(AudioManager.STREAM_MUSIC);
+		synchronized (drawView) {
+			mCreated = true;
+			condReleaseLOCK();
+		}
 	}
 
 	@Override
@@ -490,7 +494,7 @@ public class GR extends Activity {
 		Log.v(LOGTAG, "onDestroy " + this.toString());
 		// if a new instance has started, don't let this one mess it up
 		if (context == this) {
-			Running = false;
+			Running = mCreated = false;
 			context = null;
 			releaseLOCK();								// don't leave GR.command hanging
 		}
@@ -564,13 +568,28 @@ public class GR extends Activity {
 		}
 	}
 
-	private void releaseLOCK() {
+	private void condReleaseLOCK() {					// conditionally release LOCK
+		if (mCreated & Running) { releaseLOCK(); }
+	}
+
+	private void releaseLOCK() {						// unconditionally release LOCK
 		if (waitForLock) {
 			synchronized (LOCK) {
 				waitForLock = false;
 				LOCK.notify();							// release GR.OPEN or .CLOSE if it is waiting
 			}
 		}
+	}
+
+	public void setOrientation(int orientation) {		// Convert and apply orientation setting
+		Log.v(LOGTAG, "Set orientation " + orientation);
+		switch (orientation) {
+			default:
+			case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
+			case 0:  orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; break;
+			case -1: orientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR; break;
+		}
+		setRequestedOrientation(orientation);
 	}
 
     public void connectDevice(Intent data, boolean secure) {
@@ -632,15 +651,9 @@ public class GR extends Activity {
 			}
 		}
 
-		synchronized public void setOrientation(int orientation) {	// Convert and apply orientation setting
+		synchronized public void setOrientation(int orientation) {	// synchronized orientation change
 			Log.v(LOGTAG, "Set orientation " + orientation);
-			switch (orientation) {
-				default:
-				case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
-				case 0:  orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; break;
-				case -1: orientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR; break;
-			}
-			setRequestedOrientation(orientation);
+			GR.this.setOrientation(orientation);
 		}
 
 		@Override
@@ -741,7 +754,7 @@ public class GR extends Activity {
 						break;
 					}
 				}
-				releaseLOCK();
+				condReleaseLOCK();
 			}
 		} // onDraw()
 
@@ -761,9 +774,13 @@ public class GR extends Activity {
 				int pIndex = b.paint();
 				if (Run.PaintList.size() == 0)						return true;
 				if (pIndex < 1 || pIndex >= Run.PaintList.size())	return true;
-				thePaint = newPaint(Run.PaintList.get(pIndex));
+
+				thePaint = Run.PaintList.get(pIndex);
 				int alpha = b.alpha();
-				if (alpha < 256) thePaint.setAlpha(alpha);
+				if ((alpha < 256) && (alpha != thePaint.getAlpha())) {
+					thePaint = newPaint(thePaint);
+					thePaint.setAlpha(alpha);
+				}
 			}
 
 			switch (type) {
