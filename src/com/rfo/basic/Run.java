@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2015 Paul Laughton
+Copyright (C) 2010 - 2016 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -1555,9 +1555,11 @@ public class Run extends Activity {
 	private enum ArrayOrderOps { DoSort, DoShuffle, DoReverse }
 	private enum ArrayMathOps { DoSum, DoAverage, DoMin, DoMax, DoVariance, DoStdDev }
 
+	private static final String BKW_ARRAY_DELETE = "delete";
+	private static final String BKW_ARRAY_DIMS = "dims";
+	private static final String BKW_ARRAY_FILL = "fill";
 	private static final String BKW_ARRAY_LENGTH = "length";
 	private static final String BKW_ARRAY_LOAD = "load";
-	private static final String BKW_ARRAY_FILL = "fill";
 	private static final String BKW_ARRAY_SORT = "sort";
 	private static final String BKW_ARRAY_SUM = "sum";
 	private static final String BKW_ARRAY_AVERAGE = "average";
@@ -1565,18 +1567,18 @@ public class Run extends Activity {
 	private static final String BKW_ARRAY_SHUFFLE = "shuffle";
 	private static final String BKW_ARRAY_MIN = "min";
 	private static final String BKW_ARRAY_MAX = "max";
-	private static final String BKW_ARRAY_DELETE = "delete";
 	private static final String BKW_ARRAY_VARIANCE = "variance";
 	private static final String BKW_ARRAY_STD_DEV = "std_dev";
 	private static final String BKW_ARRAY_COPY = "copy";
 	private static final String BKW_ARRAY_SEARCH = "search";
 
 	private static final String Array_KW[] = {			// Command list for Format
-		BKW_ARRAY_LENGTH, BKW_ARRAY_LOAD, BKW_ARRAY_FILL,
+		BKW_ARRAY_DELETE, BKW_ARRAY_DIMS,
+		BKW_ARRAY_FILL, BKW_ARRAY_LENGTH, BKW_ARRAY_LOAD,
 		BKW_ARRAY_SORT, BKW_ARRAY_SUM, BKW_ARRAY_AVERAGE,
 		BKW_ARRAY_REVERSE, BKW_ARRAY_SHUFFLE,
 		BKW_ARRAY_MIN, BKW_ARRAY_MAX,
-		BKW_ARRAY_DELETE, BKW_ARRAY_VARIANCE, BKW_ARRAY_STD_DEV,
+		BKW_ARRAY_VARIANCE, BKW_ARRAY_STD_DEV,
 		BKW_ARRAY_COPY, BKW_ARRAY_SEARCH
 	};
 
@@ -4616,10 +4618,11 @@ public class Run extends Activity {
 	// **************** ARRAY Group
 
 	private final Command[] array_cmd = new Command[] {	// Map array command keywords to their execution functions
+		new Command(BKW_ARRAY_DELETE)           { public boolean run() { return executeUNDIM(); } },
+		new Command(BKW_ARRAY_DIMS)             { public boolean run() { return execute_array_dims(); } },
+		new Command(BKW_ARRAY_FILL)             { public boolean run() { return execute_array_fill(); } },
 		new Command(BKW_ARRAY_LENGTH)           { public boolean run() { return execute_array_length(); } },
 		new Command(BKW_ARRAY_LOAD)             { public boolean run() { return execute_array_load(); } },
-		new Command(BKW_ARRAY_DELETE)           { public boolean run() { return executeUNDIM(); } },
-		new Command(BKW_ARRAY_FILL)             { public boolean run() { return execute_array_fill(); } },
 		new Command(BKW_ARRAY_REVERSE)          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoReverse); } },
 		new Command(BKW_ARRAY_SHUFFLE)          { public boolean run() { return execute_array_collection(ArrayOrderOps.DoShuffle); } },
 		new Command(BKW_ARRAY_SORT)             { public boolean run() { return execute_array_collection(ArrayOrderOps.DoSort); } },
@@ -5060,8 +5063,23 @@ public class Run extends Activity {
 		return false;
 	}
 
+	// Note: we're going to move away from requiring a new array for write.
+	// To that end, we've moved the isNew() test from valid...() to get...().
+	// It looks a little awkward this way; we'll clean it up when done transitioning.
 	private Var getArrayVarForWrite() {					// get the array var as a new, undimensioned array
 														// returns the name, does NOT create a variable
+		Var var = getVarAndType();						// either string or numeric type is ok
+		if (validArrayVarForWrite(var)) {
+			if (var.isNew())			return var;		// no error, return Var
+			RunTimeError(EXPECT_NEW_ARRAY);
+		}
+		LineIndex -= var.name().length();				// error, back up LineIndex
+		return null;									// and return null
+	}
+
+	// Alternate form that does not require new array.
+	// Eventually this will be the main form, maybe the only form.
+	private Var getAnyArrayVarForWrite() {
 		Var var = getVarAndType();						// either string or numeric type is ok
 		if (validArrayVarForWrite(var)) { return var; }	// no error, return Var
 		LineIndex -= var.name().length();				// error, back up LineIndex
@@ -5070,7 +5088,6 @@ public class Run extends Activity {
 
 	private boolean validArrayVarForWrite(Var var) {
 		if ((var == null) || !var.isArray())	{ return RunTimeError(EXPECT_ARRAY_VAR); }
-		if (!var.isNew())						{ return RunTimeError(EXPECT_NEW_ARRAY); }
 		if (!isNext(']'))						{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 		return true;									// no error
 	}
@@ -5078,7 +5095,19 @@ public class Run extends Activity {
 	private Var getArrayVarForWrite(boolean type) {		// get the array var name as a new, undimensioned array
 														// returns the name, does NOT create a variable
 		Var var = getVarAndType();
-		if (validArrayVarForWrite(var, type))	{ return var; } // no error, return Var
+		if (validArrayVarForWrite(var, type)) {
+			if (var.isNew())			return var;		// no error, return Var
+			RunTimeError(EXPECT_NEW_ARRAY);
+		}
+		LineIndex -= var.name().length();				// error, back up LineIndex
+		return null;									// and return null
+	}
+
+	// Alternate form that does not require new array.
+	// Eventually this will be the main form, maybe the only form.
+	private Var getAnyArrayVarForWrite(boolean type) {
+		Var var = getVarAndType();						// either string or numeric type is ok
+		if (validArrayVarForWrite(var, type)) { return var; } // no error, return Var
 		LineIndex -= var.name().length();				// error, back up LineIndex
 		return null;									// and return null
 	}
@@ -5086,7 +5115,6 @@ public class Run extends Activity {
 	private boolean validArrayVarForWrite(Var var, boolean type) {
 		if ((var == null) || !var.isArray())	{ return RunTimeError(EXPECT_ARRAY_VAR); }
 		if (type != var.isNumeric())			{ return RunTimeError(type ? EXPECT_NUM_ARRAY : EXPECT_STRING_ARRAY); }
-		if (!var.isNew())						{ return RunTimeError(EXPECT_NEW_ARRAY); }
 		if (!isNext(']'))						{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 		return true;									// no error
 	}
@@ -5095,14 +5123,14 @@ public class Run extends Activity {
 														// returns the Var, null if error or no var
 		int LI = LineIndex;
 		Var var = getVarAndType();
-		if (validArrayVarForRead(var)) { return var; } // no error, return Var
+		if (validArrayVarForRead(var)) { return var; }	// no error, return Var
 		LineIndex = LI;
 		return null;									// error, return null
 	}
 
 	private boolean validArrayVarForRead(Var var) {
 		if ((var == null) || !var.isArray())	{ return RunTimeError(EXPECT_ARRAY_VAR); }
-		else if (var.isNew())					{ return RunTimeError(EXPECT_DIM_ARRAY); }
+		if (var.isNew())						{ return RunTimeError(EXPECT_DIM_ARRAY); }
 		return true;									// no error
 	}
 
@@ -7076,7 +7104,7 @@ public class Run extends Activity {
 
 	// ************************************* array utilities **************************************
 
-	private boolean BuildBasicArray(Var var, ArrayList<Integer> DimList) {
+	private boolean BuildBasicArray(Var var, int[] DimList) {		// build an arbitrary array with initialized data
 		Var.ArrayVar arrayVar = (Var.ArrayVar)var;
 		Var.ArrayDef array;
 		try { array = Var.ArrayDef.create(var.isNumeric(), DimList); }// create a new array defintion
@@ -7084,13 +7112,19 @@ public class Run extends Activity {
 		array.createArray();										// add an empty array of the proper size and type
 
 		arrayVar.arrayDef(array);									// add the definition to the variable
-		createNewVar(arrayVar);										// put the variable in the symbol table
+		if (var.isNew()) { createNewVar(arrayVar); }				// put the variable in the symbol table if not already there
 		return true;
-	} // end BuildBasicArray
+	}
 
-	private boolean BuildBasicArray(Var var, int length) {			// build a one-dimensional array
-		ArrayList<Integer> dimValues = new ArrayList<Integer>();	// list of dimensions
-		dimValues.add(length);										// only one dimension
+	private boolean BuildBasicArray(Var var, ArrayList<Integer> DimList) { // like previous method
+		int[] dims = new int[DimList.size()];						// but convert ArrayList<Integer> to int[]
+		int idx = 0;
+		for (int dim : DimList) { dims[idx++] = dim; }
+		return BuildBasicArray(var, dims);
+	}
+
+	private boolean BuildBasicArray(Var var, int length) {			// build a one-dimensional array with initialized data
+		int[] dimValues = new int[] { length };						// list of dimensions has only one element
 		return (BuildBasicArray(var, dimValues));					// go build an array of the proper size
 	}
 
@@ -7098,9 +7132,7 @@ public class Run extends Activity {
 		if (!BuildBasicArray(var, length)) return false;			// go build an array of the proper size and type
 		double[] array = var.arrayDef().getNumArray();				// Caution! Raw array access!
 		int i = 0;
-		for (double d : Values) {									// stuff the array
-			array[i++] = d;
-		}
+		for (double d : Values) { array[i++] = d; }					// stuff the array
 		return true;
 	}
 
@@ -7108,9 +7140,7 @@ public class Run extends Activity {
 		if (!BuildBasicArray(var, length)) return false;			// go build an array of the proper size and type
 		String[] array = var.arrayDef().getStrArray();				// Caution! Raw array access!
 		int i = 0;
-		for (String s : Values) {									// stuff the array
-			array[i++] = s;
-		}
+		for (String s : Values) { array[i++] = s; }					// stuff the array
 		return true;
 	}
 
@@ -7283,22 +7313,20 @@ public class Run extends Activity {
 		return checkEOL();
 	} // executeLET
 
-	private boolean executeDIM() {									// DIM
-																		// Execute a DIM Comman
+	private boolean executeDIM() {
 		do {									// Multiple Arrays can be DIMed in one DIM statement separated by commas
 			Var var = getVarAndType();									// get the array variable name
 			if ((var == null) || !var.isArray()){ return RunTimeError(EXPECT_ARRAY_VAR); }
-			if (!var.isNew())					{ return RunTimeError(EXPECT_NEW_ARRAY); }
-			if (isNext(']'))					{ return false; }		// must have dimension(s)
+			if (isNext(']'))					return false;			// must have dimension(s)
 
 			ArrayList<Integer> dimValues = new ArrayList<Integer>();	// a list to hold the array dimension values
 			do {														// get each index value
-				if (!evalNumericExpression())	{ return false; }
+				if (!evalNumericExpression())	return false;
 				dimValues.add(EvalNumericExpressionValue.intValue());	// and add it to the list
 			} while (isNext(','));
-			if (!isNext(']'))					{ return false; }		// must have closing bracket
+			if (!isNext(']'))					return false;			// must have closing bracket
 
-			if (!BuildBasicArray(var, dimValues)) { return false; }		// no error, build the array
+			if (!BuildBasicArray(var, dimValues)) return false;			// no error, build the array
 
 		} while (isNext(','));											// continue while there are arrays to be DIMed
 		return checkEOL();												// then done
@@ -10774,7 +10802,7 @@ public class Run extends Activity {
 
 	private boolean execute_gr_getdl() {
 
-		Var var = getArrayVarForWrite(TYPE_NUMERIC);				// get the result array variable
+		Var var = getAnyArrayVarForWrite(TYPE_NUMERIC);				// get the result array variable
 		if (var == null)				return false;				// must name a new numeric array variable
 
 		boolean keepHiddenObjects = false;
@@ -13494,6 +13522,23 @@ public class Run extends Activity {
 
 	private boolean executeARRAY() {								// Get array command keyword if it is there
 		return executeSubcommand(array_cmd, "Array");				// and execute the command
+	}
+
+	private boolean execute_array_dims() {							// get the dimensions of an array and put them in another array
+		Var srcvar = getArrayVarForRead();							// get the source array variable
+		if (srcvar == null)				return false;
+		if (!isNext(']'))				{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+
+		if (!isNext(','))				{ return checkEOL(); }		// user supplied no desination array
+		Var dstvar = getAnyArrayVarForWrite(TYPE_NUMERIC);			// get the destination array variable
+		if (!checkEOL())				return false;				// line must end with ']'
+
+		int[] dimList = ((Var.ArrayVar)srcvar).arrayDef().dimList();
+		int size = dimList.length;
+		ArrayList<Double> dims = new ArrayList<Double>(size);
+		for (int i = 0; i < size; ++i) { dims.add(Double.valueOf(dimList[i])); }
+
+		return ListToBasicNumericArray(dstvar, dims, size);			// copy the list to a BASIC! array
 	}
 
 	private boolean execute_array_length() {

@@ -171,27 +171,28 @@ public abstract class Var {
 	protected abstract static class ArrayDef {
 		protected static final String WRONG_TYPE = "Wrong type for this array.";
 
-		private ArrayList<Integer> mDimList;
-		private ArrayList<Integer> mArraySizes;
+		private int[] mDimList;
+		private int[] mArraySizes;
 		protected int mLength;
 		protected boolean mValid;
 
-		public static ArrayDef create(boolean isNumeric, ArrayList<Integer> dimList) {
+		public static ArrayDef create(boolean isNumeric, int[] dimList) {
 			return (isNumeric) ? new NumArrayDef(dimList) : new StrArrayDef(dimList);
 		}
 
-		protected ArrayDef(ArrayList<Integer> dimList) {
+		protected ArrayDef(int[] dimList) {
 			// Record the dimensions of a basic array and calculate the total length.
-			// Caller must call setArray(int, boolean) to attach a real array.
+			// Constructor does not allocate space for the array data.
 
-			// This list of sizes is used to quickly calculate the array element offset
-			// when the array is referenced.
-			ArrayList<Integer> arraySizes = new ArrayList<Integer>();
+			// This list of sizes is used to quickly calculate the 1D array element offset
+			// of a multi-dimension array when the array is referenced.
+			int size = dimList.length;
+			int[] arraySizes = new int[size];
 			int length = 1;
-			for (int d = dimList.size() - 1; d >= 0; --d) {	// for each Dim from last to first
-				int dim = dimList.get(d);				// get the Dim
+			for (int d = size - 1; d >= 0; --d) {		// for each Dim from last to first
+				int dim = dimList[d];					// get the Dim
 				if (dim < 1) { throw new InvalidParameterException("ArrayDef dimList"); }
-				arraySizes.add(0, length);				// insert the previous total in the ArraySizes List
+				arraySizes[d] = length;					// insert the previous total in the ArraySizes List
 				length *= dim;							// multiply this dimension by the previous size
 			}
 			mDimList = dimList;
@@ -203,19 +204,17 @@ public abstract class Var {
 		protected abstract boolean isNumeric();
 		protected abstract boolean isString();
 
-		protected void invalidate() {					// mark invalid
-			mValid = false;
-		}
+		protected void invalidate() { mValid = false; }	// mark invalid
 
 		public boolean valid() { return mValid; }
 		public int length() { return mLength; }
-		public ArrayList<Integer> dimList() { return mDimList; }
-		public ArrayList<Integer> arraySizes() { return mArraySizes; }
+		public int[] dimList() { return mDimList; }
+		protected int[] arraySizes() { return mArraySizes; }
 
 		protected abstract void createArray();			// create and initialize empty array
 
 		protected int getIndex(ArrayList<Integer> indexList) {
-			int nDims = mDimList.size();
+			int nDims = mDimList.length;
 			int nIndices = indexList.size();
 			if (nDims != nIndices) {					// insure index count = dim count
 				throw new InvalidParameterException(
@@ -227,8 +226,8 @@ public abstract class Var {
 			int index = 0;
 			for (int i = 0; i < nDims; ++i) {
 				int p = indexList.get(i);				// p = index for this call
-				int q = mDimList.get(i);				// q = DIMed value for this index
-				int r = mArraySizes.get(i);				// r = size for this index
+				int q = mDimList[i];					// q = DIMed value for this index
+				int r = mArraySizes[i];					// r = size for this index
 				if (p > q) {							// insure index <= DIMed limit
 					throw new InvalidParameterException(
 							"Index #"+ (i+1) + " (" + p +
@@ -267,7 +266,7 @@ public abstract class Var {
 	public static class NumArrayDef extends ArrayDef {
 		private double[] mNum;
 
-		protected NumArrayDef(ArrayList<Integer> dimList) { super(dimList); }
+		protected NumArrayDef(int[] dimList) { super(dimList); }
 
 		@Override public boolean isNumeric() { return true; }
 		@Override public boolean isString() { return false; }
@@ -291,7 +290,7 @@ public abstract class Var {
 	public static class StrArrayDef extends ArrayDef {
 		private String[] mStr;
 
-		protected StrArrayDef(ArrayList<Integer> dimList) { super(dimList); }
+		protected StrArrayDef(int[] dimList) { super(dimList); }
 
 		@Override public boolean isNumeric() { return false; }
 		@Override public boolean isString() { return true; }
