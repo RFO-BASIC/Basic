@@ -44,6 +44,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.Flushable;
 import java.io.InputStream;
 import java.io.FileInputStream;
@@ -133,6 +134,7 @@ import android.content.pm.ResolveInfo;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
+import android.content.res.Resources.NotFoundException;
 //import android.content.ClipboardManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -3300,7 +3302,8 @@ public class Run extends Activity {
 		private Long EvalNumericExpressionIntValue;			// Integer copy of EvalNumericExpressionValue when VarIsInt is true
 		private Double GetNumberValue;						// Return value from GetNumber()
 		private String PossibleKeyWord = "";				// Used when TO, STEP, THEN are expected
-		private String mErrorMsg;
+		private static final String NO_ERROR = "No error";
+		private String mErrorMsg = NO_ERROR;
 
 		// *************************** Random number function variables ***************************
 
@@ -3887,7 +3890,7 @@ public class Run extends Activity {
 		mArrayVar = new Var.ArrayVar("", Var.Type.NOVAR);
 		mFunctionVar = new Var.FunctionVar("", Var.Type.NOVAR);
 
-		mErrorMsg = "No error";
+		mErrorMsg = NO_ERROR;
 
 		theLists = new ArrayList <ArrayList>();
 		theLists.add(new ArrayList <ArrayList>());
@@ -5004,6 +5007,10 @@ public class Run extends Activity {
 
 	private void writeErrorMsg(Exception e) {
 		writeErrorMsg("Error:", e);
+	}
+
+	private void clearErrorMsg() {					// Clear the global error message
+		mErrorMsg = NO_ERROR;
 	}
 
 	// ************************* start of getVar() and its derivatives ****************************
@@ -7242,8 +7249,8 @@ public class Run extends Activity {
 		/*
 		 * This is the execution function for commands BKW_LET, BKW_PREDEC, and BKW_PREINC,
 		 * and it is also called from executeImplicitCommand() for implied LET commands.
-		 * A bare variable is an implied LET case, but pre-decrement and pre-increment with
-		 * no LET are treated as explicit BKW_PREDEC and BKW_PREINC commands.
+		 * Pre-decrement and pre-increment with no LET are treated as explicit
+		 * BKW_PREDEC and BKW_PREINC commands.
 		 */
 		boolean islval = (nval == 0.0);						// assignable only if no inc/dec
 
@@ -7259,8 +7266,9 @@ public class Run extends Activity {
 		if (isEOL()) {										// no more to parse, may have created variable
 			if (varIsNumeric && (nval != 0.0)) {			// pre/post inc/dec of numeric variable
 				val.addval(nval);
+				return true;
 			}
-			return true;
+			return false;									// else (e.g., bare variable name) syntax error
 		}
 		else if (!islval)				return false;		// can't be label or assignment if already inc/dec
 		else if (isNext(':')) {
@@ -8374,6 +8382,7 @@ public class Run extends Activity {
 	private boolean executeTEXT_OPEN() {							// Open a file
 		boolean append = false;										// Assume not append
 		int FileMode = 0;											// Default to FMR
+		clearErrorMsg();
 		switch (ExecutingLineBuffer.line().charAt(LineIndex)) {		// First parm is a, w or r
 		case 'a':
 			append = true;					// append is a special case of write
@@ -8636,6 +8645,7 @@ public class Run extends Activity {
 	private boolean executeBYTE_OPEN() {							// Open a file
 		boolean append = false;										// Assume not append
 		int FileMode = 0;											// Default to FMR
+		clearErrorMsg();
 		switch (ExecutingLineBuffer.line().charAt(LineIndex)) {		// First parm is a, w or r
 		case 'a':
 			append = true;					// append is a special case of write
@@ -9404,6 +9414,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeGRABFILE() {
+		clearErrorMsg();
 		if (!getSVar())					return false;				// First parm is string var
 		Var.Val val = mVal;
 
@@ -9426,9 +9437,16 @@ public class Run extends Activity {
 
 		try {
 			bis = Basic.getBufferedInputStream(Basic.DATA_DIR, theFileName);
-			result = grabStream(bis, textFlag);
+			if (bis != null) { result = grabStream(bis, textFlag); }
+			else             { writeErrorMsg("File not found"); }
+		}
+		catch (FileNotFoundException fnfe) {
+			writeErrorMsg("File not found");
 		}
 		catch (IOException ie) { ioex = ie; }
+		catch (NotFoundException nfe) {
+			writeErrorMsg("Resource not found");
+		}
 		catch (Exception e) { ex = e; }
 		finally {
 			ioex = FileInfo.closeStream(bis, ioex);
@@ -9455,7 +9473,7 @@ public class Run extends Activity {
 		if (!checkEOL())				return false;
 
 		BufferedInputStream bis = null;
-		String result = null;
+		String result = "";
 
 		URL url = null;
 		try {
@@ -9469,12 +9487,13 @@ public class Run extends Activity {
 			}
 			InputStream inputStream = connection.getInputStream();
 			bis = new BufferedInputStream(inputStream);
-			result = grabStream(bis, true);							// Read as encoded text stream, not byte stream
+			if (bis != null) { result = grabStream(bis, true); }	// Read as encoded text stream, not byte stream
+			else             { writeErrorMsg("Problem opening or reading URL"); }
 // Alternate implementation: uncomment this catch block to handle Timeout explicitly.
 //		} catch (SocketTimeoutException ste) {						// Connect or Read timeout
 //			result = "";											// Empty result, finally will close stream but will not return
 		} catch (Exception e) {										// Report exception in run time error
-			return RunTimeError(e);									// finally will close stream before return happens
+			writeErrorMsg(e);
 		} finally {
 			IOException ex = FileInfo.closeStream(bis, null);		// Close stream if not already closed
 			if (ex != null) { return RunTimeError(ex); }			// Report first exception, if any, and if no previous RTE set
@@ -11532,6 +11551,7 @@ public class Run extends Activity {
 		Var.Val val = null;
 		int obj = getGraphicsObjectNumber();						// forced to -1 if out of range
 		if (obj == -1) { writeErrorMsg("Not a graphical object"); }	// message for GetError$() function
+		else           { clearErrorMsg(); }
 		if (isNext(',')) {
 			if (!getSVar())				return false;				// var for type string
 			val = mVal;
@@ -11838,6 +11858,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_gr_bitmap_load() {
+		clearErrorMsg();
 		if (!getNVar()) return false;								// bitmap pointer variable
 		Var.Val val = mVal;
 		if (!isNext(',')) return false;
@@ -11879,7 +11900,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_gr_bitmap_scale() {
-
+		clearErrorMsg();
 		if (!getNVar()) return false;								// destination bitmap pointer variable
 		Var.Val val = mVal;
 		if (!isNext(',')) return false;
@@ -11946,6 +11967,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_gr_bitmap_crop() {
+		clearErrorMsg();
 		if (!getNVar()) return false;								// dest Graphic Object variable
 		Var.Val val = mVal;
 		if (!isNext(',')) return false;
@@ -12070,6 +12092,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_gr_bitmap_create() {
+		clearErrorMsg();
 		if (!getNVar()) return false;								// get bitmap pointer variable
 		Var.Val val = mVal;
 		if (!isNext(',')) return false;
@@ -12448,6 +12471,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_screen_to_bitmap() {
+		clearErrorMsg();
 		if (!getNVar()) return false;
 		Var.Val val = mVal;
 		if (!checkEOL()) return false;
@@ -12859,6 +12883,7 @@ public class Run extends Activity {
 		} */
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 //		AudioManager audioSM = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+		clearErrorMsg();
 
 		if (!getNVar())					return false;		// get the Player Number variable
 		Var.Val val = mVal;
@@ -12909,7 +12934,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_audio_play() {
-
+		clearErrorMsg();
 		if (!evalNumericExpression())	return false;
 		int index = EvalNumericExpressionValue.intValue();
 		if (!checkAudioFileTableIndex(index)) return false;
@@ -13266,6 +13291,7 @@ public class Run extends Activity {
 		double errorCode = 1.0;
 		long minTime = 0l;
 		float minDistance = 0.0f;
+		clearErrorMsg();
 
 		boolean isComma = isNext(',');
 		if (!isComma && !isEOL()) {							// there is a status var
@@ -15939,6 +15965,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeFONT_LOAD() {
+		clearErrorMsg();
 		if (!getNVar())					return false;				// font pointer variable
 		Var.Val val = mVal;
 		if (!isNext(','))				return false;
