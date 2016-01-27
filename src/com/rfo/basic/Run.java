@@ -184,6 +184,8 @@ import android.text.ClipboardManager;
 
 import android.util.AttributeSet;
 import android.util.Base64;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -706,6 +708,7 @@ public class Run extends Activity {
 	private static final String BKW_RETURN = "return";
 	private static final String BKW_RINGER_GROUP = "ringer.";
 	private static final String BKW_RUN = "run";
+	private static final String BKW_SCREEN = "screen";
 	private static final String BKW_SELECT = "select";
 	private static final String BKW_SENSORS_GROUP = "sensors.";
 	private static final String BKW_SMS_GROUP = "sms.";
@@ -771,7 +774,7 @@ public class Run extends Activity {
 		BKW_SPLIT_ALL, BKW_SPLIT,
 		BKW_JOIN_ALL, BKW_JOIN, BKW_CLS,
 		BKW_FONT_GROUP, BKW_CONSOLE_GROUP, BKW_DEBUG_GROUP,
-		BKW_DEVICE, BKW_ECHO_ON, BKW_ECHO_OFF, BKW_KB_GROUP,
+		BKW_ECHO_ON, BKW_ECHO_OFF, BKW_KB_GROUP,
 		BKW_NOTIFY, BKW_RUN, // BKW_EMPTY_PROGRAM,		// Format does not need EMPTY_PROGRAM
 		BKW_SU_GROUP, BKW_SYSTEM_GROUP,
 		BKW_STT_LISTEN, BKW_STT_RESULTS, BKW_TTS_GROUP,
@@ -779,6 +782,7 @@ public class Run extends Activity {
 		BKW_VIBRATE, BKW_WAKELOCK, BKW_WIFILOCK,
 		BKW_END, BKW_EXIT, BKW_HOME,
 		BKW_INCLUDE, BKW_PAUSE, BKW_REM,
+		BKW_DEVICE, BKW_SCREEN,
 		BKW_WIFI_INFO, BKW_HEADSET, BKW_MYPHONENUMBER,
 		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
 		BKW_APP_GROUP,
@@ -4291,7 +4295,6 @@ public class Run extends Activity {
 		new Command(BKW_FONT_GROUP, CID_GROUP)  { public boolean run() { return executeFONT(); } },
 		new Command(BKW_CONSOLE_GROUP,CID_GROUP){ public boolean run() { return executeCONSOLE(); } },
 		new Command(BKW_DEBUG_GROUP, CID_GROUP) { public boolean run() { return executeDEBUG(); } },
-		new Command(BKW_DEVICE)                 { public boolean run() { return executeDEVICE(); } },
 		new Command(BKW_ECHO_ON)                { public boolean run() { return executeECHO_ON(); } },
 		new Command(BKW_ECHO_OFF)               { public boolean run() { return executeECHO_OFF(); } },
 		new Command(BKW_KB_GROUP,  CID_GROUP)   { public boolean run() { return executeKB(); } },
@@ -4315,6 +4318,8 @@ public class Run extends Activity {
 		new Command(BKW_INCLUDE)                { public boolean run() { return true; } },
 		new Command(BKW_PAUSE)                  { public boolean run() { return executePAUSE(); } },
 		new Command(BKW_REM)                    { public boolean run() { return true; } },
+		new Command(BKW_DEVICE)                 { public boolean run() { return executeDEVICE(); } },
+		new Command(BKW_SCREEN)                 { public boolean run() { return executeSCREEN(); } },
 		new Command(BKW_WIFI_INFO)              { public boolean run() { return executeWIFI_INFO(); } },
 		new Command(BKW_HEADSET)                { public boolean run() { return executeHEADSET(); } },
 		new Command(BKW_MYPHONENUMBER)          { public boolean run() { return executeMYPHONENUMBER(); } },
@@ -10207,6 +10212,95 @@ public class Run extends Activity {
 		return true;
 	}
 
+	private boolean executeSCREEN() {
+		if (isEOL()) return true;									// no arguments
+
+		Var.Val rotVal = null;										// return variable for rotation
+		Var sizeVar = null;											// return array for size
+		Var realVar = null;											// return array for realsize
+		Var.Val densVal = null;										// return variable for density
+
+		boolean isComma = isNext(',');
+		if (!isComma) {
+			if (!getNVar())					return false;			// get var for rotation
+			rotVal = mVal;
+			isComma = isNext(',');
+		}
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				sizeVar = getAnyArrayVarForWrite(TYPE_NUMERIC);		// get array for size
+				if (sizeVar == null)			return false;		// must name a numeric array variable
+				isComma = isNext(',');
+			}
+		}
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				realVar = getAnyArrayVarForWrite(TYPE_NUMERIC);		// get array for size
+				if (realVar == null)			return false;		// must name a numeric array variable
+				isComma = isNext(',');
+			}
+		}
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				if (!getNVar())					return false;		// get var for density
+				densVal = mVal;
+			}
+		}
+		if (!checkEOL())					return false;			// have all parameters
+
+		Display display = ((Activity)getContext()).getWindowManager().getDefaultDisplay();
+		if (rotVal != null) {
+			rotVal.val(getScreenRotation(display));
+		}
+		if ((sizeVar != null) || (realVar != null)) {
+			if (!getScreenSize(display, sizeVar, realVar)) return false;
+		}
+		if (densVal != null) {
+			densVal.val(getScreenDensity(display));
+		}
+		return true;
+	}
+
+	@SuppressLint("NewApi")
+	@SuppressWarnings("deprecation")
+	public int getScreenRotation(Display display) {
+		return (Build.VERSION.SDK_INT < 8) ? display.getOrientation() : display.getRotation();
+	}
+
+	public int getScreenDensity(Display display) {
+		DisplayMetrics dm = new DisplayMetrics();
+		display.getMetrics(dm);
+		return dm.densityDpi;
+	}
+
+	@SuppressLint("NewApi")
+	@SuppressWarnings("deprecation")
+	public boolean getScreenSize(Display display, Var size, Var realsize) {
+		Point pSize = new Point();
+		if (Build.VERSION.SDK_INT < 13) {
+			pSize.set(display.getWidth(), display.getHeight());
+		} else {
+			display.getSize(pSize);										// "application" screen size
+		}
+		if (size != null) {
+			if (!BuildBasicArray(size, 2))		return false;			// build the array
+			double[] array = size.arrayDef().getNumArray();				// raw array access
+			array[0] = pSize.x; array[1] = pSize.y;						// stuff the array
+		}
+		if (realsize != null) {
+			if (Build.VERSION.SDK_INT >= 17) {
+				display.getRealSize(pSize);								// "real" screen size
+			}
+			if (!BuildBasicArray(realsize, 2))	return false;			// build the array
+			double[] array = realsize.arrayDef().getNumArray();			// raw array access
+			array[0] = pSize.x; array[1] = pSize.y;						// stuff the array
+		}
+		return true;
+	}
+
 	private boolean executeHTTP_POST() {
 		if (!getStringArg())			return false;
 		String url = StringConstant;
@@ -10822,7 +10916,7 @@ public class Run extends Activity {
 	private boolean execute_gr_getdl() {
 
 		Var var = getAnyArrayVarForWrite(TYPE_NUMERIC);				// get the result array variable
-		if (var == null)				return false;				// must name a new numeric array variable
+		if (var == null)				return false;				// must name a numeric array variable
 
 		boolean keepHiddenObjects = false;
 		if (isNext(',')) {											// Optional "hidden" flag
@@ -10844,9 +10938,9 @@ public class Run extends Activity {
 																	// one entry that indexes the null object
 
 		if (!BuildBasicArray(var, count)) return false;				// build the array
-		Var.ArrayDef array = var.arrayDef();						// get the array
+		double[] array = var.arrayDef().getNumArray();				// raw array access
 		for (int i = 0; i < count; ++i) {							// stuff the array
-			array.val(list[i], i);									// count may be < list.length
+			array[i] = list[i];										// count may be < list.length
 		}
 		return true;
 	}

@@ -31,6 +31,7 @@ import static com.rfo.basic.Run.EventHolder.*;
 import java.util.ArrayList;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.media.AudioManager;
@@ -581,12 +582,21 @@ public class GR extends Activity {
 		}
 	}
 
+	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	public void setOrientation(int orientation) {		// Convert and apply orientation setting
 		Log.v(LOGTAG, "Set orientation " + orientation);
 		switch (orientation) {
 			default:
 			case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
+			case 3:  orientation = (Build.VERSION.SDK_INT < Build.VERSION_CODES.GINGERBREAD)
+								 ? ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+								 : ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+				break;
 			case 0:  orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; break;
+			case 2:  orientation = (Build.VERSION.SDK_INT < Build.VERSION_CODES.GINGERBREAD)
+								 ? ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+								 : ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
+				break;
 			case -1: orientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR; break;
 		}
 		setRequestedOrientation(orientation);

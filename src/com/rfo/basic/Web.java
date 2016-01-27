@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2015 Paul Laughton
+Copyright (C) 2010 - 2016 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -33,10 +33,12 @@ import java.util.ArrayList;
 
 import org.apache.http.util.EncodingUtils;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.util.Log;
@@ -145,12 +147,21 @@ public class Web extends Activity {
 		super.onPause();
 	}
 
+	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	private void setOrientation(int orientation) {	// Convert and apply orientation setting
 		switch (orientation) {
 			default:
-			case -1: orientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR; break;
-			case 0:  orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; break;
 			case 1:  orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; break;
+			case 3:  orientation = (Build.VERSION.SDK_INT < Build.VERSION_CODES.GINGERBREAD)
+								 ? ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+								 : ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+				break;
+			case 0:  orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; break;
+			case 2:  orientation = (Build.VERSION.SDK_INT < Build.VERSION_CODES.GINGERBREAD)
+								 ? ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+								 : ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
+				break;
+			case -1: orientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR; break;
 		}
 		setRequestedOrientation(orientation);
 	}
