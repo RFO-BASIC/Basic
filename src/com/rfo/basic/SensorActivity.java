@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2014 Paul Laughton
+Copyright (C) 2010 - 2016 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -39,10 +39,10 @@ import android.util.Log;
 
 // Log.d(SensorActivity.LOGTAG, " " + SensorActivity.CLASSTAG + " ignored Auto Run" );
 public class SensorActivity implements SensorEventListener {
-    private static final String LOGTAG = "SensorActivity";
-    private static final String CLASSTAG = SensorActivity.class.getSimpleName();
+	private static final String LOGTAG = "SensorActivity";
+	private static final String CLASSTAG = SensorActivity.class.getSimpleName();
 
-	public static final int MaxSensors = 15;
+	public static final int MaxSensors = 20;
 	public static final int UNINIT = -1;
 	private SensorManager mSensorManager;
 	private boolean mIsOpen = false;
@@ -55,8 +55,6 @@ public class SensorActivity implements SensorEventListener {
 	// sensors.list or sensors.open
 
 	public SensorActivity(Context context) {
-//    	 Log.d(SensorActivity.LOGTAG, " " + SensorActivity.CLASSTAG + " On Create" );
-
 		mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
 		mActiveSensors = new Sensor[MaxSensors + 1];			// holds references to active sensors
@@ -92,9 +90,12 @@ public class SensorActivity implements SensorEventListener {
 			case Sensor.TYPE_PRESSURE:            name = "Pressure";            break;
 			case Sensor.TYPE_PROXIMITY:           name = "Proximity";           break;
 			case Sensor.TYPE_LINEAR_ACCELERATION: name = "Linear Acceleration"; break;
+			case Sensor.TYPE_STEP_DETECTOR:       name = "Step Detector";       break;
+			case Sensor.TYPE_STEP_COUNTER:        name = "Step Counter";        break;
 			case Sensor.TYPE_SIGNIFICANT_MOTION:  name = "Significant Motion";  break;
 			case Sensor.TYPE_ROTATION_VECTOR:     name = "Rotational Vector";   break;
 			case Sensor.TYPE_GAME_ROTATION_VECTOR:name = "Game Rotation Vector";break;
+			case Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR:name = "Geomagnetic Rotation Vector";break;
 			case Sensor.TYPE_TEMPERATURE:         name = "Temperature";         break;
 			case Sensor.TYPE_AMBIENT_TEMPERATURE: name = "Ambient Temperature"; break;
 			case Sensor.TYPE_RELATIVE_HUMIDITY:   name = "Relative Humidity";   break;
@@ -137,6 +138,9 @@ public class SensorActivity implements SensorEventListener {
 		case Sensor.TYPE_GAME_ROTATION_VECTOR:
 		case Sensor.TYPE_RELATIVE_HUMIDITY:
 		case Sensor.TYPE_AMBIENT_TEMPERATURE:
+		case Sensor.TYPE_STEP_DETECTOR:
+		case Sensor.TYPE_STEP_COUNTER:
+		case Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR:
 			if ((delay < 0) || (delay > SensorManager.SENSOR_DELAY_NORMAL)) {
 				delay = SensorManager.SENSOR_DELAY_NORMAL;
 			}

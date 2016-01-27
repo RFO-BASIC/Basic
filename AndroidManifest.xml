@@ -67,7 +67,7 @@ This file is part of BASIC! for Android
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <uses-sdk android:minSdkVersion="7" android:targetSdkVersion="18" />
+    <uses-sdk android:minSdkVersion="7" android:targetSdkVersion="20" />
 
     <supports-screens android:xlargeScreens="true" />
 
