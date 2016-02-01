@@ -13645,20 +13645,38 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_array_dims() {							// get the dimensions of an array and put them in another array
-		Var srcvar = getArrayVarForRead();							// get the source array variable
+		Var srcvar = getArrayVarForRead();							// get the source array variable (required)
 		if (srcvar == null)				return false;
 		if (!isNext(']'))				{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
+		if (isEOL())					return true;				// user supplied no desination variable(s)
 
-		if (!isNext(','))				{ return checkEOL(); }		// user supplied no desination array
-		Var dstvar = getAnyArrayVarForWrite(TYPE_NUMERIC);			// get the destination array variable
-		if (!checkEOL())				return false;				// line must end with ']'
+		Var dimsVar = null;											// variable for array of dimensions
+		Var.Val lenVal = null;										// variable for number of dimensions
+		boolean isComma = isNext(',');
+		if (isComma) {
+			isComma = isNext(',');
+			if (!isComma) {
+				dimsVar = getAnyArrayVarForWrite(TYPE_NUMERIC);		// get the array variable for dimensions
+				isComma = isNext(',');
+			}
+		}
+		if (isComma) {
+			if (!getNVar())				return false;				// get the variable for number of dimensions
+			lenVal = mVal;
+		}
+		if (!checkEOL())				return false;
 
 		int[] dimList = ((Var.ArrayVar)srcvar).arrayDef().dimList();
 		int size = dimList.length;
-		ArrayList<Double> dims = new ArrayList<Double>(size);
-		for (int i = 0; i < size; ++i) { dims.add(Double.valueOf(dimList[i])); }
-
-		return ListToBasicNumericArray(dstvar, dims, size);			// copy the list to a BASIC! array
+		if (dimsVar != null) {
+			ArrayList<Double> dims = new ArrayList<Double>(size);
+			for (int i = 0; i < size; ++i) { dims.add(Double.valueOf(dimList[i])); }
+			if (!ListToBasicNumericArray(dimsVar, dims, size)) return false; // copy the list to a BASIC! array
+		}
+		if (lenVal != null) {
+			lenVal.val(size);
+		}
+		return true;
 	}
 
 	private boolean execute_array_length() {
