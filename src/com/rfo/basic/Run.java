@@ -869,6 +869,7 @@ public class Run extends Activity {
 	private static final String MF_HYPOT = "hypot(";
 	private static final String MF_INT = "int(";		// new/2014-03-16 gt
 	private static final String MF_IS_IN = "is_in(";
+	private static final String MF_IS_NUMBER = "is_number(";
 	private static final String MF_LEN = "len(";
 	private static final String MF_LOG = "log(";
 	private static final String MF_LOG10 = "log10(";
@@ -901,7 +902,7 @@ public class Run extends Activity {
 		MF_CBRT, MF_CEIL, MF_CLOCK, MF_COS, MF_COSH,
 		MF_ENDS_WITH, MF_EXP, MF_FLOOR, MF_FRAC,
 		MF_GR_COLLISION, MF_HEX, MF_HYPOT, MF_INT,
-		MF_IS_IN, MF_LEN, MF_LOG, MF_LOG10,
+		MF_IS_IN, MF_IS_NUMBER, MF_LEN, MF_LOG, MF_LOG10,
 		MF_MAX, MF_MIN, MF_MOD, MF_OCT, MF_PI,
 		MF_POW, MF_RANDOMIZE, MF_RND, MF_ROUND,
 		MF_SGN, MF_SHIFT, MF_SIN, MF_SINH, MF_SQR,
@@ -4121,6 +4122,7 @@ public class Run extends Activity {
 		new Command(MF_HYPOT)                   { public boolean run() { return executeMF_HYPOT(); } },
 		new Command(MF_INT)                     { public boolean run() { return executeMF_INT(); } },
 		new Command(MF_IS_IN)                   { public boolean run() { return executeMF_IS_IN(); } },
+		new Command(MF_IS_NUMBER)               { public boolean run() { return executeMF_IS_NUMBER(); } },
 		new Command(MF_LEN)                     { public boolean run() { return executeMF_LEN(); } },
 		new Command(MF_LOG)                     { public boolean run() { return executeMF_LOG(); } },
 		new Command(MF_LOG10)                   { public boolean run() { return executeMF_LOG10(); } },
@@ -6056,7 +6058,7 @@ public class Run extends Activity {
 	// ************************************** Math Functions **************************************
 
 	private boolean doMathFunction(Command cmd) {
-		// If the function exists, run it, and make verify that the closing ')' is present.
+		// If the function exists, run it, and verify that the closing ')' is present.
 		// Function value is returned in EvalNumericExpressionValue.
 		return (cmd != null) && cmd.run() && isNext(')');
 	}
@@ -6239,9 +6241,14 @@ public class Run extends Activity {
 	}
 
 	private boolean executeMF_RANDOMIZE() {
-		if (!evalNumericExpression()) return false;
-		long seed = EvalNumericExpressionValue.longValue();
-		randomizer = (seed == 0L) ? new Random() : new Random(seed);
+		if (isNext(')')) {								// no parameter
+			--LineIndex;								// unget the ')'
+			randomizer = new Random();					// same as seed == 0
+		} else {
+			if (!evalNumericExpression()) return false;
+			long seed = EvalNumericExpressionValue.longValue();
+			randomizer = (seed == 0L) ? new Random() : new Random(seed);
+		}
 		EvalNumericExpressionValue = 0.0;
 		return true;
 	}
@@ -6270,6 +6277,20 @@ public class Run extends Activity {
 		} catch (NumberFormatException e) {
 			return RunTimeError("Not a valid number: " + StringConstant);
 		}
+		return true;
+	}
+
+	private boolean executeMF_IS_NUMBER() {				// IS_NUMBER(s$
+		if (!getStringArg()) return false;				// Get and check the string expression
+		StringConstant = StringConstant.trim();
+		double isNum = 0.0;								// default: not a valid numeric string
+		if (StringConstant.length() > 0) {				// not valid if length 0
+			try {
+				Double.parseDouble(StringConstant);		// have java parse it into a double
+				isNum = 1.0;							// return 1: it's a valid numeric string
+			} catch (NumberFormatException e) { }		// return 0: not a valid numeric string
+		}
+		EvalNumericExpressionValue = isNum;
 		return true;
 	}
 
@@ -8841,7 +8862,8 @@ public class Run extends Activity {
 			if (actual < expect) { fInfo.eof(true); }				// hit eof, mark fInfo
 
 			for (int i = 0; i < actual; ++i) {
-				valList.get(i).val(values[i]);						// give the data to the user
+				int datum = values[i] & 0x00FF;						// prevent sign-extension
+				valList.get(i).val(datum);							// give the data to the user
 			}
 			fInfo.incPosition(actual);								// update position in fInfo
 		}
