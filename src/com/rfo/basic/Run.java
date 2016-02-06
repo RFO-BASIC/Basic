@@ -5197,12 +5197,12 @@ public class Run extends Activity {
 	}
 
 	// Always returns a Var, never null. Can use this Var anywhere;
-	// if it was one of the "working Var" pool from parseVar() it gets cloned.
+	// if it was one of the "working Var" pool from parseVar() it gets copied.
 	private Var searchVar(Var var) {				// search for a variable by name
 		// VarSearchStart is usually zero but will change when executing User Function
 		int j = Collections.binarySearch(VarNames.subList(VarSearchStart, VarNames.size()), var.name());
 		if (j < 0) {								// not in list of variable names
-			return var.clone();						// return new Var
+			return var.copy();						// return new Var
 		}
 		j += VarSearchStart;						// else found it: make the index absolute
 		var = Vars.get(j);
@@ -5235,14 +5235,14 @@ public class Run extends Activity {
 		} else {
 			if (var.isNew()) {						// new scalar: put an empty Val in the Var
 				var.newVal();						// make a new Val attached to the Var
-				createNewVar(var);					// and put the Var in the symbol table;
+				insertNewVar(var);					// and put the Var in the symbol table;
 			}
 			val = var.val();						// get the Val from the Var
 		}
 		return val;
 	}
 
-	private void createNewVar(Var var) {			// make a new var table entry
+	private void insertNewVar(Var var) {			// make a new var table entry
 		// Get insertion point (-index - 1) so VarNames.subList will still be in alphabetical order.
 		// VarSearchStart is usually zero but will change when executing User Function
 		String name = var.name();
@@ -7114,7 +7114,7 @@ public class Run extends Activity {
 		array.createArray();										// add an empty array of the proper size and type
 
 		arrayVar.arrayDef(array);									// add the definition to the variable
-		if (var.isNew()) { createNewVar(arrayVar); }				// put the variable in the symbol table if not already there
+		if (var.isNew()) { insertNewVar(arrayVar); }				// put the variable in the symbol table if not already there
 		return true;
 	}
 
@@ -8053,7 +8053,7 @@ public class Run extends Activity {
 				if (var.isArray() && !isNext(']')) {				// Process array
 					return RunTimeError(EXPECT_ARRAY_NO_INDEX);		// Array must not have any indices
 				}
-				var = var.clone();									// don't use Var from ParseVar directly
+				var = var.copy();									// don't use Var from ParseVar directly
 				if (!var.isArray()) { var.newVal(); }				// make sure Val of ScalarVar is not null
 
 				fParms.add(new Var.FunctionParameter(var));
@@ -8070,7 +8070,7 @@ public class Run extends Activity {
 		if (mFunctionTable.put(fnVar.name(), fnDef) != null) {		// and the global Function Table
 			return RunTimeError("Duplicate function name at:");
 		}
-		createNewVar(fnVar);										// put the Var in the symbol table
+		insertNewVar(fnVar);										// put the Var in the symbol table
 
 		int max = Basic.lines.size();
 		while (++ExecutingLineIndex < max) {						// Now scan for the fn.end
@@ -8153,18 +8153,18 @@ public class Run extends Activity {
 		frame.store(fnDef);												// build a stack fram
 		int sVarNames = VarNames.size();								// remember where the variable name list ends
 
-		int pCount = fnDef.nParms();									// number of parameters
-		int i = 0;
-		if (pCount != 0) {												// for each parameter
+		int nParams = fnDef.nParms();									// number of parameters
+		int nArgs = 0;													// number of arguments, also parameter index
+		if (nParams != 0) {												// for each parameter
 			ArrayList<Var.FunctionParameter> parms = fnDef.parms();
 			do {
-				if (i >= pCount) {										// ensure no more parms than defined
+				if (nArgs >= nParams) {									// ensure no more parms than defined
 					return RunTimeError("Calling parameter count exceeds defined parameter count");
 				}
+				Var.FunctionParameter parm = parms.get(nArgs++);		// get parm, count the arg
+				Var var = parm.var();
 
 				boolean isGlobal = isNext('&');							// optional for scalars, ignored for arrays
-				Var.FunctionParameter parm = parms.get(i);
-				Var var = parm.var();
 				parm.isGlobal(isGlobal);
 				boolean typeIsNumeric = var.isNumeric();
 				if (var.isArray()) {									// if this parm is an array
@@ -8189,36 +8189,36 @@ public class Run extends Activity {
 					var.val(callVal);									// get a reference to the caller's Val
 				} // end global
 				else {
-					Var.Val val = var.val();
+					var = var.copy();									// don't use the same Var for all calls
+					parm.var(var);
+					Var.Val val;										// don't use the same Val, either
 					if (!typeIsNumeric) {								// if parm is string
 						if (!evalStringExpression()) {					// get the string value
 							return RunTimeError("Parameter type mismatch at:");
 						} else {
-							val.val(StringConstant);					// put the value in parm's var
+							val = new Var.StrVal(StringConstant);
 						}
 					} else {
 						if (!evalNumericExpression()) {					// if parm is number get the numeric value
 							return RunTimeError("Parameter type mismatch at:");
 						} else {
-							val.val(EvalNumericExpressionValue);		// put the value in parm's var
+							val = new Var.NumVal(EvalNumericExpressionValue);
 						}
 					}
+					var.val(val);										// put the value in parm's var
 				} // end non-global
-
-				++i;													// keep going while caller parms exist
-
-			} while ( isNext(','));
+			} while (isNext(','));										// keep going while caller parms exist
 
 			// Now that all new variables have been created in caller's name space,
 			// start the function name space with the function parameter names.
 			sVarNames = VarNames.size();
 			VarSearchStart = sVarNames;
 			for (Var.FunctionParameter parm : parms) {
-				createNewVar(parm.var());
+				insertNewVar(parm.var());
 			}
 		} // end if
 
-		if (i != pCount) { return RunTimeError("Too few calling parameters at:"); }
+		if (nArgs != nParams) { return RunTimeError("Too few calling parameters at:"); }
 
 		if (!isNext(')')) { return false; }					// Every function must have a closing right parenthesis.
 

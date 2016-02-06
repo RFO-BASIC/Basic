@@ -315,11 +315,12 @@ public abstract class Var {
 	// *********************** FunctionParameter class ************************
 
 	public static class FunctionParameter {
-		private final Var mVar;							// parameter name, type, and value
+		private Var mVar;								// parameter name, type, and value
 		private boolean mIsGlobal = false;
 
 		public FunctionParameter(Var var) { mVar = var; }
 
+		public void var(Var var) { mVar = var; }
 		public void isGlobal(boolean isGlobal) { mIsGlobal = isGlobal; }
 
 		public Var var() { return mVar; }
@@ -353,20 +354,15 @@ public abstract class Var {
 	protected Type mType;
 	protected boolean mNew = true;
 
-	// Constructors
-	protected Var(String name, boolean isNumeric) { copyCommon(name, isNumeric); }
-	protected Var(String name, Type type)         { copyCommon(name, type); }
+	// Constructors: set name and type per args, but mNew is always true.
+	protected Var(String name, boolean isNumeric) { setCommon(name, isNumeric); }
+	protected Var(String name, Type type)         { mName = name; mType = type; }
+	protected Var(Var from)                       { this(from.mName, from.mType); }
 
-	// Copy fields of specified Var to this one. These make shallow copies.
-	protected final void copyCommon(Var from) {
-		mName = from.name();
-		mType = from.type();
-	}
-	protected final void copyCommon(String name, Type type) {
-		mName = name;
-		mType = type;
-	}
-	protected final void copyCommon(String name, boolean isNumeric) {
+	protected abstract Var copy();						// shallow copy, except mNew is always true
+
+	// Set fields common to all Var objects, except mNew.
+	private final void setCommon(String name, boolean isNumeric) {
 		mName = name;
 		mType = isNumeric ? Type.NUM : Type.STR;
 	}
@@ -376,7 +372,7 @@ public abstract class Var {
 	public void reNew() { mNew = true; }				// mark "new", keep name and type unchanged
 	public Var reNew(String name, boolean isNumeric) {	// mark "new", use caller's name and type
 		mNew = true;
-		copyCommon(name, isNumeric);
+		setCommon(name, isNumeric);
 		return this;
 	}
 
@@ -388,9 +384,6 @@ public abstract class Var {
 	protected void fnDef(FnDef def) {					// attach a FnDef to this Var (FunctionVar only)
 		throw new InvalidParameterException("Var is not FunctionVar");
 	}
-
-	// Create a new Var just like this one.
-	protected abstract Var clone();
 
 	// Getters
 	protected String name() { return mName; }
@@ -415,18 +408,20 @@ public abstract class Var {
 		private Val mVal = null;
 
 		public ScalarVar(String name, boolean isNumeric) { super(name, isNumeric); }
-		public ScalarVar(String name, Type type)         { super(name,  type); }
+		public ScalarVar(String name, Type type)         { super(name, type); }
+		public ScalarVar(Var from)                       { super(from); }
+
+		@Override public Var copy() {						// shallow copy, except mNew is always true
+			Var var = new ScalarVar(this);
+			var.val(mVal);									// reference same Val
+			return var;
+		}
 
 		@Override public Val newVal() {						// attach a new scalar Val to this ScalarVar and return it
 			mVal = isNumeric() ? new NumVal() : new StrVal();
 			return mVal;
 		}
 		@Override public void val(Val val) { mVal = val; }	// attach an existing Val to this Var
-		@Override public Var clone() {						// make a new Var, shallow copy of this Var
-			Var var = new ScalarVar(mName, mType.isNumeric());
-			var.val(mVal);
-			return var;
-		}
 
 		@Override public Val val() {						// return the Val attached to this ScalarVar
 			if (mVal == null) { throw new InvalidParameterException("ScalarVar has no Val"); }
@@ -439,11 +434,14 @@ public abstract class Var {
 	public static class ArrayVar extends Var {
 		private ArrayDef mArrayDef = null;					// array metadata and data
 
-		public ArrayVar(String name, boolean isNumeric) {
-			super(name, isNumeric);
-		}
-		public ArrayVar(String name, Type type) {
-			super(name,  type);
+		public ArrayVar(String name, boolean isNumeric) { super(name, isNumeric); }
+		public ArrayVar(String name, Type type)         { super(name, type); }
+		public ArrayVar(Var from)                       { super(from); }
+
+		@Override public Var copy() {						// shallow copy, except mNew is always true
+			Var var = new ArrayVar(this);
+			var.arrayDef(mArrayDef);						// reference same ArrayDef
+			return var;
 		}
 
 		@Override public Var reNew(String name, boolean isNumeric) {
@@ -458,12 +456,6 @@ public abstract class Var {
 		@Override public void val(Val val) { newVal(); }	// throw exception
 		@Override public void arrayDef(ArrayDef def) {		// attach an existing ArrayDef
 			mArrayDef = def;
-;		}
-
-		@Override public Var clone() {						// make a new Var, shallow copy of this Var
-			ArrayVar var = new ArrayVar(mName, isNumeric());
-			var.arrayDef(mArrayDef);						// reference same ArrayDef
-			return var;
 		}
 
 		@Override public boolean isArray() { return true; }
@@ -488,19 +480,20 @@ public abstract class Var {
 		private FnDef mFnDef = null;
 
 		public FunctionVar(String name, boolean isNumeric) { super(name, isNumeric); }
-		public FunctionVar(String name, Type type)         { super(name,  type); }
+		public FunctionVar(String name, Type type)         { super(name, type); }
+		public FunctionVar(Var from)                       { super(from); }
+
+		@Override public Var copy() {						// shallow copy, except mNew is always true
+			Var var = new FunctionVar(this);
+			var.fnDef(mFnDef);								// reference same FnDef
+			return var;
+		}
 
 		@Override public Val newVal() {
 			throw new InvalidParameterException("FunctionVar has no Val");
 		}
 		@Override public void val(Val val) { newVal(); }		// throw exception
 		@Override public void fnDef(FnDef def) { mFnDef = def; }	// attach an existing FnDef
-
-		@Override public Var clone() {							// make a new Var, shallow copy of this Var
-			Var var = new FunctionVar(mName, mType.isNumeric());
-			var.fnDef(mFnDef);
-			return var;
-		}
 
 		@Override public boolean isFunction() { return true; }
 
