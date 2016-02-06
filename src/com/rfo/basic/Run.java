@@ -5028,10 +5028,7 @@ public class Run extends Activity {
 														// user-defined function names are not recognized as valid symbols
 
 	private static final String EXPECT_ARRAY_VAR = "Array variable expected";
-	private static final String EXPECT_NEW_ARRAY = "Array previously dimensioned";
-	// private static final String EXPECT_UNDIM_ARRAY = "Array must not be DIMed";
-	private static final String EXPECT_DIM_ARRAY = "Array must be DIMed before using";
-	// private static final String EXPECT_DIM_ARRAY = "Array not DIMed";
+	private static final String EXPECT_ARRAY_EXISTS = "Array must be created before using";
 	private static final String EXPECT_ARRAY_NO_INDEX = "Expected '[]'";
 	private static final String EXPECT_NUM_ARRAY = "Array not numeric";
 	private static final String EXPECT_STRING_ARRAY = "Not string array";
@@ -5077,23 +5074,8 @@ public class Run extends Activity {
 		return false;
 	}
 
-	// Note: we're going to move away from requiring a new array for write.
-	// To that end, we've moved the isNew() test from valid...() to get...().
-	// It looks a little awkward this way; we'll clean it up when done transitioning.
-	private Var getArrayVarForWrite() {					// get the array var as a new, undimensioned array
-														// returns the name, does NOT create a variable
-		Var var = getVarAndType();						// either string or numeric type is ok
-		if (validArrayVarForWrite(var)) {
-			if (var.isNew())			return var;		// no error, return Var
-			RunTimeError(EXPECT_NEW_ARRAY);
-		}
-		LineIndex -= var.name().length();				// error, back up LineIndex
-		return null;									// and return null
-	}
-
-	// Alternate form that does not require new array.
-	// Eventually this will be the main form, maybe the only form.
-	private Var getAnyArrayVarForWrite() {
+	// Get a Var for creating an array: must be array name with no index(es).
+	private Var getArrayVarForWrite() {					// returns the Var, null if error or no var
 		Var var = getVarAndType();						// either string or numeric type is ok
 		if (validArrayVarForWrite(var)) { return var; }	// no error, return Var
 		LineIndex -= var.name().length();				// error, back up LineIndex
@@ -5106,20 +5088,8 @@ public class Run extends Activity {
 		return true;									// no error
 	}
 
-	private Var getArrayVarForWrite(boolean type) {		// get the array var name as a new, undimensioned array
-														// returns the name, does NOT create a variable
-		Var var = getVarAndType();
-		if (validArrayVarForWrite(var, type)) {
-			if (var.isNew())			return var;		// no error, return Var
-			RunTimeError(EXPECT_NEW_ARRAY);
-		}
-		LineIndex -= var.name().length();				// error, back up LineIndex
-		return null;									// and return null
-	}
-
-	// Alternate form that does not require new array.
-	// Eventually this will be the main form, maybe the only form.
-	private Var getAnyArrayVarForWrite(boolean type) {
+	// Get a Var for creating an array: must be array name of correct type with no index(es).
+	private Var getArrayVarForWrite(boolean type) {		// returns the Var, null if error or no var
 		Var var = getVarAndType();						// either string or numeric type is ok
 		if (validArrayVarForWrite(var, type)) { return var; } // no error, return Var
 		LineIndex -= var.name().length();				// error, back up LineIndex
@@ -5133,18 +5103,17 @@ public class Run extends Activity {
 		return true;									// no error
 	}
 
-	private Var getArrayVarForRead() {					// get the array var as a previously-dimensioned array
-														// returns the Var, null if error or no var
-		int LI = LineIndex;
+	// Get a Var for using an array or array segment: must be name of existing array
+	private Var getExistingArrayVar() {					// returns the Var, null if error or no var
 		Var var = getVarAndType();
-		if (validArrayVarForRead(var)) { return var; }	// no error, return Var
-		LineIndex = LI;
-		return null;									// error, return null
+		if (validExistingArrayVar(var)) { return var; }	// no error, return Var
+		LineIndex -= var.name().length();				// error, back up LineIndex
+		return null;									// and return null
 	}
 
-	private boolean validArrayVarForRead(Var var) {
+	private boolean validExistingArrayVar(Var var) {
 		if ((var == null) || !var.isArray())	{ return RunTimeError(EXPECT_ARRAY_VAR); }
-		if (var.isNew())						{ return RunTimeError(EXPECT_DIM_ARRAY); }
+		if (var.isNew())						{ return RunTimeError(EXPECT_ARRAY_EXISTS); }
 		return true;									// no error
 	}
 
@@ -5259,7 +5228,7 @@ public class Run extends Activity {
 		if (var.isArray()) {
 			Var.ArrayVar aVar = (Var.ArrayVar)var;
 			if (var.isNew()) {						// new array: error
-				RunTimeError(EXPECT_DIM_ARRAY);		// set error and return null
+				RunTimeError(EXPECT_ARRAY_EXISTS);	// set error and return null
 			} else {								// existing array
 				val = GetArrayValue(aVar);			// get a value based upon user's index values
 			}
@@ -8199,7 +8168,7 @@ public class Run extends Activity {
 				parm.isGlobal(isGlobal);
 				boolean typeIsNumeric = var.isNumeric();
 				if (var.isArray()) {									// if this parm is an array
-					Var callVar = getArrayVarForRead();					// get caller's array name var
+					Var callVar = getExistingArrayVar();				// get caller's array name var
 					if (callVar == null)	return false;
 					var.arrayDef(callVar.arrayDef());					// get a reference to the caller's ArrayDef
 					if (!isNext(']')) {									// must be no indices
@@ -8240,7 +8209,7 @@ public class Run extends Activity {
 
 			} while ( isNext(','));
 
-			// Now that all new variables have been created in main name space,
+			// Now that all new variables have been created in caller's name space,
 			// start the function name space with the function parameter names.
 			sVarNames = VarNames.size();
 			VarSearchStart = sVarNames;
@@ -9711,7 +9680,7 @@ public class Run extends Activity {
 		if ((var != null) && var.isArray()) {
 			if (!isNext(']'))	{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); } // Array must not have any indices
 			if (var.isNumeric()){ return RunTimeError(EXPECT_STRING_ARRAY); }
-			if (var.isNew())	{ return RunTimeError(EXPECT_DIM_ARRAY); }
+			if (var.isNew())	{ return RunTimeError(EXPECT_ARRAY_EXISTS); }
 
 			Var.ArrayDef array = var.arrayDef();					// get the array
 			int length = array.length();							// get the array length
@@ -9838,7 +9807,7 @@ public class Run extends Activity {
 
 	private boolean executeJOIN(boolean keepAll) {					// opposite of SPLIT
 																	// if keepAll is true, keep empty array elements
-		Var var = getArrayVarForRead();								// get the array to join
+		Var var = getExistingArrayVar();							// get the array whose elements will be joined
 		if (var == null)				return false;
 		if (var.isNumeric()) { return RunTimeError(EXPECT_STRING_ARRAY); }
 
@@ -9851,7 +9820,7 @@ public class Run extends Activity {
 
 		String args[] = { "", "" };									// optional separator and wrapper
 		if (isNext(',')) {											// any optional args?
-			if (!getOptExprs(args)) return false;					// get the optional args
+			if (!getOptExprs(args))		return false;				// get the optional args
 		}
 		if (!checkEOL())				return false;
 
@@ -10147,7 +10116,7 @@ public class Run extends Activity {
 
 	private boolean executeVIBRATE() {
 
-		Var var = getArrayVarForRead();								// get the array variable
+		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 		if (!var.isNumeric()) { return RunTimeError(EXPECT_NUM_ARRAY); } // Insure that it is a numeric array
 
@@ -10251,7 +10220,7 @@ public class Run extends Activity {
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				sizeVar = getAnyArrayVarForWrite(TYPE_NUMERIC);		// get array for size
+				sizeVar = getArrayVarForWrite(TYPE_NUMERIC);		// get array for size
 				if (sizeVar == null)			return false;		// must name a numeric array variable
 				isComma = isNext(',');
 			}
@@ -10259,7 +10228,7 @@ public class Run extends Activity {
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				realVar = getAnyArrayVarForWrite(TYPE_NUMERIC);		// get array for size
+				realVar = getArrayVarForWrite(TYPE_NUMERIC);		// get array for realsize
 				if (realVar == null)			return false;		// must name a numeric array variable
 				isComma = isNext(',');
 			}
@@ -10937,7 +10906,7 @@ public class Run extends Activity {
 
 	private boolean execute_gr_getdl() {
 
-		Var var = getAnyArrayVarForWrite(TYPE_NUMERIC);				// get the result array variable
+		Var var = getArrayVarForWrite(TYPE_NUMERIC);				// get the result array variable
 		if (var == null)				return false;				// must name a numeric array variable
 
 		boolean keepHiddenObjects = false;
@@ -10969,7 +10938,7 @@ public class Run extends Activity {
 
 	private boolean execute_gr_newdl() {
 
-		Var var = getArrayVarForRead();								// get the array variable
+		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 		if (!var.isNumeric()) { return RunTimeError(EXPECT_NUM_ARRAY); } // insure that it is a numeric array
 
@@ -12449,7 +12418,7 @@ public class Run extends Activity {
 		Var.Val saveVal = mVal;
 
 		if (!isNext(','))				return false;
-		Var var = getArrayVarForRead();								// get the array variable
+		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 		if (!var.isNumeric()) { return RunTimeError(EXPECT_NUM_ARRAY); }
 
@@ -13262,7 +13231,7 @@ public class Run extends Activity {
 
 	private boolean execute_sensors_list() {
 		Var var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
-		if (var == null)				return false;			// must name a new string array variable
+		if (var == null)				return false;			// must name a string array variable
 		if (!checkEOL())				return false;			// line must end with ']'
 
 		if (theSensors == null) {
@@ -13270,7 +13239,7 @@ public class Run extends Activity {
 		}
 		ArrayList<String> census = theSensors.takeCensus();
 		int nSensors = census.size();							// If no sensors reported.....
-		if (nSensors ==0 ) {
+		if (nSensors == 0) {
 			return RunTimeError("This device reports no Sensors");
 		}
 
@@ -13667,7 +13636,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_array_dims() {							// get the dimensions of an array and put them in another array
-		Var srcvar = getArrayVarForRead();							// get the source array variable (required)
+		Var srcvar = getExistingArrayVar();							// get the source array variable (required)
 		if (srcvar == null)				return false;
 		if (!isNext(']'))				{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 		if (isEOL())					return true;				// user supplied no desination variable(s)
@@ -13678,7 +13647,7 @@ public class Run extends Activity {
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				dimsVar = getAnyArrayVarForWrite(TYPE_NUMERIC);		// get the array variable for dimensions
+				dimsVar = getArrayVarForWrite(TYPE_NUMERIC);		// get the array variable for dimensions
 				isComma = isNext(',');
 			}
 		}
@@ -13707,7 +13676,7 @@ public class Run extends Activity {
 		Var.Val val = mVal;
 
 		if (!isNext(','))				return false;
-		Var var = getArrayVarForRead();								// get the array variable
+		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 
 		Integer[] p = new Integer[2];
@@ -13778,7 +13747,7 @@ public class Run extends Activity {
 
 		// This method implements several array commands
 
-		Var var = getArrayVarForRead();								// get the array variable
+		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 
 		Integer[] p = new Integer[2];
@@ -13831,7 +13800,7 @@ public class Run extends Activity {
 		Var.Val val = mVal;
 
 		if (!isNext(','))				return false;
-		Var var = getArrayVarForRead();								// get the array variable
+		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 		if (!var.isNumeric()) { return RunTimeError(EXPECT_NUM_ARRAY); }
 
@@ -13884,10 +13853,8 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_array_fill() {
-		Var dstVar = getVarAndType();								// get the array variable
+		Var dstVar = getExistingArrayVar();							// get the array variable
 		if (dstVar == null)				return false;
-		if (!dstVar.isArray())			return RunTimeError(EXPECT_ARRAY_VAR);
-		if (dstVar.isNew())				return RunTimeError(EXPECT_DIM_ARRAY);
 		boolean isNumeric = dstVar.isNumeric();
 
 		Integer[] p = new Integer[2];
@@ -13924,7 +13891,7 @@ public class Run extends Activity {
 		Var var = getVarAndType();
 		if (var == null)						return false;		// get the array variable
 		if (!var.isArray())						return RunTimeError("Source not array");
-		if (var.isNew())						return RunTimeError("Source array not DIMed");
+		if (var.isNew())						return RunTimeError("Source array does not exist");
 		boolean srcNumeric = var.isNumeric();
 
 		Integer[] p = new Integer[2];
@@ -14001,7 +13968,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_array_search() {
-		Var var = getArrayVarForRead();								// get the array variable
+		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 
 		Integer[] p = new Integer[2];
@@ -14150,7 +14117,7 @@ public class Run extends Activity {
 		if (listIndex < 0)				return false;
 
 		if (!isNext(','))				return false;
-		Var var = getArrayVarForRead();								// get the array variable
+		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 
 		Integer[] p = new Integer[2];
@@ -17596,7 +17563,7 @@ public class Run extends Activity {
 
 		Var var = getVarAndType();
 		if ((var == null) || !var.isArray()){ return RunTimeError(EXPECT_ARRAY_VAR); }
-		if (var.isNew())					{ return RunTimeError(EXPECT_DIM_ARRAY); }
+		if (var.isNew())					{ return RunTimeError(EXPECT_ARRAY_EXISTS); }
 		// No checkEOL: ignore anything after the '['
 
 		WatchedArray = var;
@@ -17699,7 +17666,7 @@ public class Run extends Activity {
 
 		Var var = getVarAndType();
 		if ((var == null) || !var.isArray()){ return RunTimeError(EXPECT_ARRAY_VAR); }
-		if (var.isNew())					{ return RunTimeError(EXPECT_DIM_ARRAY); }
+		if (var.isNew())					{ return RunTimeError(EXPECT_ARRAY_EXISTS); }
 
 		WatchedArray = var;
 		DialogSelector(2);
