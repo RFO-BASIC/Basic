@@ -13238,7 +13238,7 @@ public class Run extends Activity {
 			theSensors = new SensorActivity(Run.this);
 		}
 		ArrayList<String> census = theSensors.takeCensus();
-		int nSensors = census.size();							// If no sensors reported.....
+		int nSensors = census.size();
 		if (nSensors == 0) {
 			return RunTimeError("This device reports no Sensors");
 		}
@@ -15318,27 +15318,44 @@ public class Run extends Activity {
 	}
 
 	private boolean executeMYIP() {
-		if (!getSVar())					return false;
-		Var.Val val = mVal;
+		Var var = getVarAndType(TYPE_STRING);					// scalar or array to hold IP address(es)
+		Var.Val val = null;										// val in case var is scalar
+		Var.Val nVal = null;									// optional address count in case var is array
+		if (var == null)				return false;
+		if (var.isArray()) {
+			if (!validArrayVarForWrite(var, TYPE_STRING)) return false;
+			if (isNext(',')) {
+				if (!getNVar())			return false;
+				nVal = mVal;
+			}
+		} else {
+			mVal = getVarValue(var);							// create a new variable if necessary
+			val = mVal;
+		}
 		if (!checkEOL())				return false;
 
-		String IP = "";
+		ArrayList<String> IP = new ArrayList<String>();
 		try {
 			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
 				NetworkInterface intf = en.nextElement();
 				for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
 					InetAddress inetAddress = enumIpAddr.nextElement();
 					if (!(inetAddress.isLoopbackAddress() || inetAddress.isLinkLocalAddress())) {
-						IP = inetAddress.getHostAddress().toString();
-						break;
+						IP.add(inetAddress.getHostAddress().toString());
 					}
 				}
 			}
 		} catch (Exception e) {
 			return RunTimeError(e);
 		}
-
-		val.val(IP);
+		int nIP = IP.size();
+		if (nIP == 0) { IP.add(""); }							// prevent zero-length array
+		if (var.isArray()) {									// return arg is array
+			if (!ListToBasicStringArray(var, IP, IP.size())) return false;
+			if (nVal != null) { nVal.val(nIP); }				// actual IP count, not array size
+		} else {												// return arg is scalar
+			val.val(IP.get(0));									// return first IP address (may be "")
+		}
 		return true;
 	}
 
