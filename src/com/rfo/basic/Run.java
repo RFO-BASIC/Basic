@@ -5074,6 +5074,23 @@ public class Run extends Activity {
 		return false;
 	}
 
+	private boolean getSVars(ArrayList<Var> vars) {		// get string scalar(s) or writeable array variable from command line
+		boolean isArray;
+		do {
+			Var var = getVarAndType(TYPE_STRING);		// string var, may be scalar or array
+			if (var == null)			return false;
+			isArray = var.isArray();
+			if (isArray) {								// note: new array is not added to symbol table yet
+				if (!validArrayVarForWrite(var, TYPE_STRING)) return false;
+			} else {
+				if (getVarValue(var)					// create a new variable in symbol table if necessary
+							== null)	return false;	// for completeness: can't happen because var is not array
+			}
+			vars.add(var);								// add to caller's Var list
+		} while (!isArray && isNext(','));				// continue until no more parameters unless one was an array
+		return true;
+	}
+
 	// Get a Var for creating an array: must be array name with no index(es).
 	private Var getArrayVarForWrite() {					// returns the Var, null if error or no var
 		Var var = getVarAndType();						// either string or numeric type is ok
@@ -10550,39 +10567,63 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private boolean execute_sql_next() {
-
-		Var.Val[] args = new Var.Val[2];						// Get the first two args:
+	// Extended or unknown number of columns by GitHub poster @JasonFruit. See Issue #141.
+	private boolean execute_sql_next() {						// get data from next row of cursor
+		Var.Val[] args = new Var.Val[2];						// get the first two args:
 		if (!getVarAndCursorPtrArgs(args)) return false;
 		Var.Val doneVar = args[0];								// Done Flag variable
 		Var.Val cursorVar = args[1];							// DB Cursor pointer variable
+
+		ArrayList<Var> vars = new ArrayList<Var>();
+		if (isNext(',')) {										// if comma, expect vars to receive column data
+			if (!getSVars(vars))		return false;			// get list of string vars to hold column(s), last may be array
+		}
+		int nVars = vars.size();
+		Var colArrayVar = (nVars != 0) ? vars.get(nVars - 1) : null;		// last var MAY be array
+		boolean isArray = (colArrayVar != null) && colArrayVar.isArray();	// is it?
+
+		Var.Val nColVal = null;									// for optional column count
+		if (isArray) {
+			--nVars;											// count of non-array vars
+			if (isNext(',')) {
+				if (!getNVar())			return false;			// get optional column count var
+				nColVal = mVal;
+			}
+		}
+		if (!checkEOL())				return false;
 
 		doneVar.val(0.0);										// set Not Done
 		int i = (int)cursorVar.nval();							// get the cursor pointer
 		Cursor cursor = Cursors.get(i - 1);						// get the cursor
 
-		String result;
 		if (cursor.moveToNext()) {								// if there is another row, go there
-			for (int index = 0; isNext(','); ++index) {
-				if (!getSVar())			return false;			// Get next result variable
-				Var.Val val = mVal;
-				try {
-					result = cursor.getString(index);			// get the result
-				} catch (Exception e) {
-					return RunTimeError("SQL Exception:", e);
-				}
-				if (result == null) { result = ""; }
-				val.val(result);								// set result into var
-			}
-			return checkEOL();
+			int nCols = cursor.getColumnCount();				// num columns of data available
+			if (nColVal != null) { nColVal.val(nCols); }		// if requested, return total number of columns
 
+			if (nCols < nVars)						{ nVars = nCols; } // don't try to store more columns than we have 
+			else if (!isArray && (nVars < nCols))	{ nCols = nVars; } // don't read more columns than we can return
+
+			ArrayList<String> colData = new ArrayList<String>(nCols);
+			for (int index = 0; index < nCols; ++index) {
+				String result;
+				try { result = cursor.getString(index); }		// get the result
+				catch (Exception e) { return RunTimeError("SQL Exception:", e); }
+				colData.add((result != null) ? result : "");
+			}
+
+			for (int index = 0; index < nVars; ++index) {		// write column data to scalar vars
+				vars.get(index).val().val(colData.remove(0));
+			}
+			if (isArray) {										// write rest of column data to array var
+				if (colData.size() == 0) { colData.add(""); }	// don't allow empty array
+				if (!ListToBasicStringArray(colArrayVar, colData, colData.size())) return false;
+			}
 		} else {												// no next row, cursor is used up
 			cursor.close();
 			doneVar.val(1.0);
 			cursorVar.val(0.0);
-
-			return true;
 		}
+		return true;
 	}
 
 	private boolean execute_sql_query_length() {				// Report the number of rows in a query result
@@ -15318,7 +15359,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeMYIP() {
-		Var var = getVarAndType(TYPE_STRING);					// scalar or array to hold IP address(es)
+		Var var = getVarAndType(TYPE_STRING);					// string scalar or array to hold IP address(es)
 		Var.Val val = null;										// val in case var is scalar
 		Var.Val nVal = null;									// optional address count in case var is array
 		if (var == null)				return false;
@@ -15330,7 +15371,7 @@ public class Run extends Activity {
 			}
 		} else {
 			mVal = getVarValue(var);							// create a new variable if necessary
-			val = mVal;
+			val = mVal;											// can't be null because var is not array
 		}
 		if (!checkEOL())				return false;
 
