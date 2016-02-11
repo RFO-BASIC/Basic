@@ -649,7 +649,10 @@ public class Basic extends Activity {
 				doCantLoad();									// Can't load: show an error message
 			}
 			DoAutoRun = false;
-			return new Intent(Basic.this, Editor.class);		// Goto the Editor
+			Intent intent = new Intent(Basic.this, Editor.class);
+			// This LOADPATH setting will also force LoadFile to show the samples directory
+			intent.putExtra(Editor.EXTRA_LOADPATH, SAMPLES_DIR);// start in Sample_Programs
+			return intent;										// go to the Editor
 		}
 
 		private Intent doBGforAPK() {								// Background code of APK

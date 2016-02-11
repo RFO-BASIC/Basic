@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010 - 2015 Paul Laughton
+ Copyright (C) 2010 - 2016 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -70,6 +70,7 @@ public class Editor extends Activity {
 	private static final String STATE_ERROR_DISPLACEMENT = "errorDisplacement";
 	private static final String STATE_MTEXT_DATA = "theText";
 	public static final String EXTRA_RESTART = "com.rfo.basic.doRestart";
+	public static final String EXTRA_LOADPATH = "com.rfo.basic.initLoadPath";
 
 	// Since Android 4.2, "external storage" may be emulated and the path may included the user id.
 	// There is another path that uses "legacy" instead of the user id.
@@ -273,9 +274,9 @@ public class Editor extends Activity {
 		super.onCreate(savedInstanceState);						// Setup and the display the text to be edited
 
 		mSavedInstanceState = savedInstanceState;				// preserve for onResume
+		Intent intent = getIntent();
 		if (savedInstanceState == null) {						// if no state from system
-			Intent intent = getIntent();						// look for state from Basic Activity
-			mSavedInstanceState = intent.getBundleExtra(EXTRA_RESTART);
+			mSavedInstanceState = intent.getBundleExtra(EXTRA_RESTART); // look for state from Basic Activity
 		}
 		Run.Exit = false; 										// Clear this in case it was set last time BASIC! exited.
 
@@ -306,8 +307,10 @@ public class Editor extends Activity {
 			}
 		}
 
+		String initLoadPath = intent.getStringExtra(EXTRA_LOADPATH);
+		if (initLoadPath == null) { initLoadPath = ""; }
 		// These two fields may be overwritten from mSavedInstanceState in onResume().
-		ProgramPath = Basic.getSamplesPath(null);				// This setting will also force LoadFile to show the samples directory
+		ProgramPath = Basic.getSourcePath(initLoadPath);
 		ProgramFileName = "";
 
 		mText = (LinedEditText)findViewById(R.id.basic_text);	// mText is the TextView Object
@@ -740,25 +743,28 @@ public class Editor extends Activity {
 		Basic.clearProgram();									// then do the clear
 		ProgramFileName = "";
 		setTitle(ProgramFileName);
+		InitialProgramSize = mText.length();
 		mText.setText(DisplayText);
 	}
 
 	private void askNameSaveFile(final Action afterSave) {
 
-		final AlertDialog.Builder alert = new AlertDialog.Builder(this);	// Get the filename from user
+		final AlertDialog.Builder alert = new AlertDialog.Builder(this);	// get the filename from user
 		final EditText input = new EditText(this);
-		input.setText(ProgramFileName);										// If the program has a name
-		// put it in the dialog box
+		input.setText(ProgramFileName);										// if the program has a name put it in the dialog box
 		alert.setView(input);
-		alert.setCancelable(true);											// Allow the dialog to be canceled
-		alert.setTitle("Save to " + getDisplayPath(ProgramPath));
+		alert.setCancelable(true);											// allow the dialog to be canceled
+
+		String path = getDisplayPath(ProgramPath);							// get the save path to display in the dialog box
+		if (path.endsWith(Basic.SAMPLES_DIR)) { path = goUp(path); }		// don't offer to save in sample programs directory
+		alert.setTitle("Save to " + path);
 		alert.setOnCancelListener(new DialogInterface.OnCancelListener() {
-			public void onCancel(DialogInterface arg0) {					// User has canceled save
+			public void onCancel(DialogInterface arg0) {					// user has canceled save
 				return;														// done
 			}
 		});
 
-		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {// Have a filename
+		alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {// have a filename
 			public void onClick(DialogInterface dialog, int whichButton) {
 				String theFilename = input.getText().toString().trim();
 				writeTheFile(theFilename);									// write the program to a file
@@ -820,7 +826,7 @@ public class Editor extends Activity {
 		}
 		dir = new File(path);
 
-		if (path.endsWith(Basic.SAMPLES_DIR)) {
+		if (path.endsWith(Basic.SAMPLES_DIR)) {						// don't save in sample programs directory
 			path = dir.getParent();
 			dir = new File(path);
 		}
@@ -959,15 +965,16 @@ public class Editor extends Activity {
 	// *************************** Static utilities for LOAD/SAVE/DELETE **************************
 
 	public static String getDisplayPath(String path) {
-		String cmpPath = path;
-		try { cmpPath = new File(path).getCanonicalPath(); }
-		catch (IOException ex) { }
+		File pathFile = new File(path);
+		try { path = pathFile.getCanonicalPath(); }
+		catch (IOException ex) { path = pathFile.getAbsolutePath(); }
 		// mHomePath is absolute path to "rfo-basic",
+		// mAltHomePath is absolute path through "legacy" (if applicable)
 		// mBasePathAndSep is its parent plus a trailing "/".
-		if (cmpPath.startsWith(mHomePath)) {					// if starts with home path
-			path = cmpPath.substring(mBasePathAndSep.length());	// clip off base path and "/"
-		} else if ((mAltHomePath != null) && cmpPath.startsWith(mAltHomePath)) {
-			path = cmpPath.substring(mAltBasePathAndSep.length());	// ditto alt path
+		if (path.startsWith(mHomePath)) {					// if starts with home path
+			path = path.substring(mBasePathAndSep.length());	// clip off base path and "/"
+		} else if ((mAltHomePath != null) && path.startsWith(mAltHomePath)) {
+			path = path.substring(mAltBasePathAndSep.length());	// ditto alt path
 		}														// else leave absolute path
 		return path;
 	}
