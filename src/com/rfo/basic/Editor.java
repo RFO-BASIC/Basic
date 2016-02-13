@@ -743,6 +743,7 @@ public class Editor extends Activity {
 		Basic.clearProgram();									// then do the clear
 		ProgramFileName = "";
 		setTitle(ProgramFileName);
+		Saved = true;
 		InitialProgramSize = DisplayText.length();
 		mText.setText(DisplayText);
 	}
