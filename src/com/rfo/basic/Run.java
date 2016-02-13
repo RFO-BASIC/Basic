@@ -708,7 +708,7 @@ public class Run extends Activity {
 	private static final String BKW_RETURN = "return";
 	private static final String BKW_RINGER_GROUP = "ringer.";
 	private static final String BKW_RUN = "run";
-	private static final String BKW_SCREEN = "screen";
+	private static final String BKW_SCREEN_GROUP = "screen.";
 	private static final String BKW_SELECT = "select";
 	private static final String BKW_SENSORS_GROUP = "sensors.";
 	private static final String BKW_SMS_GROUP = "sms.";
@@ -782,7 +782,7 @@ public class Run extends Activity {
 		BKW_VIBRATE, BKW_WAKELOCK, BKW_WIFILOCK,
 		BKW_END, BKW_EXIT, BKW_HOME,
 		BKW_INCLUDE, BKW_PAUSE, BKW_REM,
-		BKW_DEVICE, BKW_SCREEN,
+		BKW_DEVICE, BKW_SCREEN_GROUP,
 		BKW_WIFI_INFO, BKW_HEADSET, BKW_MYPHONENUMBER,
 		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
 		BKW_APP_GROUP,
@@ -824,6 +824,7 @@ public class Run extends Activity {
 			keywordLists.put(BKW_PHONE_GROUP,     phone_KW);
 			keywordLists.put(BKW_READ_GROUP,      read_KW);
 			keywordLists.put(BKW_RINGER_GROUP,    ringer_KW);
+			keywordLists.put(BKW_SCREEN_GROUP,    screen_KW);
 			keywordLists.put(BKW_SENSORS_GROUP,   Sensors_KW);
 			keywordLists.put(BKW_SMS_GROUP,       SMS_KW);
 			keywordLists.put(BKW_SOCKET_GROUP,    Socket_KW);
@@ -1222,6 +1223,15 @@ public class Run extends Activity {
 
 	private static final String read_KW[] = {			// Command list for Format
 		BKW_READ_DATA, BKW_READ_NEXT, BKW_READ_FROM
+	};
+
+	// ******************* SCREEN variables ******************************************
+
+	private static final String BKW_SCREEN_ROTATION = "rotation";
+	private static final String BKW_SCREEN_SIZE = "size";
+
+	private static final String screen_KW[] = {			// Command list for Format
+		BKW_SCREEN_ROTATION, BKW_SCREEN_SIZE
 	};
 
 	// ********************** Font Command variables *********************************
@@ -4321,7 +4331,7 @@ public class Run extends Activity {
 		new Command(BKW_PAUSE)                  { public boolean run() { return executePAUSE(); } },
 		new Command(BKW_REM)                    { public boolean run() { return true; } },
 		new Command(BKW_DEVICE)                 { public boolean run() { return executeDEVICE(); } },
-		new Command(BKW_SCREEN)                 { public boolean run() { return executeSCREEN(); } },
+		new Command(BKW_SCREEN_GROUP,CID_GROUP) { public boolean run() { return executeSCREEN(); } },
 		new Command(BKW_WIFI_INFO)              { public boolean run() { return executeWIFI_INFO(); } },
 		new Command(BKW_HEADSET)                { public boolean run() { return executeHEADSET(); } },
 		new Command(BKW_MYPHONENUMBER)          { public boolean run() { return executeMYPHONENUMBER(); } },
@@ -4408,16 +4418,23 @@ public class Run extends Activity {
 	private final Command[] read_cmd = new Command[] {	// Map Read command keywords to their execution functions
 										// Do NOT call executeREAD_DATA, that was done in PreScan
 		CMD_READ_DATA,
-		new Command(BKW_READ_NEXT)          { public boolean run() { return executeREAD_NEXT(); } },
-		new Command(BKW_READ_FROM)          { public boolean run() { return executeREAD_FROM(); } },
+		new Command(BKW_READ_NEXT)              { public boolean run() { return executeREAD_NEXT(); } },
+		new Command(BKW_READ_FROM)              { public boolean run() { return executeREAD_FROM(); } },
+	};
+
+	// **************** SCREEN Group
+
+	private final Command[] screen_cmd = new Command[] {// Map screen command keywords to their execution functions
+		new Command(BKW_SCREEN_ROTATION)        { public boolean run() { return executeSCREEN_ROTATION(); } },
+		new Command(BKW_SCREEN_SIZE)            { public boolean run() { return executeSCREEN_SIZE(); } },
 	};
 
 	// **************** FONT Group
 
 	private final Command[] font_cmd = new Command[] {	// Map font command keywords to their execution functions
-			new Command(BKW_FONT_LOAD)              { public boolean run() { return executeFONT_LOAD(); } },
-			new Command(BKW_FONT_DELETE)            { public boolean run() { return executeFONT_DELETE(); } },
-			new Command(BKW_FONT_CLEAR)             { public boolean run() { return executeFONT_CLEAR(); } },
+			new Command(BKW_FONT_LOAD)          { public boolean run() { return executeFONT_LOAD(); } },
+			new Command(BKW_FONT_DELETE)        { public boolean run() { return executeFONT_DELETE(); } },
+			new Command(BKW_FONT_CLEAR)         { public boolean run() { return executeFONT_CLEAR(); } },
 	};
 
 	// **************** CONSOLE Group
@@ -4828,10 +4845,10 @@ public class Run extends Activity {
 	// **************** RINGER Group
 
 	private final Command[] ringer_cmd = new Command[] {	// Map ringer command keywords to their execution functions
-		new Command(BKW_RINGER_GET_MODE)    { public boolean run() { return executeRINGER_GET_MODE(); } },
-		new Command(BKW_RINGER_SET_MODE)    { public boolean run() { return executeRINGER_SET_MODE(); } },
-		new Command(BKW_RINGER_GET_VOLUME)  { public boolean run() { return executeRINGER_GET_VOLUME(); } },
-		new Command(BKW_RINGER_SET_VOLUME)  { public boolean run() { return executeRINGER_SET_VOLUME(); } },
+		new Command(BKW_RINGER_GET_MODE)        { public boolean run() { return executeRINGER_GET_MODE(); } },
+		new Command(BKW_RINGER_SET_MODE)        { public boolean run() { return executeRINGER_SET_MODE(); } },
+		new Command(BKW_RINGER_GET_VOLUME)      { public boolean run() { return executeRINGER_GET_VOLUME(); } },
+		new Command(BKW_RINGER_SET_VOLUME)      { public boolean run() { return executeRINGER_SET_VOLUME(); } },
 	};
 
 	// **************** HTML Group
@@ -10220,49 +10237,53 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private boolean executeSCREEN() {
+	// ************************************* Screen Commands **************************************
+
+	private boolean executeSCREEN() {							// Get SCREEN command keyword if it is there
+		return executeSubcommand(screen_cmd, "Screen");			// and execute the command
+	}
+
+	private boolean executeSCREEN_ROTATION() {
+		if (!getNVar())					return false;				// get var for rotation
+		Var.Val val = mVal;
+		if (!checkEOL())				return false;
+
+		Display display = ((Activity)getContext()).getWindowManager().getDefaultDisplay();
+		val.val(getScreenRotation(display));
+		return true;
+	}
+
+	private boolean executeSCREEN_SIZE() {
 		if (isEOL()) return true;									// no arguments
 
-		Var.Val rotVal = null;										// return variable for rotation
 		Var sizeVar = null;											// return array for size
 		Var realVar = null;											// return array for realsize
 		Var.Val densVal = null;										// return variable for density
 
 		boolean isComma = isNext(',');
 		if (!isComma) {
-			if (!getNVar())					return false;			// get var for rotation
-			rotVal = mVal;
+			sizeVar = getArrayVarForWrite(TYPE_NUMERIC);			// get array for size
+			if (sizeVar == null)		return false;				// must name a numeric array variable
 			isComma = isNext(',');
-		}
-		if (isComma) {
-			isComma = isNext(',');
-			if (!isComma) {
-				sizeVar = getArrayVarForWrite(TYPE_NUMERIC);		// get array for size
-				if (sizeVar == null)			return false;		// must name a numeric array variable
-				isComma = isNext(',');
-			}
 		}
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
 				realVar = getArrayVarForWrite(TYPE_NUMERIC);		// get array for realsize
-				if (realVar == null)			return false;		// must name a numeric array variable
+				if (realVar == null)	return false;				// must name a numeric array variable
 				isComma = isNext(',');
 			}
 		}
 		if (isComma) {
 			isComma = isNext(',');
 			if (!isComma) {
-				if (!getNVar())					return false;		// get var for density
+				if (!getNVar())			return false;					// get var for density
 				densVal = mVal;
 			}
 		}
-		if (!checkEOL())					return false;			// have all parameters
+		if (!checkEOL())				return false;			// have all parameters
 
 		Display display = ((Activity)getContext()).getWindowManager().getDefaultDisplay();
-		if (rotVal != null) {
-			rotVal.val(getScreenRotation(display));
-		}
 		if ((sizeVar != null) || (realVar != null)) {
 			if (!getScreenSize(display, sizeVar, realVar)) return false;
 		}
