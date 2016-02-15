@@ -29,6 +29,7 @@ package com.rfo.basic;
 import static com.rfo.basic.Run.EventHolder.*;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -842,22 +843,27 @@ public class GR extends Activity {
 					canvas.drawPoints(pixels, thePaint);
 					break;
 				case Poly:
-					fx1 = b.x();
-					fy1 = b.y();
 					ArrayList<Double> thisList = b.list();
-					Path p = new Path();
-					float firstX = thisList.get(0).floatValue() + fx1;
-					float firstY = thisList.get(1).floatValue() + fy1;
-					p.moveTo(firstX, firstY);
-					int size = thisList.size();
-					for (int i = 2; i < size; ) {
-						float nextX = thisList.get(i++).floatValue() + fx1;
-						float nextY = thisList.get(i++).floatValue() + fy1;
-						p.lineTo(nextX, nextY);
+					// User may have changed the list. If it has
+					// an odd number of coordinates, ignore the last.
+					int points = thisList.size() / 2;
+					if (points >= 2) {					// do nothing if only one point
+						fx1 = b.x();
+						fy1 = b.y();
+						Path path = new Path();
+						Iterator<Double> listIt = thisList.iterator();
+						float firstX = listIt.next().floatValue() + fx1;
+						float firstY = listIt.next().floatValue() + fy1;
+						path.moveTo(firstX, firstY);
+						for (int p = 1; p < points; ++p) {
+							float x = listIt.next().floatValue() + fx1;
+							float y = listIt.next().floatValue() + fy1;
+							path.lineTo(x, y);
+						}
+						path.lineTo(firstX, firstY);
+						path.close();
+						canvas.drawPath(path, thePaint);
 					}
-					p.lineTo(firstX, firstY);
-					p.close();
-					canvas.drawPath(p, thePaint);
 					break;
 				case Text:
 					canvas.drawText(b.text(), b.x(), b.y(), thePaint);

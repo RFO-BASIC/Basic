@@ -3172,8 +3172,8 @@ public class Run extends Activity {
 		to register actions with the ContextManager. The Interpreter
 		uses these actions to track which context is active (if any).
 	7.	Variables. The symbol table is two lists: VarNames and Vars.
-		Each Var in Vars holds a refernce to a Var.Val (for scalars) or
-		a Var.ArrayDef or a Var.FnDef
+		Each Var in Vars holds a reference to a Var.Val (for scalars)
+		or a Var.ArrayDef or a Var.FnDef
 		Both lists are internal, so index 0 is valid.
 	8.	A scalar value is a Val object. Sometimes variables are named
 		as if the value and the variable are the same, but they are not.
@@ -12377,12 +12377,8 @@ public class Run extends Activity {
 					/* FALL THROUGH to handle "list" */
 				case Poly:
 					if (parm.equals("list")) {
-						if ((iVal < 0) | (iVal >= theLists.size())) {
-							return RunTimeError("List pointer out of range");
-						}
-						// For now, the list parm must be set this way.
-						ArrayList<Double> list = theLists.get(iVal);
-						b.list(iVal, list);
+						// For Now, list parm must be done here. Validate and attach list to poly object.
+						if (!setPolyList(b, iVal))	return false;
 						continue;									// next parameter
 					}
 				default:
@@ -12662,13 +12658,13 @@ public class Run extends Activity {
 
 	private boolean execute_gr_scale() {
 
-		if (!evalNumericExpression()) return false;					// get x
+		if (!evalNumericExpression())	return false;				// get x
 		double x = EvalNumericExpressionValue;
 
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;					// get y
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;				// get y
 		double y = EvalNumericExpressionValue;
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 
 		GR.scaleX = (float) x;
 		GR.scaleY = (float) y;
@@ -12678,12 +12674,12 @@ public class Run extends Activity {
 
 	private boolean execute_gr_clip() {
 		GR.BDraw b = createGrObj_start(GR.Type.Clip);				// create Graphic Object and get variable
-		if (b == null) return false;
+		if (b == null)					return false;
 		Var.Val saveVal = mVal;
 
-		if (!isNext(',')) return false;
+		if (!isNext(','))				return false;
 		int[] ltrb = getArgs4I();
-		if (ltrb == null) return false;
+		if (ltrb == null)				return false;
 		b.ltrb(ltrb);
 
 		int RegionOp = 0;
@@ -12698,37 +12694,43 @@ public class Run extends Activity {
 		return createGrObj_finish(b, saveVal);						// store the object and return its index
 	}
 
-	private boolean execute_gr_poly() {
-		GR.BDraw b = createGrObj_start(GR.Type.Poly);				// create Graphic Object and get variable
-		if (b == null) return false;
-		Var.Val saveVal = mVal;
-
-		if (!isNext(',')) return false;
-		if (!evalNumericExpression()) return false;					// list pointer
-		int theListIndex = EvalNumericExpressionValue.intValue();
-		if (theListIndex < 1 || theListIndex >= theLists.size()) {
+	// Validate list and attach it to a Poly-type BDraw object.
+	// Do it here, not in GR, for access to RunTimeError().
+	private boolean setPolyList(GR.BDraw poly, int listIndex) {
+		if ((listIndex < 1) || (listIndex >= theLists.size())) {
 			return RunTimeError("Invalid list pointer");
 		}
-		if (theListsType.get(theListIndex) != Var.Type.NUM) {
+		if (theListsType.get(listIndex) != Var.Type.NUM) {
 			return RunTimeError("List must be numeric");
 		}
-
-		ArrayList<Double> thisList = theLists.get(theListIndex);
-		if (thisList.size() < 6) {
-			return RunTimeError("List must have at least three points");
+		ArrayList<Double> list = theLists.get(listIndex);
+		int size = list.size();
+		if (size < 4) {
+			return RunTimeError("List must have at least two points");
 		}
-		int r = thisList.size() % 2;
-		if (r != 0) {
+		if ((size % 2) != 0) {
 			return RunTimeError("List must have even number of elements");
 		}
-		b.list(theListIndex, thisList);
+		poly.list(listIndex, list);
+		return true;
+	}
+
+	private boolean execute_gr_poly() {
+		GR.BDraw b = createGrObj_start(GR.Type.Poly);				// create Graphic Object and get variable
+		if (b == null)					return false;
+		Var.Val saveVal = mVal;
+
+		if (!isNext(','))				return false;
+		if (!evalNumericExpression())	return false;				// list pointer
+		int theListIndex = EvalNumericExpressionValue.intValue();
+		if (!setPolyList(b, theListIndex))	return false;			// validate and attach list to poly object
 
 		int[] xy = { 0, 0 };
 		if (isNext(',')) {
-			if (!evalNumericExpression()) return false;
+			if (!evalNumericExpression())	return false;
 			xy[0] = EvalNumericExpressionValue.intValue();
-			if (!isNext(',')) return false;
-			if (!evalNumericExpression()) return false;
+			if (!isNext(','))				return false;
+			if (!evalNumericExpression())	return false;
 			xy[1] = EvalNumericExpressionValue.intValue();
 		}
 		b.xy(xy);
