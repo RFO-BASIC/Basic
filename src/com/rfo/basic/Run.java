@@ -109,7 +109,6 @@ import org.apache.http.util.ByteArrayBuffer;
 
 import com.rfo.basic.Basic.TextStyle;
 import com.rfo.basic.GPS.GpsData;
-import com.rfo.basic.Var.FunctionVar;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -322,7 +321,7 @@ public class Run extends Activity {
 	// *************************** ProgramLine class ***************************
 
 	public static class ProgramLine {
-		private String mLine;							// full text, after preprocessing
+		private String mText;							// full text, after preprocessing
 		private Command mCommand;						// Command object, once known
 		private int mKeywordLength;						// skip past command keyword after Command is known
 		private Command mSubCommand;					// sub-Command object, if mCommand is a group
@@ -331,8 +330,8 @@ public class Run extends Activity {
 		public ProgramLine() {
 			this(null);
 		}
-		public ProgramLine(String line) {
-			mLine = line;
+		public ProgramLine(String text) {
+			mText = text;
 			mCommand = null;
 			mKeywordLength = 0;
 			mSubCommand = null;
@@ -340,16 +339,16 @@ public class Run extends Activity {
 		}
 
 		// Getters.
-		public String line() { return mLine; }
-		public int length() { return (mLine == null) ? 0 : mLine.length(); }
+		public String text() { return mText; }
+		public int length() { return (mText == null) ? 0 : mText.length(); }
 		public Command cmd() { return mCommand; }
 		public Command subcmd() { return mSubCommand; }
 		public int offset() { return mKeywordLength; }
 		public int subOffset() { return mSubKeywordLength; }
 
 		// Delegates.
-		public boolean startsWith(String prefix) { return mLine.startsWith(prefix); }
-		public boolean startsWith(String prefix, int start) { return mLine.startsWith(prefix, start); }
+		public boolean startsWith(String prefix) { return mText.startsWith(prefix); }
+		public boolean startsWith(String prefix, int start) { return mText.startsWith(prefix, start); }
 
 		// Replace the remembered command with a new one; look up its keyword length.
 		public void cmd(Command command) {
@@ -381,7 +380,7 @@ public class Run extends Activity {
 
 		private Command searchCommands(Command[] commands, int start) {
 			for (Command c : commands) {					// loop through the command list
-				if (mLine.startsWith(c.name, start)) { return c; }
+				if (mText.startsWith(c.name, start)) { return c; }
 			}
 			return null;									// no keyword found
 		}
@@ -2941,10 +2940,10 @@ public class Run extends Activity {
 	private void doDebugDialog() {
 
 		int lineIndex = 0;
-		String line = "";
+		String text = "";
 		if (mInterpreter != null) {
 			lineIndex = mInterpreter.ExecutingLineIndex;
-			line = mInterpreter.ExecutingLineBuffer.line();
+			text = mInterpreter.ExecutingLineBuffer.text();
 		}
 
 		ArrayList<String> msg = new ArrayList<String>();
@@ -2953,7 +2952,7 @@ public class Run extends Activity {
 			msg = mInterpreter.dbDoFunc();
 			msg.add("Executable Line #:    "
 					+ Integer.toString(lineIndex + 1) + '\n'
-					+ chomp(line));
+					+ chomp(text));
 		}
 
 		if (dbDialogScalars)
@@ -2973,7 +2972,7 @@ public class Run extends Activity {
 			for (int i = 0; i < Basic.lines.size(); ++i) {
 				msg.add(((i == lineIndex) ? " >>" : "   ")	// mark current line
 						+ (i + 1) + ": "					// one-based line index
-						+ chomp(Basic.lines.get(i).line())); // remove newline
+						+ chomp(Basic.lines.get(i).text())); // remove newline
 			}
 		}
 
@@ -3455,7 +3454,7 @@ public class Run extends Activity {
 				}
 
 				private void handleHere(String err) {
-					PrintShow(err + ", near line:", ExecutingLineBuffer.line());
+					PrintShow(err + ", near line:", ExecutingLineBuffer.text());
 					SyntaxError = true;		// This blocks "Program ended" checks in finishRun()
 					mOnErrorInt = null;		// Don't allow OnError to catch fatal exception
 					disableInterrupt(Interrupt.ERROR_BIT);
@@ -3527,12 +3526,12 @@ public class Run extends Activity {
 			for (int LineNumber = 0; LineNumber < Basic.lines.size(); ++LineNumber) {
 				ExecutingLineBuffer = Basic.lines.get(LineNumber);			// scan one line at a time
 				// ExecutingLineIndex = LineNumber;
-				String line = ExecutingLineBuffer.line();
+				String text = ExecutingLineBuffer.text();
 
-				int li = line.indexOf(":");									// fast check
-				if ((li <= 0) && (line.charAt(0) != 'r'))	{ continue; }	// not label or READ.DATA, next line
+				int li = text.indexOf(":");									// fast check
+				if ((li <= 0) && (text.charAt(0) != 'r'))	{ continue; }	// not label or READ.DATA, next line
 
-				String word = getWord(line, 0, "");
+				String word = getWord(text, 0, "");
 				LineIndex = word.length();
 
 				if (isNext(':')) {											// if word really is a label, store it
@@ -3543,7 +3542,7 @@ public class Run extends Activity {
 					ExecutingLineBuffer.cmd(CMD_LABEL, LineIndex);
 					if (!checkEOL())					{ return false; }
 				}
-				else if (line.startsWith(READ_DATA)) {						// Is not a label. If it is READ.DATA
+				else if (text.startsWith(READ_DATA)) {						// Is not a label. If it is READ.DATA
 					LineIndex = READ_DATA.length();							// set LineIndex just past READ.DATA
 					ExecutingLineBuffer.cmd(CMD_READ_DATA, LineIndex);		// store the command reference
 					if (!executeREAD_DATA())			{ return false; }	// parse and store the data list
@@ -3674,8 +3673,8 @@ public class Run extends Activity {
 			}
 
 			if (Echo) {
-				String line = ExecutingLineBuffer.line();
-				PrintShow(line.substring(0, line.length() - 1));
+				String text = ExecutingLineBuffer.text();
+				PrintShow(text.substring(0, text.length() - 1));
 			}
 			if (!c.run()) { SyntaxError(); return false; }
 			return true;									// Statement executed ok. Return to main looper.
@@ -4995,9 +4994,9 @@ public class Run extends Activity {
 
 	private boolean RunTimeError(String... msgs) {
 		if (mOnErrorInt == null) {						// don't display anything if error is being trapped
-			String line = ExecutingLineBuffer.line();
-			if (line.endsWith("\n")) { line = chomp(line); }
-			PrintShow(msgs[0], line);					// display error message and offending line
+			String text = ExecutingLineBuffer.text();
+			if (text.endsWith("\n")) { text = chomp(text); }
+			PrintShow(msgs[0], text);					// display error message and offending line
 
 			for (int i = 1; i < msgs.length; ++i) {		// display any supplemental text
 				PrintShow(msgs[i]);
@@ -5021,7 +5020,7 @@ public class Run extends Activity {
 	}
 
 	private void writeErrorMsg(String msg) {		// Write errorMsg, do NOT set SyntaxError
-		mErrorMsg = msg + "\nLine: " + ExecutingLineBuffer.line();
+		mErrorMsg = msg + "\nLine: " + ExecutingLineBuffer.text();
 	}
 
 	private void writeErrorMsg(String prefix, Throwable e) {
@@ -5197,21 +5196,21 @@ public class Run extends Activity {
 	// Note: returns one of the "working Var" pool. Don't store this reference
 	// anywhere. Clone the Var instead.
 	private Var parseVar(boolean isUserFnAllowed) {
-		String line = ExecutingLineBuffer.line();
+		String text = ExecutingLineBuffer.text();
 		int LI = LineIndex;
-		int max = line.length();
+		int max = text.length();
 		Var var = null;
 
 		// PoosibleKeyWord is for the special cases where a var could be followed by keyword THEN, TO or STEP
 																// Isolate the var characters
-		String name = getWord(line, LI, PossibleKeyWord);
+		String name = getWord(text, LI, PossibleKeyWord);
 		LI += name.length();
 		if (LI > LineIndex) {									// no var if length is 0
-			char c = line.charAt(LI);
+			char c = text.charAt(LI);
 			boolean isNumeric = (c != '$');						// Is this a string var?
 			if (!isNumeric) {
 				name += c; ++LI;
-				c = line.charAt(LI);
+				c = text.charAt(LI);
 			}
 			if (c == '[') {										// Is this an array?
 				name += c; ++LI;
@@ -5293,11 +5292,11 @@ public class Run extends Activity {
 
 	private boolean getNumber() {						// Get a number if there is one
 		char c = 0;
-		String line = ExecutingLineBuffer.line();
-		int max = line.length();
+		String text = ExecutingLineBuffer.text();
+		int max = text.length();
 		int i = LineIndex;
 		while (i < max) {								// Must start with one or more digits
-			c = line.charAt(i);
+			c = text.charAt(i);
 			if (c > '9' || c < '0') { break; }			// If not a digit, done with whole part
 			++i;
 		}
@@ -5305,22 +5304,22 @@ public class Run extends Activity {
 
 		if (c == '.') {									// May have a decimal point
 			while (++i < max) {							// Followed by more digits
-				c = line.charAt(i);
+				c = text.charAt(i);
 				if (c > '9' || c < '0') { break; }		// If not a digit, done with fractional part
 			}
 		}
 		if (c == 'e' || c == 'E') {						// Is there an exponent
 			if (++i < max) {
-				c = line.charAt(i);
+				c = text.charAt(i);
 				if (c == '+' || c == '-') { ++i; }		// Is there a sign on the exponent
 			}
 			while (i < max) {							// Get the exponent
-				c = line.charAt(i);
+				c = text.charAt(i);
 				if (c > '9' || c < '0') { break; }		// If not a digit, done with exponent
 				++i;
 			}
 		}
-		String num = line.substring(LineIndex, i);		// isolate the numeric characters
+		String num = text.substring(LineIndex, i);		// isolate the numeric characters
 		LineIndex = i;
 		double d = 0.0;
 		try { d = Double.parseDouble(num); }			// have java parse it into a double
@@ -5331,24 +5330,24 @@ public class Run extends Activity {
 	}
 
 	private boolean GetStringConstant() {				// Get a string constant if there is one
-		String line = ExecutingLineBuffer.line();
-		int max = line.length();
+		String text = ExecutingLineBuffer.text();
+		int max = text.length();
 		if (LineIndex >= max || LineIndex < 0) { return false; }
 
 		int i = LineIndex;
 		StringConstant = "";
-		char c = line.charAt(i);
+		char c = text.charAt(i);
 		if (c != '"')     { return false; }				// first char not "", not String Constant
 		while (true) {									// Get the rest of the String
 			++i;										// copy character until " or EOL
 			if (i >= max) { return false; }
-			c = line.charAt(i);
+			c = text.charAt(i);
 			if (c == '"') { break; }					// if " we're done
 
 			if (c == '\r') {			// AddProgramLine hides embedded newline as carriage return
 				c = '\n';
 			} else if (c == '\\') {		// AddProgramLine allows only quote or backslash after backslash
-				c = line.charAt(++i);
+				c = text.charAt(++i);
 			}
 			StringConstant += c;						// add to String Constant
 		}
@@ -5360,13 +5359,13 @@ public class Run extends Activity {
 
 	private Command getFunction(Map<String, Command> map) {	// get a Math or String Function if there is one
 		Command fn = null;
-		String line = ExecutingLineBuffer.line();
-		int i = line.indexOf('(', LineIndex);
+		String text = ExecutingLineBuffer.text();
+		int i = text.indexOf('(', LineIndex);
 		if (i >= 0) {
-			String token = line.substring(LineIndex, ++i);	// token could be a function name
+			String token = text.substring(LineIndex, ++i);	// token could be a function name
 			fn = map.get(token);
 			if (fn != null) {								// null if not a function
-				if (i >= line.length()) { fn = null; }		// nothing after the '('
+				if (i >= text.length()) { fn = null; }		// nothing after the '('
 				else { LineIndex = i; }						// set line index past end of function name
 			}
 		}
@@ -5385,7 +5384,7 @@ public class Run extends Activity {
 	private boolean evalNumericExpression() {			// Evaluate a numeric expression
 
 		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
-		char c = ExecutingLineBuffer.line().charAt(LineIndex);
+		char c = ExecutingLineBuffer.text().charAt(LineIndex);
 		if (c == '\n' || c == ')') { return false; }		// If eol or starts with ')', there is not an expression
 
 		Stack<Double> ValueStack = new Stack<Double>();		// Each call to eval gets its own stack
@@ -5410,7 +5409,7 @@ public class Run extends Activity {
 		Command cmd;
 		double incdec = 0.0;									// for recording pre-inc/dec
 
-		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// First character
+		char c = ExecutingLineBuffer.text().charAt(LineIndex);	// First character
 
 		if (c == '+') {											// Check for unary operators or pre-inc/dec
 			++LineIndex;										// move to the next character
@@ -5471,7 +5470,7 @@ public class Run extends Activity {
 		else { return false; }									// nothing left, fail
 
 		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
-		c = ExecutingLineBuffer.line().charAt(LineIndex);
+		c = ExecutingLineBuffer.text().charAt(LineIndex);
 
 		if (!PossibleKeyWord.equals("")) {
 			if (ExecutingLineBuffer.startsWith(PossibleKeyWord, LineIndex)) {
@@ -5699,7 +5698,7 @@ public class Run extends Activity {
 		int max = ExecutingLineBuffer.length();
 		if (LineIndex >= max) { return false; }
 
-		char c = ExecutingLineBuffer.line().charAt(LineIndex);
+		char c = ExecutingLineBuffer.text().charAt(LineIndex);
 		if (c == '\n' || c == ')') { return false; }			// If eol or starts with ')', there is not an expression
 
 		SEisLE = false;											// Assume not Logical Expression
@@ -5719,7 +5718,7 @@ public class Run extends Activity {
 
 		EvalNumericExpressionValue = 0.0;						// Set Logical Compare Result to false
 		if (LineIndex >= max) { return false; }
-		c = ExecutingLineBuffer.line().charAt(LineIndex);
+		c = ExecutingLineBuffer.text().charAt(LineIndex);
 		if ((c == '\n') ||		// end of line
 			(c == ')')  ||		// end of parenthesized expression
 			(c == ',')  ||		// parameter separator
@@ -5840,31 +5839,21 @@ public class Run extends Activity {
 
 	// ******************************* Statement Parsing Utilities ********************************
 
-	private boolean nextLine() {				// Move to beginning of next line
-		if (++ExecutingLineIndex < Basic.lines.size()) {	// if not at end of program
-			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
-			LineIndex = 0;
-			return true;
-		}
-		--ExecutingLineIndex;				// No next line
-		return false;
-	}
-
 	private boolean isEOL() {
 		return (LineIndex >= ExecutingLineBuffer.length()) ||
-				(ExecutingLineBuffer.line().charAt(LineIndex) == '\n');
+				(ExecutingLineBuffer.text().charAt(LineIndex) == '\n');
 	}
 
 	private boolean checkEOL() {
 		if (isEOL()) return true;
-		String ec = ExecutingLineBuffer.line().substring(LineIndex);
+		String ec = ExecutingLineBuffer.text().substring(LineIndex);
 		RunTimeError("Extraneous characters in line: " + ec);
 		return false;
 	}
 
 	private boolean isNext(char c) {		// Check the current character
 		if ((LineIndex < ExecutingLineBuffer.length()) &&	// if it is as expected...
-			(ExecutingLineBuffer.line().charAt(LineIndex) == c)) {
+			(ExecutingLineBuffer.text().charAt(LineIndex) == c)) {
 			++LineIndex;									// ... increment the character pointer
 			return true;
 		}
@@ -6448,7 +6437,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeMF_TIME() {
-		if (ExecutingLineBuffer.line().charAt(LineIndex)== ')') {	// If no args, use current time
+		if (ExecutingLineBuffer.text().charAt(LineIndex)== ')') {	// If no args, use current time
 			EvalNumericExpressionIntValue = System.currentTimeMillis();
 		} else {													// Otherwise, get user-supplied time
 			Time time = theTimeZone.equals("") ? new Time() : new Time(theTimeZone);
@@ -7408,11 +7397,11 @@ public class Run extends Activity {
 	// else add the newline param to the String and set PrintLineReady true.
 	// If the String is valid, put it in StringConstant and return true,
 	// else return false to signal a syntax error.
-	private boolean buildPrintLine(String line, String newline) {
-		StringBuilder printLine = new StringBuilder((line == null) ? "" : line);
+	private boolean buildPrintLine(String text, String newline) {
+		StringBuilder printLine = new StringBuilder((text == null) ? "" : text);
 		char sep = ' ';
 		do {										// do each field in the print statement
-			char c = ExecutingLineBuffer.line().charAt(LineIndex);
+			char c = ExecutingLineBuffer.text().charAt(LineIndex);
 			if (c == '\n') {
 				break;								// done processing the line
 			}
@@ -7428,7 +7417,7 @@ public class Run extends Activity {
 			}
 			if (SyntaxError) { return false; }
 
-			sep = ExecutingLineBuffer.line().charAt(LineIndex);	// get possible separator
+			sep = ExecutingLineBuffer.text().charAt(LineIndex);	// get possible separator
 			if (sep == ',') {						// if the separator is a comma
 				printLine.append(sep).append(' ');	// add comma + blank to the line
 				++LineIndex;
@@ -7464,13 +7453,13 @@ public class Run extends Activity {
 
 	private boolean getLabelLineNum() {
 		int li = LineIndex;
-		String label = getWord(ExecutingLineBuffer.line(), LineIndex, "");	// get label name
+		String label = getWord(ExecutingLineBuffer.text(), LineIndex, "");	// get label name
 		int len = label.length();
 		LineIndex += len;												// move LineIndex for isEOL()
 		if (isEOL()) {					// If EOL, this is a simple "GOTO/GOSUB label" statement.
 			if (len == 0) return false;									// no label and no expression: error
 		} else {						// Otherwise it is a "GOTO/GOSUB index, label_list..." statement.
-			int comma = ExecutingLineBuffer.line().indexOf(',', LineIndex);
+			int comma = ExecutingLineBuffer.text().indexOf(',', LineIndex);
 			if (comma < 0) return false;	// if no comma, there is no expression list, so syntax error
 
 			LineIndex = li;
@@ -7480,7 +7469,7 @@ public class Run extends Activity {
 			ArrayList<String> labels = new ArrayList<String>();			// build label list
 			do {
 				if (isEOL()) return false;								// don't end with comma
-				label = getWord(ExecutingLineBuffer.line(), LineIndex, "");
+				label = getWord(ExecutingLineBuffer.text(), LineIndex, "");
 				labels.add(label);
 				LineIndex += label.length();
 			} while(isNext(','));
@@ -7498,7 +7487,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeGOTO() {
-
+		// Look for severe block boundary crossing abuse: GOTO out of IF or FOR.
 		int maxStack = 50000;						// 50,000 should be enough
 
 		if ((IfElseStack.size() > maxStack) || (ForNextStack.size() > maxStack)) {
@@ -7510,7 +7499,7 @@ public class Run extends Activity {
 
 	private boolean executeGOSUB() {
 		int returnAddress = ExecutingLineIndex;
-		if (!getLabelLineNum()) return false;
+		if (!getLabelLineNum())			return false;
 		if (ExecutingLineIndex != returnAddress) {
 			GosubStack.push(returnAddress);			// found a valid gosub address, expect a return
 		}
@@ -7518,7 +7507,7 @@ public class Run extends Activity {
 	}
 
 	private boolean executeRETURN() {
-		if (!checkEOL()) return false;
+		if (!checkEOL())				return false;
 		if (GosubStack.empty()) {
 			return RunTimeError("RETURN without GOSUB");
 		}
@@ -7531,7 +7520,7 @@ public class Run extends Activity {
 		if (!IfElseStack.empty()) {											// if inside of an IF block
 			Integer q = IfElseStack.peek();
 			if ((q != IEexec) && (q != IEinterrupt)) {						// and not executing
-				int index = ExecutingLineBuffer.line().indexOf("then");
+				int index = ExecutingLineBuffer.text().indexOf("then");
 				if (index < 0) {											// if there is no THEN
 					IfElseStack.push(IEskip2);								// need to skip to this if's end
 				} else {
@@ -7549,7 +7538,7 @@ public class Run extends Activity {
 		if (!evalToPossibleKeyword(kw)) { return false; }		// tell getVar that THEN is expected
 		boolean condition = (EvalNumericExpressionValue != 0);
 
-		if (ExecutingLineBuffer.line().charAt(LineIndex) != '\n') {
+		if (ExecutingLineBuffer.text().charAt(LineIndex) != '\n') {
 			if (!ExecutingLineBuffer.startsWith(kw, LineIndex)) { checkEOL(); return false; }
 			LineIndex += 4;
 
@@ -7564,22 +7553,22 @@ public class Run extends Activity {
 	}
 
 	private boolean SingleLineIf(boolean condition) {
-		int index = ExecutingLineBuffer.line().lastIndexOf("else");
+		int index = ExecutingLineBuffer.text().lastIndexOf("else");
 
 		// At present, can't use the same ProgramLine when calling StatementExecuter recursively.
 		// We create a new, temporary ProgramLine, with its mCommand null, every time.
 		if (condition) {
-			String line = ExecutingLineBuffer.line();
+			String text = ExecutingLineBuffer.text();
 			if (index > 0) {
-				line = line.substring(0, index) + "\n";		// clip off the "else" clause
+				text = text.substring(0, index) + "\n";		// clip off the "else" clause
 			}
-			ExecutingLineBuffer = new ProgramLine(line);
+			ExecutingLineBuffer = new ProgramLine(text);
 			return StatementExecuter();
 		}
 
 		if (index > 0) {
 			LineIndex = index + 4;
-			ExecutingLineBuffer = new ProgramLine(ExecutingLineBuffer.line());
+			ExecutingLineBuffer = new ProgramLine(ExecutingLineBuffer.text());
 			return StatementExecuter();
 		}
 		return true;
@@ -8412,7 +8401,7 @@ public class Run extends Activity {
 		boolean append = false;										// Assume not append
 		int FileMode = 0;											// Default to FMR
 		clearErrorMsg();
-		switch (ExecutingLineBuffer.line().charAt(LineIndex)) {		// First parm is a, w or r
+		switch (ExecutingLineBuffer.text().charAt(LineIndex)) {		// First parm is a, w or r
 		case 'a':
 			append = true;					// append is a special case of write
 		case 'w':							// write
@@ -8675,7 +8664,7 @@ public class Run extends Activity {
 		boolean append = false;										// Assume not append
 		int FileMode = 0;											// Default to FMR
 		clearErrorMsg();
-		switch (ExecutingLineBuffer.line().charAt(LineIndex)) {		// First parm is a, w or r
+		switch (ExecutingLineBuffer.text().charAt(LineIndex)) {		// First parm is a, w or r
 		case 'a':
 			append = true;					// append is a special case of write
 		case 'w':							// write
@@ -13778,13 +13767,11 @@ public class Run extends Activity {
 			if (!evalNumericExpression()) return false;			// values may be expressions
 			Values.add(EvalNumericExpressionValue);
 
-			String line = ExecutingLineBuffer.line();
-			if (LineIndex >= line.length()) return false;
-			char c = line.charAt(LineIndex);					// get the next character
+			String text = ExecutingLineBuffer.text();
+			if (LineIndex >= text.length()) return false;
+			char c = text.charAt(LineIndex);					// get the next character
 			if (c == ',') {										// if it is a comma
 				++LineIndex;									// skip it and continue looping
-			} else if (c == '~') {								// if it is a line continue character
-				if (!nextLine()) return false;					// get next line if there is one
 			} else break;										// else no more values in the list
 		}
 		return true;
@@ -13795,13 +13782,11 @@ public class Run extends Activity {
 			if (!getStringArg()) return false;					// values may be expressions
 			Values.add(StringConstant);
 
-			String line = ExecutingLineBuffer.line();
-			if (LineIndex >= line.length()) return false;
-			char c = line.charAt(LineIndex);					// get the next character
+			String text = ExecutingLineBuffer.text();
+			if (LineIndex >= text.length()) return false;
+			char c = text.charAt(LineIndex);					// get the next character
 			if (c == ',') {										// if it is a comma
 				++LineIndex;									// skip it and continue looping
-			} else if (c == '~') {								// if it is a line continue character
-				if (!nextLine()) return false;					// get next line if there is one
 			} else break;										// else no more values in the list
 		}
 		return true;
@@ -14106,7 +14091,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_LIST_NEW() {
-		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// Get the type, s or n
+		char c = ExecutingLineBuffer.text().charAt(LineIndex);	// Get the type, s or n
 		++LineIndex;
 
 		Var.Type type = Var.Type.typeOf(c);
@@ -14704,7 +14689,7 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_STACK_CREATE() {
-		char c = ExecutingLineBuffer.line().charAt(LineIndex);	// Get the type, s or n
+		char c = ExecutingLineBuffer.text().charAt(LineIndex);	// Get the type, s or n
 		++LineIndex;
 
 		Var.Type type = Var.Type.typeOf(c);
@@ -17717,11 +17702,11 @@ public class Run extends Activity {
 	private boolean executeDEBUG_WATCH() {				// separate the names and store them
 		if (!Debug)						return true;
 
-		String line = ExecutingLineBuffer.line();
-		int max = line.length() - 1;
+		String text = ExecutingLineBuffer.text();
+		int max = text.length() - 1;
 		int ni = LineIndex;								// start of name string
 		do {
-			int i = line.indexOf(',', ni);
+			int i = text.indexOf(',', ni);
 			if (i < 0) { i = max; }
 			Var var = getVarAndType();
 			boolean add = (var != null);
