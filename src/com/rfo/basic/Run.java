@@ -639,8 +639,7 @@ public class Run extends Activity {
 	private static final String BKW_DIM = "dim";
 	private static final String BKW_DIR = "dir";				// same as "file.dir"
 	private static final String BKW_DO = "do";
-	private static final String BKW_ECHO_OFF = "echo.off";
-	private static final String BKW_ECHO_ON = "echo.on";
+	private static final String BKW_ECHO_GROUP = "echo.";
 	private static final String BKW_ELSE = "else";
 	private static final String BKW_ELSEIF = "elseif";
 	private static final String BKW_EMAIL_SEND = "email.send";
@@ -740,6 +739,12 @@ public class Run extends Activity {
 	private static final String BKW_WIFI_INFO = "wifi.info";
 	private static final String BKW_WIFILOCK = "wifilock";
 
+	// Some generic words used by multiple commands
+	private static final String BKW_ON = "on";
+	private static final String BKW_OFF = "off";
+	private static final boolean ON = true;		// true: enable something, turn it on
+	private static final boolean OFF = false;	// false: disable something, turn it off
+
 	// This array lists all of the top-level keywords so Format can find them.
 	// The order of this list determines the order Format uses for its linear search.
 	// BKW_PREDEC and BKW_PREINC are omitted as they look like regular expressions (!).
@@ -773,7 +778,7 @@ public class Run extends Activity {
 		BKW_SPLIT_ALL, BKW_SPLIT,
 		BKW_JOIN_ALL, BKW_JOIN, BKW_CLS,
 		BKW_FONT_GROUP, BKW_CONSOLE_GROUP, BKW_DEBUG_GROUP,
-		BKW_ECHO_ON, BKW_ECHO_OFF, BKW_KB_GROUP,
+		BKW_ECHO_GROUP, BKW_KB_GROUP,
 		BKW_NOTIFY, BKW_RUN, // BKW_EMPTY_PROGRAM,		// Format does not need EMPTY_PROGRAM
 		BKW_SU_GROUP, BKW_SYSTEM_GROUP,
 		BKW_STT_LISTEN, BKW_STT_RESULTS, BKW_TTS_GROUP,
@@ -810,7 +815,8 @@ public class Run extends Activity {
 			keywordLists.put(BKW_BYTE_GROUP,      byte_KW);
 			keywordLists.put(BKW_CONSOLE_GROUP,   Console_KW);
 			keywordLists.put(BKW_DIALOG_GROUP,    Dialog_KW);
-			keywordLists.put(BKW_DEBUG_GROUP,     Debug_KW);
+			keywordLists.put(BKW_DEBUG_GROUP,     debug_KW);
+			keywordLists.put(BKW_ECHO_GROUP,      echo_KW);
 			keywordLists.put(BKW_FILE_GROUP,      file_KW);
 			keywordLists.put(BKW_FN_GROUP,        fn_KW);
 			keywordLists.put(BKW_FONT_GROUP,      font_KW);
@@ -1111,30 +1117,28 @@ public class Run extends Activity {
 	private ClipboardManager clipboard;
 	public static boolean Notified;
 
-	// ******************* Variables for User-defined Functions ************************
+	// ******************** Command Keywords for User-defined Functions ********************
 
 	private static final String BKW_FN_DEF = "def";
 	private static final String BKW_FN_RTN = "rtn";
-	private static final String BKW_FN_END = "end";
 
 	private static final String fn_KW[] = {				// Command list for Format
-		BKW_FN_DEF, BKW_FN_RTN, BKW_FN_END
+		BKW_FN_DEF, BKW_FN_RTN, BKW_END
 	};
 
-	// ******************************** SWITCH variables ********************************
+	// ********************************** SWITCH keywords **********************************
 
 	private static final String BKW_SW_BEGIN = "begin";
 	private static final String BKW_SW_CASE = "case";
 	private static final String BKW_SW_BREAK = "break";
 	private static final String BKW_SW_DEFAULT = "default";
-	private static final String BKW_SW_END = "end";
 
 	private static final String sw_KW[] = {				// Command list for Format
 		BKW_SW_BEGIN, BKW_SW_CASE, BKW_SW_BREAK,
-		BKW_SW_DEFAULT, BKW_SW_END
+		BKW_SW_DEFAULT, BKW_END
 	};
 
-	// ******************************** Wakelock variables *********************************
+	// ********************************* WAKELOCK keywords *********************************
 
 	private PowerManager.WakeLock theWakeLock;
 	private static final int partial = 1;
@@ -1143,7 +1147,7 @@ public class Run extends Activity {
 	private static final int full = 4;
 	private static final int release = 5;
 
-	// ******************************** Wifilock variables *********************************
+	// ********************************* WIFILOCK keywords *********************************
 
 	private WifiManager.WifiLock theWifiLock;
 	private static final int wifi_mode_scan = 1;
@@ -1151,7 +1155,7 @@ public class Run extends Activity {
 	private static final int wifi_mode_high = 3;
 	private static final int wifi_release = 4;
 
-	// ******************************* File I/O operation variables ************************
+	// ********************* File I/O operation keywords and variables *********************
 
 	// for both TEXT and BYTE
 	private static final String BKW_OPEN = "open";
@@ -1179,7 +1183,7 @@ public class Run extends Activity {
 	private static final int FMR = 0;					// File Mode Read
 	private static final int FMW = 1;					// File Mode Write
 
-	// ********************************* TEXT I/O variables *********************************
+	// ********************************* TEXT I/O keywords *********************************
 
 	private static final String BKW_TEXT_READLN = "readln";
 	private static final String BKW_TEXT_WRITELN = "writeln";
@@ -1193,7 +1197,7 @@ public class Run extends Activity {
 		BKW_POSITION_MARK,
 	};
 
-	// ******************************* BYTE I/O variables *******************************
+	// ********************************* BYTE I/O keywords *********************************
 
 	private static final String BKW_BYTE_READ_BYTE = "read.byte";
 	private static final String BKW_BYTE_WRITE_BYTE = "write.byte";
@@ -1214,7 +1218,7 @@ public class Run extends Activity {
 		BKW_POSITION_MARK,
 	};
 
-	// ******************** READ variables *******************************************
+	// *********************************** READ keywords ***********************************
 
 	private static final String BKW_READ_DATA = "data";
 	private static final String BKW_READ_NEXT = "next";
@@ -1224,7 +1228,7 @@ public class Run extends Activity {
 		BKW_READ_DATA, BKW_READ_NEXT, BKW_READ_FROM
 	};
 
-	// ******************* SCREEN variables ******************************************
+	// ********************************** SCREEN keywords **********************************
 
 	private static final String BKW_SCREEN_ROTATION = "rotation";
 	private static final String BKW_SCREEN_SIZE = "size";
@@ -1233,7 +1237,7 @@ public class Run extends Activity {
 		BKW_SCREEN_ROTATION, BKW_SCREEN_SIZE
 	};
 
-	// ********************** Font Command variables *********************************
+	// *********************************** FONT keywords ***********************************
 
 	private static final String BKW_FONT_LOAD = "load";
 	private static final String BKW_FONT_DELETE = "delete";
@@ -1243,7 +1247,7 @@ public class Run extends Activity {
 		BKW_FONT_LOAD, BKW_FONT_DELETE, BKW_FONT_CLEAR
 	};
 
-	// ******************** Console Command variables ********************************
+	// ********************************* CONSOLE keywords **********************************
 
 	private static final String BKW_CONSOLE_FRONT = "front";
 	private static final String BKW_CONSOLE_SAVE = "save";
@@ -1260,7 +1264,7 @@ public class Run extends Activity {
 		BKW_CONSOLE_LINE_NEW, BKW_CONSOLE_LINE_CHAR
 	};
 
-	// ********************** KB Command variables *********************************
+	// ************************************ KB keywords ************************************
 
 	private static final String BKW_KB_HIDE = "hide";
 	private static final String BKW_KB_RESUME = "resume";
@@ -1272,12 +1276,12 @@ public class Run extends Activity {
 		BKW_KB_HIDE, BKW_KB_RESUME, BKW_KB_SHOWING, BKW_KB_SHOW, BKW_KB_TOGGLE
 	};
 
-	// ******************** Input Command variables ********************************
+	// ****************************** INPUT command variables ******************************
 
 	private boolean mInputCancelled = false;			// Signal between Interpreter Thread and UI Thread
 //	private boolean mInputDismissed = false;			// This will be used only if we dismiss the dialog in onPause
 
-	// ******************** Dialog Command variables *******************************
+	// *********************** DIALOG command keywords and variables ***********************
 
 	private static final String BKW_DIALOG_MESSAGE = "message";
 	private static final String BKW_DIALOG_SELECT = "select";
@@ -1288,12 +1292,12 @@ public class Run extends Activity {
 
 	private int mAlertItemID = 0;							// index of button or list item
 
-	// ******************** Variables for the SELECT Command ***********************
+	// ***************************** SELECT Command variables ******************************
 
 	public static int SelectedItem;							// The index of the selected item
 	public static boolean SelectLongClick;					// True if long click
 
-	// ******************** SQL Variables ******************************************
+	// *********************************** SQL keywords ************************************
 
 	private static final String BKW_SQL_OPEN = "open";
 	private static final String BKW_SQL_CLOSE = "close";
@@ -1317,17 +1321,17 @@ public class Run extends Activity {
 		BKW_SQL_RAW_QUERY, BKW_SQL_DROP_TABLE, BKW_SQL_NEW_TABLE
 	};
 
-	// ******************************** Variables for the INKEY$ command ***********************
+	// ********************************* INKEY$ variables **********************************
 
 	public static final String Numbers = "0123456789";	// translations for key codes
 	public static final String Chars = "abcdefghijklmnopqrstuvwxyz";
 	static ArrayList<String> InChar;
 
-	// ********************************* Variables for text.input command **********************
+	// *************************** TEXT.INPUT command variables ****************************
 
 	public static String TextInputString = "";
 
-	// ******************************** Graphics Declarations **********************************
+	// ******************* Graphics (GR) command keywords and variables ********************
 
 	private boolean GRopen = false;
 	private boolean GRFront;
@@ -1497,11 +1501,7 @@ public class Run extends Activity {
 		BKW_GR_TEXT_GROUP + BKW_GR_TEXT_SETFONT,
 	};
 
-	// ******************************** Variables for HTML commands *****************************
-
-	private boolean mWebFront;
-
-	// ******************************** Variables for Audio commands ****************************
+	// ****************************** Audio command keywords *******************************
 
 	private static final String BKW_AUDIO_LOAD = "load";
 	private static final String BKW_AUDIO_PLAY = "play";
@@ -1525,7 +1525,7 @@ public class Run extends Activity {
 		BKW_AUDIO_ISDONE, BKW_AUDIO_RECORD_START, BKW_AUDIO_RECORD_STOP
 	};
 
-	// ******************************* Variables for Sensor Commands **********************************
+	// ************************** SENSORS keywords and variables ***************************
 
 	private static final String BKW_SENSORS_LIST = "list";
 	private static final String BKW_SENSORS_OPEN = "open";
@@ -1540,7 +1540,7 @@ public class Run extends Activity {
 
 	private SensorActivity theSensors;
 
-	// ***********************  Variables for GPS Commands  ******************************************
+	// **************************** GPS keywords and variables *****************************
 
 	private static final String BKW_GPS_ALTITUDE = "altitude";
 	private static final String BKW_GPS_LATITUDE = "latitude";
@@ -1566,7 +1566,7 @@ public class Run extends Activity {
 
 	private GPS theGPS;
 
-	// ************************* Variables for Array Commands *********************************
+	// *********************** ARRAY command keywords and variables ************************
 
 	private enum ArrayOrderOps { DoSort, DoShuffle, DoReverse }
 	private enum ArrayMathOps { DoSum, DoAverage, DoMin, DoMax, DoVariance, DoStdDev }
@@ -1598,7 +1598,7 @@ public class Run extends Activity {
 		BKW_ARRAY_COPY, BKW_ARRAY_SEARCH
 	};
 
-	// ************************************ List command variables *********************************
+	// ******************************* LIST command keywords *******************************
 
 	private static final String BKW_LIST_CREATE = "create";
 	private static final String BKW_LIST_ADD_LIST = "add.list";
@@ -1622,7 +1622,7 @@ public class Run extends Activity {
 		BKW_LIST_TOARRAY, BKW_LIST_SEARCH
 	};
 
-	// ************************************ Bundle Variables ****************************************
+	// ****************************** BUNDLE command keywords ******************************
 
 	private static final String BKW_BUNDLE_CREATE = "create";
 	private static final String BKW_BUNDLE_PUT = "put";
@@ -1641,7 +1641,7 @@ public class Run extends Activity {
 		BKW_BUNDLE_CLEAR, BKW_BUNDLE_CONTAIN, BKW_BUNDLE_REMOVE
 	};
 
-	// *********************************** Stack Variables **********************************************
+	// ****************************** STACK command keywords *******************************
 
 	private static final String BKW_STACK_CREATE = "create";
 	private static final String BKW_STACK_PUSH = "push";
@@ -1657,7 +1657,7 @@ public class Run extends Activity {
 		BKW_STACK_ISEMPTY, BKW_STACK_CLEAR
 	};
 
-//  ******************************* Socket Variables **************************************************
+	// ************* SOCKET command keywords, classes, and variables *************
 
 	// socket commands
 	private static final String BKW_SOCKET_MYIP = "myip";
@@ -1789,12 +1789,10 @@ public class Run extends Activity {
 		}
 	}
 
-	// *************************************************** Debug Commands ****************************
+	// ************************* DEBUG and ECHO keywords *************************
 
-	private static final String BKW_DEBUG_ON = "on";
-	private static final String BKW_DEBUG_OFF = "off";
-	private static final String BKW_DEBUG_ECHO_ON = "echo.on";
-	private static final String BKW_DEBUG_ECHO_OFF = "echo.off";
+	private static final String BKW_DEBUG_ECHO_ON = BKW_ECHO_GROUP + BKW_ON;
+	private static final String BKW_DEBUG_ECHO_OFF = BKW_ECHO_GROUP + BKW_OFF;
 	private static final String BKW_DEBUG_DUMP_SCALARS = "dump.scalars";
 	private static final String BKW_DEBUG_DUMP_ARRAY = "dump.array";
 	private static final String BKW_DEBUG_DUMP_LIST = "dump.list";
@@ -1814,12 +1812,12 @@ public class Run extends Activity {
 	private static final String BKW_DEBUG_COMMANDS = "commands";
 	private static final String BKW_DEBUG_STATS = "stats";
 
-	private static final String Debug_KW[] = {			// Command list for Format
+	private static final String debug_KW[] = {			// Command list for Format
 		// Do not include BKW_PRINT_SHORTCUT
-		BKW_DEBUG_ON, BKW_DEBUG_OFF, BKW_PRINT, BKW_DEBUG_ECHO_ON,
-		BKW_DEBUG_ECHO_OFF, BKW_DEBUG_DUMP_SCALARS,
-		BKW_DEBUG_DUMP_ARRAY, BKW_DEBUG_DUMP_LIST,
-		BKW_DEBUG_DUMP_STACK, BKW_DEBUG_DUMP_BUNDLE,
+		BKW_ON, BKW_OFF, BKW_PRINT,
+		BKW_DEBUG_ECHO_ON, BKW_DEBUG_ECHO_OFF,
+		BKW_DEBUG_DUMP_SCALARS, BKW_DEBUG_DUMP_ARRAY,
+		BKW_DEBUG_DUMP_LIST, BKW_DEBUG_DUMP_STACK, BKW_DEBUG_DUMP_BUNDLE,
 		BKW_DEBUG_WATCH_CLEAR, BKW_DEBUG_WATCH, BKW_DEBUG_SHOW_SCALARS,
 		BKW_DEBUG_SHOW_ARRAY, BKW_DEBUG_SHOW_LIST, BKW_DEBUG_SHOW_STACK,
 		BKW_DEBUG_SHOW_BUNDLE, BKW_DEBUG_SHOW_WATCH, BKW_DEBUG_SHOW_PROGRAM,
@@ -1827,19 +1825,12 @@ public class Run extends Activity {
 		BKW_DEBUG_COMMANDS, BKW_DEBUG_STATS
 	};
 
-	// *********************************************** Text to Speech *******************************
-
-	private static final String BKW_TTS_INIT = "init";
-	private static final String BKW_TTS_SPEAK_TOFILE = "speak.tofile";
-	private static final String BKW_TTS_SPEAK = "speak";
-	private static final String BKW_TTS_STOP = "stop";
-
-	private static final String tts_KW[] = {			// TTS command list for Format
-		BKW_TTS_INIT, BKW_TTS_SPEAK_TOFILE,
-		BKW_TTS_SPEAK, BKW_TTS_STOP
+	// Legacy: can use DEBUG.ECHO or just ECHO
+	private static final String echo_KW[] = {			// Command list for Format
+		BKW_ON, BKW_OFF
 	};
 
-	// *********************************************** FTP Client *************************************
+	// ******************** FTP Client keywords and variables ********************
 
 	private static final String BKW_FTP_OPEN = "open";
 	private static final String BKW_FTP_CLOSE = "close";
@@ -1861,14 +1852,14 @@ public class Run extends Activity {
 	public FTPClient mFTPClient = null;
 	public String FTPdir = null;
 
-	// *********************************************** Camera *****************************************
+	// ************************ CAMERA command variables *************************
 
 	public static Bitmap CameraBitmap;
 	public static boolean CameraDone;
 	private int CameraNumber;
 	private int NumberOfCameras;			// -1 if we don't know yet
 
-	// ***************************************  Bluetooth  ********************************************
+	// ****************** Bluetooth (BT) keywords and variables ******************
 
 	// Message types sent from the BluetoothChatService
 	public static final int MESSAGE_STATE_CHANGE = MESSAGE_BT_GROUP + 1;
@@ -1928,7 +1919,7 @@ public class Run extends Activity {
 		BKW_BT_ONREADREADY_RESUME, BKW_BT_DISCONNECT
 	};
 
-	/**************************************  Superuser and System  ***************************/
+	// *************** Superuser (SU) and SYSTEM command keywords ****************
 
 	private static final String BKW_SU_OPEN = "open";
 	private static final String BKW_SU_WRITE = "write";
@@ -1942,7 +1933,7 @@ public class Run extends Activity {
 	};
 	private static final String[] System_KW = su_KW;	// Command list for Format
 
-	/***************************************  SOUND POOL  ************************************/
+	// *********************** SOUNDPOOL command keywords ************************
 
 	private static final String BKW_SOUNDPOOL_OPEN = "open";
 	private static final String BKW_SOUNDPOOL_LOAD = "load";
@@ -1966,7 +1957,7 @@ public class Run extends Activity {
 		BKW_SOUNDPOOL_SETLOOP, BKW_SOUNDPOOL_SETRATE
 	};
 
-	// *************************************** Ringer Vars ****************************************
+	// ****************** RINGER command keywords and variables ******************
 
 	private static final String BKW_RINGER_GET_MODE = "get.mode";
 	private static final String BKW_RINGER_SET_MODE = "set.mode";
@@ -1983,13 +1974,29 @@ public class Run extends Activity {
 	private static final int RINGER_VIBRATE = 1;
 	private static final int RINGER_NORMAL = 2;
 
-	// **************** Headset Vars **************************************
+	// ****************** HEADSET command classes and variables ******************
 
 	private int headsetState;
 	private String headsetName;
 	private int headsetMic;
 
-	//******************* html Vars ******************************************
+	public class BroadcastsHandler extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			if (intent.getAction().equalsIgnoreCase(Intent.ACTION_HEADSET_PLUG)) {
+//				String data = intent.getDataString();
+//				Bundle extraData = intent.getExtras();
+
+				headsetState = intent.getIntExtra("state", -1);
+				headsetName = intent.getStringExtra("name");
+				headsetMic = intent.getIntExtra("microphone", -1);
+			}
+		}
+	}
+	private BroadcastsHandler headsetBroadcastReceiver = null;
+
+	// ******************* HTML command keywords and variables *******************
 
 	private static final String BKW_HTML_OPEN = "open";
 	private static final String BKW_HTML_ORIENTATION = "orientation";
@@ -2022,8 +2029,9 @@ public class Run extends Activity {
 	private static final int MESSAGE_POST          = MESSAGE_HTML_GROUP + 8;
 
 	private Intent htmlIntent;
+	private boolean mWebFront;
 
-	//********************* SMS Vars ***********************************
+	// ************************** SMS command variables **************************
 
 	private static final String BKW_SMS_RCV_INIT = "rcv.init";
 	private static final String BKW_SMS_RCV_NEXT = "rcv.next";
@@ -2033,7 +2041,7 @@ public class Run extends Activity {
 		BKW_SMS_RCV_INIT, BKW_SMS_RCV_NEXT, BKW_SMS_SEND
 	};
 
-	// ******************** Speech to text Vars ********************************
+	// ********************* Speech to Text (STT) variables **********************
 
 	public static final int VOICE_RECOGNITION_REQUEST_CODE = 1234;
 	private static String sttDefaultPrompt;
@@ -2042,7 +2050,19 @@ public class Run extends Activity {
 	public static boolean sttListening;
 	public static boolean sttDone;
 
-	// ******************** Timer Variables *******************************
+	// ********************** Text to Speech (TTS) keywords **********************
+
+	private static final String BKW_TTS_INIT = "init";
+	private static final String BKW_TTS_SPEAK_TOFILE = "speak.tofile";
+	private static final String BKW_TTS_SPEAK = "speak";
+	private static final String BKW_TTS_STOP = "stop";
+
+	private static final String tts_KW[] = {			// TTS command list for Format
+		BKW_TTS_INIT, BKW_TTS_SPEAK_TOFILE,
+		BKW_TTS_SPEAK, BKW_TTS_STOP
+	};
+
+	// ************************* TIMER command variables *************************
 
 	private static final String BKW_TIMER_SET = "set";
 	private static final String BKW_TIMER_CLEAR = "clear";
@@ -2052,7 +2072,7 @@ public class Run extends Activity {
 		BKW_TIMER_SET, BKW_TIMER_CLEAR, BKW_TIMER_RESUME
 	};
 
-	// ******************** TimeZone Variables *******************************
+	// *********************** TIMEZONE command variables ************************
 
 	private static final String BKW_TIMEZONE_SET = "set";
 	private static final String BKW_TIMEZONE_GET = "get";
@@ -2062,7 +2082,7 @@ public class Run extends Activity {
 		BKW_TIMEZONE_SET, BKW_TIMEZONE_GET, BKW_TIMEZONE_LIST
 	};
 
-	//************************ Phone variables ***************************
+	// ************************* PHONE command variables *************************
 
 	private static final String BKW_PHONE_CALL = "call";
 	private static final String BKW_PHONE_DIAL = "dial";
@@ -2074,7 +2094,7 @@ public class Run extends Activity {
 		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT, BKW_PHONE_INFO
 	};
 
-	//*********************** App command variables ***********************
+	// ************************** APP command variables **************************
 
 	private static final String BKW_APP_BROADCAST = "broadcast";
 	private static final String BKW_APP_START = "start";
@@ -2083,23 +2103,7 @@ public class Run extends Activity {
 		BKW_APP_BROADCAST, BKW_APP_START
 	};
 
-	// ****************** Headset Broadcast Receiver ***********************
-
-	public class BroadcastsHandler extends BroadcastReceiver {
-
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			if (intent.getAction().equalsIgnoreCase(Intent.ACTION_HEADSET_PLUG)) {
-//				String data = intent.getDataString();
-//				Bundle extraData = intent.getExtras();
-
-				headsetState = intent.getIntExtra("state", -1);
-				headsetName = intent.getStringExtra("name");
-				headsetMic = intent.getIntExtra("microphone", -1);
-			}
-		}
-	}
-	private BroadcastsHandler headsetBroadcastReceiver = null;
+	// ***************************************************************************
 
 	private Context getContext() {
 		ContextManager cm = Basic.getContextManager();
@@ -4306,8 +4310,7 @@ public class Run extends Activity {
 		new Command(BKW_FONT_GROUP, CID_GROUP)  { public boolean run() { return executeFONT(); } },
 		new Command(BKW_CONSOLE_GROUP,CID_GROUP){ public boolean run() { return executeCONSOLE(); } },
 		new Command(BKW_DEBUG_GROUP, CID_GROUP) { public boolean run() { return executeDEBUG(); } },
-		new Command(BKW_ECHO_ON)                { public boolean run() { return executeECHO_ON(); } },
-		new Command(BKW_ECHO_OFF)               { public boolean run() { return executeECHO_OFF(); } },
+		new Command(BKW_ECHO_GROUP, CID_GROUP)  { public boolean run() { return executeECHO(); } },
 		new Command(BKW_KB_GROUP,  CID_GROUP)   { public boolean run() { return executeKB(); } },
 		new Command(BKW_NOTIFY)                 { public boolean run() { return executeNOTIFY(); } },
 		new Command(BKW_RUN)                    { public boolean run() { return executeRUN(); } },
@@ -4352,7 +4355,7 @@ public class Run extends Activity {
 	private final Command[] fn_cmd = new Command[] {	// Map user function command keywords to their execution functions
 		new Command(BKW_FN_DEF)         { public boolean run() { return executeFN_DEF(); } },
 		new Command(BKW_FN_RTN)         { public boolean run() { return executeFN_RTN(); } },
-		new Command(BKW_FN_END)         { public boolean run() { return executeFN_END(); } },
+		new Command(BKW_END)            { public boolean run() { return executeFN_END(); } },
 	};
 
 	// **************** SW Group - switch statements
@@ -4362,7 +4365,7 @@ public class Run extends Activity {
 		new Command(BKW_SW_CASE)        { public boolean run() { return executeSW_CASE(); } },
 		new Command(BKW_SW_BREAK)       { public boolean run() { return executeSW_BREAK(); } },
 		new Command(BKW_SW_DEFAULT)     { public boolean run() { return executeSW_DEFAULT(); } },
-		new Command(BKW_SW_END)         { public boolean run() { return executeSW_END(); } },
+		new Command(BKW_END)            { public boolean run() { return executeSW_END(); } },
 	};
 
 	// **************** FILE Group
@@ -4743,15 +4746,15 @@ public class Run extends Activity {
 		new Command(BKW_SOCKET_WRITE_FILE)      { public boolean run() { return executeSERVER_PUTFILE(); } }
 	};
 
-	// **************** DEBUG Group
+	// **************** DEBUG Group and ECHO Group
 
 	private final Command[] debug_cmd = new Command[] {	// Map debug command keywords to their execution functions
-		new Command(BKW_DEBUG_ON)               { public boolean run() { return executeDEBUG_ON(); } },
-		new Command(BKW_DEBUG_OFF)              { public boolean run() { return executeDEBUG_OFF(); } },
+		new Command(BKW_ON)                     { public boolean run() { return executeDEBUG_TOGGLE(ON); } },
+		new Command(BKW_OFF)                    { public boolean run() { return executeDEBUG_TOGGLE(OFF); } },
 		new Command(BKW_PRINT)                  { public boolean run() { return executeDEBUG_PRINT(); } },
 		new Command(BKW_PRINT_SHORTCUT)         { public boolean run() { return executeDEBUG_PRINT(); } },
-		new Command(BKW_DEBUG_ECHO_ON)          { public boolean run() { return executeECHO_ON(); } },
-		new Command(BKW_DEBUG_ECHO_OFF)         { public boolean run() { return executeECHO_OFF(); } },
+		new Command(BKW_DEBUG_ECHO_ON)          { public boolean run() { return executeECHO_TOGGLE(ON); } },
+		new Command(BKW_DEBUG_ECHO_OFF)         { public boolean run() { return executeECHO_TOGGLE(OFF); } },
 		new Command(BKW_DEBUG_DUMP_SCALARS)     { public boolean run() { return executeDUMP_SCALARS(); } },
 		new Command(BKW_DEBUG_DUMP_ARRAY)       { public boolean run() { return executeDUMP_ARRAY(); } },
 		new Command(BKW_DEBUG_DUMP_LIST)        { public boolean run() { return executeDUMP_LIST(); } },
@@ -4770,6 +4773,12 @@ public class Run extends Activity {
 		new Command(BKW_DEBUG_CONSOLE)          { public boolean run() { return executeDEBUG_CONSOLE(); } },
 		new Command(BKW_DEBUG_COMMANDS)         { public boolean run() { return executeDEBUG_COMMANDS(); } },
 		new Command(BKW_DEBUG_STATS)            { public boolean run() { return executeDEBUG_STATS(); } },
+	};
+
+	// Legacy: can use DEBUG.ECHO or just ECHO
+	private final Command[] echo_cmd = new Command[] {	// Map echo command keywords to their execution functions
+		new Command(BKW_ON)                     { public boolean run() { return executeECHO_TOGGLE(ON); } },
+		new Command(BKW_OFF)                    { public boolean run() { return executeECHO_TOGGLE(OFF); } },
 	};
 
 	// **************** TTS Group - text-to-speech
@@ -4901,9 +4910,9 @@ public class Run extends Activity {
 		new Command(BKW_PHONE_INFO)             { public boolean run() { return executePHONE_INFO(); } }
 	};
 
-	// **************** AM Group - activity manager commands
+	// **************** APP Group - activity manager commands
 
-	private final Command[] am_cmd = new Command[] {	// Map am command keywords to their execution functions
+	private final Command[] app_cmd = new Command[] {	// Map app command keywords to their execution functions
 		new Command(BKW_APP_BROADCAST)          { public boolean run() { return executeAPP_BROADCAST(); } },
 		new Command(BKW_APP_START)              { public boolean run() { return executeAPP_START(); } },
 	};
@@ -9928,6 +9937,8 @@ public class Run extends Activity {
 		val.val(kb.showing() ? 1.0 : 0.0);
 		return true;
 	}
+
+	// ********************************************************************************************
 
 	private boolean executeWAKELOCK() {
 		if (!evalNumericExpression())	return false;				// Get setting
@@ -17405,10 +17416,10 @@ public class Run extends Activity {
 		return doResume("No background state change");
 	}
 
-	// ***************************** Android Application Manager (AM) *****************************
+	// ****************************** Android Activity Manager (AM) *******************************
 
 	private boolean executeAPP() {								// Get APPlication command keyword if it is there
-		return executeSubcommand(am_cmd, "APP");
+		return executeSubcommand(app_cmd, "APP");
 	}
 
 	private Intent buildIntentForAPP() {
@@ -17488,16 +17499,14 @@ public class Run extends Activity {
 		return executeSubcommand(debug_cmd, "Debug");			// and execute the command
 	}
 
-	private boolean executeDEBUG_ON() {
-		if (!checkEOL())				return false;
-		Debug = true;
-		return true;
+	private boolean executeECHO() {								// Legacy: can use DEBUG.ECHO or just ECHO
+		return executeSubcommand(echo_cmd, "Echo");
 	}
 
-	private boolean executeDEBUG_OFF() {
+	private boolean executeDEBUG_TOGGLE(boolean on) {			// parameter is ON or OFF
 		if (!checkEOL())				return false;
-		Debug = false;
-		Echo = false;
+		Debug = on;
+		if (!Debug) { Echo = OFF; }
 		return true;
 	}
 
@@ -17506,15 +17515,9 @@ public class Run extends Activity {
 		return true;
 	}
 
-	private boolean executeECHO_ON() {
+	private boolean executeECHO_TOGGLE(boolean on) {			// parameter is ON or OFF
 		if (!checkEOL())				return false;
-		if (Debug) Echo = true;
-		return true;
-	}
-
-	private boolean executeECHO_OFF() {
-		if (!checkEOL())				return false;
-		Echo = false;
+		Echo = Debug & on;
 		return true;
 	}
 
