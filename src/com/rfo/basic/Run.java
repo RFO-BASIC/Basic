@@ -5238,16 +5238,15 @@ public class Run extends Activity {
 	// Does not advance LineIndex unless it finds a valid variable name.
 	//
 	// Note: returns one of the "working Var" pool. Don't store this reference
-	// anywhere. Clone the Var instead.
+	// anywhere. Copy the Var instead.
 	private Var parseVar(boolean isUserFnAllowed) {
 		String text = ExecutingLineBuffer.text();
 		int LI = LineIndex;
 		int max = text.length();
 		Var var = null;
 
-		// PoosibleKeyWord is for the special cases where a var could be followed by keyword THEN, TO or STEP
-																// Isolate the var characters
-		String name = getWord(text, LI, PossibleKeyWord);
+		// PosibleKeyWord is for the special cases where a var could be followed by keyword THEN, TO or STEP.
+		String name = getWord(text, LI, PossibleKeyWord);		// isolate the var characters
 		LI += name.length();
 		if (LI > LineIndex) {									// no var if length is 0
 			char c = text.charAt(LI);
@@ -5297,9 +5296,10 @@ public class Run extends Activity {
 
 	// ************************* bottom half of getVar() **********************
 
+	// Do NOT call before calling parseVar() and searchVar(Var).
+	// can automatically create scalar but not array.
+	// Error if isArray and isNew or if GetArrayValue returns null.
 	private Var.Val getVarValue(Var var) {			// bottom half of getVar()
-													// do NOT call before calling parseVar() and searchVar(Var)
-													// can automatically create scalar but not array
 		if (var == null) return null;				// no var to get
 		Var.Val val = null;
 		if (var.isArray()) {
@@ -5319,10 +5319,11 @@ public class Run extends Activity {
 		return val;
 	}
 
+	// Get insertion point (-index - 1) so VarNames.subList will still be in alphabetical order.
 	private void insertNewVar(Var var) {			// make a new var table entry
-		// Get insertion point (-index - 1) so VarNames.subList will still be in alphabetical order.
-		// VarSearchStart is usually zero but will change when executing User Function
 		String name = var.name();
+		// VarSearchStart is usually zero but will change when executing User Function
+		// Throws exception if var already exists. If necessary, avoid by testing var.isNew() first.
 		int index = newVarIndex(name, VarNames, VarSearchStart); // exception if not new
 
 		var.notNew();
@@ -5367,7 +5368,7 @@ public class Run extends Activity {
 		LineIndex = i;
 		double d = 0.0;
 		try { d = Double.parseDouble(num); }			// have java parse it into a double
-		catch (Exception e) { return RunTimeError(e); }
+		catch (Exception e) { return RunTimeError(e); }	// can't happen if above parsing is correct
 
 		GetNumberValue = d;								// Report the value
 		return true;									// Say we found a number
@@ -5401,21 +5402,6 @@ public class Run extends Activity {
 		return true;									// Say we have a string constant
 	}
 
-	private Command getFunction(Map<String, Command> map) {	// get a Math or String Function if there is one
-		Command fn = null;
-		String text = ExecutingLineBuffer.text();
-		int i = text.indexOf('(', LineIndex);
-		if (i >= 0) {
-			String token = text.substring(LineIndex, ++i);	// token could be a function name
-			fn = map.get(token);
-			if (fn != null) {								// null if not a function
-				if (i >= text.length()) { fn = null; }		// nothing after the '('
-				else { LineIndex = i; }						// set line index past end of function name
-			}
-		}
-		return fn;
-	}
-
 	private boolean evalToPossibleKeyword(String keyword) {	// use with midline keywords THEN, TO, STEP
 		// Evaluate a numeric expression, terminated either by EOL or by the given possible keyword.
 		// Expression value is left in EvalNumericExpressionValue; return true is expression is valid.
@@ -5427,9 +5413,9 @@ public class Run extends Activity {
 
 	private boolean evalNumericExpression() {			// Evaluate a numeric expression
 
-		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
+		if (LineIndex >= ExecutingLineBuffer.length()) return false;
 		char c = ExecutingLineBuffer.text().charAt(LineIndex);
-		if (c == '\n' || c == ')') { return false; }		// If eol or starts with ')', there is not an expression
+		if (c == '\n' || c == ')') return false;			// If eol or starts with ')', there is not an expression
 
 		Stack<Double> ValueStack = new Stack<Double>();		// Each call to eval gets its own stack
 		Stack<Integer>OpStack = new Stack<Integer>();		// thus we can recursively call eval
@@ -5441,20 +5427,15 @@ public class Run extends Activity {
 			return false;									// and die
 		}
 
-		if (ValueStack.empty()) { return false; }
+		if (ValueStack.empty()) return false;
 		EvalNumericExpressionValue = ValueStack.pop();		// Recursive eval succeeded. Pop stack for results
 		return true;
 	}
 
-	private boolean ENE(Stack<Integer> theOpStack, Stack<Double> theValueStack) { // Part of evaluating a number expression
-
-																// The recursive part of Eval Expression
-		Var.FnDef fnDef = null;
-		Command cmd;
+															// The recursive part of evalNumericExpression
+	private boolean ENE(Stack<Integer> theOpStack, Stack<Double> theValueStack) {
 		double incdec = 0.0;									// for recording pre-inc/dec
-
 		char c = ExecutingLineBuffer.text().charAt(LineIndex);	// First character
-
 		if (c == '+') {											// Check for unary operators or pre-inc/dec
 			++LineIndex;										// move to the next character
 			if (isNext('+')) { incdec = 1.0; }					// remember to pre-increment
@@ -5470,48 +5451,67 @@ public class Run extends Activity {
 			++LineIndex;
 		}
 
-		if (getNVar()) {										// Try numeric variable
-			Var.Val val = mVal;
-			double value = val.nval();
-			if (incdec != 0) {
-				value += incdec;								// pre-inc or dec
-				val.val(value);
+		int holdLI = LineIndex;
+		Var var = parseVar(USER_FN_OK);							// duplicate getVarAndType() except USER_FN_OK
+		if (var != null) {										// is variable or function name
+			if (!var.isFunction()) {
+				var = searchVar(var);							// finish getVarAndType()
+				if (var.isNumeric()) {
+					mVal = getVarValue(var);					// finish getNVar()
+					if (mVal != null) {							// we have a numeric variable!
+						Var.Val val = mVal;
+						double value = val.nval();
+						if (incdec != 0) {
+							value += incdec;					// pre-inc or dec
+							val.val(value);
+						}
+						if      (ExecutingLineBuffer.startsWith(OP_INC, LineIndex)) {
+							val.val(value + 1);					// post-increment
+							LineIndex += 2;
+						}
+						else if (ExecutingLineBuffer.startsWith(OP_DEC, LineIndex)) {
+							val.val(value - 1);					// post-decrement
+							LineIndex += 2;
+						}
+						theValueStack.push(value);					// PUSH THE VALUE of the nvar
+					} else { return false; }					// nvar, but null val: runtime error getting array val
+				} else {										// var but not numeric
+					LineIndex = holdLI;							// not nvar, back up and try something else
+				}
+			} else {											// function name
+				if (incdec != 0) { SyntaxError(); return false; } // pre-inc/dec applies only to numeric variables
+				Command cmd;
+				String name = var.name();
+				Var.FnDef def = mFunctionTable.get(name);
+				if ((def != null) && def.type().isNumeric()) {	// like isUserFunction(true, TYPE_NUMERIC)
+					if (!doUserFunction(def)) { SyntaxError(); return false; }
+					theValueStack.push(EvalNumericExpressionValue);	// PUSH THE VALUE (result of the function)
+				} else if ((cmd = MF_map.get(name)) != null) {	// try Math Function
+					if (!doMathFunction(cmd)) { SyntaxError(); return false; }
+					theValueStack.push(EvalNumericExpressionValue);	// PUSH THE VALUE (result of the function)
+				} else {
+					LineIndex = holdLI;							// not valid num function, back up and try something else
+				}
 			}
-			if (ExecutingLineBuffer.startsWith(OP_INC, LineIndex)) {
-				val.val(value + 1);								// post-increment
-				LineIndex += 2;
+		}														// else var is null, try something else
+
+		if (LineIndex == holdLI) {								// no valid Var found, here's where we try stomething else
+			if (incdec != 0) { SyntaxError(); return false; }	// pre-inc/dec applies only to numeric variables
+			else if (getNumber()) {								// is it a number?
+				theValueStack.push(GetNumberValue);				// PUSH THE VALUE (the number)
+			} else if (evalStringExpression()) {				// try String Logical Expression
+				if (!SEisLE) return false;						// if was not a logical string expression, fail
+				theValueStack.push(EvalNumericExpressionValue);
+			} else if (isNext('(')) {							// handle possible (
+				String holdPKW = PossibleKeyWord;
+				PossibleKeyWord = "";
+				boolean ok = evalNumericExpression() && isNext(')'); // eval expression inside the parens
+				PossibleKeyWord = holdPKW;						// restore global before possible return
+				if (!ok) { return false; }
+				theValueStack.push(EvalNumericExpressionValue);	// no errors, push expression value
 			}
-			else if (ExecutingLineBuffer.startsWith(OP_DEC, LineIndex)) {
-				val.val(value - 1);								// post-decrement
-				LineIndex += 2;
-			}
-			theValueStack.push(value);							// push the value
+			else { return false; }								// nothing left, fail
 		}
-		else if (incdec != 0) { return false; }					// pre-inc/dec applies only to numeric variables
-		else if (getNumber()) {									// Is it a number?
-			theValueStack.push(GetNumberValue);					// push the number
-		}
-		else if ((cmd = getFunction(MF_map)) != null) {			// Try Math Function
-			if (!doMathFunction(cmd)) { SyntaxError(); return false; }
-			theValueStack.push(EvalNumericExpressionValue);		// Push the result of the function
-		}
-		else if (evalStringExpression()) {						// Try String Logical Expression
-			if (!SEisLE) return false;							// If was not a logical string expression, fail
-			theValueStack.push(EvalNumericExpressionValue);
-		}
-		else if ((fnDef = isUserFunction(true, TYPE_NUMERIC)) != null) { // Try User Function
-			if (!doUserFunction(fnDef)) { SyntaxError(); return false; }
-			theValueStack.push(EvalNumericExpressionValue);
-		}
-		else if (isNext('(')) {									// Handle possible (
-			String holdPKW = PossibleKeyWord;
-			PossibleKeyWord = "";
-			boolean ok = evalNumericExpression() && isNext(')');	// eval expression inside the parens
-			PossibleKeyWord = holdPKW;							// restore global before possible return
-			if (!ok) { return false; }
-			theValueStack.push(EvalNumericExpressionValue);		// no errors, push expression value
-		}
-		else { return false; }									// nothing left, fail
 
 		if (LineIndex >= ExecutingLineBuffer.length()) { return false; }
 		c = ExecutingLineBuffer.text().charAt(LineIndex);
@@ -5855,7 +5855,7 @@ public class Run extends Activity {
 			if (var.isString()) {								// could be a user-defined string-type function
 				Var.FnDef fn = mFunctionTable.get(var.name());	// search like isUserFunction()
 				if (fn != null) {
-					boolean ok = doUserFunction(fn);				// execute the user function
+					boolean ok = doUserFunction(fn);			// execute the user function
 					if (!ok) { LineIndex = LI; SyntaxError(); }
 					return ok;
 				}
