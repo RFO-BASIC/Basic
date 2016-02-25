@@ -509,11 +509,17 @@ public class GR extends Activity {
 	}
 
 	@Override
-	public boolean onKeyDown(int keyCode, KeyEvent event)  {
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		// Log.v(LOGTAG, "keyDown " + keyCode);
-		if ((keyCode == KeyEvent.KEYCODE_BACK) ||
-			(keyCode == KeyEvent.KEYCODE_VOLUME_UP) ||
-			(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN))
+		if (keyCode == KeyEvent.KEYCODE_BACK) {
+			return super.onKeyDown(keyCode, event);
+		}
+		if (!Run.mBlockVolKeys && (
+				(keyCode == KeyEvent.KEYCODE_VOLUME_UP)   ||
+				(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) ||
+				(keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) ||
+				(keyCode == KeyEvent.KEYCODE_MUTE)        ||
+				(keyCode == KeyEvent.KEYCODE_HEADSETHOOK) ))
 		{
 			return super.onKeyDown(keyCode, event);
 		}

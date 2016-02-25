@@ -732,6 +732,7 @@ public class Run extends Activity {
 	private static final String BKW_UNDIM = "undim";
 	private static final String BKW_UNTIL = "until";
 	private static final String BKW_VIBRATE = "vibrate";
+	private static final String BKW_VOLKEYS_GROUP = "volkeys.";
 	private static final String BKW_W_R_BREAK = "w_r.break";
 	private static final String BKW_W_R_CONTINUE = "w_r.continue";
 	private static final String BKW_WAKELOCK = "wakelock";
@@ -789,7 +790,7 @@ public class Run extends Activity {
 		BKW_DEVICE, BKW_SCREEN_GROUP,
 		BKW_WIFI_INFO, BKW_HEADSET, BKW_MYPHONENUMBER,
 		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
-		BKW_APP_GROUP,
+		BKW_VOLKEYS_GROUP, BKW_APP_GROUP,
 		BKW_BACK_RESUME, BKW_BACKGROUND_RESUME,
 		BKW_CONSOLETOUCH_RESUME, BKW_KEY_RESUME,
 		BKW_LOWMEM_RESUME, BKW_MENUKEY_RESUME,
@@ -843,6 +844,7 @@ public class Run extends Activity {
 			keywordLists.put(BKW_TIMER_GROUP,     Timer_KW);
 			keywordLists.put(BKW_TIMEZONE_GROUP,  TimeZone_KW);
 			keywordLists.put(BKW_TTS_GROUP,       tts_KW);
+			keywordLists.put(BKW_VOLKEYS_GROUP,   VolKeys_KW);
 		}
 		return keywordLists;
 	}
@@ -2094,6 +2096,16 @@ public class Run extends Activity {
 		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT, BKW_PHONE_INFO
 	};
 
+	// ***************** VOLKEYS command keywords and variables ******************
+
+	private static final String VolKeys_KW[] = {		// VolKeys command list for Format
+		BKW_ON, BKW_OFF
+	};
+
+	// If true, this flag blocks transmission of certain Key events to the system.
+	// See onKeyDown() in Run.java and GR.java.
+	public static boolean mBlockVolKeys = false;
+
 	// ************************** APP command variables **************************
 
 	private static final String BKW_APP_BROADCAST = "broadcast";
@@ -2376,12 +2388,27 @@ public class Run extends Activity {
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {		// The user hit a key
 		// Log.v(LOGTAG, "onKeyDown" + keyCode);
-		if (keyCode == KeyEvent.KEYCODE_MENU) {
-			return true;				// eat the MENU key Down event, will handle the Up event
-		}
+
+		// Eat the MENU key Down event, will handle the Up event.
+		if (keyCode == KeyEvent.KEYCODE_MENU)	return true;
+
 		// If event is null, we called this directly from runLoop(),
 		// so the return value does not matter.
-		return (event != null) ? super.onKeyDown(keyCode, event) : true;
+		if (event == null)						return true;
+
+		// Alternate: if the user program has set mBlockVolKeys, block everything but BACK
+		// if (mBlockVolKeys && (keyCode != KeyEvent.KEYCODE_BACK)) return true;
+
+		// If the user program has set mBlockVolKeys, block volume and headset keys.
+		if (mBlockVolKeys && (
+			(keyCode == KeyEvent.KEYCODE_VOLUME_UP) ||
+			(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) ||
+			(keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) ||
+			(keyCode == KeyEvent.KEYCODE_MUTE) ||
+			(keyCode == KeyEvent.KEYCODE_HEADSETHOOK))) { return true; }
+
+		// Otherwise pass the KeyEvent up the chain.
+		return super.onKeyDown(keyCode, event);
 	}
 
 	@Override
@@ -4340,6 +4367,7 @@ public class Run extends Activity {
 		new Command(BKW_EMAIL_SEND)             { public boolean run() { return executeEMAIL_SEND(); } },
 		new Command(BKW_PHONE_GROUP, CID_GROUP) { public boolean run() { return executePHONE(); } },
 		new Command(BKW_SMS_GROUP, CID_GROUP)   { public boolean run() { return executeSMS(); } },
+		new Command(BKW_VOLKEYS_GROUP,CID_GROUP){ public boolean run() { return executeVOLKEYS(); } },
 		new Command(BKW_APP_GROUP,CID_GROUP)    { public boolean run() { return executeAPP(); } },
 
 		new Command(BKW_BACK_RESUME)            { public boolean run() { return executeBACK_RESUME(); } },
@@ -4908,6 +4936,13 @@ public class Run extends Activity {
 		new Command(BKW_PHONE_RCV_INIT)         { public boolean run() { return executePHONE_RCV_INIT(); } },
 		new Command(BKW_PHONE_RCV_NEXT)         { public boolean run() { return executePHONE_RCV_NEXT(); } },
 		new Command(BKW_PHONE_INFO)             { public boolean run() { return executePHONE_INFO(); } }
+	};
+
+	// **************** VOLKEYS Group
+
+	private final Command[] VolKeys_cmd = new Command[] {	// Map VolKeys command keywords to their execution functions
+		new Command(BKW_ON)                 { public boolean run() { return executeVOLKEYS_TOGGLE(ON); } },
+		new Command(BKW_OFF)                { public boolean run() { return executeVOLKEYS_TOGGLE(OFF); } },
 	};
 
 	// **************** APP Group - activity manager commands
@@ -16996,6 +17031,19 @@ public class Run extends Activity {
 		try { startActivityForResult(intent, BASIC_GENERAL_INTENT); }
 		catch (Exception e) { return RunTimeError(e); }
 
+		return true;
+	}
+
+	// ***************************************** VOLKEYS ******************************************
+
+	private boolean executeVOLKEYS() {						// Get VOLKEYS command keyword if it is there
+		return executeSubcommand(VolKeys_cmd, "VolKeys");	// and execute the command
+	}
+
+	private boolean executeVOLKEYS_TOGGLE(boolean on) {		// Enable or disable passing certain keys to system:
+															// VOL up/down/mute, MUTE (mic), HEADSET hook
+		if (!checkEOL())				return false;
+		mBlockVolKeys = !on;					// OFF means block keys, ON means let keys through to the system.
 		return true;
 	}
 
