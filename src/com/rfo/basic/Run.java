@@ -3269,7 +3269,6 @@ public class Run extends Activity {
 			public final ArrayList<Integer> mCases;
 			public int mDefault = -1;
 			public int mEnd = -1;
-			public boolean mIsActive = true;				// true on SW.BEGIN, false on SW.END
 
 			public SwitchDef(int begin) {
 				mBegin = begin;
@@ -8380,10 +8379,6 @@ public class Run extends Activity {
 	} // scanSwitch
 
 	private boolean executeSW_BEGIN() {
-		if ((mSwitch != null) && mSwitch.mIsActive) {
-			return RunTimeError("Nested Switch at:");		// error if we're already running a switch
-		}
-
 		boolean isNumeric;
 		double nexp = 0;
 		String sexp = "";
@@ -8396,11 +8391,8 @@ public class Run extends Activity {
 		} else							return false;
 		if (!checkEOL())				return false;
 
-		// If new Switch or different Switch from last one run, scan it.
 		// Scan until "sw.end" or end of program. Remember CASE, DEFAULT, and END lines.
-		if ((mSwitch == null) || (mSwitch.mEnd == -1) || (mSwitch.mBegin != ExecutingLineIndex)) {
-			if (!scanSwitch())			return false;
-		}
+		if (!scanSwitch())				return false;
 
 		// If any CASE lines were found, test their conditions.
 		// Start execution at the first one that matches the BEGIN expression.
@@ -8448,7 +8440,6 @@ public class Run extends Activity {
 			ExecutingLineIndex = mSwitch.mDefault;			// yes: jump to DEFAULT
 		} else {
 			ExecutingLineIndex = mSwitch.mEnd;				// no: jump to END
-			mSwitch.mIsActive = false;						// not in switch any more
 		}
 		return true;
 	} // executeSW_BEGIN
@@ -8461,7 +8452,6 @@ public class Run extends Activity {
 		if (!checkEOL())				return false;
 		if (mSwitch != null) {								// ignore BREAK if not in Switch (todo: error?)
 			ExecutingLineIndex = mSwitch.mEnd;				// jump to END
-			mSwitch.mIsActive = false;						// not in switch any more
 		}
 		return true;
 	}
@@ -8471,7 +8461,6 @@ public class Run extends Activity {
 	}
 
 	private boolean executeSW_END() {
-		mSwitch.mIsActive = false;
 		return true;
 	}
 
