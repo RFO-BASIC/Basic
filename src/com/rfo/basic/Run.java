@@ -3285,7 +3285,6 @@ public class Run extends Activity {
 			private int mELI;								// record line number of function call
 			private int mLI;								// record LinIndex after closing paren
 			private String mPKW;							// record PossibleKeyWord
-			private Var.Table mVars;						// record caller's symbol table
 
 			public Var.FnDef fnDef() { return mFnDef; }
 
@@ -3296,7 +3295,6 @@ public class Run extends Activity {
 				mPL = ExecutingLineBuffer;
 				mELI = ExecutingLineIndex;
 				mPKW = PossibleKeyWord;
-				mVars = mSymbolTable;
 			}
 			public void storeLI() {
 				mLI = LineIndex;
@@ -3307,7 +3305,6 @@ public class Run extends Activity {
 				ExecutingLineIndex = mELI;
 				LineIndex = mLI;
 				PossibleKeyWord = mPKW;
-				mSymbolTable = mVars;
 			}
 		}
 
@@ -3321,6 +3318,7 @@ public class Run extends Activity {
 
 		private Var.Table mGlobalSymbolTable;				// The symbol table that contains all global Vars
 		private Var.Table mSymbolTable;						// The current symbol table, all non-global Vars in scope
+		private Stack<Var.Table>mSymbolTables;				// Stack of symbol tables to search
 
 		// "Armed" interrupts and "Triggered" interrupts. "Triggered" are serviced in order.
 		private final HashMap<Integer, Interrupt> mIntA = new HashMap<Integer, Interrupt>();
@@ -3933,6 +3931,8 @@ public class Run extends Activity {
 
 		mGlobalSymbolTable = new Var.Table();				// The symbol table that contains all global Vars
 		mSymbolTable = new Var.Table();						// The current symbol table, all non-global Vars in scope
+		mSymbolTables = new Stack<Var.Table>();				// List of all local symbol tables
+		mSymbolTables.push(mSymbolTable);
 
 		// Initialize the parser's working Var objects.
 		// These are used to avoid creating a new Var every time a variable is parsed.
@@ -5287,11 +5287,28 @@ public class Run extends Activity {
 	// Always returns a Var, never null. Can use this Var anywhere;
 	// if it was one of the "working Var" pool from parseVar() it gets copied.
 	private Var searchVar(Var var) {				// search for a variable by name
-		Var.Table symbols = mSymbolTable;			// list of local variable names
+// Skip global table for now, there's nothing in it.
+		Var v = null;
+//		Var v = searchVar(mGlobalSymbolTable, var);	// first search global symbols
+//		if (v == null) {
+			if (interruptResume < 0) {				// normal operation, not in interrupt
+				v = searchVar(mSymbolTable, var);	// search local symbols
+			} else {										// in interrupt
+				for (Var.Table symbols : mSymbolTables) {	// search all tables
+					v = searchVar(symbols, var);
+					if (v != null) { break; }
+				}
+			}
+			if (v != null)		{ return v; }
+//		}
+		return var.copy();							// not in lists of variable names, return new Var
+	}
+
+	// Utility for searchVar(Var), searches one table.
+	private Var searchVar(Var.Table symbols, Var var) {	// search a table for a variable by name
+		if (symbols == null)	{ return null; }	// no table
 		int j = Collections.binarySearch(symbols.mVarNames, var.name());
-		if (j < 0) {								// not found
-			return var.copy();						// return new Var
-		}
+		if (j < 0)				{ return null; }	// name not found
 
 		var = symbols.mVars.get(j);
 		if (var.isArray()) {
@@ -5336,7 +5353,6 @@ public class Run extends Activity {
 		String name = var.name();
 		// Throws exception if var already exists. If necessary, avoid by testing var.isNew() first.
 		int index = newVarIndex(mSymbolTable.mVarNames, name);
-
 		var.notNew();
 		mSymbolTable.add(index, name, var);			// create new intry in symbol table
 	}
@@ -8189,6 +8205,8 @@ public class Run extends Activity {
 
 	private boolean endUserFunction() {
 		FunctionStack.pop().restore();						// Function execution done. Restore stuff.
+		mSymbolTables.pop();								// discard the function's symbol table
+		mSymbolTable = mSymbolTables.peek();				// restore the caller's symbol table
 		fnRTN = true;										// Signal RunLoop() to return
 		return true;
 	}
@@ -8280,12 +8298,12 @@ public class Run extends Activity {
 		} // end if
 
 		if (nArgs != nParams) { return RunTimeError("Too few calling parameters at:"); }
-
 		if (!isNext(')')) { return false; }					// every function must have a closing right parenthesis
 		frame.storeLI();									// passed ')', now save the line buffer index 
 
 		FunctionStack.push(frame);							// push the stack frame
 		mSymbolTable = new Var.Table();						// start a new local symbol table
+		mSymbolTables.push(mSymbolTable);					// and push it on the stack of tables
 
 		// Start the new symbol table with the function parameter names.
 		for (Var.FunctionParameter parm : parms) {
