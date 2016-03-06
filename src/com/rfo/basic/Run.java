@@ -71,7 +71,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.Stack;
@@ -2685,16 +2684,16 @@ public class Run extends Activity {
 	// When this file is broken up, these should be attached to appropriate top-level classes.
 
 	// Get the absolute index of the point where name can be inserted into
-	// a sublist of names to preserve alphabetical order within the sublist.
+	// a list of names to preserve alphabetical order within the list.
 	// The name must not already be in names.
 	//
 	// Use of Collections.binarySearch for speed: thanks to Nicolas Mougin.
-	public static int newVarIndex(String name, ArrayList<String> names, int sublistStart) {
-		int index = Collections.binarySearch(names.subList(sublistStart, names.size()), name);
+	public static int newVarIndex(ArrayList<String> names, String name) {
+		int index = Collections.binarySearch(names, name);
 		if (index >= 0) { throw new InvalidParameterException("newVarIndex: variable " + name + " already exists"); }
-		return sublistStart - index - 1;					// return the absolute index
+		return -(index + 1);								// return the absolute index
 //		Alternate ending to add log:
-//		index = sublistStart - index - 1;					// make the index absolute
+//		index = -(index + 1);								// make the index absolute
 //		Log.v(LOGTAG, CLASSTAG + " newVarIndex() create var " + name + " at index " + index + "/" + vNames.size() + "(start=" + vStart + ")");
 //		return index;
 	}
@@ -3286,8 +3285,7 @@ public class Run extends Activity {
 			private int mELI;								// record line number of function call
 			private int mLI;								// record LinIndex after closing paren
 			private String mPKW;							// record PossibleKeyWord
-			private int mVSS;								// record VarSearchStart
-			private int mSV;								// number of variables
+			private Var.Table mVars;						// record caller's symbol table
 
 			public Var.FnDef fnDef() { return mFnDef; }
 
@@ -3298,8 +3296,7 @@ public class Run extends Activity {
 				mPL = ExecutingLineBuffer;
 				mELI = ExecutingLineIndex;
 				mPKW = PossibleKeyWord;
-				mVSS = VarSearchStart;
-				mSV = VarNames.size();						// Same as Vars.size()
+				mVars = mSymbolTable;
 			}
 			public void storeLI() {
 				mLI = LineIndex;
@@ -3310,13 +3307,7 @@ public class Run extends Activity {
 				ExecutingLineIndex = mELI;
 				LineIndex = mLI;
 				PossibleKeyWord = mPKW;
-				VarSearchStart = mVSS;
-				trimArray(VarNames, mSV);
-				trimArray(Vars, mSV);
-			}
-
-			private /* static */ void trimArray(ArrayList<?> array, int start) {
-				array.subList(start, array.size()).clear();
+				mSymbolTable = mVars;
 			}
 		}
 
@@ -3328,6 +3319,10 @@ public class Run extends Activity {
 		private ProgramLine ExecutingLineBuffer = null;		// Holds the current line being executed
 		private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer's line
 
+		private Var.Table mGlobalSymbolTable;				// The symbol table that contains all global Vars
+		private Var.Table mSymbolTable;						// The current symbol table, all non-global Vars in scope
+
+		// "Armed" interrupts and "Triggered" interrupts. "Triggered" are serviced in order.
 		private final HashMap<Integer, Interrupt> mIntA = new HashMap<Integer, Interrupt>();
 		private final LinkedHashMap<Integer, Interrupt> mIntT = new LinkedHashMap<Integer, Interrupt>();
 
@@ -3343,10 +3338,6 @@ public class Run extends Activity {
 		private HashMap<String, Var.FnDef> mFunctionTable;	// Globally-accessible table of user-defined functions
 		private boolean fnRTN = false;						// Set true by fn.rtn. Cause RunLoop() to return
 
-		private ArrayList<String> VarNames;					// Each entry has the variable name string
-		private ArrayList<Var> Vars;						// All variables of all types. Each has a reference
-															// to a Var.Val (value of scalar), a Var.ArrayDef,
-															// or a Var.FnDef.
 		// Working Var objects for the parser, one of each type.
 		// These are used to avoid creating a new Var every time a variable is parsed.
 		private Var.ScalarVar mScalarVar;					// Working Var for parser
@@ -3354,9 +3345,6 @@ public class Run extends Activity {
 		private Var.FunctionVar mFunctionVar;				// Working Var for parser
 
 		private boolean VarIsInt = false;					// temporary integer status used only by fprint
-		private int VarSearchStart = 0;						// Used to limit search for var names to executing function vars
-		private int interruptVarSearchStart = 0;			// Save VarSearchStart across interrupt
-
 		private Var.Val mVal;								// *TEMPORARY* bridge value set by getVar() and friends
 															// TODO: this is a temporary stand-in for theValueIndex
 
@@ -3520,7 +3508,6 @@ public class Run extends Activity {
 
 //			Basic.Echo = Settings.getEcho(getApplicationContext());
 			Echo = false;
-			VarSearchStart = 0;
 			fnRTN = false;
 			setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -3780,8 +3767,6 @@ public class Run extends Activity {
 				if (intrpt != null) {
 					interruptResume = ExecutingLineIndex;	// Set the resume Line Number
 					ExecutingLineIndex = intrpt.line();		// Set the ISR line number
-					interruptVarSearchStart = VarSearchStart;// Save current VarSearchStart
-					VarSearchStart = 0;						// Force to predictable value
 					IfElseStack.push(IEinterrupt);
 				}
 			}
@@ -3800,8 +3785,6 @@ public class Run extends Activity {
 
 			ExecutingLineIndex = interruptResume;
 			interruptResume = -1;
-			VarSearchStart = interruptVarSearchStart;
-			interruptVarSearchStart = 0;
 			// Pull the IEinterrupt from the If Else stack
 			// It is possible that IFs were executed in the interrupt code
 			// so pop entries until we get to the IEinterrupt
@@ -3948,8 +3931,9 @@ public class Run extends Activity {
 		FunctionStack = new Stack<CallStackFrame>() ;		// State saved through the currently executing functions
 		mFunctionTable = new HashMap<String, Var.FnDef>();	// Globally-accessible table of user-defined functions
 
-		VarNames = new ArrayList<String>() ;				// Each entry has the variable name string
-		Vars = new ArrayList<Var>();						// All variables of all types. [...]
+		mGlobalSymbolTable = new Var.Table();				// The symbol table that contains all global Vars
+		mSymbolTable = new Var.Table();						// The current symbol table, all non-global Vars in scope
+
 		// Initialize the parser's working Var objects.
 		// These are used to avoid creating a new Var every time a variable is parsed.
 		mScalarVar = new Var.ScalarVar("", Var.Type.NOVAR);
@@ -5303,19 +5287,19 @@ public class Run extends Activity {
 	// Always returns a Var, never null. Can use this Var anywhere;
 	// if it was one of the "working Var" pool from parseVar() it gets copied.
 	private Var searchVar(Var var) {				// search for a variable by name
-		// VarSearchStart is usually zero but will change when executing User Function
-		int j = Collections.binarySearch(VarNames.subList(VarSearchStart, VarNames.size()), var.name());
-		if (j < 0) {								// not in list of variable names
+		Var.Table symbols = mSymbolTable;			// list of local variable names
+		int j = Collections.binarySearch(symbols.mVarNames, var.name());
+		if (j < 0) {								// not found
 			return var.copy();						// return new Var
 		}
-		j += VarSearchStart;						// else found it: make the index absolute
-		var = Vars.get(j);
 
+		var = symbols.mVars.get(j);
 		if (var.isArray()) {
+			// If variable is array invalidated by UNDIM,
+			// delete it so a new one with the same name can be created.
 			Var.ArrayDef array = var.arrayDef();
-			if ((array != null) && !array.valid()) {// array invalidated by UNDIM
-				VarNames.remove(j);					// delete this variable so a new one with the same name can be created
-				Vars.remove(j);
+			if ((array != null) && !array.valid()) {
+				symbols.remove(j);
 				var.reNew();
 			}
 		}
@@ -5347,16 +5331,14 @@ public class Run extends Activity {
 		return val;
 	}
 
-	// Get insertion point (-index - 1) so VarNames.subList will still be in alphabetical order.
+	// Get insertion point (-index - 1) so name list will still be in alphabetical order.
 	private void insertNewVar(Var var) {			// make a new var table entry
 		String name = var.name();
-		// VarSearchStart is usually zero but will change when executing User Function
 		// Throws exception if var already exists. If necessary, avoid by testing var.isNew() first.
-		int index = newVarIndex(name, VarNames, VarSearchStart); // exception if not new
+		int index = newVarIndex(mSymbolTable.mVarNames, name);
 
 		var.notNew();
-		VarNames.add(index, name);					// create entry in list of variable names
-		Vars.add(index, var);						// create corresponding variable list entry
+		mSymbolTable.add(index, name, var);			// create new intry in symbol table
 	}
 
 	// ************************************* end of getVar() **************************************
@@ -7437,15 +7419,8 @@ public class Run extends Activity {
 			if ((var == null) || !var.isArray()){ return RunTimeError(EXPECT_ARRAY_VAR); }
 			if (!isNext(']'))					{ return RunTimeError(EXPECT_ARRAY_NO_INDEX); }
 			if (!var.isNew()) {											// if DIMed, UNDIM it
-				if (VarSearchStart < interruptVarSearchStart) {
-					// In ISR from function. Deleting a variable could corrupt the call stack.
-					// TODO: resolve this!
-					return RunTimeError("Cannot UNDIM in an interrupt.");
-				}
-				// Mark the array invalid in case any other variable is looking at it.
-				var.arrayDef().invalidate();
-				// Delete the variable so it can't be used to access this array any more.
-				searchVar(var);
+				var.arrayDef().invalidate();	// mark the array invalid in case any other variable is looking at it
+				searchVar(var);					// delete the variable so it can't be used to access this array any more
 			}
 		} while (isNext(','));											// continue while there are arrays to be UNDIMed
 
@@ -8244,13 +8219,12 @@ public class Run extends Activity {
 	private boolean doUserFunction(Var.FnDef fnDef) {					// execute function named in fnDef
 
 		CallStackFrame frame = new CallStackFrame();
-		frame.store(fnDef);												// build a stack fram
-		int sVarNames = VarNames.size();								// remember where the variable name list ends
+		frame.store(fnDef);												// build a stack frame
 
+		ArrayList<Var.FunctionParameter> parms = fnDef.parms();			// parameters from FN.DEF
 		int nParams = fnDef.nParms();									// number of parameters
 		int nArgs = 0;													// number of arguments, also parameter index
 		if (nParams != 0) {												// for each parameter
-			ArrayList<Var.FunctionParameter> parms = fnDef.parms();
 			do {
 				if (nArgs >= nParams) {									// ensure no more parms than defined
 					return RunTimeError("Calling parameter count exceeds defined parameter count");
@@ -8258,8 +8232,8 @@ public class Run extends Activity {
 				Var.FunctionParameter parm = parms.get(nArgs++);		// get parm, count the arg
 				Var var = parm.var();
 
-				boolean isGlobal = isNext('&');							// optional for scalars, ignored for arrays
-				parm.isGlobal(isGlobal);
+				boolean byReference = isNext('&');						// optional for scalars, ignored for arrays
+				parm.byReference(byReference);
 				boolean typeIsNumeric = var.isNumeric();
 				if (var.isArray()) {									// if this parm is an array
 					Var callVar = getExistingArrayVar();				// get caller's array name var
@@ -8271,17 +8245,17 @@ public class Run extends Activity {
 						return RunTimeError("Array parameter type mismatch at:");
 					}
 				} // end array
-				else if (isGlobal) {
-					Var callVar = getVarAndType();						// if this is a Global Var
+				else if (byReference) {									// if this parm is var passed by reference
+					Var callVar = getVarAndType();
 					if (callVar == null)	return false;				// then must be var not expression
 					if (callVar.isNew()) { return RunTimeError("Call by reference vars must be predefined"); }
 					if (typeIsNumeric != callVar.isNumeric()) {			// insure type (string or number) match
-						return RunTimeError("Global parameter type mismatch at:");
+						return RunTimeError("Parameter type mismatch at:");
 					}
 					Var.Val callVal = getVarValue(callVar);				// bottom half of getVar()
 					if (callVal == null)	return false;
 					var.val(callVal);									// get a reference to the caller's Val
-				} // end global
+				} // end by-reference
 				else {
 					var = var.copy();									// don't use the same Var for all calls
 					parm.var(var);
@@ -8300,30 +8274,27 @@ public class Run extends Activity {
 						}
 					}
 					var.val(val);										// put the value in parm's var
-				} // end non-global
+				} // end scalar passed by value
 			} while (isNext(','));										// keep going while caller parms exist
-
-			// Now that all new variables have been created in caller's name space,
-			// start the function name space with the function parameter names.
-			sVarNames = VarNames.size();
-			VarSearchStart = sVarNames;
-			for (Var.FunctionParameter parm : parms) {
-				insertNewVar(parm.var());
-			}
+			// Loop may have created variables in caller's name space. No more will be created.
 		} // end if
 
 		if (nArgs != nParams) { return RunTimeError("Too few calling parameters at:"); }
 
-		if (!isNext(')')) { return false; }					// Every function must have a closing right parenthesis.
+		if (!isNext(')')) { return false; }					// every function must have a closing right parenthesis
+		frame.storeLI();									// passed ')', now save the line buffer index 
 
-		frame.storeLI();									// Save out index into the line buffer
+		FunctionStack.push(frame);							// push the stack frame
+		mSymbolTable = new Var.Table();						// start a new local symbol table
 
-		FunctionStack.push(frame);							// Push the stack frame
-		VarSearchStart = sVarNames;							// Set the new start location for var name searches
+		// Start the new symbol table with the function parameter names.
+		for (Var.FunctionParameter parm : parms) {
+			insertNewVar(parm.var());
+		}
 
-		ExecutingLineIndex = fnDef.line() + 1;				// Set to execute first line after fn.def statement
+		ExecutingLineIndex = fnDef.line() + 1;				// set to execute first line after fn.def statement
 
-		fnRTN = false;										// Will be set true by fn.rtn
+		fnRTN = false;										// will be set true by fn.rtn
 
 		// The function body is executed in a recursive call to RunLoop().
 		// FN.RTN or FN.END will signal RunLoop to exit, returning pass/fail state of the function here.
@@ -8375,7 +8346,6 @@ public class Run extends Activity {
 		}
 		return (mSwitch.mEnd != -1) ? true :
 			RunTimeError("No sw.end after sw.begin");
-		// Note: no cleanup. mIsActive is true on return, even if this method returns false.
 	} // scanSwitch
 
 	private boolean executeSW_BEGIN() {
@@ -17713,21 +17683,27 @@ public class Run extends Activity {
 		return (val == 0) ? "0" : "1 + " + (val - 1);
 	}
 
+	private String varStats(Var.Table symbols) {
+		ArrayList<Var> vars = symbols.mVars;
+		int scalars = 0;
+		int arrays = 0;
+		for (Var v : vars) {
+			if (v instanceof Var.ScalarVar)	{ ++scalars; }
+			else if (v.isArray())			{ ++arrays; }
+		}
+		return	"\n# variables: " + vars.size() +
+				"\n  scalars  : " + scalars +
+				"\n  arrays   : " + arrays;
+	}
+
 	private boolean executeDEBUG_STATS() {
 		if (Debug) {
 			ActivityManager actvityManager = (ActivityManager)Run.this.getSystemService(ACTIVITY_SERVICE);
-			int scalars = 0;
-			int arrays = 0;
-			for (Var v : Vars) {
-				if (v instanceof Var.ScalarVar)	{ ++scalars; }
-				else if (v.isArray())			{ ++arrays; }
-			}
 			PrintShow(
 				"Mem class  : " + actvityManager.getMemoryClass(),
+				"Local scope"   + varStats(mSymbolTable),
+				"Global scope"  + varStats(mGlobalSymbolTable),
 				"# labels   : " + Labels.size(),
-				"# variables: " + VarNames.size(),
-				"  scalars  : " + scalars,
-				"  arrays   : " + arrays,
 				"  lists    : " + plusBase(theLists.size()),	// item 0 always present but not accessible
 				"  stacks   : " + plusBase(theStacks.size()),	// item 0 always present but not accessible
 				"  bundles  : " + plusBase(theBundles.size()),	// item 0 always present but not accessible
@@ -17974,11 +17950,15 @@ public class Run extends Activity {
 	private ArrayList<String> dbDoScalars(String prefix) {
 		ArrayList<String> msg = new ArrayList<String>();
 		msg.add("Scalar Dump");
-		for (Var var : Vars) {
+		msg.add("  Local");
+		for (Var var : mSymbolTable.mVars) {
 			String line = dbDoOneScalar(var, prefix);
-			if (line != null) {
-				msg.add(line);
-			}
+			if (line != null) { msg.add(line); }
+		}
+		msg.add("  Global");
+		for (Var var : mGlobalSymbolTable.mVars) {
+			String line = dbDoOneScalar(var, prefix);
+			if (line != null) { msg.add(line); }
 		}
 		return msg;
 	}

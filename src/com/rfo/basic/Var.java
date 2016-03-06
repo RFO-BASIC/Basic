@@ -82,6 +82,33 @@ public abstract class Var {
 		public String toString() { return mStr; }
 	}
 
+	// ***************************** Table class ******************************
+	// A symbol table. Each Var.Table consists of two ArrayLists.
+	// One holds only names, so Collections.binarySearch can use native String compares.
+	// The other holds Var objects containing everything about the variables in the table.
+	// Each Var has a reference to a Var.Val (value of scalar), a Var.ArrayDef, or a Var.FnDef.
+	public static class Table {
+		public ArrayList<String> mVarNames;				// Each entry has the variable name string
+		public ArrayList<Var> mVars;					// All variables of all types.
+
+		public Table() {
+			mVarNames = new ArrayList<String>();
+			mVars = new ArrayList<Var>();
+		}
+
+		// Delegates.
+
+		public void add(int index, String name, Var var) {
+			mVarNames.add(index, name);					// create entry in list of variable names
+			mVars.add(index, var);						// create corresponding variable list entry
+		}
+
+		public void remove(int index) {
+			mVarNames.remove(index);					// remove entry from list of variable names
+			mVars.remove(index);						// remove corresponding variable list entry
+		}
+	}
+
 	// ****************************** Val class *******************************
 	// An object of this class holds the value of a scalar variable or an array element.
 
@@ -316,15 +343,15 @@ public abstract class Var {
 
 	public static class FunctionParameter {
 		private Var mVar;								// parameter name, type, and value
-		private boolean mIsGlobal = false;
+		private boolean mByRef = false;
 
 		public FunctionParameter(Var var) { mVar = var; }
 
 		public void var(Var var) { mVar = var; }
-		public void isGlobal(boolean isGlobal) { mIsGlobal = isGlobal; }
+		public void byReference(boolean byReference) { mByRef = byReference; }
 
 		public Var var() { return mVar; }
-		public boolean isGlobal() { return mIsGlobal; }
+		public boolean byReference() { return mByRef; }
 	}
 
 	// ***************************** FnDef class ******************************
