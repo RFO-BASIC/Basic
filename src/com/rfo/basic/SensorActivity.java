@@ -90,12 +90,12 @@ public class SensorActivity implements SensorEventListener {
 			case Sensor.TYPE_PRESSURE:            name = "Pressure";            break;
 			case Sensor.TYPE_PROXIMITY:           name = "Proximity";           break;
 			case Sensor.TYPE_LINEAR_ACCELERATION: name = "Linear Acceleration"; break;
-			case Sensor.TYPE_STEP_DETECTOR:       name = "Step Detector";       break;
-			case Sensor.TYPE_STEP_COUNTER:        name = "Step Counter";        break;
+//			case Sensor.TYPE_STEP_DETECTOR:       name = "Step Detector";       break;					KITKAT
+//			case Sensor.TYPE_STEP_COUNTER:        name = "Step Counter";        break;					KITKAT
 			case Sensor.TYPE_SIGNIFICANT_MOTION:  name = "Significant Motion";  break;
 			case Sensor.TYPE_ROTATION_VECTOR:     name = "Rotational Vector";   break;
 			case Sensor.TYPE_GAME_ROTATION_VECTOR:name = "Game Rotation Vector";break;
-			case Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR:name = "Geomagnetic Rotation Vector";break;
+//			case Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR:name = "Geomagnetic Rotation Vector";break;	KITKAT
 			case Sensor.TYPE_TEMPERATURE:         name = "Temperature";         break;
 			case Sensor.TYPE_AMBIENT_TEMPERATURE: name = "Ambient Temperature"; break;
 			case Sensor.TYPE_RELATIVE_HUMIDITY:   name = "Relative Humidity";   break;
@@ -138,9 +138,9 @@ public class SensorActivity implements SensorEventListener {
 		case Sensor.TYPE_GAME_ROTATION_VECTOR:
 		case Sensor.TYPE_RELATIVE_HUMIDITY:
 		case Sensor.TYPE_AMBIENT_TEMPERATURE:
-		case Sensor.TYPE_STEP_DETECTOR:
-		case Sensor.TYPE_STEP_COUNTER:
-		case Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR:
+//		case Sensor.TYPE_STEP_DETECTOR:											KITKAT
+//		case Sensor.TYPE_STEP_COUNTER:											KITKAT
+//		case Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR:							KITKAT
 			if ((delay < 0) || (delay > SensorManager.SENSOR_DELAY_NORMAL)) {
 				delay = SensorManager.SENSOR_DELAY_NORMAL;
 			}
