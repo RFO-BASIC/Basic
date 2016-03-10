@@ -360,9 +360,7 @@ public class AddProgramLine {
 
 	private void doInclude(String fileName) {
 		// If fileName is enclosed in quotes, the quotes preserved its case in AddLine().
-		// Error messages go back through AddLine() again, so keep the quotes.
-		String originalFileName = fileName.substring(KW_INCLUDE.length()).trim();	// use this for error message
-		fileName = originalFileName.replace("\"",  "");								// use this for file operations
+		fileName = fileName.substring(KW_INCLUDE.length()).trim().replace("\"",  "");
 
 		for (String f : mIncludeFiles) {
 			if (f.equals(fileName)) return;							// don't do recursive INCLUDE
@@ -374,10 +372,9 @@ public class AddProgramLine {
 		// If getBufferedReader() returned null, it could not open the file or asset,
 		// or it could not decrypt an encrypted asset.
 		// It may or may not throw an exception.
-		// TODO: "not_found" may not be a good error message. Can we change it?
 		catch (Exception e) { }
 		if (buf == null) {
-			String t = "Error_Include_file (" + originalFileName + ") not_found";
+			String t = "END \"Error opening INCLUDE file " + fileName + "\"";
 			AddLine(t);
 			return;
 		}
@@ -385,7 +382,7 @@ public class AddProgramLine {
 		String data = null;
 		do {
 			try { data = buf.readLine(); }
-			catch (IOException e) { data = "Error reading Include file " + originalFileName; return; }
+			catch (IOException e) { data = "END \"Error reading INCLUDE file " + fileName + "\""; return; }
 			finally { AddLine(data); }							// add the line
 		} while (data != null);									// while not EOF and no error
 	}

@@ -5166,9 +5166,10 @@ public class Run extends Activity {
 	// Get a Var for creating an array: must be array name with no index(es).
 	private Var getArrayVarForWrite() {					// returns the Var, null if error or no var
 		Var var = getVarAndType();						// either string or numeric type is ok
-		if (validArrayVarForWrite(var)) { return var; }	// no error, return Var
-		LineIndex -= var.name().length();				// error, back up LineIndex
-		return null;									// and return null
+		if (validArrayVarForWrite(var)) { return var; }			// no error: return Var
+																// error: return null
+		if (var != null) { LineIndex -= var.name().length(); }	// if LineIndex moved, back it up
+		return null;
 	}
 
 	private boolean validArrayVarForWrite(Var var) {
@@ -5180,9 +5181,10 @@ public class Run extends Activity {
 	// Get a Var for creating an array: must be array name of correct type with no index(es).
 	private Var getArrayVarForWrite(boolean type) {		// returns the Var, null if error or no var
 		Var var = getVarAndType();						// either string or numeric type is ok
-		if (validArrayVarForWrite(var, type)) { return var; } // no error, return Var
-		LineIndex -= var.name().length();				// error, back up LineIndex
-		return null;									// and return null
+		if (validArrayVarForWrite(var, type)) { return var; }	// no error: return Var
+																// error: return null
+		if (var != null) { LineIndex -= var.name().length(); }	// if LineIndex moved, back it up
+		return null;
 	}
 
 	private boolean validArrayVarForWrite(Var var, boolean type) {
@@ -5195,9 +5197,10 @@ public class Run extends Activity {
 	// Get a Var for using an array or array segment: must be name of existing array
 	private Var getExistingArrayVar() {					// returns the Var, null if error or no var
 		Var var = getVarAndType();
-		if (validExistingArrayVar(var)) { return var; }	// no error, return Var
-		LineIndex -= var.name().length();				// error, back up LineIndex
-		return null;									// and return null
+		if (validExistingArrayVar(var)) { return var; }			// no error: return Var
+																// error: return null
+		if (var != null) { LineIndex -= var.name().length(); }	// if LineIndex moved, back it up
+		return null;
 	}
 
 	private boolean validExistingArrayVar(Var var) {
@@ -5209,16 +5212,18 @@ public class Run extends Activity {
 	private Var getNewFNVar() {							// get var and assure that it is a new function name
 														// returns the name, does NOT create a variable
 		Var var = parseVar(USER_FN_OK);					// Get function name if there is one.
-		if ((var != null) && var.isFunction()) {		// If there is one...
-			var = searchVar(var);						// ... look for it in the symbol table.
-			if (var.isNew()) {
-				return var;								// return new Var
-			} else {
-				RunTimeError(EXPECT_NEW_FN_NAME);		// not new
+		if (var != null) {
+			if (var.isFunction()) {						// If there is one...
+				var = searchVar(var);					// ... look for it in the symbol table.
+				if (var.isNew()) {
+					return var;							// return new Var: SUCCESSFUL EXIT
+				} else {
+					RunTimeError(EXPECT_NEW_FN_NAME);	// not new
+				}
 			}
+			LineIndex -= var.name().length();			// name not valid, back up LineIndex
 		}
-		LineIndex -= var.name().length();				// no valid name, back up LineIndex
-		return null;									// and return null
+		return null;									// ERROR EXIT
 	}
 
 	// ************************* top half of getVar() *************************
@@ -5247,7 +5252,7 @@ public class Run extends Activity {
 	// Gets the variable name and type. Returns them in a Var object.
 	// Name includes $ for strings, [ for arrays, ( for functions.
 	// If arg is false, user-defined function names are not valid variable names.
-	// Does not advance LineIndex unless it finds a valid variable name.
+	// If no valid variable name, returns null and does not advance LineIndex.
 	//
 	// Note: returns one of the "working Var" pool. Don't store this reference
 	// anywhere. Copy the Var instead.
