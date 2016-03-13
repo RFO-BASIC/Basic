@@ -325,16 +325,15 @@ public class Run extends Activity {
 		private int mKeywordLength;						// skip past command keyword after Command is known
 		private Command mSubCommand;					// sub-Command object, if mCommand is a group
 		private int mSubKeywordLength;					// length of subcommand keyword(s)
+		public Object mExtras;							// command-specific extra data
 
-		public ProgramLine() {
-			this(null);
-		}
 		public ProgramLine(String text) {
 			mText = text;
 			mCommand = null;
 			mKeywordLength = 0;
 			mSubCommand = null;
 			mSubKeywordLength = 0;
+			mExtras = null;
 		}
 
 		// Getters.
@@ -3261,18 +3260,12 @@ public class Run extends Activity {
 		} // class ForNext
 
 		// **************************** SwitchDef class ****************************
-		// Records information about Switch control statements.
+		// Fields record line numbers of the Sw.xxx commands.
 
 		private class SwitchDef {
-			public final int mBegin;
-			public final ArrayList<Integer> mCases;
-			public int mDefault = -1;
-			public int mEnd = -1;
-
-			public SwitchDef(int begin) {
-				mBegin = begin;
-				mCases = new ArrayList<Integer>();
-			}
+			public final ArrayList<Integer> mCases = new ArrayList<Integer>();	// Sw.Case
+			public int mDefault = -1;						// Sw.Default
+			public int mEnd = -1;							// Sw.End
 		}
 
 		// ************************* CallStackFrame class *************************
@@ -3330,7 +3323,7 @@ public class Run extends Activity {
 		private Stack<Integer> DoStack;						// Stack used for Do/Until
 
 		private Stack<Integer> IfElseStack;					// Stack for IF-ELSE-ENDIF operations
-		private SwitchDef mSwitch;							// Current Switch set, null if not in a switch
+		private SwitchDef mSwitch;							// Current Switch block
 		private Stack<CallStackFrame> FunctionStack;		// State saved through the currently executing functions
 
 		private HashMap<String, Var.FnDef> mFunctionTable;	// Globally-accessible table of user-defined functions
@@ -3925,7 +3918,7 @@ public class Run extends Activity {
 		DoStack = new Stack<Integer>();						// Stack used for Do/Until
 
 		IfElseStack = new Stack <Integer>();				// Stack for IF-ELSE-ENDIF operations
-		mSwitch = null;										// Current Switch block, null if not in a switch
+		mSwitch = null;										// Current Switch block
 		FunctionStack = new Stack<CallStackFrame>() ;		// State saved through the currently executing functions
 		mFunctionTable = new HashMap<String, Var.FnDef>();	// Globally-accessible table of user-defined functions
 
@@ -8332,16 +8325,25 @@ public class Run extends Activity {
 		return executeSubcommand(sw_cmd, "SW");
 	}
 
-	// Scan until "sw.end" or end of program. Remember CASE, DEFAULT, and END lines.
 	private boolean scanSwitch() {
-		mSwitch = new SwitchDef(ExecutingLineIndex);
+		// If this switch has already been scanned, use the store SwitchDef.
+		if (ExecutingLineBuffer.mExtras != null) {
+			mSwitch = (SwitchDef)(ExecutingLineBuffer.mExtras);
+			return true;
+		}
+
+		// Scan until "sw.end" or end of program. Remember CASE, DEFAULT, and END lines.
+		mSwitch = new SwitchDef();
 		while (++ExecutingLineIndex < Basic.lines.size()) {
 			ExecutingLineBuffer = Basic.lines.get(ExecutingLineIndex);
 			if (!ExecutingLineBuffer.startsWith("sw.")) { continue; } // not a switch command
 
 			LineIndex = 3;									// length of "sw."
-			if (ExecutingLineBuffer.cmd() == null) {		// find out which sw command
-				ExecutingLineBuffer.cmd(CMD_SW_GROUP);		// would be result of searchCommands()
+			if (ExecutingLineBuffer.cmd() == null) {
+				ExecutingLineBuffer.cmd(CMD_SW_GROUP);		// same as result of searchCommands()
+			}
+			// cmd may be CMD_SW_GROUP if parsed while skipping THEN or ELSE clause of IF
+			if (ExecutingLineBuffer.cmd() == CMD_SW_GROUP) {// find out which sw command
 				Command c = findSubcommand(sw_cmd, "SW");	// body of executeSubcommand(sw_cmd, "SW")
 				if (c == null)			return false;
 				ExecutingLineBuffer.promoteSubCommand();
@@ -8363,12 +8365,12 @@ public class Run extends Activity {
 				if (!checkEOL())		return false;
 				break;
 			} else
-			if (cmd == CMD_SW_BEGIN) {
-				return (RunTimeError("Nested Switch at:"));
-			}												// else CMD_SW_BREAK, ignore it
+			if (cmd == CMD_SW_BEGIN) { return (RunTimeError("Nested Switch at:")); }
+			// else CMD_SW_BREAK, ignore it
 		}
-		return (mSwitch.mEnd != -1) ? true :
-			RunTimeError("No sw.end after sw.begin");
+		if (mSwitch.mEnd == -1) { return RunTimeError("No sw.end after sw.begin"); }
+		ExecutingLineBuffer.mExtras = mSwitch;
+		return true;
 	} // scanSwitch
 
 	private boolean executeSW_BEGIN() {
@@ -8384,7 +8386,8 @@ public class Run extends Activity {
 		} else							return false;
 		if (!checkEOL())				return false;
 
-		// Scan until "sw.end" or end of program. Remember CASE, DEFAULT, and END lines.
+		// Scan until "sw.end" or end of program.
+		// Store CASE, DEFAULT, and END lines in mSwitch.
 		if (!scanSwitch())				return false;
 
 		// If any CASE lines were found, test their conditions.
@@ -8429,11 +8432,9 @@ public class Run extends Activity {
 			}
 		}
 		// No matching case found.
-		if (mSwitch.mDefault != -1) {						// is there DEFAULT?
-			ExecutingLineIndex = mSwitch.mDefault;			// yes: jump to DEFAULT
-		} else {
-			ExecutingLineIndex = mSwitch.mEnd;				// no: jump to END
-		}
+		ExecutingLineIndex = (mSwitch.mDefault != -1)		// is there DEFAULT?
+							? mSwitch.mDefault				// yes: jump to DEFAULT
+							: mSwitch.mEnd;					// no: jump to END
 		return true;
 	} // executeSW_BEGIN
 
@@ -8443,9 +8444,8 @@ public class Run extends Activity {
 
 	private boolean executeSW_BREAK() {
 		if (!checkEOL())				return false;
-		if (mSwitch != null) {								// ignore BREAK if not in Switch (todo: error?)
-			ExecutingLineIndex = mSwitch.mEnd;				// jump to END
-		}
+		if (mSwitch == null) { return RunTimeError("Misplaced SW.BREAK at:"); }
+		ExecutingLineIndex = mSwitch.mEnd;					// jump to END
 		return true;
 	}
 
