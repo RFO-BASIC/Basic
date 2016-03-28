@@ -3,7 +3,7 @@
  BASIC! is an implementation of the Basic programming language for
  Android devices.
 
- Copyright (C) 2010 - 2015 Paul Laughton
+ Copyright (C) 2010 - 2016 Paul Laughton
 
  This file is part of BASIC! for Android
 
@@ -82,7 +82,6 @@ public class Format extends ListActivity {
 		output.add("");
 		AA = new ArrayAdapter<String>(this, R.layout.simple_list_layout, output);  // Establish the output screen
 		lv = getListView();
-		lv.setTextFilterEnabled(false);
 		lv.setTextFilterEnabled(false);
 		lv.setSelection(0);
 
