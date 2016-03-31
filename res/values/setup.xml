@@ -27,7 +27,7 @@ This file is part of BASIC! for Android
 -->
 
 <resources>
-    <string name="version">01.89.07</string>
+    <string name="version">01.90</string>
 
     <!-- The application name displayed in the Launcher -->
     <string name="app_name">BASIC!</string>
