@@ -1041,6 +1041,7 @@ public class Run extends Activity {
 	private static final int ENCODING_BASE64 = 2;
 	private static final int ENCODING_URL = 3;
 	private static final int ENCODING_OTHER = 4;		// simple string conversion
+	private static final int ENCODING_ENCRYPT_RAW = 5;		// encode/decode types w/o base64
 
 	// *************************** Various execution control variables ****************************
 
@@ -6767,6 +6768,8 @@ public class Run extends Activity {
 		else if	(typeLC.equals("url"))		{ encoding = ENCODING_URL; }
 		else if	(typeLC.equals("encrypt"))	{ encoding = ENCODING_ENCRYPT; }
 		else if	(typeLC.equals("decrypt"))	{ encoding = ENCODING_ENCRYPT; }
+		else if	(typeLC.equals("encrypt_raw"))	{ encoding = ENCODING_ENCRYPT_RAW; }
+		else if	(typeLC.equals("decrypt_raw"))	{ encoding = ENCODING_ENCRYPT_RAW; }
 		else {
 			// Plain string conversion. First arg is charset, second is string to convert.
 			encoding = ENCODING_OTHER;
@@ -6776,6 +6779,8 @@ public class Run extends Activity {
 		String src;
 		switch (encoding) {
 			case ENCODING_ENCRYPT:
+      case ENCODING_ENCRYPT_RAW:
+        clearErrorMsg();
 				charset = "";							// default password is empty string
 				// Fall through to get password, if present.
 			case ENCODING_BASE64:
@@ -6796,8 +6801,12 @@ public class Run extends Activity {
 		try {
 			switch (encoding) {
 				case ENCODING_ENCRYPT:
-					dest = (mode == ENCODE) ? encrypt(src, charset)
-											: decrypt(src, charset);
+					dest = (mode == ENCODE) ? encrypt(src, charset, true)
+											: decrypt(src, charset, true);
+					break;
+				case ENCODING_ENCRYPT_RAW:
+					dest = (mode == ENCODE) ? encrypt(src, charset, false)
+											: decrypt(src, charset, false);
 					break;
 				case ENCODING_BASE64:
 					dest = (mode == ENCODE) ? encodeBase64(src, charset)
@@ -6813,8 +6822,9 @@ public class Run extends Activity {
 					break;
 			}
 		} catch (Exception e) {
-			if (encoding == ENCODING_ENCRYPT) {
-				return encryptionException(mode, e);
+			if (encoding == ENCODING_ENCRYPT || encoding == ENCODING_ENCRYPT_RAW) {
+        StringConstant = "";
+        return encryptionException(mode, e);
 			} else {
 				// UnsupportedEncodingException, IllegalCharsetNameException, or UnsupportedCharsetException
 				return RunTimeError(charset + " is not a valid encoding on this device.");
@@ -6826,29 +6836,34 @@ public class Run extends Activity {
 	}
 
 	private boolean encryptionException(boolean mode, Exception e) {
-		return (mode == ENCODE)
-			? RunTimeError("Encryption error (" + e.getMessage() + ")")
-			: RunTimeError("Decryption error (" + e.getMessage() + "). Check password.");
+		mErrorMsg = (mode == ENCODE)
+			? "Encryption error (" + e.getMessage() + ")"
+			: "Decryption error (" + e.getMessage() + "). Check password.";
+    return true;
 	}
 
 	@TargetApi(Build.VERSION_CODES.FROYO)
-	private String encrypt(String src, String pw) throws Exception {
+	private String encrypt(String src, String pw, boolean base64) throws Exception {
 		Cipher ecipher = new Basic.Encryption(Cipher.ENCRYPT_MODE, pw).cipher();
-		byte[] utf8 = src.getBytes("UTF-8");			// encode the string into bytes using UTF-8
-		byte[] enc = ecipher.doFinal(utf8);				// encrypt
+		byte[] in = src.getBytes((base64)?"UTF-8":"ISO-8859-1");	// encode the string into bytes
+		byte[] enc = ecipher.doFinal(in);				// encrypt
 
 		// To support FroYo, there is a copy of Android's Base64.java in our build files.
-		String dest = Base64.encodeToString(enc, Base64.NO_WRAP);	// encode bytes to base64 to get a string
-		return dest.trim();
+		String dest = (base64)
+      ? Base64.encodeToString(enc, Base64.NO_WRAP).trim()	// encode bytes to base64...
+      : new String(enc, "ISO-8859-1");  // ...or to ISO-8859-1 to get a string
+		return dest;
 	}
 
 	@TargetApi(Build.VERSION_CODES.FROYO)
-	private String decrypt(String src, String pw) throws Exception {
+	private String decrypt(String src, String pw, boolean base64) throws Exception {
 		Cipher dcipher = new Basic.Encryption(Cipher.DECRYPT_MODE, pw).cipher();
 		// To support FroYo, there is a copy of Android's Base64.java in our build files.
-		byte[] dec = Base64.decode(src, Base64.DEFAULT); // decode base64 to get bytes
-		byte[] utf8 = dcipher.doFinal(dec);				// decrypt
-		return new String(utf8, "UTF-8");				// encode bytes to UTF-8 to get a string
+		byte[] dec = (base64)
+      ? Base64.decode(src, Base64.DEFAULT) // decode base64...
+      : src.getBytes("ISO-8859-1"); // ...or ISO-8859-1 to get bytes
+		byte[] dest = dcipher.doFinal(dec);		// decrypt
+		return new String(dest, (base64)?"UTF-8":"ISO-8859-1");	// encode bytes to get a string
 	}
 
 	@TargetApi(Build.VERSION_CODES.FROYO)
@@ -15037,10 +15052,11 @@ public class Run extends Activity {
 		Var.Val val = mVal;
 		if (!checkEOL())				return false;
 
-		String dest = null;
+		clearErrorMsg();
+    String dest = null;
 		try {
-			dest = (mode == ENCODE) ? encrypt(src, pw) : decrypt(src, pw);
-		} catch (Exception e) { return encryptionException(mode, e); }
+			dest = (mode == ENCODE) ? encrypt(src, pw, true) : decrypt(src, pw, true);
+		} catch (Exception e) { val.val(""); return encryptionException(mode, e); }
 		if (dest == null)				return false;
 
 		val.val(dest);										// Put the encrypted string into the user variable
