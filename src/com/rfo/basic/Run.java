@@ -633,6 +633,7 @@ public class Run extends Activity {
 	private static final String BKW_DEBUG_GROUP = "debug.";
 	private static final String BKW_DECRYPT = "decrypt";
 	private static final String BKW_DEVICE = "device";
+	private static final String BKW_DEVICE_GROUP = "device.";
 	private static final String BKW_DIALOG_GROUP = "dialog.";
 	private static final String BKW_DIM = "dim";
 	private static final String BKW_DIR = "dir";				// same as "file.dir"
@@ -785,7 +786,7 @@ public class Run extends Activity {
 		BKW_VIBRATE, BKW_WAKELOCK, BKW_WIFILOCK,
 		BKW_END, BKW_EXIT, BKW_HOME,
 		BKW_INCLUDE, BKW_PAUSE, BKW_REM,
-		BKW_DEVICE, BKW_SCREEN_GROUP,
+		BKW_DEVICE_GROUP, BKW_DEVICE, BKW_SCREEN_GROUP,
 		BKW_WIFI_INFO, BKW_HEADSET, BKW_MYPHONENUMBER,
 		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
 		BKW_VOLKEYS_GROUP, BKW_APP_GROUP,
@@ -813,6 +814,7 @@ public class Run extends Activity {
 			keywordLists.put(BKW_BUNDLE_GROUP,    Bundle_KW);
 			keywordLists.put(BKW_BYTE_GROUP,      byte_KW);
 			keywordLists.put(BKW_CONSOLE_GROUP,   Console_KW);
+			keywordLists.put(BKW_DEVICE_GROUP,    Device_KW);
 			keywordLists.put(BKW_DIALOG_GROUP,    Dialog_KW);
 			keywordLists.put(BKW_DEBUG_GROUP,     debug_KW);
 			keywordLists.put(BKW_ECHO_GROUP,      echo_KW);
@@ -1283,6 +1285,15 @@ public class Run extends Activity {
 
 	private boolean mInputCancelled = false;			// Signal between Interpreter Thread and UI Thread
 //	private boolean mInputDismissed = false;			// This will be used only if we dismiss the dialog in onPause
+
+	// *********************** DEVICE command keywords and variables ***********************
+
+	private static final String BKW_DEVICE_LANGUAGE = "language";
+	private static final String BKW_DEVICE_LOCALE = "locale";
+
+	private static final String Device_KW[] = {		// Device command list for Format
+		BKW_DEVICE_LANGUAGE, BKW_DEVICE_LOCALE
+	};
 
 	// *********************** DIALOG command keywords and variables ***********************
 
@@ -4485,6 +4496,13 @@ public class Run extends Activity {
 		new Command(BKW_CONSOLE_LINE_TOUCHED)   { public boolean run() { return executeCONSOLE_LINE_TOUCHED(); } },
 		new Command(BKW_CONSOLE_LINE_NEW)       { public boolean run() { return executeCONSOLE_LINE_NEW(); } },
 		new Command(BKW_CONSOLE_LINE_CHAR)      { public boolean run() { return executeCONSOLE_LINE_CHAR(); } }
+	};
+
+	// **************** DEVICE Group
+
+	private final Command[] Device_cmd = new Command[] {	// Map device command keywords to their execution functions
+		new Command(BKW_DEVICE_LANGUAGE)        { public boolean run() { return executeDEVICE(Locale.getDefault().getDisplayLanguage()); } },
+		new Command(BKW_DEVICE_LOCALE)          { public boolean run() { return executeDEVICE(Locale.getDefault().toString()); } },
 	};
 
 	// **************** DIALOG Group
@@ -10340,8 +10358,22 @@ public class Run extends Activity {
 		}
 	}
 
-	private boolean executeDEVICE() {
-		if (!getVar() || !checkEOL())	return false;	// variable to hold the returned bundle pointer or string value
+	private boolean executeDEVICE() {					// DEVICE or DEVICE.xxx
+		if (isNext('.')) {
+			return executeSubcommand(Device_cmd, "Device");
+		}
+		return executeDEVICE_all();
+	}
+
+	private boolean executeDEVICE(String str) {			// write the string argument into a variable
+		if (!getSVar() || !checkEOL())	return false;	// variable to hold the returned Brand string
+		Var.Val val = mVal;
+		val.val((str != null) ?  str : "");
+		return true;
+	}
+
+	private boolean executeDEVICE_all() {
+		if (!getVar())					return false;	// variable to hold the returned bundle pointer or string value
 		Var.Val val = mVal;
 
 		Locale loc = Locale.getDefault();
