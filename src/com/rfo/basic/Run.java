@@ -8308,7 +8308,6 @@ public class Run extends Activity {
 				else if (byReference) {									// if this parm is var passed by reference
 					Var callVar = getVarAndType();
 					if (callVar == null)	return false;				// then must be var not expression
-					if (callVar.isNew()) { return RunTimeError("Call by reference vars must be predefined"); }
 					if (typeIsNumeric != callVar.isNumeric()) {			// insure type (string or number) match
 						return RunTimeError("Parameter type mismatch at:");
 					}
