@@ -10105,7 +10105,14 @@ public class Run extends Activity {
 
 	private boolean executeWAKELOCK() {
 		if (!evalNumericExpression())	return false;				// Get setting
-		int code  = EvalNumericExpressionValue.intValue();
+		int code = EvalNumericExpressionValue.intValue();
+		int flags = 0;												// optional flags, default none
+		if (isNext(',')) {
+			if (!evalNumericExpression()) return false;				// get flags
+			int rawFlags = EvalNumericExpressionValue.intValue() & 0x03;	// ignore undefined values
+			if ((rawFlags & 1) == 1) { flags |= PowerManager.ACQUIRE_CAUSES_WAKEUP; }
+			if ((rawFlags & 2) == 2) { flags |= PowerManager.ON_AFTER_RELEASE; }
+		}
 		if (!checkEOL())				return false;
 
 		if (theWakeLock != null) {
@@ -10117,19 +10124,20 @@ public class Run extends Activity {
 		String tag = "BASIC!";
 		switch (code) {
 			case partial:
+				if (flags != 0) { flags = 0; }						// can't use flags with partial
 				theWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, tag);
 				theWakeLock.acquire();
 				break;
 			case dim:
-				theWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, tag);
+				theWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK | flags, tag);
 				theWakeLock.acquire();
 				break;
 			case bright:
-				theWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK, tag);
+				theWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | flags, tag);
 				theWakeLock.acquire();
 				break;
 			case full:
-				theWakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK, tag);
+				theWakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK | flags, tag);
 				theWakeLock.acquire();
 				break;
 			case release:
