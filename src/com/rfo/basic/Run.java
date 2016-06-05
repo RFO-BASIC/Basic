@@ -3570,7 +3570,8 @@ public class Run extends Activity {
 						Stop = true;										// non-recoverable error
 						return RunTimeError("Duplicate label");
 					}
-					ExecutingLineBuffer.cmd(CMD_LABEL, LineIndex);
+					// Do not write CMD_LABEL into ExecutingLineBuffer.cmd() here.
+					// If the program runs the label, let it get parsed once.
 					if (!checkEOL())					{ return false; }
 				}
 				else if (text.startsWith(READ_DATA)) {						// Is not a label. If it is READ.DATA
