@@ -301,18 +301,15 @@ public class AddProgramLine {
 			}
 
 			if (c == '\\') {
-				c = ((index + 1) < linelen) ? line.charAt(index + 1) : '\0';
+				if (++index >= linelen) { break; }		// No more characters, drop backslash, done
+				c = line.charAt(index);					// character after '\'
 				boolean isQuote = (QUOTES.indexOf(c) != -1);
 				if (isQuote || c == '\\') {				// look for \" (or funny quote) or \\ and retain it 
 					s.append('\\');						// so that user can have quotes and \ in strings
-					++index;
-				} else if (c == 'n') {					// change backslash-n to carriage return
-					c = '\r';
-					++index;
-				} else if (c == 't') {					// change backslash-t to tab
-					c = '\t';
-					++index;
-				}										// else remove the backslash
+				}
+				else if (c == 'n') { c = '\r'; }		// change backslash-n to carriage return
+				else if (c == 't') { c = '\t'; }		// change backslash-t to tab
+														// else remove the backslash
 			}
 			s.append(c);
 		}
