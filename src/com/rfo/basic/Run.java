@@ -32,8 +32,6 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-//Log.v(LOGTAG, "Line Buffer  " + ExecutingLineBuffer);
-
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -8490,8 +8488,10 @@ public class Run extends Activity {
 
 	private boolean executeSW_BREAK() {
 		if (!checkEOL())				return false;
-		SwitchDef sw = (SwitchDef)(ExecutingLineBuffer.mExtras);
-		if (sw == null) { return RunTimeError("Misplaced SW.BREAK at:"); }
+		// Normally this SW.Break was scanned by SW.Begin. In a single-line IF,
+		// the scan missed it, so we have to scan again from here.
+		SwitchDef sw = scanSwitch();						// get stored SwitchDef ir scan for SW.End
+		if (sw == null)					return false;
 		ExecutingLineIndex = sw.mEnd;						// jump to END
 		return true;
 	}
