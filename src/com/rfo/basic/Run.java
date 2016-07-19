@@ -37,6 +37,8 @@ import android.util.Log;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -77,6 +79,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 import java.util.regex.PatternSyntaxException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
@@ -436,20 +441,27 @@ public class Run extends Activity {
 	// **************************** FileInfo class ****************************
 	// Records information about an open file. Objects go in the FileTable.
 
-	public enum FileType { FILE_TEXT, FILE_BYTE };
+	public enum FileType {
+		FILE_TEXT("text"), FILE_BYTE("byte"), FILE_ZIP("zip");
+
+		private final String mName;
+		private FileType(String name) { mName = name; }
+
+		public String toString() { return mName; }
+	};
 
 	public static abstract class FileInfo {
+		private final FileType mType;
 		protected final int mMode;
-		protected final boolean mIsText;
 		protected boolean mIsEOF;
 		protected boolean mIsClosed;
 		protected long mPosition;
 		protected long mMark;
 		private int mMarkLimit;
 
-		public FileInfo(int mode, boolean isText) {
+		public FileInfo(int mode, FileType type) {
 			mMode = mode;
-			mIsText = isText;
+			mType = type;
 			mIsEOF = (mMode == FMW);					// initially at bof if reading, eof if writing/appending
 			mIsClosed = false;
 			mPosition = 1;
@@ -471,7 +483,7 @@ public class Run extends Activity {
 		public void incPosition(long delta) { mPosition += delta; }
 
 		public int mode() { return mMode; }
-		public boolean isText() { return mIsText; }
+		public FileType type() { return mType; }
 		public boolean isEOF() { return mIsEOF; }
 		public boolean isClosed() { return mIsClosed; }
 		public long position() { return mPosition; }
@@ -502,7 +514,7 @@ public class Run extends Activity {
 
 	public static class TextWriterInfo extends FileInfo {
 		public FileWriter mTextWriter;
-		public TextWriterInfo(int mode) { super(mode, true); }	// true means it is text
+		public TextWriterInfo(int mode) { super(mode, FileType.FILE_TEXT); }
 
 		public IOException flush(IOException ex) { return flushStream(mTextWriter, ex); }
 		public IOException close(IOException ex) {
@@ -515,7 +527,7 @@ public class Run extends Activity {
 
 	public static class TextReaderInfo extends FileInfo {
 		public BufferedReader mTextReader;
-		public TextReaderInfo(int mode) { super(mode, true); }	// true means it is text
+		public TextReaderInfo(int mode) { super(mode, FileType.FILE_TEXT); }
 
 		public IOException close(IOException ex) {
 			IOException e = closeStream(mTextReader, ex);
@@ -534,7 +546,7 @@ public class Run extends Activity {
 		private DataOutputStream mDOStream;
 		private FileChannel mChannel;
 
-		public ByteWriterInfo(int mode) { super(mode, false); }	// false means it is byte, not text
+		public ByteWriterInfo(int mode) { super(mode, FileType.FILE_BYTE); }
 
 		public DataOutputStream getDOS() {
 			if (mDOStream == null) { mDOStream = new DataOutputStream(mByteWriter); }
@@ -591,7 +603,7 @@ public class Run extends Activity {
 
 	public static class ByteReaderInfo extends FileInfo {
 		public BufferedInputStream mByteReader;
-		public ByteReaderInfo(int mode) { super(mode, false); }	// false means it is byte, not text
+		public ByteReaderInfo(int mode) { super(mode, FileType.FILE_BYTE); }
 		private DataInputStream mDIStream;
 
 		public DataInputStream getDIS() {
@@ -602,6 +614,30 @@ public class Run extends Activity {
 		public IOException close(IOException ex) {
 			IOException e = closeStream(mByteReader, ex);
 			mByteReader = null;
+			closed();
+			return e;
+		}
+	}
+
+	public static class ZipWriterInfo extends FileInfo {
+		public ZipOutputStream mZipWriter;
+		public ZipWriterInfo(int mode) { super(mode, FileType.FILE_ZIP); }
+
+		public IOException close(IOException ex) {
+			IOException e = closeStream(mZipWriter, ex);
+			mZipWriter = null;
+			closed();
+			return e;
+		}
+	}
+
+	public static class ZipReaderInfo extends FileInfo {
+		public ZipFile mZipReader;
+		public ZipReaderInfo(int mode) { super(mode, FileType.FILE_ZIP); }
+
+		public IOException close(IOException ex) {
+			IOException e = closeStream((Closeable)mZipReader, ex);
+			mZipReader = null;
 			closed();
 			return e;
 		}
@@ -720,6 +756,7 @@ public class Run extends Activity {
 	private static final String BKW_SWAP = "swap";
 	private static final String BKW_SYSTEM_GROUP = "system.";
 	private static final String BKW_TEXT_GROUP = "text.";
+	private static final String BKW_ZIP_GROUP = "zip.";
 	private static final String BKW_TGET = "tget";
 	private static final String BKW_TIME = "time";
 	private static final String BKW_TIMER_GROUP = "timer.";
@@ -763,7 +800,8 @@ public class Run extends Activity {
 		// BKW_PREDEC, BKW_PREINC,						// Format can't handle these and doesn't need them
 		BKW_INKEY, BKW_INPUT, BKW_DIALOG_GROUP,
 		BKW_SELECT, BKW_TGET,
-		BKW_FILE_GROUP, BKW_TEXT_GROUP, BKW_BYTE_GROUP, BKW_READ_GROUP,
+		BKW_TEXT_GROUP, BKW_BYTE_GROUP, BKW_ZIP_GROUP,
+		BKW_FILE_GROUP, BKW_READ_GROUP,
 		BKW_DIR, BKW_MKDIR, BKW_RENAME,
 		BKW_GRABFILE, BKW_GRABURL,
 		BKW_BROWSE, BKW_BT_GROUP, BKW_FTP_GROUP,
@@ -843,6 +881,7 @@ public class Run extends Activity {
 			keywordLists.put(BKW_TIMEZONE_GROUP,  TimeZone_KW);
 			keywordLists.put(BKW_TTS_GROUP,       tts_KW);
 			keywordLists.put(BKW_VOLKEYS_GROUP,   VolKeys_KW);
+			keywordLists.put(BKW_ZIP_GROUP,       zip_KW);
 		}
 		return keywordLists;
 	}
@@ -1219,6 +1258,16 @@ public class Run extends Activity {
 		BKW_BYTE_COPY, BKW_BYTE_TRUNCATE,
 		BKW_POSITION_GET, BKW_POSITION_SET,
 		BKW_POSITION_MARK,
+	};
+
+	// ********************************* ZIP I/O keywords *********************************
+
+	private static final String BKW_ZIP_READ = "read";
+	private static final String BKW_ZIP_WRITE = "write";
+
+	private static final String zip_KW[] = {			// Command list for Format
+		BKW_OPEN, BKW_CLOSE, BKW_DIR,
+		BKW_ZIP_READ, BKW_ZIP_WRITE,
 	};
 
 	// *********************************** READ keywords ***********************************
@@ -4314,6 +4363,7 @@ public class Run extends Activity {
 		new Command(BKW_FILE_GROUP, CID_GROUP)  { public boolean run() { return executeFILE(); } },
 		new Command(BKW_TEXT_GROUP, CID_GROUP)  { public boolean run() { return executeTEXT(); } },
 		new Command(BKW_BYTE_GROUP, CID_GROUP)  { public boolean run() { return executeBYTE(); } },
+		new Command(BKW_ZIP_GROUP, CID_GROUP)   { public boolean run() { return executeZIP(); } },
 		new Command(BKW_READ_GROUP, CID_GROUP)  { public boolean run() { return executeREAD(); } },
 		new Command(BKW_DIR)                    { public boolean run() { return executeDIR(); } },
 		new Command(BKW_MKDIR)                  { public boolean run() { return executeMKDIR(); } },
@@ -4456,6 +4506,16 @@ public class Run extends Activity {
 		new Command(BKW_POSITION_GET, CID_READ)     { public boolean run(int fId) { return executePOSITION_GET(fId, FileType.FILE_BYTE); } },
 		new Command(BKW_POSITION_SET, CID_READ)     { public boolean run(int fId) { return executeBYTE_POSITION_SET(fId); } },
 		new Command(BKW_POSITION_MARK, CID_EX)      { public boolean run()        { return executePOSITION_MARK(FileType.FILE_BYTE); } },
+	};
+
+	// **************** ZIP Group - zip file operations
+
+	private final Command[] zip_cmd = new Command[] {	// Map Text I/O command keywords to their execution functions
+		new Command(BKW_OPEN, CID_EX)           { public boolean run()        { return executeZIP_OPEN(); } },
+		new Command(BKW_CLOSE, CID_EX)          { public boolean run()        { return executeCLOSE(FileType.FILE_ZIP); } },
+		new Command(BKW_DIR, CID_EX)            { public boolean run()        { return executeZIP_DIR(); } },
+		new Command(BKW_ZIP_READ, CID_READ)     { public boolean run(int fId) { return executeZIP_READ(fId); } },
+		new Command(BKW_ZIP_WRITE, CID_WRITE)   { public boolean run(int fId) { return executeZIP_WRITE(fId); } },
 	};
 
 	// **************** READ Group - READ.DATA
@@ -8509,44 +8569,39 @@ public class Run extends Activity {
 	// ******************************** Data I/O Operations ********************************
 
 	private boolean checkReadFile(int fileNumber) {							// Validate input file for read commands
-		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
-		else if (fileNumber < 0)                    { RunTimeError("Read file did not exist"); }
-		else if (fileNumber >= FileTable.size())    { RunTimeError("Invalid File Number at"); }
+		if (FileTable.size() == 0)					{ RunTimeError("No files opened"); }
+		else if (fileNumber < 0)					{ RunTimeError("Read file did not exist"); }
+		else if (fileNumber >= FileTable.size())	{ RunTimeError("Invalid File Number at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
 	}
 
 	private boolean checkFile(int fileNumber) {								// Validate input file number for read or write commands
-		if (FileTable.size() == 0)                  { RunTimeError("No files opened"); }
+		if (FileTable.size() == 0)					{ RunTimeError("No files opened"); }
 		else if (fileNumber >= FileTable.size() || fileNumber < 0)
 													{ RunTimeError("Invalid File Number at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
 	}
 
-	private boolean checkFileType(FileInfo fInfo, FileType fType) {
-		switch (fType) {
-		case FILE_TEXT:
-			if (!fInfo.isText()) { return RunTimeError("File not opened for text"); }
-			break;
-		case FILE_BYTE:
-			if (fInfo.isText())  { return RunTimeError("File not opened for byte"); }
-			break;
-		}
-		return true;
+	private boolean checkFileType(FileInfo fInfo, FileType fType) {			// Type TEXT, BYTE, or ZIP as requested?
+		if (fInfo.type() == fType)		return true;
+		String exp = fType.toString();
+		String act = fInfo.type().toString();
+		return RunTimeError("File opened with " + act + ".open, expected " + exp + ".open" );
 	}
 
 	private boolean checkReadAttributes(FileInfo fInfo, FileType fType) {
 											// Validate common FileInfo items for commands that read text files
 		if (!checkFileType(fInfo, fType)) return false;							// Type TEXT or BYTE as requested?
-		else if (fInfo.isClosed())    { RunTimeError("File is closed"); }
-		else if (fInfo.mode() != FMR) { RunTimeError("File not opened for read at"); }
+		else if (fInfo.isClosed())					{ RunTimeError("File is closed"); }
+		else if (fInfo.mode() != FMR)				{ RunTimeError("File not opened for read at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
 	}
 
 	private boolean checkWriteAttributes(FileInfo fInfo, FileType fType) {
 											// Validate common FileInfo items for commands that write text files
 		if (!checkFileType(fInfo, fType)) return false;							// Type TEXT or BYTE as requested?
-		else if (fInfo.isClosed())    { RunTimeError("File is closed"); }
-		else if (fInfo.mode() != FMW) { RunTimeError("File not opened for write at"); }
+		else if (fInfo.isClosed())					{ RunTimeError("File is closed"); }
+		else if (fInfo.mode() != FMW)				{ RunTimeError("File not opened for write at"); }
 		return !SyntaxError;				// SyntaxError is true if RunTimeError was called
 	}
 
@@ -9223,7 +9278,228 @@ public class Run extends Activity {
 		return true;
 	}
 
-	// ************************** Text or Byte Stream: Common Operations **************************
+	// ************************************* Zip Stream I/O **************************************
+
+	private boolean executeZIP() {							// Get Zip command keyword if it is there
+		Command c = findSubcommand(zip_cmd, "Zip");
+		if (c == null)						return false;
+		if (c.id == CID_EX) {										// can't do common processing
+			return c.run();											// just run it
+		}
+
+		if (!evalNumericExpression())		return false;			// first parm is the file number expression
+		int fileNumber = EvalNumericExpressionValue.intValue();
+		if (c.id == CID_READ) {
+			if (!checkReadFile(fileNumber))	return false;			// check runtime errors
+		} else if (c.id == CID_WRITE) {
+			if (!checkFile(fileNumber))		return false;			// check runtime errors
+		}
+		return c.run(fileNumber);
+	}
+
+	private boolean executeZIP_DIR() {
+		if (!getStringArg())			return false;		// get the path
+		String fileName = StringConstant;
+
+		if (!isNext(','))				return false;			// parse the ,D$[]
+		Var var = getArrayVarForWrite(TYPE_STRING);				// get the result array variable
+		if (var == null)				return false;			// must name a new string array variable
+		String dirMark = "(d)";
+		if (isNext(',')) {										// optional directory marker
+			if (!getStringArg())		return false;
+			dirMark = StringConstant;
+		}
+		if (!checkEOL())				return false;
+
+		ArrayList <String> files = new ArrayList<String>();
+		ArrayList <String> dirs = new ArrayList<String>();
+
+		File file = new File(Basic.getDataPath(fileName));
+		ZipFile reader = null;
+
+		try {
+			try {												// Open zip file for reading
+				reader = new ZipFile(file);
+				if (reader == null) { return RunTimeError(fileName + " not found"); }
+			}
+			catch (Exception e) { return RunTimeError(e); }
+
+			// Get an enumeration of its entries
+			Enumeration<? extends ZipEntry> e = reader.entries();
+
+			// Go through each one of them
+			while (e.hasMoreElements()) {
+				ZipEntry entry = e.nextElement();
+				String s = entry.getName();						// get the name of the entry
+				if (entry.isDirectory()) {
+					dirs.add(s.substring(0, s.length()-1) + dirMark);	// mark it and add it to directories list
+				} else {
+					files.add(s);								// else add name without the directory mark
+				}
+			}
+			Collections.sort(dirs);								// Sort the directory list
+			Collections.sort(files);							// Sort the file list
+			dirs.addAll(files);									// copy the file list to end of dir list
+		}
+		finally {
+			try { if (reader != null) { reader.close(); } }
+			catch (IOException e) { return RunTimeError("I/O error at:"); }
+		}
+
+		int length = dirs.size();								// number of directories and files in list
+		if (length == 0) {										// make at least one element if dir is empty
+			dirs.add(" ");
+			length = 1;
+		}
+		return ListToBasicStringArray(var, dirs, length);		// Copy the list to a BASIC! array
+	}
+
+	private boolean executeZIP_OPEN() {								// Open a file
+		int FileMode = 0;											// Default to FMR
+		clearErrorMsg();
+		switch (ExecutingLineBuffer.text().charAt(LineIndex)) {		// First parm is a, w or r
+		case 'w': case 'a':					// write
+			FileMode = FMW;
+			++LineIndex;
+			break;
+		case 'r':							// read
+			FileMode = FMR;
+			++LineIndex;
+		}
+		if (!isNext(','))				return false;
+		if (!getNVar())					return false;				// Next parameter is the file number variable
+		Var.Val val = mVal;
+		double fileNumber = FileTable.size();
+
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;				// Final parameter is the filename
+		String fileName = StringConstant;
+		if (!checkEOL())				return false;
+
+		File file = new File(Basic.getDataPath(fileName));
+
+		if (FileMode == FMR) {										// Read was selected
+			ZipReaderInfo fInfo = new ZipReaderInfo(FileMode);		// Prepare the FileTable object
+			ZipFile zip = null;
+			try {
+				zip = new ZipFile(file);
+				if (zip == null) {
+					writeErrorMsg(fileName + " not found");
+				}
+			}
+			catch (Exception e) { writeErrorMsg(e); }
+			if (zip != null) {
+				fInfo.mZipReader = zip;								// store reader in fInfo
+			} else {
+				fileNumber = -1;									// change file index to report file does not exist
+			}
+			FileTable.add(fInfo);
+		}
+
+		else if (FileMode == FMW) {									// Write Selected
+			ZipWriterInfo fInfo = new ZipWriterInfo(FileMode);		// Prepare the FileTable object
+			ZipOutputStream zos = null;
+			if (!file.exists()) {
+				try { file.createNewFile(); }						// if no file create a new one
+				catch (IOException e) { writeErrorMsg(e); }
+			}
+			if (file.exists() && file.canWrite()) {					// open the zip writer for the SD Card
+				try { zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(file))); }
+				catch (IOException e) { writeErrorMsg(e); }
+			}
+			if (zos != null) {
+				fInfo.mZipWriter = zos;								// store writer in fInfo
+			} else {
+				fileNumber = -1;									// change file index to report file does not exist
+			}
+			FileTable.add(fInfo);
+		}
+
+		val.val(fileNumber);										// return the file index
+		return true;												// Done
+	}
+
+	private boolean executeZIP_READ(int fileNumber) {				// first parameter: file table index
+		if (!isNext(','))				return false;				// set up to parse the stuff to print
+		if (!getSVar())					return false;				// need string variable
+		Var.Val val = mVal;											// variable to hold the data
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;				// get the entry path
+		String fileName = StringConstant;
+		if (!checkEOL())				return false;
+
+		FileInfo fInfo = FileTable.get(fileNumber);
+		if (!checkReadAttributes(fInfo, FileType.FILE_ZIP)) return false;
+
+		ZipFile zip = ((ZipReaderInfo)fInfo).mZipReader;
+
+		try {
+			ZipEntry entry = zip.getEntry(fileName);
+			if (entry == null) {									// entry not found in the zip: return "EOF"
+				val.val("EOF");
+			} else if (entry.isDirectory()) {
+				return RunTimeError("Zip entry must be a file:");
+			} else {
+				InputStream zis = zip.getInputStream(entry);
+				BufferedInputStream is = new BufferedInputStream(zis);
+				ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+				BufferedOutputStream os = new BufferedOutputStream(buffer);
+				byte[] data = new byte[1024];
+				int read = 0;
+				while ((read = is.read(data)) != -1) {
+					os.write(data, 0, read);
+				}
+				os.flush();
+				val.val(buffer.toString("ISO-8859-1"));				// convert bytes to string for user
+			}
+		}
+		catch (IOException e) { return RunTimeError("I/O error at:"); }
+
+		return true;
+	}
+
+	private boolean executeZIP_WRITE(int fileNumber) {				// first parameter: file table index
+		if (!isNext(','))				return false;				// set up to parse the stuff to print
+		if (!getStringArg())			return false;
+		String buffer = StringConstant;								// variable to hold the data
+		if (!isNext(','))				return false;
+		if (!getStringArg())			return false;				// get the entry path
+		String fileName = StringConstant;
+		if (!checkEOL())				return false;
+
+		FileInfo fInfo = FileTable.get(fileNumber);
+		if (!checkWriteAttributes(fInfo, FileType.FILE_ZIP)) return false;
+
+		ZipOutputStream zos =  ((ZipWriterInfo)fInfo).mZipWriter;	// get the writer to the zip
+
+		// create an input stream from the string buffer passed as parameter
+		ByteArrayInputStream is = null;
+		try {
+			is = new ByteArrayInputStream( buffer.getBytes("ISO-8859-1") );
+		}
+		catch (UnsupportedEncodingException ex) {
+			return RunTimeError(ex);								// can't happen: "ISO-8859-1" is supported
+		}
+
+		try {
+			byte[] data = new byte[1024];
+			int read = 0;
+			ZipEntry entry = new ZipEntry(fileName);
+			zos.putNextEntry(entry);								// create entry in the zip
+			while ((read = is.read(data, 0, 1024)) != -1) {
+				zos.write(data, 0, read);							// write data to it
+			}
+		}
+		catch (IOException e) { return RunTimeError("I/O error at:"); }
+		finally {
+			try { is.close(); }										// close input stream
+			catch (IOException e) { return RunTimeError("I/O error at:"); }
+		}
+
+		return true;
+	}
+
+	// ************************ Text / Byte / Zip Stream: Common Operations ***********************
 
 	private boolean executeCLOSE(FileType fType) {
 		if (FileTable.size() == 0)			return true;
@@ -9234,7 +9510,7 @@ public class Run extends Activity {
 		if (!checkEOL())					return false;
 
 		FileInfo fInfo = FileTable.get(fileNumber);					// Get the file info
-		if (!checkFileType(fInfo, fType))	return false;			// Type TEXT or BYTE as requested?
+		if (!checkFileType(fInfo, fType))	return false;			// Type TEXT, BYTE, or ZIP, as requested?
 
 		if (fInfo.isClosed())				return true;			// Already closed
 
