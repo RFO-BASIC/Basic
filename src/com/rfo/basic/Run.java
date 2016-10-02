@@ -1041,6 +1041,7 @@ public class Run extends Activity {
 
 	private static final String SF_BIN = "bin$(";
 	private static final String SF_CHR = "chr$(";
+	private static final String SF_COMMAND = "command$(";
 	private static final String SF_DECODE = "decode$(";
 	private static final String SF_ENCODE = "encode$(";
 	private static final String SF_FORMAT = "format$(";
@@ -1070,6 +1071,7 @@ public class Run extends Activity {
 		SF_LTRIM, SF_MID, SF_OCT, SF_REPLACE,
 		SF_RIGHT, SF_RTRIM, SF_STR, SF_TRIM,
 		SF_UPPER, SF_USING, SF_WORD, SF_VERSION,
+		SF_COMMAND,
 	};
 
 	private static final int TLEFT = 1;					// control bits for SF_TRIM
@@ -2187,6 +2189,8 @@ public class Run extends Activity {
 	// ************************** PROGRAM command variables **********************
 
 	public static String running_bas = "";  // program currently being run
+	public static String called_with = "";  // app called from intent with an argument
+
 	// ***************************************************************************
 
 	private Context getContext() {
@@ -4269,6 +4273,7 @@ public class Run extends Activity {
 	private final Command[] SF_cmd = new Command[] {	// Map string function names to their functions
 		new Command(SF_BIN)                     { public boolean run() { return executeSF_BIN(); } },
 		new Command(SF_CHR)                     { public boolean run() { return executeSF_CHR(); } },
+		new Command(SF_COMMAND)                 { public boolean run() { return executeSF_COMMAND(); } },
 		new Command(SF_DECODE)                  { public boolean run() { return executeSF_ENCODE(DECODE); } },
 		new Command(SF_ENCODE)                  { public boolean run() { return executeSF_ENCODE(ENCODE); } },
 		new Command(SF_FORMAT)                  { public boolean run() { return executeSF_FORMAT(); } },
@@ -7050,6 +7055,12 @@ public class Run extends Activity {
 	private boolean executeSF_VERSION() {												// VERSION$
 		if (!isNext(')'))				return false;	// Function must end with ')'
 		StringConstant = getString(R.string.version);
+		return true;
+	}
+
+	private boolean executeSF_COMMAND() {												// COMMAND$
+		if (!isNext(')'))				return false;	// Function must end with ')'
+		StringConstant = called_with;
 		return true;
 	}
 

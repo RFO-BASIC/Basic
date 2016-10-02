@@ -268,6 +268,10 @@ public class Basic extends Activity {
 	}
 
 	private void createForAPK() {										// Create code for APK
+		String ArgPath = "";
+		Intent myIntent = getIntent();    // Launched as a file share intent with an argument?
+		if (myIntent.getData() != null) ArgPath = myIntent.getData().getPath();
+		if (!ArgPath.equals("")) Run.called_with = getRelativePath(ArgPath, Basic.getDataPath(null));
 		runBackgroundLoader();
 	}
 
