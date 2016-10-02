@@ -17676,6 +17676,7 @@ public class Run extends Activity {
 
 		if (!getStringArg())			return false;						// get program filename
 		String fileName = StringConstant;
+		if (fileName.equals(""))  return false;
 
 		String data = "";
 		if (isNext(',')) {													// optional
