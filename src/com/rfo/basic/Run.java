@@ -17724,9 +17724,8 @@ public class Run extends Activity {
 	// *************************************** Run Command ****************************************
 
 	private boolean executeRUN() {
-
-		if (!getStringArg())			return false;						// get program filename
-		String fileName = StringConstant;
+		// get program filename
+		String fileName = getStringArg() ? StringConstant : running_bas;
 		if (fileName.equals(""))  return false;
 
 		String data = "";
@@ -17736,7 +17735,8 @@ public class Run extends Activity {
 		}
 		if (!checkEOL())				return false;
 
-		String path = Basic.getFilePath(Basic.SOURCE_DIR, fileName);
+		String path = (-1 != fileName.indexOf("/") && 0 != fileName.indexOf(".")) // allow relative paths (to rfo-basic/source)
+			? fileName : Basic.getFilePath(Basic.SOURCE_DIR, fileName);
 		boolean exists = false;
 		if (!Basic.isAPK) { exists = new File(path).exists(); }				// standard BASIC can only RUN a file
 		else if (Basic.getRawResourceID(fileName) != 0) { exists = true; }	// APK can run resource
