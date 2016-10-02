@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -330,7 +331,7 @@ public class Basic extends Activity {
 	}
 
 	public static void clearProgram() {
-
+		Run.running_bas = "";
 		lines = new ArrayList<Run.ProgramLine>();			// The lines array list is the program
 		lines.add(new Run.ProgramLine(""));					// add an empty string to lines
 		Editor.DisplayText="REM Start of BASIC! Program\n";	// Display text is the editors program storage for display
@@ -473,6 +474,66 @@ public class Basic extends Activity {
 		return new CipherInputStream(inputStream, cipher);
 	}
 
+  /**
+   * Get the relative path from one file to another.
+   * If one of the provided resources does not exist, it
+   * is assumed to be a file unless it ends with '/'.
+   *
+   **/
+  public static String getRelativePath(String targetPath, String basePath) {
+
+      // Normalize the paths and split on File separator
+      String normalizedTargetPath = targetPath;
+      String normalizedBasePath = basePath;
+      try {
+        normalizedTargetPath = new File(targetPath).getCanonicalPath().replaceAll("/$", "");
+        normalizedBasePath = new File(basePath).getCanonicalPath().replaceAll("/$", "");
+      }
+      catch (IOException e) { Log.w(LOGTAG, "getRelativePath - getCanonicalPath: " + e); }
+      String[] base = normalizedBasePath.split(Pattern.quote("/"));
+      String[] target = normalizedTargetPath.split(Pattern.quote("/"));
+
+      // First get all the common elements. Store them as a string,
+      // and also count how many of them there are.
+      StringBuilder common = new StringBuilder();
+      int commonIndex = 0;
+      while (commonIndex < target.length && commonIndex < base.length
+              && target[commonIndex].equals(base[commonIndex])) {
+          common.append(target[commonIndex] + "/");
+          commonIndex++;
+      }
+
+      if (commonIndex == 0) {
+          // No single common path element. This mostlikely indicates differing drives.
+          // These paths cannot be relativized.
+          return targetPath;
+      }
+
+      // The number of directories we have to backtrack depends on whether the base is a file or a dir.
+      // For example, the relative path from /foo/bar/baz/gg/ff to /foo/bar/baz will produce:
+      // ".." if ff is a file
+      // "../.." if ff is a directory
+
+      // The following is a heuristic to figure out if the base refers to a file or dir.
+      boolean baseIsFile = true;
+      File baseResource = new File(normalizedBasePath);
+      if (baseResource.exists()) {
+          baseIsFile = baseResource.isFile();
+      } else if (basePath.endsWith("/")) {
+          baseIsFile = false;
+      }
+
+      StringBuilder relative = new StringBuilder();
+      if (base.length != commonIndex) {
+          int numDirsUp = baseIsFile ? base.length - commonIndex - 1 : base.length - commonIndex;
+          for (int i = 0; i < numDirsUp; i++) {
+              relative.append("../");
+          }
+      }
+      relative.append(normalizedTargetPath.substring(common.length()));
+      return relative.toString();
+  }
+
 	public static int loadProgramFileToList(boolean isFullPath, String path, ArrayList<String> list) {
 
 		// MES 2013/01/13 - We got in a jam when moving resources to assets.
@@ -486,6 +547,9 @@ public class Basic extends Activity {
 		String dir = isFullPath ? null : Basic.SOURCE_DIR;
 		try { buf = getBufferedReader(dir, path, Basic.Encryption.ENABLE_DECRYPTION); }
 		catch (Exception e) { return size; }
+
+		// Save running bas path after making it relative to rfo-basic/source
+		Run.running_bas = getRelativePath(isFullPath ? path : Basic.getSourcePath(path), Basic.getSourcePath(null));
 
 		// Read the file. Insert the the lines into the ArrayList.
 		String data = null;

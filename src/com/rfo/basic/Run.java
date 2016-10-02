@@ -732,6 +732,7 @@ public class Run extends Activity {
 	private static final String BKW_PREINC = "++";				// omit from BasicKeyWords[]
 	private static final String BKW_PRINT = "print";
 	private static final String BKW_PRINT_SHORTCUT = "?";
+	private static final String BKW_PROGRAM_GROUP = "program.";
 	private static final String BKW_READ_GROUP = "read.";
 	private static final String BKW_REM = "rem";
 	private static final String BKW_RENAME = "rename";			// same as "file.rename"
@@ -824,8 +825,8 @@ public class Run extends Activity {
 		BKW_INCLUDE, BKW_PAUSE, BKW_REM,
 		BKW_DEVICE_GROUP, BKW_DEVICE, BKW_SCREEN_GROUP,
 		BKW_WIFI_INFO, BKW_HEADSET, BKW_MYPHONENUMBER,
-		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_SMS_GROUP,
-		BKW_VOLKEYS_GROUP, BKW_APP_GROUP,
+		BKW_EMAIL_SEND, BKW_PHONE_GROUP, BKW_PROGRAM_GROUP,
+		BKW_SMS_GROUP, BKW_VOLKEYS_GROUP, BKW_APP_GROUP,
 		BKW_BACK_RESUME, BKW_BACKGROUND_RESUME,
 		BKW_CONSOLETOUCH_RESUME, BKW_KEY_RESUME,
 		BKW_LOWMEM_RESUME, BKW_MENUKEY_RESUME,
@@ -864,6 +865,7 @@ public class Run extends Activity {
 			keywordLists.put(BKW_KB_GROUP,        KB_KW);
 			keywordLists.put(BKW_LIST_GROUP,      List_KW);
 			keywordLists.put(BKW_PHONE_GROUP,     phone_KW);
+			keywordLists.put(BKW_PROGRAM_GROUP,   program_KW);
 			keywordLists.put(BKW_READ_GROUP,      read_KW);
 			keywordLists.put(BKW_RINGER_GROUP,    ringer_KW);
 			keywordLists.put(BKW_SCREEN_GROUP,    screen_KW);
@@ -2155,6 +2157,14 @@ public class Run extends Activity {
 		BKW_PHONE_CALL, BKW_PHONE_RCV_INIT, BKW_PHONE_RCV_NEXT, BKW_PHONE_INFO
 	};
 
+	// ************************ PROGRAM command variables ************************
+
+	private static final String BKW_PROGRAM_INFO = "info";
+
+	private static final String program_KW[] = {			// Command list for Format
+		BKW_PROGRAM_INFO
+	};
+
 	// ***************** VOLKEYS command keywords and variables ******************
 
 	private static final String VolKeys_KW[] = {		// VolKeys command list for Format
@@ -2174,6 +2184,9 @@ public class Run extends Activity {
 		BKW_APP_BROADCAST, BKW_APP_START
 	};
 
+	// ************************** PROGRAM command variables **********************
+
+	public static String running_bas = "";  // program currently being run
 	// ***************************************************************************
 
 	private Context getContext() {
@@ -4426,6 +4439,7 @@ public class Run extends Activity {
 		new Command(BKW_MYPHONENUMBER)          { public boolean run() { return executeMYPHONENUMBER(); } },
 		new Command(BKW_EMAIL_SEND)             { public boolean run() { return executeEMAIL_SEND(); } },
 		new Command(BKW_PHONE_GROUP, CID_GROUP) { public boolean run() { return executePHONE(); } },
+		new Command(BKW_PROGRAM_GROUP,CID_GROUP){ public boolean run() { return executePROGRAM(); } },
 		new Command(BKW_SMS_GROUP, CID_GROUP)   { public boolean run() { return executeSMS(); } },
 		new Command(BKW_VOLKEYS_GROUP,CID_GROUP){ public boolean run() { return executeVOLKEYS(); } },
 		new Command(BKW_APP_GROUP,CID_GROUP)    { public boolean run() { return executeAPP(); } },
@@ -5019,6 +5033,12 @@ public class Run extends Activity {
 		new Command(BKW_PHONE_RCV_INIT)         { public boolean run() { return executePHONE_RCV_INIT(); } },
 		new Command(BKW_PHONE_RCV_NEXT)         { public boolean run() { return executePHONE_RCV_NEXT(); } },
 		new Command(BKW_PHONE_INFO)             { public boolean run() { return executePHONE_INFO(); } }
+	};
+
+	// **************** PROGRAM Group
+
+	private final Command[] program_cmd = new Command[] {	// Map program command keywords to their execution functions
+		new Command(BKW_PROGRAM_INFO)           { public boolean run() { return executePROGRAM_INFO(); } }
 	};
 
 	// **************** VOLKEYS Group
@@ -17432,6 +17452,37 @@ public class Run extends Activity {
 		if (tm == null) { tm = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); }
 		return (getSimState(tm) == TelephonyManager.SIM_STATE_READY) ? tm.getSimOperatorName() : failMsg;
 	}
+
+	// ***************************************** PROGRAM ******************************************
+
+	private boolean executePROGRAM() {							// Get phone command keyword if it is there
+		return executeSubcommand(program_cmd, "Program");			// and execute the command
+	}
+
+	private boolean executePROGRAM_INFO() {			// Return path of current program in Editor
+		int bundleIndex = getBundleArg();						// get the Bundle pointer
+		if (bundleIndex < 0)		return false;
+		if (!checkEOL())				return false;
+
+		Bundle b = theBundles.get(bundleIndex);
+
+		String pgm_name = running_bas;
+		int i = pgm_name.lastIndexOf('/');
+		if (-1 != i)
+			pgm_name = pgm_name.substring(i+1);
+
+		String sys_path = Basic.getRelativePath
+		(
+			getContext().getFilesDir().getParent(),
+			Basic.getSourcePath(null)
+		);
+
+		b.putString("BasPath", running_bas);
+		b.putString("BasName", pgm_name);
+		b.putString("SysPath", sys_path);
+		b.putDouble("UserApk", Basic.isAPK ? 1 : 0);
+		return true;
+  }
 
 	// ****************************************** EMAIL *******************************************
 

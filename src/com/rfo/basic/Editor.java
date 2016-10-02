@@ -411,6 +411,7 @@ public class Editor extends Activity {
 		if (mSavedInstanceState != null) {
 			Log.d(LOGTAG, "onResume: found savedInstanceState");
 			ProgramPath = mSavedInstanceState.getString(STATE_PROGRAM_PATH);
+			Run.running_bas = Basic.getRelativePath(ProgramPath, Basic.getSourcePath(null));
 			ProgramFileName = mSavedInstanceState.getString(STATE_PROGRAM_FILE_NAME);
 			String text = mSavedInstanceState.getString(STATE_MTEXT_DATA);
 			if (text != null) { mText.setText(text); }
@@ -862,6 +863,9 @@ public class Editor extends Activity {
 		}
 
 		if (success) {
+			// Save bas path after making it relative to rfo-basic/source
+			Run.running_bas = Basic.getRelativePath(file.getPath(), Basic.getSourcePath(null));
+
 			ProgramPath = path;									// record new path
 			ProgramFileName = fileName;							// and file name
 
