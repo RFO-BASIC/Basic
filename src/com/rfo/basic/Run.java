@@ -3426,6 +3426,11 @@ public class Run extends Activity {
 		private static final String NO_ERROR = "No error";
 		private String mErrorMsg = NO_ERROR;
 
+		private boolean checkPermission(String permission) {
+			int res = getContext().checkCallingOrSelfPermission("android.permission." + permission);
+			return (res == PackageManager.PERMISSION_GRANTED);
+		}
+    
 		// *************************** Random number function variables ***************************
 
 		private Random randomizer = null;
@@ -9956,6 +9961,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executeGRABURL() {
+		if (!checkPermission("INTERNET"))
+			return RunTimeError("Error: INTERNET permission needed.");
+
 		if (!getSVar())					return false;				// First parm is string var
 		Var.Val val = mVal;
 
@@ -10411,6 +10419,9 @@ public class Run extends Activity {
 	// ********************************************************************************************
 
 	private boolean executeWAKELOCK() {
+		if (!checkPermission("WAKE_LOCK"))
+			return RunTimeError("Error: WAKE_LOCK permission needed.");
+
 		if (!evalNumericExpression())	return false;				// Get setting
 		int code = EvalNumericExpressionValue.intValue();
 		int flags = 0;												// optional flags, default none
@@ -10459,6 +10470,9 @@ public class Run extends Activity {
 	private boolean executeWIFI_INFO() {
 		if (isEOL())					return true;		// user asked for no data
 
+		if (!checkPermission("ACCESS_WIFI_STATE"))
+			return RunTimeError("Error: ACCESS_WIFI_STATE permission needed.");
+
 		// First three return variables are strings. The IP address may be either string or numeric.
 		// The last variable is numeric.
 		byte[] types = { 2, 2, 2, 3, 1 };					// type of each variable
@@ -10498,6 +10512,9 @@ public class Run extends Activity {
 
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB_MR1)
 	private boolean executeWIFILOCK() {
+		if (!checkPermission("ACCESS_WIFI_STATE"))
+			return RunTimeError("Error: ACCESS_WIFI_STATE permission needed.");
+
 		if (!evalNumericExpression())	return false;				// Get setting
 		int code  = EvalNumericExpressionValue.intValue();
 		if (!checkEOL()) return false;
@@ -10628,6 +10645,9 @@ public class Run extends Activity {
 
 	private boolean executeVIBRATE() {
 
+		if (!checkPermission("VIBRATE"))
+			return RunTimeError("Error: VIBRATE permission needed.");
+
 		Var var = getExistingArrayVar();							// get the array variable
 		if (var == null)				return false;
 		if (!var.isNumeric()) { return RunTimeError(EXPECT_NUM_ARRAY); } // Insure that it is a numeric array
@@ -10658,9 +10678,7 @@ public class Run extends Activity {
 			if (repeat > 0) myVib.cancel();
 			else myVib.vibrate(Pattern, repeat);					// do the vibrate
 		} catch (SecurityException ex) {
-			Log.d(LOGTAG, "SecurityException on VIBRATE: do you have android.permission.VIBRATE in your Manifest?");
 			myVib = null;
-			return RunTimeError("Your app is not permitted to use VIBRATE.");
 		}
 		return true;
 	}
@@ -10673,6 +10691,8 @@ public class Run extends Activity {
 	}
 
 	private boolean executeDEVICE() {					// DEVICE or DEVICE.xxx
+		if (!checkPermission("READ_PHONE_STATE"))
+			return RunTimeError("Error: READ_PHONE_STATE permission needed.");
 		if (isNext('.')) {
 			return executeSubcommand(Device_cmd, "Device");
 		}
@@ -10823,6 +10843,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executeHTTP_POST() {
+		if (!checkPermission("INTERNET"))
+			return RunTimeError("Error: INTERNET permission needed.");
+
 		if (!getStringArg())			return false;
 		String url = StringConstant;
 		if (!isNext(','))				return false;
@@ -11337,6 +11360,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executeGR_CAMERA() {				// GR group, CAMERA subgroup
+		if (!checkPermission("CAMERA"))
+			return RunTimeError("Error: CAMERA permission needed.");
+
 		return executeSubgroupCommand(GrCamera_cmd, "Gr.Camera");
 	}
 
@@ -13924,6 +13950,13 @@ public class Run extends Activity {
 		if ((theGPS == null) && (c.id != CID_OPEN)) {
 			return RunTimeError("GPS not opened at:");
 		}
+
+		if ( !checkPermission("ACCESS_COARSE_LOCATION")
+		  || !checkPermission("ACCESS_MOCK_LOCATION")
+		  || !checkPermission("ACCESS_FINE_LOCATION")
+		  || !checkPermission("ACCESS_EXTRA_LOCATION") )
+			return RunTimeError("Error: ACCESS_COARSE_LOCATION, ACCESS_MOCK_LOCATION, ACCESS_FINE_LOCATION and ACCESS_EXTRA_LOCATION permissions needed.");
+
 		return c.run();
 	}
 
@@ -15427,6 +15460,9 @@ public class Run extends Activity {
 	// ************************************* Socket Commands **************************************
 
 	private boolean executeSOCKET() {								// Get Socket command keyword if it is there
+		if (!checkPermission("INTERNET"))
+			return RunTimeError("Error: INTERNET permission needed.");
+
 		return executeSubcommand(Socket_cmd, "Socket");
 	}
 
@@ -16003,6 +16039,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executeFTP_OPEN() {
+		if (!checkPermission("INTERNET"))
+			return RunTimeError("Error: INTERNET permission needed.");
+
 		if (!getStringArg()) return false;							// URL
 		String url = StringConstant;
 
@@ -16302,6 +16341,10 @@ public class Run extends Activity {
 		if ((mChatService == null) && (c.id != CID_OPEN) && (c.id != CID_STATUS)) {
 			return RunTimeError("Bluetooth not opened");
 		}
+
+		if (!checkPermission("BLUETOOTH") || !checkPermission("BLUETOOTH_ADMIN"))
+			return RunTimeError("Error: BLUETOOTH and BLUETOOTH_ADMIN permissions needed.");
+
 		return c.run();
 	}
 
@@ -17170,6 +17213,9 @@ public class Run extends Activity {
 
 	private boolean executeSMS_SEND() {
 
+		if (!checkPermission("SEND_SMS"))
+			return RunTimeError("Error: SEND_SMS permission needed.");
+
 		if (!getStringArg())			return false;
 		String number = StringConstant;
 		if (!isNext(','))				return false;
@@ -17189,6 +17235,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executeSMS_RCV_INIT() {
+		if (!checkPermission("RECEIVE_SMS"))
+			return RunTimeError("Error: RECEIVE_SMS permission needed.");
+
 		if (!checkEOL())				return false;
 
 		registerReceiver(receiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
@@ -17243,6 +17292,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executePHONE_DIAL(String action) {			// Dial or call a phone number
+		if ((Intent.ACTION_CALL == action) && (!checkPermission("CALL_PHONE")))
+			return RunTimeError("Error: CALL_PHONE permission needed.");
+
 		if (!getStringArg())			return false;
 		if (!checkEOL())				return false;
 		String number = "tel:" + StringConstant;
@@ -17262,6 +17314,9 @@ public class Run extends Activity {
 	}
 
 	private boolean executePHONE_RCV_INIT() {
+		if (!checkPermission("READ_PHONE_STATE"))
+			return RunTimeError("Error: READ_PHONE_STATE permission needed.");
+
 		if (!checkEOL())				return false;
 
 		if (phoneRcvInited)				return true;
@@ -17313,6 +17368,9 @@ public class Run extends Activity {
 
 	private boolean executeMYPHONENUMBER() {
 
+		if (!checkPermission("READ_PHONE_STATE"))
+			return RunTimeError("Error: READ_PHONE_STATE permission needed.");
+
 		if (!getSVar())					return false;
 		Var.Val val = mVal;
 		if (!checkEOL())				return false;
@@ -17325,6 +17383,9 @@ public class Run extends Activity {
 
 	private boolean executePHONE_INFO() {		// This is dynamic info. Some static
 												// phone info is available from executeDEVICE().
+		if (!checkPermission("READ_PHONE_STATE"))
+			return RunTimeError("Error: READ_PHONE_STATE permission needed.");
+
 		int bundleIndex = getBundleArg();						// get the Bundle pointer
 		if (bundleIndex < 0)			return false;
 		if (!checkEOL())				return false;
@@ -17612,6 +17673,8 @@ public class Run extends Activity {
 
 		String urlString = StringConstant;
 		String protocolName = urlString.substring(0,4);
+		if ((protocolName.equals("http")) && (!checkPermission("INTERNET")))
+			return RunTimeError("Error: INTERNET permission needed.");
 		if (!protocolName.equals("http") && !protocolName.equals("java") && !protocolName.equals("file")) {
 		urlString = getURL(urlString);						// Get URL with full path to file in file system or assets.
 															// If neither file nor asset exists,
@@ -17700,6 +17763,9 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_html_post() {
+		if (!checkPermission("INTERNET"))
+			return RunTimeError("Error: INTERNET permission needed.");
+
 		if (!getStringArg())			return false;
 		String url = StringConstant;
 
