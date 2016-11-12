@@ -13954,8 +13954,8 @@ public class Run extends Activity {
 		if ( !checkPermission("ACCESS_COARSE_LOCATION")
 		  || !checkPermission("ACCESS_MOCK_LOCATION")
 		  || !checkPermission("ACCESS_FINE_LOCATION")
-		  || !checkPermission("ACCESS_EXTRA_LOCATION") )
-			return RunTimeError("Error: ACCESS_COARSE_LOCATION, ACCESS_MOCK_LOCATION, ACCESS_FINE_LOCATION and ACCESS_EXTRA_LOCATION permissions needed.");
+		  || !checkPermission("ACCESS_LOCATION_EXTRA_COMMANDS") )
+			return RunTimeError("Error: ACCESS_COARSE_LOCATION, ACCESS_MOCK_LOCATION, ACCESS_FINE_LOCATION and ACCESS_LOCATION_EXTRA_COMMANDS permissions needed.");
 
 		return c.run();
 	}
