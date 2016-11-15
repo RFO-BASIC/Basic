@@ -18076,24 +18076,26 @@ public class Run extends Activity {
 	}
 
 	private boolean executeAPP_BROADCAST() {					// Broadcast an Intent to application(s)
+		clearErrorMsg();
 		if (isEOL())					return true;			// nothing to do
 
 		Intent intent = buildIntentForAPP();
 		if (intent != null) {
 			try { Run.this.sendBroadcast(intent); }
-			catch (Exception e) { return RunTimeError(e); }
+			catch (Exception e) { writeErrorMsg(e.toString()); }
 			return true;
 		}
 		return false;
 	}
 
 	private boolean executeAPP_START() {						// Start an Application's Activity via Intent
+		clearErrorMsg();
 		if (isEOL())					return true;			// nothing to do
 
 		Intent intent = buildIntentForAPP();
 		if (intent != null) {
 			try { Run.this.startActivity(intent); }
-			catch (Exception e) { return RunTimeError(e); }
+			catch (Exception e) { writeErrorMsg(e.toString()); }
 			return true;
 		}
 		return false;
