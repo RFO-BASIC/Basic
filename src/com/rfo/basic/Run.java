@@ -13500,6 +13500,18 @@ public class Run extends Activity {
 		String errMsg = null;
 		MediaPlayer mp = null;
 		Context context = getApplicationContext();
+		// Is it an online audio resource?
+		if (fileName.startsWith("http")) {
+			try {
+				mp = new MediaPlayer();
+				mp.setDataSource(fileName);
+				mp.prepare();
+			} catch (IOException e) {
+				writeErrorMsg("Error opening audio resource");
+			}
+			return mp;
+		}
+		// Else it must be a local audio file
 		File file = new File(Basic.getDataPath(fileName));
 		if (file.exists()) {
 			Uri uri = Uri.fromFile(file);								// Create Uri for the file
