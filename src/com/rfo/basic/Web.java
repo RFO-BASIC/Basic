@@ -35,7 +35,9 @@ import org.apache.http.util.EncodingUtils;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Build;
@@ -124,6 +126,28 @@ public class Web extends Activity {
 			public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
 				//Required functionality here
 				return super.onJsAlert(view, url, message, result);
+			}
+			// The 2 following methods allow to play fullscreen HTML5 videos:
+			Dialog d;
+			@Override
+			public void onShowCustomView (View v, final CustomViewCallback c) {
+				d = new Dialog (Basic.getContextManager().getContext(), 
+						android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+				v.setBackgroundColor(getResources().getColor(android.R.color.black));
+				d.setContentView(v);
+				d.setOnDismissListener(new DialogInterface.OnDismissListener() {
+					@Override
+					public void onDismiss (DialogInterface d) {
+						c.onCustomViewHidden();
+						onHideCustomView();
+					}
+				});
+				d.show();
+			}
+			@Override
+			public void onHideCustomView () {
+				d.hide();
+				super.onHideCustomView();
 			}
 		});
 
