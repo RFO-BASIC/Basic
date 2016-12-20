@@ -1268,10 +1268,12 @@ public class Run extends Activity {
 
 	private static final String BKW_ZIP_READ = "read";
 	private static final String BKW_ZIP_WRITE = "write";
+	private static final String BKW_ZIP_COUNT = "count";
 
 	private static final String zip_KW[] = {			// Command list for Format
 		BKW_OPEN, BKW_CLOSE, BKW_DIR,
 		BKW_ZIP_READ, BKW_ZIP_WRITE,
+		BKW_ZIP_COUNT,
 	};
 
 	// *********************************** READ keywords ***********************************
@@ -4540,6 +4542,7 @@ public class Run extends Activity {
 		new Command(BKW_DIR, CID_EX)            { public boolean run()        { return executeZIP_DIR(); } },
 		new Command(BKW_ZIP_READ, CID_READ)     { public boolean run(int fId) { return executeZIP_READ(fId); } },
 		new Command(BKW_ZIP_WRITE, CID_WRITE)   { public boolean run(int fId) { return executeZIP_WRITE(fId); } },
+		new Command(BKW_ZIP_COUNT, CID_EX)      { public boolean run()        { return executeZIP_COUNT(); } },
 	};
 
 	// **************** READ Group - READ.DATA
@@ -9331,6 +9334,29 @@ public class Run extends Activity {
 			if (!checkFile(fileNumber))		return false;			// check runtime errors
 		}
 		return c.run(fileNumber);
+	}
+
+	private boolean executeZIP_COUNT() {
+		if (!getStringArg())			return false;			// get the path
+		String fileName = StringConstant;
+		if (!isNext(','))				return false;			// parse the ,<nvar>
+		if (!getNVar())					return false;			// get the var to put the size value into
+		Var.Val val = mVal;
+		if (!checkEOL())				return false;
+
+		long entries = 0;
+		File file = new File(Basic.getDataPath(fileName));
+		ZipFile reader = null;
+
+		try {
+			try { reader = new ZipFile(file); } 				// Open zip file for reading
+			catch (Exception e) { /* ignore inexisting zip -> return 0 as number of entries */ }
+		} finally {
+			try { if (reader != null) { entries = reader.size(); reader.close(); } }
+			catch (IOException e) { return RunTimeError("I/O error at:"); }
+		}
+		val.val(entries);
+		return true;
 	}
 
 	private boolean executeZIP_DIR() {
