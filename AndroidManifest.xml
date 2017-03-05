@@ -5,7 +5,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2016 Paul Laughton
+Copyright (C) 2010 - 2017 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -30,8 +30,8 @@ This file is part of BASIC! for Android
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.rfo.basic"
-    android:versionCode="1901"
-    android:versionName="1.90.01"
+    android:versionCode="1902"
+    android:versionName="1.90.02"
     android:installLocation="auto"
     tools:ignore="UnusedAttribute"> <!-- installLocation not available in API 7 -->
 
