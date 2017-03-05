@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2016 Paul Laughton
+Copyright (C) 2010 - 2017 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -123,6 +123,7 @@ import android.app.PendingIntent;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.ActivityNotFoundException;
 //import android.content.ClipData;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -8237,10 +8238,15 @@ public class Run extends Activity {
 
 			if (!getVar()) return false;						// get the variable
 			Var.Val val = mVal;
-			if (val.isNumeric()) {								// if var is numeric
-				val.val(readval.nval());						// copy the numeric value to the variable
-			} else {											// else var is string
-				val.val(readval.sval());						// copy the string value to the variable
+			try {
+				if (val.isNumeric()) {								// if var is numeric
+					val.val(readval.nval());						// copy the numeric value to the variable
+				} else {											// else var is string
+					val.val(readval.sval());						// copy the string value to the variable
+				}
+			}
+			catch (InvalidParameterException ex) {
+				return RunTimeError(ex.getLocalizedMessage());
 			}
 		} while (isNext(','));									// loop while there are variables
 
@@ -18120,7 +18126,7 @@ public class Run extends Activity {
 		Intent intent = buildIntentForAPP();
 		if (intent != null) {
 			try { Run.this.sendBroadcast(intent); }
-			catch (Exception e) { writeErrorMsg(e.toString()); }
+			catch (ActivityNotFoundException e) { writeErrorMsg(e.toString()); }
 			return true;
 		}
 		return false;
@@ -18133,7 +18139,7 @@ public class Run extends Activity {
 		Intent intent = buildIntentForAPP();
 		if (intent != null) {
 			try { Run.this.startActivity(intent); }
-			catch (Exception e) { writeErrorMsg(e.toString()); }
+			catch (ActivityNotFoundException e) { writeErrorMsg(e.toString()); }
 			return true;
 		}
 		return false;
