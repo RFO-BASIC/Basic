@@ -5,7 +5,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2015 Paul Laughton
+Copyright (C) 2010 - 2017 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -33,6 +33,7 @@ This file is part of BASIC! for Android
 
     <!-- Activity labels; for "run_name" and "textinput_name" see setup.xml -->
     <string name="editor_name">BASIC! Program Editor</string>
+    <string name="about_name">About BASIC!</string>
     <string name="load_name">BASIC! Load File</string>
     <string name="delete_name">BASIC! Delete File</string>
     <string name="help_name">BASIC! Commands</string>
@@ -122,5 +123,19 @@ This file is part of BASIC! for Android
 	<string name="no_icon">Could not create icon from icon file.</string>
 	<string name="instr_1">Select Cancel to go back to setup</string>
 	<string name="instr_2">or OK to try to create the shortcut anyway.</string>
+
+	<!-- About screen text -->
+	<string name="about_text1">You are using version %s of BASIC!</string>
+	<string name="about_text2">\nThe Richard Feynman Observatory\nBASIC!
+								for Android\ncreated by Paul Laughton.\n\nTo
+								learn more about BASIC!,\nselect one of the following:</string>
+	<!-- About button text -->
+	<string name="about_text_btn_home">BASIC! Home Page</string>
+	<string name="about_text_btn_forum">BASIC! User Forum</string>
+	<string name="about_text_btn_programs">BASIC! Users\' Programs\nWritten by members of the user forum</string>
+	<string name="about_text_btn_bintray">BASIC! on Bintray\nManual, apk, and release notes</string>
+	<string name="about_text_btn_github">BASIC! on GitHub\nSource and bug reports</string>
+	<string name="about_text_btn_license">BASIC! Open-Source License\nThe GNU General Public License, version 3</string>
+	<string name="about_text_btn_privpol">BASIC! Privacy Policy</string>
 
 </resources>

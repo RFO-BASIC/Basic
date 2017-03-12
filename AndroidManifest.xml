@@ -148,34 +148,41 @@ This file is part of BASIC! for Android
 
         <activity
             android:id="@+id/settings_screen"
-            android:name="Settings"
+            android:name=".Settings"
             android:label="@string/settings_name" >
         </activity>
 
         <activity
+            android:id="@+id/about_screen"
+            android:name=".About"
+            android:label="@string/about_name"
+            android:hardwareAccelerated="false" >
+        </activity>
+
+        <activity
             android:id="@+id/load_screen"
-            android:name="LoadFile"
+            android:name=".LoadFile"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/load_name" >
         </activity>
 
         <activity
             android:id="@+id/delete_screen"
-            android:name="Delete"
+            android:name=".Delete"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/delete_name" >
         </activity>
 
         <activity
             android:id="@+id/run_screen"
-            android:name="Run"
+            android:name=".Run"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/run_name" >
         </activity>
 
         <activity
             android:id="@+id/search_screen"
-            android:name="Search"
+            android:name=".Search"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/search_name"
             android:windowSoftInputMode="stateVisible|adjustResize"
@@ -184,21 +191,21 @@ This file is part of BASIC! for Android
 
         <activity
             android:id="@+id/format_screen"
-            android:name="Format"
+            android:name=".Format"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/format_name" >
         </activity>
 
         <activity
             android:id="@+id/help_screen"
-            android:name="Help"
+            android:name=".Help"
             android:label="@string/help_name"
             android:windowSoftInputMode="stateAlwaysVisible" >
         </activity>
 
         <activity
             android:id="@+id/gr_screen"
-            android:name="GR"
+            android:name=".GR"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/gr_name"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
@@ -206,21 +213,21 @@ This file is part of BASIC! for Android
 
         <activity
             android:id="@+id/select_screen"
-            android:name="Select"
+            android:name=".Select"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/select_name" >
         </activity>
 
         <activity
             android:id="@+id/text_input_screen"
-            android:name="TextInput"
+            android:name=".TextInput"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/textinput_name" >
         </activity>
 
         <activity
             android:id="@+id/text_get_screen"
-            android:name="TGet"
+            android:name=".TGet"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/textinput_name"
             android:windowSoftInputMode="stateVisible|adjustResize" >
@@ -228,7 +235,7 @@ This file is part of BASIC! for Android
 
         <activity
             android:id="@+id/web_view_screen"
-            android:name="Web"
+            android:name=".Web"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/web_view_name"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
@@ -236,7 +243,7 @@ This file is part of BASIC! for Android
 
         <activity
             android:id="@+id/camera_screen"
-            android:name="CameraView"
+            android:name=".CameraView"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="Camera"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" >
@@ -244,7 +251,7 @@ This file is part of BASIC! for Android
 
         <activity
             android:id="@+id/notify_screen"
-            android:name="HandleNotify"
+            android:name=".HandleNotify"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="Notify"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" >
@@ -252,7 +259,7 @@ This file is part of BASIC! for Android
 
         <activity
             android:id="@+id/device_list_screen"
-            android:name="DeviceListActivity"
+            android:name=".DeviceListActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:label="@string/select_device"
             android:theme="@android:style/Theme.Dialog" >

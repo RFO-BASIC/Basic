@@ -627,16 +627,11 @@ public class Editor extends Activity {
 				return true;
 
 			case R.id.help:									// COMMANDS
-				startActivity(new Intent(this, Help.class));	// Start the help activity
+				startActivity(new Intent(this, Help.class));	// Start the Help activity
 				return true;
 
 			case R.id.about:								// ABOUT
-				String version = getString(R.string.version);	// Get the version string
-				String url = "https://bintray.com/rfo-basic/android/RFO-BASIC/v"	// add it to the URL
-							+ version + "/view/read";
-				Intent i = new Intent(Intent.ACTION_VIEW);		// Go to the About web page
-				i.setData(Uri.parse(url));
-				startActivity(i);
+				startActivity(new Intent(this, About.class));	// Start the About activity
 				return true;
 
 			case R.id.exit:									// EXIT
