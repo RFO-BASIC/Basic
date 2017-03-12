@@ -5,7 +5,7 @@ Android devices.
 
 This file is part of BASIC! for Android
 
-Copyright (C) 2010 - 2015 Paul Laughton
+Copyright (C) 2010 - 2017 Paul Laughton
 
     BASIC! is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -478,13 +478,12 @@ public class Basic extends Activity {
 		return new CipherInputStream(inputStream, cipher);
 	}
 
-  /**
-   * Get the relative path from one file to another.
-   * If one of the provided resources does not exist, it
-   * is assumed to be a file unless it ends with '/'.
-   *
-   **/
-  public static String getRelativePath(String targetPath, String basePath) {
+	/**
+	 * Get the relative path from one file to another.
+	 * If one of the provided resources does not exist,
+	 * it is assumed to be a file unless it ends with '/'.
+	 */
+	public static String getRelativePath(String targetPath, String basePath) {
 
       // Normalize the paths and split on File separator
       String normalizedTargetPath = targetPath;
@@ -508,7 +507,7 @@ public class Basic extends Activity {
       }
 
       if (commonIndex == 0) {
-          // No single common path element. This mostlikely indicates differing drives.
+          // No single common path element. This most likely indicates differing drives.
           // These paths cannot be relativized.
           return targetPath;
       }
@@ -534,9 +533,22 @@ public class Basic extends Activity {
               relative.append("../");
           }
       }
-      relative.append(normalizedTargetPath.substring(common.length()));
-      return relative.toString();
-  }
+
+		/* v1.91 fix v1.90.02 bug:
+		 * If you rotate the device while running the Editor,
+		 * this method is called, and:
+		 *   normalizedTargetPath and normalizedBasePath are the same
+		 *   common is <either normalized path> + "/"
+		 * So common.length() is one more than normalizedTargetPath.length()
+		 * and the substring() call crashes.
+		 * In this case you want to append nothing (empty substring), so I wrapped
+		 * the append in a length test. Works, but it's a hack. TODO: fix it right.
+		 */
+		if (normalizedTargetPath.length() > common.length() ) {
+			relative.append(normalizedTargetPath.substring(common.length()));
+		}
+		return relative.toString();
+	}
 
 	public static int loadProgramFileToList(boolean isFullPath, String path, ArrayList<String> list) {
 
