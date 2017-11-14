@@ -1168,9 +1168,10 @@ public class Run extends Activity {
 
 	private static final String BKW_FN_DEF = "def";
 	private static final String BKW_FN_RTN = "rtn";
+	private static final String BKW_FN_IMPORT = "import";		// -humpty 0100
 
 	private static final String fn_KW[] = {				// Command list for Format
-		BKW_FN_DEF, BKW_FN_RTN, BKW_END
+		BKW_FN_DEF, BKW_FN_RTN, BKW_END, BKW_FN_IMPORT		// -humpty 0100
 	};
 
 	// ********************************** SWITCH keywords **********************************
@@ -4471,6 +4472,7 @@ public class Run extends Activity {
 		new Command(BKW_FN_DEF)         { public boolean run() { return executeFN_DEF(); } },
 		new Command(BKW_FN_RTN)         { public boolean run() { return executeFN_RTN(); } },
 		new Command(BKW_END)            { public boolean run() { return executeFN_END(); } },
+		new Command(BKW_FN_IMPORT)	{ public boolean run() { return executeFN_IMPORT(); } }	// -humpty 0100
 	};
 
 	// **************** SW Group - switch statements
@@ -8315,7 +8317,51 @@ public class Run extends Activity {
 		}
 		return RunTimeError("No fn.end for this function");			// end of program, fn.end not found
 	}
+//------------------------------------------------------
+	private boolean executeFN_IMPORT()		// -humpty 0100 Import main variables
+	{
+	 if (FunctionStack.empty())			// must be inside a function
+		return RunTimeError("misplaced fn.import");
+	 do
+	 {
+	  Var var = parseVar(!USER_FN_OK);		// get name, don't allow user-functions
 
+	  if (var == null) return false;		// no name or other error
+	  var = var.copy();				// don't use the 'working' Var
+
+	  if (var.isArray() && !isNext(']'))		// also inc past ']' for arrays
+		return RunTimeError(EXPECT_ARRAY_NO_INDEX);	// Array must not have any indices
+
+	  if (searchVar(mSymbolTable, var) != null)	// make sure it doesn't clash with a local var
+		return RunTimeError("var Duplicate: "+var.name());
+
+							// now search for it 'globally'
+	  Var gVar = null;				// assume not found
+// *Not Working:   gVar = searchVar(mGlobalSymbolTable, var);	// search global symbols
+// *Not preferred: for (Var.Table symbols : mSymbolTables)	// search all namespaces (from 0?)
+	  //~ {
+	   //~ gVar = searchVar(symbols, var);
+	   //~ if (gVar != null) break;
+	  //~ }
+
+	  Var.Table symbols = mSymbolTables.get(0);	// search only the main program
+	  gVar = searchVar(symbols, var);
+
+	  if (gVar == null) return RunTimeError("var Not Found: "+var.name());	// not found
+
+	  if (var.isArray())				// if this parm is an array
+	   var.arrayDef(gVar.arrayDef());		// get a reference to the caller's ArrayDef
+	  else						// not an array
+	   var.val(gVar.val());				// get value reference
+
+	  insertNewVar(var);				// insert into the current symbol table
+
+//	  PrintShow(var.name());
+	 } while (isNext(','));				// keep going while caller args exist
+
+	 return true;
+	}//_FN_IMPORT
+//------------------------------------------------------
 	private boolean executeFN_RTN() {
 		if (FunctionStack.empty()) {						// Insure RTN actually called from executing function
 			return RunTimeError("misplaced fn.rtn");
