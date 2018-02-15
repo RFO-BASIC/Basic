@@ -3911,6 +3911,8 @@ public class Run extends Activity {
 		Exit = false;									// Exits program and signals caller to exit, too
 		mEventList.clear();								// events from other Activities
 
+		mBlockVolKeys = false;			// don't block volkeys -humpty 0110 (ack:aFox)
+
 		ConsoleLongTouch = false;
 		TouchedConsoleLine = 0;							// first valid line number is 1
 		interruptResume = -1;
