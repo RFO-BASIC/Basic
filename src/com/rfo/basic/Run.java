@@ -3391,6 +3391,8 @@ public class Run extends Activity {
 		private ProgramLine ExecutingLineBuffer = null;		// Holds the current line being executed
 		private int LineIndex = 0;							// Current displacement into ExecutingLineBuffer's line
 
+		private boolean inMainScope = true;			// -humpty 0120 scope flag for variable lookup
+		private boolean intPrev_inMainScope = true;		// interrupt memory for previous scope
 		private Var.Table mGlobalSymbolTable;				// The symbol table that contains all global Vars
 		private Var.Table mSymbolTable;						// The current symbol table, all non-global Vars in scope
 		private Stack<Var.Table>mSymbolTables;				// Stack of symbol tables to search
@@ -3846,6 +3848,9 @@ public class Run extends Activity {
 					interruptResume = ExecutingLineIndex;	// Set the resume Line Number
 					ExecutingLineIndex = intrpt.line();		// Set the ISR line number
 					IfElseStack.push(IEinterrupt);
+
+					intPrev_inMainScope = inMainScope;	// -humpty 0120 save a copy of the scope flag
+					inMainScope = true;			// start scope in main
 				}
 			}
 		} // serviceInterrupt()
@@ -3863,6 +3868,9 @@ public class Run extends Activity {
 
 			ExecutingLineIndex = interruptResume;
 			interruptResume = -1;
+
+			inMainScope = intPrev_inMainScope;		// -humpty 0120 restore scope flag to previous
+
 			// Pull the IEinterrupt from the If Else stack
 			// It is possible that IFs were executed in the interrupt code
 			// so pop entries until we get to the IEinterrupt
@@ -3912,6 +3920,7 @@ public class Run extends Activity {
 		mEventList.clear();								// events from other Activities
 
 		mBlockVolKeys = false;			// don't block volkeys -humpty 0110 (ack:aFox)
+		inMainScope = true;			// -humpty 0120 scope for variable lookup is in main
 
 		ConsoleLongTouch = false;
 		TouchedConsoleLine = 0;							// first valid line number is 1
@@ -5405,15 +5414,24 @@ public class Run extends Activity {
 		Var v = null;
 //		Var v = searchVar(mGlobalSymbolTable, var);	// first search global symbols
 //		if (v == null) {
-			if (interruptResume < 0) {				// normal operation, not in interrupt
-				v = searchVar(mSymbolTable, var);	// search local symbols
-			} else {										// in interrupt
-				for (Var.Table symbols : mSymbolTables) {	// search all tables
-					v = searchVar(symbols, var);
-					if (v != null) { break; }
-				}
-			}
-			if (v != null)		{ return v; }
+			//~ if (interruptResume < 0) {				// normal operation, not in interrupt
+				//~ v = searchVar(mSymbolTable, var);	// search local symbols
+			//~ } else {										// in interrupt
+				//~ for (Var.Table symbols : mSymbolTables) {	// search all tables
+					//~ v = searchVar(symbols, var);
+					//~ if (v != null) { break; }
+				//~ }
+			//~ }
+//		}
+		if (inMainScope)				// -humpty 0120 use this flag for scope resolution
+		{
+		  Var.Table symbols = mSymbolTables.get(0);	// search only the main program
+		  v = searchVar(symbols, var);
+		}
+		else
+		 v=searchVar(mSymbolTable, var);		// search local symbols
+
+		if (v != null)		{ return v; }
 //		}
 		return var.copy();							// not in lists of variable names, return new Var
 	}
@@ -5465,10 +5483,20 @@ public class Run extends Activity {
 	// Get insertion point (-index - 1) so name list will still be in alphabetical order.
 	private void insertNewVar(Var var) {			// make a new var table entry
 		String name = var.name();
+		Var.Table symbols;
+
+		if (inMainScope)				// -humpty 0121 use this flag for scope resolution
+		 symbols = mSymbolTables.get(0);			// search only the main program
+		else
+		 symbols = mSymbolTable;				// search local symbols
+
 		// Throws exception if var already exists. If necessary, avoid by testing var.isNew() first.
-		int index = newVarIndex(mSymbolTable.mVarNames, name);
+		// int index = newVarIndex(mSymbolTable.mVarNames, name);
+
+		int index = newVarIndex(symbols.mVarNames, name);
 		var.notNew();
-		mSymbolTable.add(index, name, var);			// create new intry in symbol table
+		// mSymbolTable.add(index, name, var);			// create new intry in symbol table
+		symbols.add(index, name, var);
 	}
 
 	// ************************************* end of getVar() **************************************
@@ -8497,6 +8525,9 @@ public class Run extends Activity {
 		mSymbolTable = new Var.Table();						// start a new local symbol table
 		mSymbolTables.push(mSymbolTable);					// and push it on the stack of tables
 
+		boolean prev_inMainScope = inMainScope;				// -humpty 0120 save a copy of the scope flag
+		inMainScope = false;						// no longer in main (0121 place before insertNewVar)
+
 		// Start the new symbol table with the function parameter names.
 		for (Var.FunctionParameter parm : parms) {
 			insertNewVar(parm.var());
@@ -8508,9 +8539,11 @@ public class Run extends Activity {
 
 		// The function body is executed in a recursive call to RunLoop().
 		// FN.RTN or FN.END will signal RunLoop to exit, returning pass/fail state of the function here.
-		return RunLoop();
+		boolean flag = RunLoop();
 		// Note that the part of RunLoop after StatementExecuter runs twice,
 		// once after FN.RTN/END and again now, when this method exits.
+		inMainScope = prev_inMainScope;					// -humpty 0120 restore scope flag to previous
+		return flag;
 	} // doUserFunction
 
 	// ************************************ Switch Statements *************************************
