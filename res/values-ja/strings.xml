@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+*********************************************************************************
+BASIC! is an implementation of the Basic programming language for
+Android devices.
+
+Copyright (C) 2010 - 2017 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+
+**********************************************************************************
+-->
+
+<resources>
+    <!-- For "app_name" and "version" see setup.xml -->
+    <string name="hello">Hello World, BASIC!</string>
+
+    <!-- Activity labels; for "run_name" and "textinput_name" see setup.xml -->
+    <string name="editor_name">BASIC! プログラムエディター</string>
+    <string name="about_name">BASIC!について</string>
+    <string name="load_name">BASIC! ファイルロード</string>
+    <string name="delete_name">BASIC! ファイル削除</string>
+    <string name="help_name">BASIC! コマンドヘルプ</string>
+    <string name="settings_name">BASIC! 設定</string>
+    <string name="search_name">BASIC! 検索</string>
+    <string name="format_name">BASIC! フォーマット</string>
+    <string name="gr_name">グラフィックス</string>
+    <string name="debug_name">BASIC! デバッガー</string>
+    <string name="play_sound_name"> </string>
+    <string name="select_device">デバイスを選択</string>
+    <string name="title_paired_devices">ペアされたデバイス</string>
+    <string name="title_other_devices">その他のデバイス</string>
+
+    <string name="button_scan">スキャン</string>
+    <string name="none_found">何も見つかりませんでした</string>
+    <string name="scanning">スキャン中</string>
+    <string name ="none_paired">ペアされたデバイスはありません</string>
+    <string name ="web_view_name">ウエブビュー</string>
+
+    <string name="intro_getline">BASIC! ショートカットビルダー</string>
+    <string name="enter_text_label">プログラムファイル名</string>
+    <string name="edit_button_label">編集</string>
+    <string name="delete_button_label">削除</string>
+    <string name="enter_text2_label">アイコンファイル名</string>
+    <string name="enter_text3_label">ショートカット名</string>
+
+    <string name="cancel_button_label">キャンセル</string>
+    <string name="ok_button_label">OK</string>
+    <string name="yes_button_label">はい</string>
+    <string name="no_button_label">いいえ</string>
+    <string name="choose_one">選択</string>
+    <string name="hex_color">16進カラー値を入力</string>
+    <string name="color_chars">0123456789abcdefxABCDEFX#</string>
+
+    <string name="stt_prompt">&quot;BASIC! 音声をテキストに&quot;</string>
+
+	<!-- Editor menu items -->
+	
+	<string name="load">ロード</string><string name="run">実行</string>
+	<string name="save">保存</string>
+	<string name="delete">削除</string>
+	<string name="search">検索</string>
+	<string name="format">フォーマット</string>
+	<string name="clear">クリアー</string>
+	<string name="load_run">ロードして実行</string>
+	<string name="save_run">保存して実行</string>
+	<string name="settings">設定</string>
+	<string name="spawn">アプリケーションを作成</string>
+	<string name="help">コマンド</string>
+	<string name="about">BASIC!について</string>
+	<string name="exit">終了</string>
+
+	<!-- Console menu items -->
+	<string name="stop">ストップ</string>
+	<string name="editor">エディター</string>
+	<string name="pause">ポーズ</string>
+
+	<!-- Preference options to put Editor menu items on Action Bar -->
+	<string name="pref_MAB_key">editor_items_on_action_bar</string>
+	<string name="pref_MAB_title">アクションバーのメニュー項目</string>
+	<string name="pref_MAB_summary">エディターメニュー項目をアクションバーに表示</string>
+	<string name="pref_MAB_run_key">editor_menu_run_on_action_bar</string>
+	<string name="pref_MAB_run_title">アクションバーに『実行』を表示</string>
+	<string name="pref_MAB_run_summary">スペースがあれば『実行』をアクションバーに表示</string>
+	<string name="pref_MAB_load_key">editor_menu_load_on_action_bar</string>
+	<string name="pref_MAB_load_title">アクションバーに『ロード』を表示</string>
+	<string name="pref_MAB_load_summary">スペースがあれば『ロード』をアクションバーに表示</string>
+	<string name="pref_MAB_save_key">editor_menu_save_on_action_bar</string>
+	<string name="pref_MAB_save_title">アクションバーに『保存』を表示</string>
+	<string name="pref_MAB_save_summary">スペースがあれば『保存』をアクションバーに表示</string>
+	<string name="pref_MAB_clear_key">editor_menu_clear_on_action_bar</string>
+	<string name="pref_MAB_clear_title">アクションバーに『クリアー』を表示</string>
+	<string name="pref_MAB_clear_summary">スペースがあれば『クリアー』をアクションバーに表示</string>
+	<string name="pref_MAB_search_key">editor_menu_search_on_action_bar</string>
+	<string name="pref_MAB_search_title">アクションバーに『検索』を表示</string>
+	<string name="pref_MAB_search_summary">スペースがあれば『検索』をアクションバーに表示</string>
+	<string name="pref_MAB_exit_key">editor_menu_exit_on_action_bar</string>
+	<string name="pref_MAB_exit_title">アクションバーに『終了』を表示</string>
+	<string name="pref_MAB_exit_summary">スペースがあれば『終了』をアクションバーに表示</string>
+
+	<!-- Shortcut warnings -->
+	<string name="no_prog_name">BASIC!プログラム名が入力されていません</string>
+	<string name="no_icon_name">アイコンファイル名が入力されていません</string>
+	<string name="no_shortcut_name">ショートカット名が入力されていません</string>
+	<string name="no_prog_file">BASIC!プログラムがありません (後で作ることができます)</string>
+	<string name="no_icon_file">アイコンファイルがありません</string>
+	<string name="no_icon">アイコンファイルからアイコンを作ることができません</string>
+	<string name="instr_1">設定に戻るためにキャンセルを選択</string>
+	<string name="instr_2">又は、ショートカットを作るためにOKを選択</string>
+
+	<!-- About screen text -->
+	<string name="about_text1">BASIC! バージョン %s を使用中  </string>
+	<string name="about_text2">\nThe Richard Feynman Observatory\nBASIC!
+								for Android\ncreated by Paul Laughton.\n\nTo
+								learn more about BASIC!,\nselect one of the following:</string>
+	<!-- About button text -->
+	<string name="about_text_btn_home">BASIC! ホームページ</string>
+	<string name="about_text_btn_forum">BASIC! ユーザーフォーラム</string>
+	<string name="about_text_btn_programs">BASIC! Users\' Programs\nWritten by members of the user forum</string>
+	<string name="about_text_btn_bintray">BASIC! on Bintray\nManual, apk, and release notes</string>
+	<string name="about_text_btn_github">BASIC! on GitHub\nSource and bug reports</string>
+	<string name="about_text_btn_license">BASIC! Open-Source License\nThe GNU General Public License, version 3</string>
+	<string name="about_text_btn_privpol">BASIC! プライバシーポリシー</string>
+	<string name="Color_Scheme">画面配色の選択</string>
+	<string name="Select_Color_Scheme">既定の画面配色から選択</string>
+	<string name="Custom_Colors">独自の画面配色にする</string>
+	<string name="Define_Your_Own_Colors">画面の配色を、自分の好みに変更</string>
+	<string name="Screen_Colors">画面の配色</string>
+	<string name="Select_a_color_scheme_or_custom_colors">既定の画面配色を選択するか独自の配色を決める</string>
+	<string name="Text_Color">文字の色</string>
+	<string name="Set_Text_Color">文字の色を設定</string>
+	<string name="Background_Color">背景の色</string>
+	<string name="Line_Color">線の色</string>
+	<string name="Set_Background_Color">背景の色を設定</string>
+	<string name="Set_Line_Color">線の色を設定</string>
+	<string name="Highlight_Color">強調色</string>
+	<string name="Set_Highlight_Color">強調色の設定</string>
+	<string name="Console_Settings">コンソールの設定</string>
+	<string name="Setting_for_Console_and_Other_Text_Screens">コンソールとテキストスクリーンに関する設定</string>
+	<string name="Font_Size">文字（フォント）のサイズ</string>
+	<string name="Select_Font_Size_for_Console">文字の大きさを小,中,大から選択</string>
+	<string name="Type_face">活字書体</string>
+	<string name="Select_Typeface_for_Consol">活字書体を選択</string>
+	<string name="Console_Menu">アウトプットコンソールメニュー</string>
+	<string name="Display_Menu_in_Console_and_TGet">アウトプットコンソールとTGETウインドウにメニューを表示</string>
+	<string name="Console_Lines">アウトプットコンソール下線</string>
+	<string name="Use_Lined_Console">アウトプットコンソールに下線を表示</string>
+	<string name="Empty_Console_Color">アウトプットコンソール背景色(空白部分)</string>
+	<string name="Select_Color_of_Unwritten_Console_Lines">アウトプットコンソールの空白部分の色を選択</string>
+	<string name="Editor_Settings">エディターの設定</string>
+	<string name="Settings_for_Program_Editor">プログラムエディターの設定</string>
+	<string name="Editor_Lines">エディター下線</string>
+	<string name="Use_Lined_Editor">エディターで下線を表示</string>
+	<string name="Editor_Line_Wrap">行折り返し</string>
+	<string name="Wrap_Long_Editor_Lines">長い行を折り返す</string>
+	<string name="Editor_AutoIndent">自動インデント</string>
+	<string name="Enable_Editor_AutoIndent">自動インデントをオン</string>
+	<string name="Screen_Orientation">画面の向き</string>
+	<string name="Select_Orientation">画面の向きを設定</string>
+	<string name="Graphic_acceleration">グラフィックス高速化</string>
+	<string name="Enable_graphic_acceleration">ハードウェアによるグラフィックス高速化をオン</string>
+	<string name="Base_Drive">基本ストレージデバイス</string>
+	<string name="Select_New_Base_Drive">ストレージデバイスを選択する</string>
+
+</resources>

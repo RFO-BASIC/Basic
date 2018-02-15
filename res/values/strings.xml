@@ -137,5 +137,45 @@ This file is part of BASIC! for Android
 	<string name="about_text_btn_github">BASIC! on GitHub\nSource and bug reports</string>
 	<string name="about_text_btn_license">BASIC! Open-Source License\nThe GNU General Public License, version 3</string>
 	<string name="about_text_btn_privpol">BASIC! Privacy Policy</string>
-
+	<string name="Color_Scheme">Color Scheme</string>
+	<string name="Select_Color_Scheme">Select Color Scheme</string>
+	<string name="Custom_Colors">Custom Colors</string>
+	<string name="Define_Your_Own_Colors">Define Your Own Colors</string>
+	<string name="Screen_Colors">Screen Colors</string>
+	<string name="Select_a_color_scheme_or_custom_colors">Select a color scheme or custom colors</string>
+	<string name="Text_Color">Text Color</string>
+	<string name="Set_Text_Color">Set Text Color</string>
+	<string name="Background_Color">Background Color</string>
+	<string name="Line_Color">Line Color</string>
+	<string name="Set_Background_Color">Set Background Color</string>
+	<string name="Set_Line_Color">Set Line Color</string>
+	<string name="Highlight_Color">Highlight Color</string>
+	<string name="Set_Highlight_Color">Set Highlight Color</string>
+	<string name="Console_Settings">Console Settings</string>
+	<string name="Setting_for_Console_and_Other_Text_Screens">Settings for Console and Other Text Screens</string>
+	<string name="Font_Size">Font Size</string>
+	<string name="Select_Font_Size_for_Console">Select Font Size for Console, etc.</string>
+	<string name="Type_face">Typeface</string>
+	<string name="Select_Typeface_for_Consol">Select Typeface for Console, etc.</string>
+	<string name="Console_Menu">Console Menu</string>
+	<string name="Display_Menu_in_Console_and_TGet">Display Menu in Console and TGet</string>
+	<string name="Console_Lines">Console Lines</string>
+	<string name="Use_Lined_Console">Use Lined Console</string>
+	<string name="Empty_Console_Color">Empty Console Color</string>
+	<string name="Select_Color_of_Unwritten_Console_Lines">Select Color of Unwritten Console Lines</string>
+	<string name="Editor_Settings">Editor Settings</string>
+	<string name="Settings_for_Program_Editor">Settings for Program Editor</string>
+	<string name="Editor_Lines">Editor Lines</string>
+	<string name="Use_Lined_Editor">Use Lined Editor</string>
+	<string name="Editor_Line_Wrap">Editor Line Wrap</string>
+	<string name="Wrap_Long_Editor_Lines">Wrap Long Editor Lines</string>
+	<string name="Editor_AutoIndent">Editor AutoIndent</string>
+	<string name="Enable_Editor_AutoIndent">Enable Editor AutoIndent</string>
+	<string name="Screen_Orientation">Screen Orientation</string>
+	<string name="Select_Orientation">Select Orientation</string>
+	<string name="Graphic_acceleration">Graphic acceleration</string>
+	<string name="Enable_graphic_acceleration">Enable graphic acceleration</string>
+	<string name="Base_Drive">Base Drive</string>
+	<string name="Select_New_Base_Drive">Select New Base Drive</string>
+	
 </resources>

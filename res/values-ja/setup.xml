@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+*********************************************************************************
+BASIC! is an implementation of the Basic programming language for
+Android devices.
+
+Copyright (C) 2013 - 2017 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+
+**********************************************************************************
+-->
+
+<resources>
+    <string name="version">01.91</string>
+
+    <!-- The application name displayed in the Launcher -->
+    <string name="app_name">BASIC!</string>
+
+    <!-- The path name for application directories -->
+    <string name="app_path">rfo-basic</string>
+
+    <!-- If building APK, set true -->
+    <bool name="is_apk">false</bool>
+
+    <!-- If APK needs a /data/ directory, set true -->
+    <bool name="apk_create_data_dir">true</bool>
+
+    <!-- If APK needs a /database/ directory, set true -->
+    <bool name="apk_create_database_dir">true</bool>
+
+    <!-- Option to encrypt (obfuscate) the .bas files in an APK -->
+    <bool name="apk_programs_encrypted">false</bool>
+
+    <!-- The BASIC! program resource to build into the APK -->
+    <!-- Default path is assets/<app_path>/source/ -->
+    <string name="my_program">my_program.bas</string>
+
+    <!-- The default Console, SELECT, TEXT.INPUT, and TGET titles -->
+    <string name="run_name">BASIC! プログラムアウトプット</string>
+    <string name="select_name">BASIC! 選択</string>
+    <string name="textinput_name">BASIC! テキスト入力</string>
+
+    <!-- The splash screen settings: display, background color, minimum display time -->
+    <bool name="splash_display">true</bool>
+    <color name="splash_color">#FFFFFF</color>
+    <integer name="splash_time">1500</integer>
+
+    <!-- The default text and background colors selected in Preferences -->
+    <integer name="color1">0xff000000</integer>
+    <integer name="color2">0xffffffff</integer>
+    <integer name="color3">0xff006478</integer>
+    <!-- The default selection and highlight color -->
+    <integer name="color4">0xff00c000</integer>
+
+    <!--
+        Message lines displayed on the opening screen while files are loading.
+        If this array is empty, there will be no progress display while loading files.
+    -->
+    <string-array name="loading_msg">
+        <item>初期ファイルをロードしていますので、少しお待ちください。</item>
+    </string-array>
+
+    <!-- String to be displayed as a unit of progress while files are loading -->
+    <string name="progress_marker">.</string>
+
+    <!--
+        If there are any resources or assets that your app wants to have copied
+        into the file system, list them here as <item>file_name</item> tags.
+        The default path for most files is <app_path>/data/
+        The default path for files ending in ".db" is <app_path>/databases/
+        This list is for standalone APKs only; standard BASIC! does not use it.
+        Most apps can leave this empty, using files directly from assets.
+    -->
+    <string-array name="load_file_names">
+    </string-array>
+
+</resources>
