@@ -177,5 +177,12 @@ This file is part of BASIC! for Android
 	<string name="Enable_graphic_acceleration">Enable graphic acceleration</string>
 	<string name="Base_Drive">Base Drive</string>
 	<string name="Select_New_Base_Drive">Select New Base Drive</string>
+	<string name="Search_For:">Search For:</string>
+	<string name="Replace_With:">Replace With:</string>
+	<string name="Next">Next</string>
+	<string name="Done">Done</string>
+	<string name="Replace">Replace</string>
+	<string name="Replace_All">Replace All</string>
+	<string name="Finished">Finished</string>
 	
 </resources>

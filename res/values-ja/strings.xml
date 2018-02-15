@@ -132,10 +132,10 @@ This file is part of BASIC! for Android
 	<!-- About button text -->
 	<string name="about_text_btn_home">BASIC! ホームページ</string>
 	<string name="about_text_btn_forum">BASIC! ユーザーフォーラム</string>
-	<string name="about_text_btn_programs">BASIC! Users\' Programs\nWritten by members of the user forum</string>
-	<string name="about_text_btn_bintray">BASIC! on Bintray\nManual, apk, and release notes</string>
-	<string name="about_text_btn_github">BASIC! on GitHub\nSource and bug reports</string>
-	<string name="about_text_btn_license">BASIC! Open-Source License\nThe GNU General Public License, version 3</string>
+	<string name="about_text_btn_programs">BASIC! ユーザーのプログラム\nユーザーフォーラムメンバーによって作られたプログラム</string>
+	<string name="about_text_btn_bintray">BASIC! on Bintray\nマニュアル、 apkファイル、リリースノート</string>
+	<string name="about_text_btn_github">BASIC! on GitHub\nsソースと問題報告</string>
+	<string name="about_text_btn_license">BASIC! オープンソースライセンス\nThe GNU General Public License, version 3</string>
 	<string name="about_text_btn_privpol">BASIC! プライバシーポリシー</string>
 	<string name="Color_Scheme">画面配色の選択</string>
 	<string name="Select_Color_Scheme">既定の画面配色から選択</string>
@@ -177,5 +177,12 @@ This file is part of BASIC! for Android
 	<string name="Enable_graphic_acceleration">ハードウェアによるグラフィックス高速化をオン</string>
 	<string name="Base_Drive">基本ストレージデバイス</string>
 	<string name="Select_New_Base_Drive">ストレージデバイスを選択する</string>
+	<string name="Search_For:">検索する文字列:</string>
+	<string name="Replace_With:">置換後の文字列:</string>
+	<string name="Next">次へ</string>
+	<string name="Done">完了</string>
+	<string name="Replace">置き換える</string>
+	<string name="Replace_All">全て置き換える</string>
+	<string name="Finished">完了</string>
 
 </resources>

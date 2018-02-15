@@ -46,12 +46,13 @@ This file is part of BASIC! for Android
 			android:orientation="vertical"
 			android:layout_marginRight="10dip" >
 
-			<TextView android:id="@+id/search_for"
-				android:layout_width="fill_parent"
-				android:layout_height="wrap_content"
-				android:layout_marginBottom="5dip"
-				style="@style/label_l"
-				android:text="Search For:" />
+			<TextView
+			    android:id="@+id/search_for"
+			    style="@style/label_l"
+			    android:layout_width="fill_parent"
+			    android:layout_height="wrap_content"
+			    android:layout_marginBottom="5dip"
+			    android:text="@string/Search_For:" />
 
 			<EditText android:id="@+id/search_text"
 				android:layout_width="fill_parent"
@@ -64,19 +65,21 @@ This file is part of BASIC! for Android
 				android:layout_height="40dip"
 				android:orientation="horizontal" >
 
-				<Button android:id="@+id/next_button"
-					android:layout_weight="1"
-					android:layout_width="0dip"
-					android:layout_height="fill_parent"
-					android:textSize="15dip"
-					android:text="Next" />
+				<Button
+				    android:id="@+id/next_button"
+				    android:layout_width="0dip"
+				    android:layout_height="fill_parent"
+				    android:layout_weight="1"
+				    android:text="@string/Next"
+				    android:textSize="15dip" />
 
-				<Button android:id="@+id/done_button"
-					android:layout_weight="1"
-					android:layout_width="0dip"
-					android:layout_height="fill_parent"
-					android:textSize="15dip"
-					android:text="Done" />
+				<Button
+				    android:id="@+id/done_button"
+				    android:layout_width="0dip"
+				    android:layout_height="fill_parent"
+				    android:layout_weight="1"
+				    android:text="@string/Done"
+				    android:textSize="15dip" />
 
 			</LinearLayout> <!-- search_buttons -->
 
@@ -89,12 +92,13 @@ This file is part of BASIC! for Android
 			android:orientation="vertical"
 			android:layout_marginLeft="10dip" >
 
-			<TextView android:id="@+id/replace_with"
-				android:layout_width="fill_parent"
-				android:layout_height="wrap_content"
-				android:layout_marginBottom="5dip"
-				style="@style/label_l"
-				android:text="Replace With:" />
+			<TextView
+			    android:id="@+id/replace_with"
+			    style="@style/label_l"
+			    android:layout_width="fill_parent"
+			    android:layout_height="wrap_content"
+			    android:layout_marginBottom="5dip"
+			    android:text="@string/Replace_With:" />
 
 			<EditText android:id="@+id/replace_text"
 				android:layout_width="fill_parent"
@@ -107,19 +111,21 @@ This file is part of BASIC! for Android
 				android:layout_height="40dip"
 				android:orientation="horizontal" >
 
-				<Button android:id="@+id/replace_button"
-					android:layout_weight="1"
-					android:layout_width="0dip"
-					android:layout_height="fill_parent"
-					android:textSize="15dip"
-					android:text="Replace" />
+				<Button
+				    android:id="@+id/replace_button"
+				    android:layout_width="0dip"
+				    android:layout_height="fill_parent"
+				    android:layout_weight="1"
+				    android:text="@string/Replace"
+				    android:textSize="15dip" />
 
-				<Button android:id="@+id/replace_all_button"
-					android:layout_weight="1"
-					android:layout_width="0dip"
-					android:layout_height="fill_parent"
-					android:textSize="15dip"
-		 			android:text="Replace All" />
+				<Button
+				    android:id="@+id/replace_all_button"
+				    android:layout_width="0dip"
+				    android:layout_height="fill_parent"
+				    android:layout_weight="1"
+				    android:text="@string/Replace_All"
+				    android:textSize="15dip" />
 
 			</LinearLayout> <!-- replace_buttons -->
 
