@@ -26,6 +26,8 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
+import static com.rfo.basic.Editor.*;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,21 +38,12 @@ import com.rfo.basic.Basic.ColoredTextAdapter;
 import android.app.ListActivity;
 import android.os.Bundle;
 import android.util.Log;
-
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.Toast;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
-
-import static com.rfo.basic.Editor.GO_UP;
-import static com.rfo.basic.Editor.addDirMark;
-import static com.rfo.basic.Editor.isMarkedDir;
-import static com.rfo.basic.Editor.stripDirMark;
-import static com.rfo.basic.Editor.getDisplayPath;
-import static com.rfo.basic.Editor.goUp;
-import static com.rfo.basic.Editor.quote;
+import android.widget.Toast;
 
 
 // Loads a file. Called from the Editor when user selects Menu->Load
@@ -116,9 +109,9 @@ public class LoadFile extends ListActivity {
 
 		String[] fileList = dir.list();							// Get the list of files in this dir
 		if (fileList == null) {
-			String msg = dir.exists() ? "File not directory" : "Source directory does not exist";
+			String msg = dir.exists() ? getString(R.string.File_not_directory) : getString(R.string.Source_directory_does_not_exist);		//Update to localize
 			if (mToast != null) { mToast.cancel(); }
-			mToast = Basic.toaster(this, "System Error: " + msg);
+			mToast = Basic.toaster(this, getString(R.string.System_Error) + msg);		//Updated to localize
 			return;
 		}
 
@@ -149,7 +142,9 @@ public class LoadFile extends ListActivity {
 		if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
 
 		if (mToast != null) { mToast.cancel(); }
-		mToast = Basic.toaster(this, "Select File To Load");	// tell the user what to do using Toast
+		mToast = Basic.toaster(this, getString(R.string.Select_File_To_Load));	// Added to localize
+//		Remove to localize
+//		mToast = Basic.toaster(this, "Select File To Load");	// tell the user what to do using Toast
 	}
 
 	@Override
