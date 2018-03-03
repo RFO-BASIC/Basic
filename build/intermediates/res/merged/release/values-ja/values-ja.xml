@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="base_drive_names">
+        <item>/mnt/sdcard</item>
+        <item>/mnt/sdcard</item>
+    </string-array>
+    <string-array name="base_drive_values">
+        <item>/mnt/sdcard</item>
+    </string-array>
+    <string-array name="csf_list_preference">
+        <item>等幅フォント</item>
+        <item>セリフ(字体の曲がり角にある飾り)無し</item>
+        <item>セリフ(字体の曲がり角にある飾り)有り</item>
+    </string-array>
+    <string-array name="csfvalues_list_preference">
+        <item>MS</item>
+        <item>SS</item>
+        <item>S</item>
+    </string-array>
+    <string-array name="empty_console_list_preference">
+        <item>文字の背景色を使う</item>
+        <item>下線の色を使う</item>
+    </string-array>
+    <string-array name="empty_console_values_list_preference">
+        <item>background</item>
+        <item>line</item>
+    </string-array>
+    <string-array name="es_list_preference">
+        <item>白い背景に黒い文字</item>
+        <item>黒い背景に白い文字</item>
+        <item>青い背景に白い文字</item>
+    </string-array>
+    <string-array name="esvalues_list_preference">
+        <item>BW</item>
+        <item>WB</item>
+        <item>WBL</item>
+    </string-array>
+    <string-array name="font_list_preference">
+        <item>小</item>
+        <item>中</item>
+        <item>大</item>
+    </string-array>
+    <string-array name="fontvalues_list_preference">
+        <item>Small</item>
+        <item>Medium</item>
+        <item>Large</item>
+    </string-array>
+    <string-array name="load_file_names">
+    </string-array>
+    <string-array name="loading_msg">
+        <item>初期ファイルをロードしていますので、少しお待ちください。</item>
+    </string-array>
+    <string-array name="orientation_list_preference">
+        <item>センサーで自動的に決める</item>
+        <item>横方向に固定</item>
+        <item>逆横方向に固定</item>  
+        <item>縦方向に固定</item>  
+        <item>逆縦方向に固定</item>  
+    </string-array>
+    <string-array name="orientationvalues_list_preference">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+    </string-array>
+    <bool name="apk_create_data_dir">true</bool>
+    <bool name="apk_create_database_dir">true</bool>
+    <bool name="apk_programs_encrypted">false</bool>
+    <bool name="is_apk">false</bool>
+    <bool name="splash_display">true</bool>
+    <color name="splash_color">#FFFFFF</color>
+    <integer name="color1">0xff000000</integer>
+    <integer name="color2">0xffffffff</integer>
+    <integer name="color3">0xff006478</integer>
+    <integer name="color4">0xff00c000</integer>
+    <integer name="splash_time">1500</integer>
+    <string name="Background_Color">背景の色</string>
+    <string name="Base_Drive">基本ストレージデバイス</string>
+    <string name="Bluetooth_not_connected">ブルートゥースが接続されていません</string>
+    <string name="Cannot_create_working_directory">ワーキングディレクトリーを作ることができません</string>
+    <string name="Color_Scheme">画面配色の選択</string>
+    <string name="Confirm">確認</string>
+    <string name="Confirm_Delete">本当に削除しますか？</string>
+    <string name="Console_Lines">アウトプットコンソール下線</string>
+    <string name="Console_Menu">アウトプットコンソールメニュー</string>
+    <string name="Console_Settings">コンソールの設定</string>
+    <string name="Continue">続ける</string>
+    <string name="Current_Program_Not_Saved">現在のプログラムが保存されていません</string>
+    <string name="Custom_Colors">独自の画面配色にする</string>
+    <string name="Define_Your_Own_Colors">画面の配色を、自分の好みに変更</string>
+    <string name="Display_Menu_in_Console_and_TGet">アウトプットコンソールとTGETウインドウにメニューを表示</string>
+    <string name="Done">完了</string>
+    <string name="Editor_AutoIndent">自動インデント</string>
+    <string name="Editor_Line_Wrap">行折り返し</string>
+    <string name="Editor_Lines">エディター下線</string>
+    <string name="Editor_Settings">エディターの設定</string>
+    <string name="Empty_Console_Color">アウトプットコンソール背景色(空白部分)</string>
+    <string name="Enable_Editor_AutoIndent">自動インデントをオン</string>
+    <string name="Enable_graphic_acceleration">ハードウェアによるグラフィックス高速化をオン</string>
+    <string name="Exception">例外：</string>
+    <string name="Execution_halted">実行が中断されました</string>
+    <string name="File_not_directory">ディレクトリーにファイルがありません</string>
+    <string name="File_not_saved">ファイルを保存できませんでした：</string>
+    <string name="Finished">完了</string>
+    <string name="Font_Size">文字（フォント）のサイズ</string>
+    <string name="Font_file_not_found">フォントファイルが見つかりません</string>
+    <string name="Format_your_program">プログラムをフォーマットしますか？</string>
+    <string name="Graphic_acceleration">グラフィックス高速化</string>
+    <string name="Highlight_Color">強調色</string>
+    <string name="Invalid_Font_Pointer">フォントポインターが正しくありません</string>
+    <string name="Line_Color">線の色</string>
+    <string name="Next">次へ</string>
+    <string name="No_Bluetooth_Read_Ready_Interrupt">ブルートゥ－ス読取準備割り込みがありません</string>
+    <string name="Not_a_number_Try_Again">数字ではありません。やり直してください。</string>
+    <string name="Not_previously_connected">以前に接続されていません</string>
+    <string name="Nothing_found_to_replace">置き換える文字列がありません</string>
+    <string name="Nothing_to_execute">実行するプログラムがありません。</string>
+    <string name="Program_ended_with_DO_without_UNTIL">UNTIL に対応する DO がありません</string>
+    <string name="Program_ended_with_FOR_without_NEXT">Next に対応する For がありません</string>
+    <string name="Program_ended_with_WHILE_without_REPEAT">REPEAT に対応する WHILE がありません</string>
+    <string name="Replace">置き換える</string>
+    <string name="Replace_All">全て置き換える</string>
+    <string name="Replace_With">置換後の文字列:</string>
+    <string name="Save_to">へ保存します</string>
+    <string name="Saved">を保存しました</string>
+    <string name="Screen_Colors">画面の配色</string>
+    <string name="Screen_Orientation">画面の向き</string>
+    <string name="Search_For">検索する文字列:</string>
+    <string name="Select_Color_Scheme">既定の画面配色から選択</string>
+    <string name="Select_Color_of_Unwritten_Console_Lines">アウトプットコンソールの空白部分の色を選択</string>
+    <string name="Select_File_To_Load">ロードするファイルを選択してください</string>
+    <string name="Select_Font_Size_for_Console">文字の大きさを小,中,大から選択</string>
+    <string name="Select_New_Base_Drive">ストレージデバイスを選択する</string>
+    <string name="Select_Orientation">画面の向きを設定</string>
+    <string name="Select_Typeface_for_Consol">活字書体を選択</string>
+    <string name="Select_View">ビューを選択：</string>
+    <string name="Select_a_color_scheme_or_custom_colors">既定の画面配色を選択するか独自の配色を決める</string>
+    <string name="Select_file_to_Delete">削除するファイルを選択してください</string>
+    <string name="Set_Background_Color">背景の色を設定</string>
+    <string name="Set_Highlight_Color">強調色の設定</string>
+    <string name="Set_Line_Color">線の色を設定</string>
+    <string name="Set_Text_Color">文字の色を設定</string>
+    <string name="Setting_for_Console_and_Other_Text_Screens">コンソールとテキストスクリーンに関する設定</string>
+    <string name="Settings_for_Program_Editor">プログラムエディターの設定</string>
+    <string name="SoundPool_not_opened">SoundPoolが開かれていません</string>
+    <string name="Source_directory_does_not_exist">ソースディレクトリーがありません</string>
+    <string name="Stopped_by_user">ユーザーによって停止されました。</string>
+    <string name="Stream_count_must_be_0">ストリームカウント>0の必要があります</string>
+    <string name="Superuser">スーパーユーザー</string>
+    <string name="Syntax_Error">構文エラー</string>
+    <string name="System">システム</string>
+    <string name="System_Error">システムエラー：</string>
+    <string name="System_shell">システムシェル</string>
+    <string name="Text_Color">文字の色</string>
+    <string name="Type_face">活字書体</string>
+    <string name="Use_Lined_Console">アウトプットコンソールに下線を表示</string>
+    <string name="Use_Lined_Editor">エディターで下線を表示</string>
+    <string name="Warning_Low_Memory">警告：メモリが少なくなっています</string>
+    <string name="Wrap_Long_Editor_Lines">長い行を折り返す</string>
+    <string name="about">BASIC!について</string>
+    <string name="about_name">BASIC!について</string>
+    <string name="about_text1">BASIC! バージョン %s を使用中  </string>
+    <string name="about_text2">\nThe Richard Feynman Observatory\nBASIC!
+								for Android\ncreated by Paul Laughton.\n\nTo
+								learn more about BASIC!,\nselect one of the following:</string>
+    <string name="about_text_btn_bintray">BASIC! on Bintray\nマニュアル、 apkファイル、リリースノート</string>
+    <string name="about_text_btn_forum">BASIC! ユーザーフォーラム</string>
+    <string name="about_text_btn_github">BASIC! on GitHub\nソースと問題報告</string>
+    <string name="about_text_btn_home">BASIC! ホームページ</string>
+    <string name="about_text_btn_license">BASIC! オープンソースライセンス\nThe GNU General Public License, version 3</string>
+    <string name="about_text_btn_privpol">BASIC! プライバシーポリシー</string>
+    <string name="about_text_btn_programs">BASIC! ユーザーのプログラム\nユーザーフォーラムメンバーによって作られたプログラム</string>
+    <string name="already_exists">は、既に存在します</string>
+    <string name="app_name">BASIC!</string>
+    <string name="app_path">rfo-basic</string>
+    <string name="button_scan">スキャン</string>
+    <string name="cancel_button_label">キャンセル</string>
+    <string name="choose_one">選択</string>
+    <string name="clear">クリアー</string>
+    <string name="color_chars">0123456789abcdefxABCDEFX#</string>
+    <string name="debug_name">BASIC! デバッガー</string>
+    <string name="delete">削除</string>
+    <string name="delete_button_label">削除</string>
+    <string name="delete_name">BASIC! ファイル削除</string>
+    <string name="edit_button_label">編集</string>
+    <string name="editor">エディター</string>
+    <string name="editor_name">BASIC! プログラムエディター</string>
+    <string name="enter_text2_label">アイコンファイル名</string>
+    <string name="enter_text3_label">ショートカット名</string>
+    <string name="enter_text_label">プログラムファイル名</string>
+    <string name="exit">終了</string>
+    <string name="format">フォーマット</string>
+    <string name="format_name">BASIC! フォーマット</string>
+    <string name="gr_name">グラフィックス</string>
+    <string name="hello">Hello World, BASIC!</string>
+    <string name="help">コマンド</string>
+    <string name="help_name">BASIC! コマンドヘルプ</string>
+    <string name="hex_color">16進カラー値を入力</string>
+    <string name="instr_1">設定に戻るためにキャンセルを選択</string>
+    <string name="instr_2">又は、ショートカットを作るためにOKを選択</string>
+    <string name="intro_getline">BASIC! ショートカットビルダー</string>
+    <string name="load">ロード</string>
+    <string name="load_name">BASIC! ファイルロード</string>
+    <string name="load_run">ロードして実行</string>
+    <string name="my_program">my_program.bas</string>
+    <string name="no_button_label">いいえ</string>
+    <string name="no_icon">アイコンファイルからアイコンを作ることができません</string>
+    <string name="no_icon_file">アイコンファイルがありません</string>
+    <string name="no_icon_name">アイコンファイル名が入力されていません</string>
+    <string name="no_prog_file">BASIC!プログラムがありません (後で作ることができます)</string>
+    <string name="no_prog_name">BASIC!プログラム名が入力されていません</string>
+    <string name="no_shortcut_name">ショートカット名が入力されていません</string>
+    <string name="none_found">何も見つかりませんでした</string>
+    <string name="none_paired">ペアされたデバイスはありません</string>
+    <string name="not_found">は、見つかりませんでした</string>
+    <string name="not_opened">は開きませんでした</string>
+    <string name="ok_button_label">OK</string>
+    <string name="pause">ポーズ</string>
+    <string name="play_sound_name"> </string>
+    <string name="pref_MAB_clear_key">editor_menu_clear_on_action_bar</string>
+    <string name="pref_MAB_clear_summary">スペースがあれば『クリアー』をアクションバーに表示</string>
+    <string name="pref_MAB_clear_title">アクションバーに『クリアー』を表示</string>
+    <string name="pref_MAB_exit_key">editor_menu_exit_on_action_bar</string>
+    <string name="pref_MAB_exit_summary">スペースがあれば『終了』をアクションバーに表示</string>
+    <string name="pref_MAB_exit_title">アクションバーに『終了』を表示</string>
+    <string name="pref_MAB_key">editor_items_on_action_bar</string>
+    <string name="pref_MAB_load_key">editor_menu_load_on_action_bar</string>
+    <string name="pref_MAB_load_summary">スペースがあれば『ロード』をアクションバーに表示</string>
+    <string name="pref_MAB_load_title">アクションバーに『ロード』を表示</string>
+    <string name="pref_MAB_run_key">editor_menu_run_on_action_bar</string>
+    <string name="pref_MAB_run_summary">スペースがあれば『実行』をアクションバーに表示</string>
+    <string name="pref_MAB_run_title">アクションバーに『実行』を表示</string>
+    <string name="pref_MAB_save_key">editor_menu_save_on_action_bar</string>
+    <string name="pref_MAB_save_summary">スペースがあれば『保存』をアクションバーに表示</string>
+    <string name="pref_MAB_save_title">アクションバーに『保存』を表示</string>
+    <string name="pref_MAB_search_key">editor_menu_search_on_action_bar</string>
+    <string name="pref_MAB_search_summary">スペースがあれば『検索』をアクションバーに表示</string>
+    <string name="pref_MAB_search_title">アクションバーに『検索』を表示</string>
+    <string name="pref_MAB_summary">エディターメニュー項目をアクションバーに表示</string>
+    <string name="pref_MAB_title">アクションバーのメニュー項目</string>
+    <string name="progress_marker">.</string>
+    <string name="run">実行</string>
+    <string name="run_name">BASIC! プログラムアウトプット</string>
+    <string name="save">保存</string>
+    <string name="save_run">保存して実行</string>
+    <string name="scanning">スキャン中</string>
+    <string name="search">検索</string>
+    <string name="search_name">BASIC! 検索</string>
+    <string name="select_device">デバイスを選択</string>
+    <string name="select_name">BASIC! 選択</string>
+    <string name="settings">設定</string>
+    <string name="settings_name">BASIC! 設定</string>
+    <string name="spawn">アプリケーションを作成</string>
+    <string name="stop">ストップ</string>
+    <string name="stt_prompt">"BASIC! 音声をテキストに"</string>
+    <string name="textinput_name">BASIC! テキスト入力</string>
+    <string name="title_other_devices">その他のデバイス</string>
+    <string name="title_paired_devices">ペアされたデバイス</string>
+    <string name="unnamed_program"> 新しいプログラム</string>
+    <string name="version">01.91</string>
+    <string name="web_view_name">ウエブビュー</string>
+    <string name="yes_button_label">はい</string>
+    <style name="edit_text">
+		<item name="android:textSize">18sp</item>
+		<item name="android:textColor">#000000</item>
+		<item name="android:background">#ffffff</item>
+		
+	</style>
+    <style name="edit_text_l">
+		<item name="android:textSize">15sp</item>
+		<item name="android:textColor">#000000</item>
+		<item name="android:background">#ffffff</item>
+		<item name="android:textCursorDrawable">@null</item>	
+	</style>
+    <style name="intro_getline">
+		<item name="android:textSize">20sp</item>
+		<item name="android:textColor">#ee7620</item>
+		<item name="android:textStyle">bold</item>
+	</style>
+    <style name="intro_getline_l">
+		<item name="android:textSize">12sp</item>
+		<item name="android:textColor">#ee7620</item>
+		<item name="android:textStyle">bold</item>
+	</style>
+    <style name="label">
+		<item name="android:textSize">18sp</item>
+		<item name="android:textColor">#ffffff</item>
+	</style>
+    <style name="label_l">
+		<item name="android:textSize">15sp</item>
+		<item name="android:textColor">#ffffff</item>
+	</style>
+    <style name="review_list">
+		<item name="android:background">#000000</item>
+	</style>
+</resources>

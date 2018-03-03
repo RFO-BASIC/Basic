@@ -1,0 +1,477 @@
+-- Merging decision tree log ---
+manifest
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:30:1-280:12
+	package
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:32:5-28
+	android:versionName
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:34:5-31
+		INJECTED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml
+		INJECTED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml
+	xmlns:tools
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:31:5-51
+	android:versionCode
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:33:5-31
+		INJECTED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml
+		INJECTED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml
+	tools:ignore
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:36:5-35
+	xmlns:android
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:30:11-69
+	android:installLocation
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:35:5-35
+uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:38:5-81
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:38:22-78
+uses-permission#android.permission.INTERNET
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:39:5-67
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:39:22-64
+uses-permission#android.permission.ACCESS_WIFI_STATE
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:40:5-76
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:40:22-73
+uses-permission#android.permission.ACCESS_COARSE_LOCATION
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:41:5-81
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:41:22-78
+uses-permission#android.permission.ACCESS_FINE_LOCATION
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:42:5-79
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:42:22-76
+uses-permission#android.permission.ACCESS_LOCATION_EXTRA_COMMANDS
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:43:5-89
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:43:22-86
+uses-permission#android.permission.VIBRATE
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:44:5-65
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:44:22-63
+uses-permission#android.permission.WAKE_LOCK
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:45:5-68
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:45:22-65
+uses-permission#android.permission.CAMERA
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:46:5-65
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:46:22-62
+uses-permission#android.permission.BLUETOOTH
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:47:5-68
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:47:22-65
+uses-permission#android.permission.BLUETOOTH_ADMIN
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:48:5-74
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:48:22-71
+uses-permission#android.permission.RECORD_AUDIO
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:49:5-71
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:49:22-68
+uses-permission#android.permission.READ_PHONE_STATE
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:50:5-75
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:50:22-72
+uses-permission#android.permission.SEND_SMS
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:51:5-67
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:51:22-64
+uses-permission#android.permission.CALL_PHONE
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:52:5-69
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:52:22-66
+uses-permission#android.permission.READ_SMS
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:53:5-67
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:53:22-64
+uses-permission#android.permission.RECEIVE_SMS
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:54:5-70
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:54:22-67
+uses-permission#com.android.launcher.permission.INSTALL_SHORTCUT
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:58:5-88
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:58:22-85
+uses-permission#com.android.launcher.permission.UNINSTALL_SHORTCUT
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:59:5-90
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:59:22-87
+uses-feature#android.hardware.telephony
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:61:5-88
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:61:61-85
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:61:19-60
+uses-feature#android.hardware.bluetooth
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:62:5-88
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:62:61-85
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:62:19-60
+uses-feature#android.hardware.location
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:63:5-87
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:63:60-84
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:63:19-59
+uses-feature#android.hardware.sensor.accelerometer
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:64:5-99
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:64:72-96
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:64:19-71
+uses-feature#android.hardware.camera
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:65:5-85
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:65:58-82
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:65:19-57
+uses-feature#android.hardware.microphone
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:66:5-89
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:66:62-86
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:66:19-61
+uses-feature#android.hardware.location.network
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:67:5-95
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:67:68-92
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:67:19-67
+uses-feature#android.hardware.location.gps
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:68:5-91
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:68:64-88
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:68:19-63
+uses-feature#android.hardware.camera.autofocus
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:69:5-95
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:69:68-92
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:69:19-67
+uses-feature#android.hardware.touchscreen
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:70:5-90
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:70:63-87
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:70:19-62
+uses-sdk
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:72:5-73
+	android:targetSdkVersion
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:72:41-70
+	android:minSdkVersion
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:72:15-40
+supports-screens
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:74:5-54
+	android:xlargeScreens
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:74:23-51
+application
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:76:5-278:19
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:80:9-41
+	android:hardwareAccelerated
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:77:9-43
+	android:allowBackup
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:78:9-35
+	android:icon
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:79:9-38
+receiver#com.rfo.basic.BootUpReceiver
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:81:9-89:20
+	android:enabled
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:83:13-36
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:82:13-43
+intent-filter#android.intent.action.BOOT_COMPLETED+android.intent.category.DEFAULT
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:84:13-88:29
+action#android.intent.action.BOOT_COMPLETED
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:85:17-79
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:85:25-76
+category#android.intent.category.DEFAULT
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:87:17-76
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:87:27-73
+activity#com.rfo.basic.Basic
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:91:9-114:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:95:13-45
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:92:13-43
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:94:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:93:13-33
+intent-filter#android.intent.action.MAIN+android.intent.category.LAUNCHER+android.intent.category.MULTIWINDOW_LAUNCHER
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:97:13-102:29
+action#android.intent.action.MAIN
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:98:17-69
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:98:25-66
+category#android.intent.category.LAUNCHER
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:100:17-77
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:100:27-74
+category#android.intent.category.MULTIWINDOW_LAUNCHER
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:101:17-89
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:101:27-86
+intent-filter#android.intent.action.VIEW+android.intent.category.DEFAULT
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:104:13-113:29
+action#android.intent.action.VIEW
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:105:17-69
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:105:25-66
+data
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:109:17-47
+	android:scheme
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:109:23-44
+activity#com.rfo.basic.LauncherShortcuts
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:116:9-126:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:119:13-47
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:118:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:117:13-45
+intent-filter#android.intent.action.MAIN+android.intent.category.DEFAULT
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:121:13-125:29
+activity-alias#com.rfo.basic.CreateShortcuts
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:128:9-139:26
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:130:13-47
+	android:targetActivity
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:131:13-55
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:129:13-43
+intent-filter#android.intent.action.CREATE_SHORTCUT+android.intent.category.DEFAULT
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:134:13-138:29
+action#android.intent.action.CREATE_SHORTCUT
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:135:17-80
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:135:25-77
+activity#com.rfo.basic.Editor
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:141:9-146:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:144:13-48
+	android:hardwareAccelerated
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:145:13-48
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:142:13-44
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:143:13-35
+activity#com.rfo.basic.Settings
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:148:9-152:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:151:13-50
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:149:13-46
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:150:13-37
+activity#com.rfo.basic.About
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:154:9-159:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:157:13-47
+	android:hardwareAccelerated
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:158:13-48
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:155:13-43
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:156:13-34
+activity#com.rfo.basic.LoadFile
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:161:9-166:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:165:13-46
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:162:13-42
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:164:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:163:13-37
+activity#com.rfo.basic.Delete
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:168:9-173:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:172:13-48
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:169:13-44
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:171:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:170:13-35
+activity#com.rfo.basic.Run
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:175:9-180:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:179:13-45
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:176:13-41
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:178:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:177:13-32
+activity#com.rfo.basic.Search
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:182:9-189:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:186:13-48
+	android:hardwareAccelerated
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:188:13-48
+	android:windowSoftInputMode
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:187:13-68
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:183:13-44
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:185:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:184:13-35
+activity#com.rfo.basic.Format
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:191:9-196:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:195:13-48
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:192:13-44
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:194:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:193:13-35
+activity#com.rfo.basic.Help
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:198:9-203:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:201:13-46
+	android:windowSoftInputMode
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:202:13-61
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:199:13-42
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:200:13-33
+activity#com.rfo.basic.GR
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:205:9-211:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:209:13-44
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:206:13-40
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:208:13-83
+	android:theme
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:210:13-71
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:207:13-31
+activity#com.rfo.basic.Select
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:213:9-218:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:217:13-48
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:214:13-44
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:216:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:215:13-35
+activity#com.rfo.basic.TextInput
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:220:9-225:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:224:13-51
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:221:13-48
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:223:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:222:13-38
+activity#com.rfo.basic.TGet
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:227:9-233:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:231:13-51
+	android:windowSoftInputMode
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:232:13-68
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:228:13-46
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:230:13-83
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:229:13-33
+activity#com.rfo.basic.Web
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:235:9-241:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:239:13-50
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:236:13-46
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:238:13-83
+	android:theme
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:240:13-71
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:237:13-32
+activity#com.rfo.basic.CameraView
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:243:9-249:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:247:13-35
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:244:13-44
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:246:13-83
+	android:theme
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:248:13-72
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:245:13-39
+activity#com.rfo.basic.HandleNotify
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:251:9-257:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:255:13-35
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:252:13-44
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:254:13-83
+	android:theme
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:256:13-72
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:253:13-41
+activity#com.rfo.basic.DeviceListActivity
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:259:9-265:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:263:13-50
+	android:id
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:260:13-49
+	android:configChanges
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:262:13-83
+	android:theme
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:264:13-56
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:261:13-47
+activity#com.rfo.basic.Null
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:267:9-270:20
+	android:label
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:269:13-48
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:268:13-32
+uses-library#com.sec.android.app.multiwindow
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:272:9-97
+	android:required
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:272:70-94
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:272:23-69
+meta-data#com.sec.android.support.multiwindow
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:273:9-94
+	android:value
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:273:71-91
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:273:20-70
+meta-data#com.sec.android.multiwindow.DEFAULT_SIZE_W
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:274:9-105
+	android:value
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:274:78-102
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:274:20-77
+meta-data#com.sec.android.multiwindow.DEFAULT_SIZE_H
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:275:9-105
+	android:value
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:275:78-102
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:275:20-77
+meta-data#com.sec.android.multiwindow.MINIMUM_SIZE_W
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:276:9-105
+	android:value
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:276:78-102
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:276:20-77
+meta-data#com.sec.android.multiwindow.MINIMUM_SIZE_H
+ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:277:9-105
+	android:value
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:277:78-102
+	android:name
+		ADDED from C:\Users\rxd06\Documents\Basic\AndroidManifest.xml:277:20-77

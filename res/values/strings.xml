@@ -177,8 +177,8 @@ This file is part of BASIC! for Android
 	<string name="Enable_graphic_acceleration">Enable graphic acceleration</string>
 	<string name="Base_Drive">Base Drive</string>
 	<string name="Select_New_Base_Drive">Select New Base Drive</string>
-	<string name="Search_For:">Search For:</string>
-	<string name="Replace_With:">Replace With:</string>
+	<string name="Search_For">Search For:</string>
+	<string name="Replace_With">Replace With:</string>
 	<string name="Next">Next</string>
 	<string name="Done">Done</string>
 	<string name="Replace">Replace</string>
@@ -187,7 +187,7 @@ This file is part of BASIC! for Android
 	<string name="unnamed_program"> unnamed program</string>
 	<string name="Select_File_To_Load">Select File To Load</string>
 	<string name="Select_file_to_Delete">Select file to Delete</string>
-	<string name="Save_to ">Save to </string>
+	<string name="Save_to">Save to </string>
 	<string name="Saved">Saved</string>
 	<string name="File_not_saved">File not saved:</string>
 	<string name="Format_your_program">Format your program?</string>

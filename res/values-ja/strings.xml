@@ -177,8 +177,8 @@ This file is part of BASIC! for Android
 	<string name="Enable_graphic_acceleration">ハードウェアによるグラフィックス高速化をオン</string>
 	<string name="Base_Drive">基本ストレージデバイス</string>
 	<string name="Select_New_Base_Drive">ストレージデバイスを選択する</string>
-	<string name="Search_For:">検索する文字列:</string>
-	<string name="Replace_With:">置換後の文字列:</string>
+	<string name="Search_For">検索する文字列:</string>
+	<string name="Replace_With">置換後の文字列:</string>
 	<string name="Next">次へ</string>
 	<string name="Done">完了</string>
 	<string name="Replace">置き換える</string>
@@ -187,7 +187,7 @@ This file is part of BASIC! for Android
 	<string name="unnamed_program"> 新しいプログラム</string>
 	<string name="Select_File_To_Load">ロードするファイルを選択してください</string>
 	<string name="Select_file_to_Delete">削除するファイルを選択してください</string>
-	<string name="Save_to ">へ保存します</string>
+	<string name="Save_to">へ保存します</string>
 	<string name="Saved">を保存しました</string>
 	<string name="File_not_saved">ファイルを保存できませんでした：</string>
 	<string name="Format_your_program">プログラムをフォーマットしますか？</string>

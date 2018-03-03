@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="4" by="lint 26.1.1">
+
+    <issue
+        id="ResourceType"
+        severity="Fatal"
+        message="Expected resource of type id"
+        category="Correctness"
+        priority="7"
+        summary="Wrong Resource Type"
+        explanation="Ensures that resource id&apos;s passed to APIs are of the right type; for example, calling `Resources.getColor(R.string.name)` is wrong."
+        errorLine1="  drawView.setId(33);"
+        errorLine2="                 ~~">
+        <location
+            file="C:\Users\rxd06\Documents\Basic\src\com\rfo\basic\GR.java"
+            line="441"
+            column="18"/>
+    </issue>
+
+</issues>

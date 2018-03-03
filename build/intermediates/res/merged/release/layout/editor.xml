@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--  *********************************************************************************
+
+BASIC! is an implementation of the Basic programming language for
+Android devices.
+
+Copyright (C) 2010 - 2015 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+	
+
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+    
+	**********************************************************************************
+	-->
+	
+<view xmlns:android="http://schemas.android.com/apk/res/android"
+    class="com.rfo.basic.Editor$LinedEditText"
+    android:id="@+id/basic_text"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFFFF"
+    android:padding="5dip"
+    style="@style/edit_text_l"
+
+    android:scrollbars="vertical"
+    android:fadingEdge="vertical"
+    android:typeface="monospace"
+    android:gravity="top"
+    android:textSize="18sp"
+    android:inputType="textMultiLine"
+    android:scrollHorizontally = "true"
+/>

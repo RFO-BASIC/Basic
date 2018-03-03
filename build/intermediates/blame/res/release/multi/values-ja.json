@@ -1,0 +1,4155 @@
+[
+    {
+        "outputFile": "C:\\Users\\rxd06\\Documents\\Basic\\build\\intermediates\\res\\merged\\release\\values-ja\\values-ja.xml",
+        "map": [
+            {
+                "to": {
+                    "startLine": 2,
+                    "startColumn": 4,
+                    "startOffset": 55,
+                    "endLine": 5,
+                    "endColumn": 19,
+                    "endOffset": 179
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 93,
+                        "startColumn": 4,
+                        "startOffset": 2845,
+                        "endLine": 96,
+                        "endColumn": 19,
+                        "endOffset": 2972
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 6,
+                    "startColumn": 4,
+                    "startOffset": 184,
+                    "endLine": 8,
+                    "endColumn": 19,
+                    "endOffset": 276
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 98,
+                        "startColumn": 4,
+                        "startOffset": 2980,
+                        "endLine": 100,
+                        "endColumn": 19,
+                        "endOffset": 3074
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 9,
+                    "startColumn": 4,
+                    "startOffset": 281,
+                    "endLine": 13,
+                    "endColumn": 19,
+                    "endOffset": 452
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 71,
+                        "startColumn": 4,
+                        "startOffset": 2223,
+                        "endLine": 75,
+                        "endColumn": 19,
+                        "endOffset": 2398
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 14,
+                    "startColumn": 4,
+                    "startOffset": 457,
+                    "endLine": 18,
+                    "endColumn": 19,
+                    "endOffset": 595
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 77,
+                        "startColumn": 4,
+                        "startOffset": 2406,
+                        "endLine": 81,
+                        "endColumn": 19,
+                        "endOffset": 2548
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 19,
+                    "startColumn": 4,
+                    "startOffset": 600,
+                    "endLine": 22,
+                    "endColumn": 19,
+                    "endOffset": 731
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 83,
+                        "startColumn": 4,
+                        "startOffset": 2556,
+                        "endLine": 86,
+                        "endColumn": 19,
+                        "endOffset": 2690
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 23,
+                    "startColumn": 4,
+                    "startOffset": 736,
+                    "endLine": 26,
+                    "endColumn": 19,
+                    "endOffset": 872
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 88,
+                        "startColumn": 4,
+                        "startOffset": 2698,
+                        "endLine": 91,
+                        "endColumn": 19,
+                        "endOffset": 2837
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 27,
+                    "startColumn": 4,
+                    "startOffset": 877,
+                    "endLine": 31,
+                    "endColumn": 19,
+                    "endOffset": 1030
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 59,
+                        "startColumn": 4,
+                        "startOffset": 1907,
+                        "endLine": 63,
+                        "endColumn": 19,
+                        "endOffset": 2064
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 32,
+                    "startColumn": 4,
+                    "startOffset": 1035,
+                    "endLine": 36,
+                    "endColumn": 19,
+                    "endOffset": 1174
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 65,
+                        "startColumn": 4,
+                        "startOffset": 2072,
+                        "endLine": 69,
+                        "endColumn": 19,
+                        "endOffset": 2215
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 37,
+                    "startColumn": 4,
+                    "startOffset": 1179,
+                    "endLine": 41,
+                    "endColumn": 19,
+                    "endOffset": 1310
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 31,
+                        "startColumn": 4,
+                        "startOffset": 1153,
+                        "endLine": 35,
+                        "endColumn": 19,
+                        "endOffset": 1288
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 42,
+                    "startColumn": 4,
+                    "startOffset": 1315,
+                    "endLine": 46,
+                    "endColumn": 19,
+                    "endOffset": 1465
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 37,
+                        "startColumn": 4,
+                        "startOffset": 1296,
+                        "endLine": 41,
+                        "endColumn": 19,
+                        "endOffset": 1450
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 47,
+                    "startColumn": 4,
+                    "startOffset": 1470,
+                    "endLine": 48,
+                    "endColumn": 19,
+                    "endOffset": 1527
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 89,
+                        "startColumn": 4,
+                        "startOffset": 3721,
+                        "endLine": 90,
+                        "endColumn": 19,
+                        "endOffset": 3779
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 49,
+                    "startColumn": 4,
+                    "startOffset": 1532,
+                    "endLine": 51,
+                    "endColumn": 19,
+                    "endOffset": 1635
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 74,
+                        "startColumn": 4,
+                        "startOffset": 3004,
+                        "endLine": 76,
+                        "endColumn": 19,
+                        "endOffset": 3109
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 52,
+                    "startColumn": 4,
+                    "startOffset": 1640,
+                    "endLine": 58,
+                    "endColumn": 19,
+                    "endOffset": 1863
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 43,
+                        "startColumn": 4,
+                        "startOffset": 1458,
+                        "endLine": 49,
+                        "endColumn": 19,
+                        "endOffset": 1687
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 59,
+                    "startColumn": 4,
+                    "startOffset": 1868,
+                    "endLine": 65,
+                    "endColumn": 19,
+                    "endOffset": 2058
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\arrays.xml",
+                    "position": {
+                        "startLine": 51,
+                        "startColumn": 8,
+                        "startOffset": 1703,
+                        "endLine": 57,
+                        "endColumn": 19,
+                        "endOffset": 1899
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 66,
+                    "startColumn": 4,
+                    "startOffset": 2063,
+                    "endColumn": 48,
+                    "endOffset": 2107
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 41,
+                        "startColumn": 4,
+                        "startOffset": 1544,
+                        "endColumn": 48,
+                        "endOffset": 1588
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 67,
+                    "startColumn": 4,
+                    "startOffset": 2112,
+                    "endColumn": 52,
+                    "endOffset": 2160
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 44,
+                        "startColumn": 4,
+                        "startOffset": 1656,
+                        "endColumn": 52,
+                        "endOffset": 1704
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 68,
+                    "startColumn": 4,
+                    "startOffset": 2165,
+                    "endColumn": 52,
+                    "endOffset": 2213
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 47,
+                        "startColumn": 4,
+                        "startOffset": 1781,
+                        "endColumn": 52,
+                        "endOffset": 1829
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 69,
+                    "startColumn": 4,
+                    "startOffset": 2218,
+                    "endColumn": 36,
+                    "endOffset": 2250
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 38,
+                        "startColumn": 4,
+                        "startOffset": 1448,
+                        "endColumn": 36,
+                        "endOffset": 1480
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 70,
+                    "startColumn": 4,
+                    "startOffset": 2255,
+                    "endColumn": 43,
+                    "endOffset": 2294
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 59,
+                        "startColumn": 4,
+                        "startOffset": 2343,
+                        "endColumn": 43,
+                        "endOffset": 2382
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 71,
+                    "startColumn": 4,
+                    "startOffset": 2299,
+                    "endColumn": 46,
+                    "endOffset": 2341
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 60,
+                        "startColumn": 4,
+                        "startOffset": 2388,
+                        "endColumn": 46,
+                        "endOffset": 2430
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 72,
+                    "startColumn": 4,
+                    "startOffset": 2346,
+                    "endColumn": 47,
+                    "endOffset": 2389
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 64,
+                        "startColumn": 4,
+                        "startOffset": 2563,
+                        "endColumn": 47,
+                        "endOffset": 2606
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 73,
+                    "startColumn": 4,
+                    "startOffset": 2394,
+                    "endColumn": 47,
+                    "endOffset": 2437
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 65,
+                        "startColumn": 4,
+                        "startOffset": 2612,
+                        "endColumn": 47,
+                        "endOffset": 2655
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 74,
+                    "startColumn": 4,
+                    "startOffset": 2442,
+                    "endColumn": 47,
+                    "endOffset": 2485
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 66,
+                        "startColumn": 4,
+                        "startOffset": 2661,
+                        "endColumn": 47,
+                        "endOffset": 2704
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 75,
+                    "startColumn": 4,
+                    "startOffset": 2490,
+                    "endColumn": 47,
+                    "endOffset": 2533
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 68,
+                        "startColumn": 4,
+                        "startOffset": 2766,
+                        "endColumn": 47,
+                        "endOffset": 2809
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 76,
+                    "startColumn": 4,
+                    "startOffset": 2538,
+                    "endColumn": 46,
+                    "endOffset": 2580
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 61,
+                        "startColumn": 4,
+                        "startOffset": 2436,
+                        "endColumn": 46,
+                        "endOffset": 2478
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 77,
+                    "startColumn": 4,
+                    "startOffset": 2585,
+                    "endColumn": 49,
+                    "endOffset": 2630
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 147,
+                        "startColumn": 1,
+                        "startOffset": 7180,
+                        "endColumn": 46,
+                        "endOffset": 7225
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 78,
+                    "startColumn": 4,
+                    "startOffset": 2635,
+                    "endColumn": 50,
+                    "endOffset": 2681
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 177,
+                        "startColumn": 1,
+                        "startOffset": 8934,
+                        "endColumn": 47,
+                        "endOffset": 8980
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 79,
+                    "startColumn": 4,
+                    "startOffset": 2686,
+                    "endColumn": 69,
+                    "endOffset": 2751
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 203,
+                        "startColumn": 1,
+                        "startOffset": 10360,
+                        "endColumn": 66,
+                        "endOffset": 10425
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 80,
+                    "startColumn": 4,
+                    "startOffset": 2756,
+                    "endColumn": 83,
+                    "endOffset": 2835
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 206,
+                        "startColumn": 1,
+                        "startOffset": 10574,
+                        "endColumn": 80,
+                        "endOffset": 10653
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 81,
+                    "startColumn": 4,
+                    "startOffset": 2840,
+                    "endColumn": 48,
+                    "endOffset": 2884
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 139,
+                        "startColumn": 1,
+                        "startOffset": 6734,
+                        "endColumn": 45,
+                        "endOffset": 6778
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 82,
+                    "startColumn": 4,
+                    "startOffset": 2889,
+                    "endColumn": 38,
+                    "endOffset": 2923
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 220,
+                        "startColumn": 1,
+                        "startOffset": 11369,
+                        "endColumn": 35,
+                        "endOffset": 11403
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 83,
+                    "startColumn": 4,
+                    "startOffset": 2928,
+                    "endColumn": 53,
+                    "endOffset": 2977
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 193,
+                        "startColumn": 1,
+                        "startOffset": 9718,
+                        "endColumn": 50,
+                        "endOffset": 9767
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 84,
+                    "startColumn": 4,
+                    "startOffset": 2982,
+                    "endColumn": 55,
+                    "endOffset": 3033
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 161,
+                        "startColumn": 1,
+                        "startOffset": 7981,
+                        "endColumn": 52,
+                        "endOffset": 8032
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 85,
+                    "startColumn": 4,
+                    "startOffset": 3038,
+                    "endColumn": 56,
+                    "endOffset": 3090
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 159,
+                        "startColumn": 1,
+                        "startOffset": 7837,
+                        "endColumn": 53,
+                        "endOffset": 7889
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 86,
+                    "startColumn": 4,
+                    "startOffset": 3095,
+                    "endColumn": 53,
+                    "endOffset": 3144
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 153,
+                        "startColumn": 1,
+                        "startOffset": 7471,
+                        "endColumn": 50,
+                        "endOffset": 7520
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 87,
+                    "startColumn": 4,
+                    "startOffset": 3149,
+                    "endColumn": 40,
+                    "endOffset": 3185
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 195,
+                        "startColumn": 1,
+                        "startOffset": 9841,
+                        "endColumn": 37,
+                        "endOffset": 9877
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 88,
+                    "startColumn": 4,
+                    "startOffset": 3190,
+                    "endColumn": 72,
+                    "endOffset": 3258
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 194,
+                        "startColumn": 1,
+                        "startOffset": 9770,
+                        "endColumn": 69,
+                        "endOffset": 9838
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 89,
+                    "startColumn": 4,
+                    "startOffset": 3263,
+                    "endColumn": 52,
+                    "endOffset": 3311
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 141,
+                        "startColumn": 1,
+                        "startOffset": 6839,
+                        "endColumn": 49,
+                        "endOffset": 6887
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 90,
+                    "startColumn": 4,
+                    "startOffset": 3316,
+                    "endColumn": 66,
+                    "endOffset": 3378
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 142,
+                        "startColumn": 1,
+                        "startOffset": 6890,
+                        "endColumn": 63,
+                        "endOffset": 6952
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 91,
+                    "startColumn": 4,
+                    "startOffset": 3383,
+                    "endColumn": 90,
+                    "endOffset": 3469
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 160,
+                        "startColumn": 1,
+                        "startOffset": 7892,
+                        "endColumn": 87,
+                        "endOffset": 7978
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 92,
+                    "startColumn": 4,
+                    "startOffset": 3474,
+                    "endColumn": 35,
+                    "endOffset": 3505
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 182,
+                        "startColumn": 1,
+                        "startOffset": 9174,
+                        "endColumn": 32,
+                        "endOffset": 9205
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 93,
+                    "startColumn": 4,
+                    "startOffset": 3510,
+                    "endColumn": 53,
+                    "endOffset": 3559
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 171,
+                        "startColumn": 1,
+                        "startOffset": 8580,
+                        "endColumn": 50,
+                        "endOffset": 8629
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 94,
+                    "startColumn": 4,
+                    "startOffset": 3564,
+                    "endColumn": 50,
+                    "endOffset": 3610
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 169,
+                        "startColumn": 1,
+                        "startOffset": 8473,
+                        "endColumn": 47,
+                        "endOffset": 8519
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 95,
+                    "startColumn": 4,
+                    "startOffset": 3615,
+                    "endColumn": 48,
+                    "endOffset": 3659
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 167,
+                        "startColumn": 1,
+                        "startOffset": 8371,
+                        "endColumn": 45,
+                        "endOffset": 8415
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 96,
+                    "startColumn": 4,
+                    "startOffset": 3664,
+                    "endColumn": 52,
+                    "endOffset": 3712
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 165,
+                        "startColumn": 1,
+                        "startOffset": 8252,
+                        "endColumn": 49,
+                        "endOffset": 8300
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 97,
+                    "startColumn": 4,
+                    "startOffset": 3717,
+                    "endColumn": 68,
+                    "endOffset": 3781
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 163,
+                        "startColumn": 1,
+                        "startOffset": 8097,
+                        "endColumn": 65,
+                        "endOffset": 8161
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 98,
+                    "startColumn": 4,
+                    "startOffset": 3786,
+                    "endColumn": 63,
+                    "endOffset": 3845
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 172,
+                        "startColumn": 1,
+                        "startOffset": 8632,
+                        "endColumn": 60,
+                        "endOffset": 8691
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 99,
+                    "startColumn": 4,
+                    "startOffset": 3850,
+                    "endColumn": 78,
+                    "endOffset": 3924
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 176,
+                        "startColumn": 1,
+                        "startOffset": 8857,
+                        "endColumn": 75,
+                        "endOffset": 8931
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 100,
+                    "startColumn": 4,
+                    "startOffset": 3929,
+                    "endColumn": 41,
+                    "endOffset": 3966
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 211,
+                        "startColumn": 1,
+                        "startOffset": 10833,
+                        "endColumn": 38,
+                        "endOffset": 10870
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 101,
+                    "startColumn": 4,
+                    "startOffset": 3971,
+                    "endColumn": 55,
+                    "endOffset": 4022
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 201,
+                        "startColumn": 1,
+                        "startOffset": 10247,
+                        "endColumn": 52,
+                        "endOffset": 10298
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 102,
+                    "startColumn": 4,
+                    "startOffset": 4027,
+                    "endColumn": 65,
+                    "endOffset": 4088
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 221,
+                        "startColumn": 1,
+                        "startOffset": 11406,
+                        "endColumn": 62,
+                        "endOffset": 11467
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 103,
+                    "startColumn": 4,
+                    "startOffset": 4093,
+                    "endColumn": 59,
+                    "endOffset": 4148
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 191,
+                        "startColumn": 1,
+                        "startOffset": 9596,
+                        "endColumn": 56,
+                        "endOffset": 9651
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 104,
+                    "startColumn": 4,
+                    "startOffset": 4153,
+                    "endColumn": 39,
+                    "endOffset": 4188
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 185,
+                        "startColumn": 1,
+                        "startOffset": 9294,
+                        "endColumn": 36,
+                        "endOffset": 9329
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 105,
+                    "startColumn": 4,
+                    "startOffset": 4193,
+                    "endColumn": 50,
+                    "endOffset": 4239
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 155,
+                        "startColumn": 1,
+                        "startOffset": 7614,
+                        "endColumn": 47,
+                        "endOffset": 7660
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 106,
+                    "startColumn": 4,
+                    "startOffset": 4244,
+                    "endColumn": 64,
+                    "endOffset": 4304
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 212,
+                        "startColumn": 1,
+                        "startOffset": 10873,
+                        "endColumn": 61,
+                        "endOffset": 10933
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 107,
+                    "startColumn": 4,
+                    "startOffset": 4309,
+                    "endColumn": 65,
+                    "endOffset": 4370
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 192,
+                        "startColumn": 1,
+                        "startOffset": 9654,
+                        "endColumn": 62,
+                        "endOffset": 9715
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 108,
+                    "startColumn": 4,
+                    "startOffset": 4375,
+                    "endColumn": 59,
+                    "endOffset": 4430
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 175,
+                        "startColumn": 1,
+                        "startOffset": 8799,
+                        "endColumn": 56,
+                        "endOffset": 8854
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 109,
+                    "startColumn": 4,
+                    "startOffset": 4435,
+                    "endColumn": 47,
+                    "endOffset": 4478
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 151,
+                        "startColumn": 1,
+                        "startOffset": 7372,
+                        "endColumn": 44,
+                        "endOffset": 7415
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 110,
+                    "startColumn": 4,
+                    "startOffset": 4483,
+                    "endColumn": 67,
+                    "endOffset": 4546
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 213,
+                        "startColumn": 1,
+                        "startOffset": 10936,
+                        "endColumn": 64,
+                        "endOffset": 10999
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 111,
+                    "startColumn": 4,
+                    "startOffset": 4551,
+                    "endColumn": 42,
+                    "endOffset": 4589
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 148,
+                        "startColumn": 1,
+                        "startOffset": 7228,
+                        "endColumn": 39,
+                        "endOffset": 7266
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 112,
+                    "startColumn": 4,
+                    "startOffset": 4594,
+                    "endColumn": 35,
+                    "endOffset": 4625
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 181,
+                        "startColumn": 1,
+                        "startOffset": 9140,
+                        "endColumn": 32,
+                        "endOffset": 9171
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 113,
+                    "startColumn": 4,
+                    "startOffset": 4630,
+                    "endColumn": 83,
+                    "endOffset": 4709
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 205,
+                        "startColumn": 1,
+                        "startOffset": 10492,
+                        "endColumn": 80,
+                        "endOffset": 10571
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 114,
+                    "startColumn": 4,
+                    "startOffset": 4714,
+                    "endColumn": 71,
+                    "endOffset": 4781
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 218,
+                        "startColumn": 1,
+                        "startOffset": 11253,
+                        "endColumn": 68,
+                        "endOffset": 11320
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 115,
+                    "startColumn": 4,
+                    "startOffset": 4786,
+                    "endColumn": 65,
+                    "endOffset": 4847
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 204,
+                        "startColumn": 1,
+                        "startOffset": 10428,
+                        "endColumn": 62,
+                        "endOffset": 10489
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 116,
+                    "startColumn": 4,
+                    "startOffset": 4852,
+                    "endColumn": 67,
+                    "endOffset": 4915
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 224,
+                        "startColumn": 1,
+                        "startOffset": 11593,
+                        "endColumn": 64,
+                        "endOffset": 11656
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 117,
+                    "startColumn": 4,
+                    "startOffset": 4920,
+                    "endColumn": 63,
+                    "endOffset": 4979
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 197,
+                        "startColumn": 1,
+                        "startOffset": 9925,
+                        "endColumn": 60,
+                        "endOffset": 9984
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 118,
+                    "startColumn": 4,
+                    "startOffset": 4984,
+                    "endColumn": 85,
+                    "endOffset": 5065
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 200,
+                        "startColumn": 1,
+                        "startOffset": 10163,
+                        "endColumn": 82,
+                        "endOffset": 10244
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 119,
+                    "startColumn": 4,
+                    "startOffset": 5070,
+                    "endColumn": 85,
+                    "endOffset": 5151
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 198,
+                        "startColumn": 1,
+                        "startOffset": 9987,
+                        "endColumn": 82,
+                        "endOffset": 10068
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 120,
+                    "startColumn": 4,
+                    "startOffset": 5156,
+                    "endColumn": 93,
+                    "endOffset": 5245
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 199,
+                        "startColumn": 1,
+                        "startOffset": 10071,
+                        "endColumn": 90,
+                        "endOffset": 10160
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 121,
+                    "startColumn": 4,
+                    "startOffset": 5250,
+                    "endColumn": 41,
+                    "endOffset": 5287
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 183,
+                        "startColumn": 1,
+                        "startOffset": 9208,
+                        "endColumn": 38,
+                        "endOffset": 9245
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 122,
+                    "startColumn": 4,
+                    "startOffset": 5292,
+                    "endColumn": 47,
+                    "endOffset": 5335
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 184,
+                        "startColumn": 1,
+                        "startOffset": 9248,
+                        "endColumn": 44,
+                        "endOffset": 9291
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 123,
+                    "startColumn": 4,
+                    "startOffset": 5340,
+                    "endColumn": 49,
+                    "endOffset": 5385
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 180,
+                        "startColumn": 1,
+                        "startOffset": 9092,
+                        "endColumn": 46,
+                        "endOffset": 9137
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 124,
+                    "startColumn": 4,
+                    "startOffset": 5390,
+                    "endColumn": 42,
+                    "endOffset": 5428
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 189,
+                        "startColumn": 1,
+                        "startOffset": 9515,
+                        "endColumn": 39,
+                        "endOffset": 9553
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 125,
+                    "startColumn": 4,
+                    "startOffset": 5433,
+                    "endColumn": 41,
+                    "endOffset": 5470
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 190,
+                        "startColumn": 1,
+                        "startOffset": 9556,
+                        "endColumn": 38,
+                        "endOffset": 9593
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 126,
+                    "startColumn": 4,
+                    "startOffset": 5475,
+                    "endColumn": 47,
+                    "endOffset": 5518
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 143,
+                        "startColumn": 1,
+                        "startOffset": 6955,
+                        "endColumn": 44,
+                        "endOffset": 6998
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 127,
+                    "startColumn": 4,
+                    "startOffset": 5523,
+                    "endColumn": 52,
+                    "endOffset": 5571
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 173,
+                        "startColumn": 1,
+                        "startOffset": 8694,
+                        "endColumn": 49,
+                        "endOffset": 8742
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 128,
+                    "startColumn": 4,
+                    "startOffset": 5576,
+                    "endColumn": 47,
+                    "endOffset": 5619
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 179,
+                        "startColumn": 1,
+                        "startOffset": 9046,
+                        "endColumn": 44,
+                        "endOffset": 9089
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 129,
+                    "startColumn": 4,
+                    "startOffset": 5624,
+                    "endColumn": 59,
+                    "endOffset": 5679
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 140,
+                        "startColumn": 1,
+                        "startOffset": 6781,
+                        "endColumn": 56,
+                        "endOffset": 6836
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 130,
+                    "startColumn": 4,
+                    "startOffset": 5684,
+                    "endColumn": 89,
+                    "endOffset": 5769
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 164,
+                        "startColumn": 1,
+                        "startOffset": 8164,
+                        "endColumn": 86,
+                        "endOffset": 8249
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 131,
+                    "startColumn": 4,
+                    "startOffset": 5774,
+                    "endColumn": 66,
+                    "endOffset": 5836
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 187,
+                        "startColumn": 1,
+                        "startOffset": 9384,
+                        "endColumn": 63,
+                        "endOffset": 9446
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 132,
+                    "startColumn": 4,
+                    "startOffset": 5841,
+                    "endColumn": 73,
+                    "endOffset": 5910
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 156,
+                        "startColumn": 1,
+                        "startOffset": 7663,
+                        "endColumn": 70,
+                        "endOffset": 7732
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 133,
+                    "startColumn": 4,
+                    "startOffset": 5915,
+                    "endColumn": 64,
+                    "endOffset": 5975
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 178,
+                        "startColumn": 1,
+                        "startOffset": 8983,
+                        "endColumn": 61,
+                        "endOffset": 9043
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 134,
+                    "startColumn": 4,
+                    "startOffset": 5980,
+                    "endColumn": 55,
+                    "endOffset": 6031
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 174,
+                        "startColumn": 1,
+                        "startOffset": 8745,
+                        "endColumn": 52,
+                        "endOffset": 8796
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 135,
+                    "startColumn": 4,
+                    "startOffset": 6036,
+                    "endColumn": 62,
+                    "endOffset": 6094
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 158,
+                        "startColumn": 1,
+                        "startOffset": 7776,
+                        "endColumn": 59,
+                        "endOffset": 7834
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 136,
+                    "startColumn": 4,
+                    "startOffset": 6099,
+                    "endColumn": 47,
+                    "endOffset": 6142
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 219,
+                        "startColumn": 1,
+                        "startOffset": 11323,
+                        "endColumn": 44,
+                        "endOffset": 11366
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 137,
+                    "startColumn": 4,
+                    "startOffset": 6147,
+                    "endColumn": 89,
+                    "endOffset": 6232
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 144,
+                        "startColumn": 1,
+                        "startOffset": 7001,
+                        "endColumn": 86,
+                        "endOffset": 7086
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 138,
+                    "startColumn": 4,
+                    "startOffset": 6237,
+                    "endColumn": 67,
+                    "endOffset": 6300
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 188,
+                        "startColumn": 1,
+                        "startOffset": 9449,
+                        "endColumn": 64,
+                        "endOffset": 9512
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 139,
+                    "startColumn": 4,
+                    "startOffset": 6305,
+                    "endColumn": 56,
+                    "endOffset": 6357
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 149,
+                        "startColumn": 1,
+                        "startOffset": 7269,
+                        "endColumn": 53,
+                        "endOffset": 7321
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 140,
+                    "startColumn": 4,
+                    "startOffset": 6362,
+                    "endColumn": 54,
+                    "endOffset": 6412
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 152,
+                        "startColumn": 1,
+                        "startOffset": 7418,
+                        "endColumn": 51,
+                        "endOffset": 7468
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 141,
+                    "startColumn": 4,
+                    "startOffset": 6417,
+                    "endColumn": 49,
+                    "endOffset": 6462
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 150,
+                        "startColumn": 1,
+                        "startOffset": 7324,
+                        "endColumn": 46,
+                        "endOffset": 7369
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 142,
+                    "startColumn": 4,
+                    "startOffset": 6467,
+                    "endColumn": 50,
+                    "endOffset": 6513
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 146,
+                        "startColumn": 1,
+                        "startOffset": 7131,
+                        "endColumn": 47,
+                        "endOffset": 7177
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 143,
+                    "startColumn": 4,
+                    "startOffset": 6518,
+                    "endColumn": 92,
+                    "endOffset": 6606
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 154,
+                        "startColumn": 1,
+                        "startOffset": 7523,
+                        "endColumn": 89,
+                        "endOffset": 7611
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 144,
+                    "startColumn": 4,
+                    "startOffset": 6611,
+                    "endColumn": 69,
+                    "endOffset": 6676
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 166,
+                        "startColumn": 1,
+                        "startOffset": 8303,
+                        "endColumn": 66,
+                        "endOffset": 8368
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 145,
+                    "startColumn": 4,
+                    "startOffset": 6681,
+                    "endColumn": 67,
+                    "endOffset": 6744
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 214,
+                        "startColumn": 1,
+                        "startOffset": 11002,
+                        "endColumn": 64,
+                        "endOffset": 11065
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 146,
+                    "startColumn": 4,
+                    "startOffset": 6749,
+                    "endColumn": 76,
+                    "endOffset": 6821
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 222,
+                        "startColumn": 1,
+                        "startOffset": 11470,
+                        "endColumn": 73,
+                        "endOffset": 11542
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 147,
+                    "startColumn": 4,
+                    "startOffset": 6826,
+                    "endColumn": 60,
+                    "endOffset": 6882
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 202,
+                        "startColumn": 1,
+                        "startOffset": 10301,
+                        "endColumn": 57,
+                        "endOffset": 10357
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 148,
+                    "startColumn": 4,
+                    "startOffset": 6887,
+                    "endColumn": 70,
+                    "endOffset": 6953
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 215,
+                        "startColumn": 1,
+                        "startOffset": 11068,
+                        "endColumn": 70,
+                        "endOffset": 11137
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 149,
+                    "startColumn": 4,
+                    "startOffset": 6958,
+                    "endColumn": 46,
+                    "endOffset": 7000
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 207,
+                        "startColumn": 1,
+                        "startOffset": 10656,
+                        "endColumn": 43,
+                        "endOffset": 10698
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 150,
+                    "startColumn": 4,
+                    "startOffset": 7005,
+                    "endColumn": 46,
+                    "endOffset": 7047
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 196,
+                        "startColumn": 1,
+                        "startOffset": 9880,
+                        "endColumn": 43,
+                        "endOffset": 9922
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 151,
+                    "startColumn": 4,
+                    "startOffset": 7052,
+                    "endColumn": 39,
+                    "endOffset": 7087
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 210,
+                        "startColumn": 1,
+                        "startOffset": 10795,
+                        "endColumn": 36,
+                        "endOffset": 10830
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 152,
+                    "startColumn": 4,
+                    "startOffset": 7092,
+                    "endColumn": 49,
+                    "endOffset": 7137
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 223,
+                        "startColumn": 1,
+                        "startOffset": 11545,
+                        "endColumn": 46,
+                        "endOffset": 11590
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 153,
+                    "startColumn": 4,
+                    "startOffset": 7142,
+                    "endColumn": 48,
+                    "endOffset": 7186
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 208,
+                        "startColumn": 1,
+                        "startOffset": 10701,
+                        "endColumn": 45,
+                        "endOffset": 10745
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 154,
+                    "startColumn": 4,
+                    "startOffset": 7191,
+                    "endColumn": 43,
+                    "endOffset": 7230
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 145,
+                        "startColumn": 1,
+                        "startOffset": 7089,
+                        "endColumn": 40,
+                        "endOffset": 7128
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 155,
+                    "startColumn": 4,
+                    "startOffset": 7235,
+                    "endColumn": 42,
+                    "endOffset": 7273
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 157,
+                        "startColumn": 1,
+                        "startOffset": 7735,
+                        "endColumn": 39,
+                        "endOffset": 7773
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 156,
+                    "startColumn": 4,
+                    "startOffset": 7278,
+                    "endColumn": 63,
+                    "endOffset": 7337
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 162,
+                        "startColumn": 1,
+                        "startOffset": 8035,
+                        "endColumn": 60,
+                        "endOffset": 8094
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 157,
+                    "startColumn": 4,
+                    "startOffset": 7342,
+                    "endColumn": 56,
+                    "endOffset": 7394
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 168,
+                        "startColumn": 1,
+                        "startOffset": 8418,
+                        "endColumn": 53,
+                        "endOffset": 8470
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 158,
+                    "startColumn": 4,
+                    "startOffset": 7399,
+                    "endColumn": 63,
+                    "endOffset": 7458
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 216,
+                        "startColumn": 1,
+                        "startOffset": 11140,
+                        "endColumn": 60,
+                        "endOffset": 11199
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 159,
+                    "startColumn": 4,
+                    "startOffset": 7463,
+                    "endColumn": 59,
+                    "endOffset": 7518
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 170,
+                        "startColumn": 1,
+                        "startOffset": 8522,
+                        "endColumn": 56,
+                        "endOffset": 8577
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 160,
+                    "startColumn": 4,
+                    "startOffset": 7523,
+                    "endColumn": 44,
+                    "endOffset": 7563
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 85,
+                        "startColumn": 1,
+                        "startOffset": 3597,
+                        "endColumn": 41,
+                        "endOffset": 3637
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 161,
+                    "startColumn": 4,
+                    "startOffset": 7568,
+                    "endColumn": 49,
+                    "endOffset": 7613
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 35,
+                        "startColumn": 4,
+                        "startOffset": 1405,
+                        "endColumn": 49,
+                        "endOffset": 1450
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 162,
+                    "startColumn": 4,
+                    "startOffset": 7618,
+                    "endColumn": 62,
+                    "endOffset": 7676
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 127,
+                        "startColumn": 1,
+                        "startOffset": 5881,
+                        "endColumn": 59,
+                        "endOffset": 5939
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 163,
+                    "startColumn": 4,
+                    "startOffset": 7681,
+                    "endLine": 165,
+                    "endColumn": 71,
+                    "endOffset": 7874
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 128,
+                        "startColumn": 1,
+                        "startOffset": 5942,
+                        "endLine": 130,
+                        "endColumn": 71,
+                        "endOffset": 6137
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 166,
+                    "startColumn": 4,
+                    "startOffset": 7879,
+                    "endColumn": 92,
+                    "endOffset": 7967
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 135,
+                        "startColumn": 1,
+                        "startOffset": 6389,
+                        "endColumn": 89,
+                        "endOffset": 6477
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 167,
+                    "startColumn": 4,
+                    "startOffset": 7972,
+                    "endColumn": 65,
+                    "endOffset": 8033
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 133,
+                        "startColumn": 1,
+                        "startOffset": 6229,
+                        "endColumn": 62,
+                        "endOffset": 6290
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 168,
+                    "startColumn": 4,
+                    "startOffset": 8038,
+                    "endColumn": 76,
+                    "endOffset": 8110
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 136,
+                        "startColumn": 1,
+                        "startOffset": 6480,
+                        "endColumn": 73,
+                        "endOffset": 6552
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 169,
+                    "startColumn": 4,
+                    "startOffset": 8115,
+                    "endColumn": 61,
+                    "endOffset": 8172
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 132,
+                        "startColumn": 1,
+                        "startOffset": 6169,
+                        "endColumn": 58,
+                        "endOffset": 6226
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 170,
+                    "startColumn": 4,
+                    "startOffset": 8177,
+                    "endColumn": 113,
+                    "endOffset": 8286
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 137,
+                        "startColumn": 1,
+                        "startOffset": 6555,
+                        "endColumn": 110,
+                        "endOffset": 6664
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 171,
+                    "startColumn": 4,
+                    "startOffset": 8291,
+                    "endColumn": 68,
+                    "endOffset": 8355
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 138,
+                        "startColumn": 1,
+                        "startOffset": 6667,
+                        "endColumn": 65,
+                        "endOffset": 6731
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 172,
+                    "startColumn": 4,
+                    "startOffset": 8360,
+                    "endColumn": 97,
+                    "endOffset": 8453
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 134,
+                        "startColumn": 1,
+                        "startOffset": 6293,
+                        "endColumn": 94,
+                        "endOffset": 6386
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 173,
+                    "startColumn": 4,
+                    "startOffset": 8458,
+                    "endColumn": 52,
+                    "endOffset": 8506
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 217,
+                        "startColumn": 1,
+                        "startOffset": 11202,
+                        "endColumn": 49,
+                        "endOffset": 11250
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 174,
+                    "startColumn": 4,
+                    "startOffset": 8511,
+                    "endColumn": 43,
+                    "endOffset": 8550
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 32,
+                        "startColumn": 4,
+                        "startOffset": 1255,
+                        "endColumn": 43,
+                        "endOffset": 1294
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 175,
+                    "startColumn": 4,
+                    "startOffset": 8555,
+                    "endColumn": 46,
+                    "endOffset": 8597
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 35,
+                        "startColumn": 4,
+                        "startOffset": 1358,
+                        "endColumn": 46,
+                        "endOffset": 1400
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 176,
+                    "startColumn": 4,
+                    "startOffset": 8602,
+                    "endColumn": 44,
+                    "endOffset": 8642
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 49,
+                        "startColumn": 4,
+                        "startOffset": 2094,
+                        "endColumn": 44,
+                        "endOffset": 2134
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 177,
+                    "startColumn": 4,
+                    "startOffset": 8647,
+                    "endColumn": 53,
+                    "endOffset": 8696
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 62,
+                        "startColumn": 4,
+                        "startOffset": 2684,
+                        "endColumn": 53,
+                        "endOffset": 2733
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 178,
+                    "startColumn": 4,
+                    "startOffset": 8701,
+                    "endColumn": 41,
+                    "endOffset": 8738
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 66,
+                        "startColumn": 4,
+                        "startOffset": 2885,
+                        "endColumn": 41,
+                        "endOffset": 2922
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 179,
+                    "startColumn": 4,
+                    "startOffset": 8743,
+                    "endColumn": 38,
+                    "endOffset": 8777
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 79,
+                        "startColumn": 1,
+                        "startOffset": 3357,
+                        "endColumn": 35,
+                        "endOffset": 3391
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 180,
+                    "startColumn": 4,
+                    "startOffset": 8782,
+                    "endColumn": 65,
+                    "endOffset": 8843
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 68,
+                        "startColumn": 4,
+                        "startOffset": 2978,
+                        "endColumn": 65,
+                        "endOffset": 3039
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 181,
+                    "startColumn": 4,
+                    "startOffset": 8848,
+                    "endColumn": 51,
+                    "endOffset": 8895
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 43,
+                        "startColumn": 4,
+                        "startOffset": 1823,
+                        "endColumn": 51,
+                        "endOffset": 1870
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 182,
+                    "startColumn": 4,
+                    "startOffset": 8900,
+                    "endColumn": 37,
+                    "endOffset": 8933
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 76,
+                        "startColumn": 1,
+                        "startOffset": 3245,
+                        "endColumn": 34,
+                        "endOffset": 3278
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 183,
+                    "startColumn": 4,
+                    "startOffset": 8938,
+                    "endColumn": 50,
+                    "endOffset": 8984
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 58,
+                        "startColumn": 4,
+                        "startOffset": 2517,
+                        "endColumn": 50,
+                        "endOffset": 2563
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 184,
+                    "startColumn": 4,
+                    "startOffset": 8989,
+                    "endColumn": 53,
+                    "endOffset": 9038
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 37,
+                        "startColumn": 4,
+                        "startOffset": 1510,
+                        "endColumn": 53,
+                        "endOffset": 1559
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 185,
+                    "startColumn": 4,
+                    "startOffset": 9043,
+                    "endColumn": 48,
+                    "endOffset": 9087
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 57,
+                        "startColumn": 4,
+                        "startOffset": 2467,
+                        "endColumn": 48,
+                        "endOffset": 2511
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 186,
+                    "startColumn": 4,
+                    "startOffset": 9092,
+                    "endColumn": 40,
+                    "endOffset": 9128
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 90,
+                        "startColumn": 1,
+                        "startOffset": 3742,
+                        "endColumn": 37,
+                        "endOffset": 3778
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 187,
+                    "startColumn": 4,
+                    "startOffset": 9133,
+                    "endColumn": 57,
+                    "endOffset": 9186
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 34,
+                        "startColumn": 4,
+                        "startOffset": 1346,
+                        "endColumn": 57,
+                        "endOffset": 1399
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 188,
+                    "startColumn": 4,
+                    "startOffset": 9191,
+                    "endColumn": 55,
+                    "endOffset": 9242
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 59,
+                        "startColumn": 4,
+                        "startOffset": 2569,
+                        "endColumn": 55,
+                        "endOffset": 2620
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 189,
+                    "startColumn": 4,
+                    "startOffset": 9247,
+                    "endColumn": 54,
+                    "endOffset": 9297
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 60,
+                        "startColumn": 4,
+                        "startOffset": 2626,
+                        "endColumn": 54,
+                        "endOffset": 2676
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 190,
+                    "startColumn": 4,
+                    "startOffset": 9302,
+                    "endColumn": 55,
+                    "endOffset": 9353
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 56,
+                        "startColumn": 4,
+                        "startOffset": 2410,
+                        "endColumn": 55,
+                        "endOffset": 2461
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 191,
+                    "startColumn": 4,
+                    "startOffset": 9358,
+                    "endColumn": 35,
+                    "endOffset": 9389
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 86,
+                        "startColumn": 1,
+                        "startOffset": 3640,
+                        "endColumn": 32,
+                        "endOffset": 3671
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 192,
+                    "startColumn": 4,
+                    "startOffset": 9394,
+                    "endColumn": 41,
+                    "endOffset": 9431
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 78,
+                        "startColumn": 1,
+                        "startOffset": 3317,
+                        "endColumn": 38,
+                        "endOffset": 3354
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 193,
+                    "startColumn": 4,
+                    "startOffset": 9436,
+                    "endColumn": 53,
+                    "endOffset": 9485
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 41,
+                        "startColumn": 4,
+                        "startOffset": 1723,
+                        "endColumn": 53,
+                        "endOffset": 1772
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 194,
+                    "startColumn": 4,
+                    "startOffset": 9490,
+                    "endColumn": 43,
+                    "endOffset": 9529
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 42,
+                        "startColumn": 4,
+                        "startOffset": 1778,
+                        "endColumn": 43,
+                        "endOffset": 1817
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 195,
+                    "startColumn": 4,
+                    "startOffset": 9534,
+                    "endColumn": 53,
+                    "endOffset": 9583
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 31,
+                        "startColumn": 4,
+                        "startOffset": 1208,
+                        "endColumn": 53,
+                        "endOffset": 1257
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 196,
+                    "startColumn": 4,
+                    "startOffset": 9588,
+                    "endColumn": 37,
+                    "endOffset": 9621
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 84,
+                        "startColumn": 1,
+                        "startOffset": 3561,
+                        "endColumn": 34,
+                        "endOffset": 3594
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 197,
+                    "startColumn": 4,
+                    "startOffset": 9626,
+                    "endColumn": 52,
+                    "endOffset": 9674
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 38,
+                        "startColumn": 4,
+                        "startOffset": 1565,
+                        "endColumn": 52,
+                        "endOffset": 1613
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 198,
+                    "startColumn": 4,
+                    "startOffset": 9679,
+                    "endColumn": 48,
+                    "endOffset": 9723
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 67,
+                        "startColumn": 4,
+                        "startOffset": 2928,
+                        "endColumn": 48,
+                        "endOffset": 2972
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 199,
+                    "startColumn": 4,
+                    "startOffset": 9728,
+                    "endColumn": 52,
+                    "endOffset": 9776
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 123,
+                        "startColumn": 1,
+                        "startOffset": 5743,
+                        "endColumn": 49,
+                        "endOffset": 5791
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 200,
+                    "startColumn": 4,
+                    "startOffset": 9781,
+                    "endColumn": 57,
+                    "endOffset": 9834
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 124,
+                        "startColumn": 1,
+                        "startOffset": 5794,
+                        "endColumn": 54,
+                        "endOffset": 5847
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 201,
+                    "startColumn": 4,
+                    "startOffset": 9839,
+                    "endColumn": 60,
+                    "endOffset": 9895
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 55,
+                        "startColumn": 4,
+                        "startOffset": 2348,
+                        "endColumn": 60,
+                        "endOffset": 2404
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 202,
+                    "startColumn": 4,
+                    "startOffset": 9900,
+                    "endColumn": 36,
+                    "endOffset": 9932
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 74,
+                        "startColumn": 1,
+                        "startOffset": 3146,
+                        "endColumn": 33,
+                        "endOffset": 3178
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 203,
+                    "startColumn": 4,
+                    "startOffset": 9937,
+                    "endColumn": 52,
+                    "endOffset": 9985
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 36,
+                        "startColumn": 4,
+                        "startOffset": 1456,
+                        "endColumn": 52,
+                        "endOffset": 1504
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 204,
+                    "startColumn": 4,
+                    "startOffset": 9990,
+                    "endColumn": 44,
+                    "endOffset": 10030
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 80,
+                        "startColumn": 1,
+                        "startOffset": 3394,
+                        "endColumn": 41,
+                        "endOffset": 3434
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 205,
+                    "startColumn": 4,
+                    "startOffset": 10035,
+                    "endColumn": 53,
+                    "endOffset": 10084
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 51,
+                        "startColumn": 4,
+                        "startOffset": 1957,
+                        "endColumn": 53,
+                        "endOffset": 2006
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 206,
+                    "startColumn": 4,
+                    "startOffset": 10089,
+                    "endColumn": 47,
+                    "endOffset": 10132
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 65,
+                        "startColumn": 4,
+                        "startOffset": 2836,
+                        "endColumn": 47,
+                        "endOffset": 2879
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 207,
+                    "startColumn": 4,
+                    "startOffset": 10137,
+                    "endColumn": 61,
+                    "endOffset": 10194
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 122,
+                        "startColumn": 1,
+                        "startOffset": 5683,
+                        "endColumn": 58,
+                        "endOffset": 5740
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 208,
+                    "startColumn": 4,
+                    "startOffset": 10199,
+                    "endColumn": 55,
+                    "endOffset": 10250
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 121,
+                        "startColumn": 1,
+                        "startOffset": 5629,
+                        "endColumn": 52,
+                        "endOffset": 5680
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 209,
+                    "startColumn": 4,
+                    "startOffset": 10255,
+                    "endColumn": 60,
+                    "endOffset": 10311
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 118,
+                        "startColumn": 1,
+                        "startOffset": 5437,
+                        "endColumn": 57,
+                        "endOffset": 5493
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 210,
+                    "startColumn": 4,
+                    "startOffset": 10316,
+                    "endColumn": 72,
+                    "endOffset": 10384
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 120,
+                        "startColumn": 1,
+                        "startOffset": 5558,
+                        "endColumn": 69,
+                        "endOffset": 5626
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 211,
+                    "startColumn": 4,
+                    "startOffset": 10389,
+                    "endColumn": 63,
+                    "endOffset": 10448
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 117,
+                        "startColumn": 1,
+                        "startOffset": 5375,
+                        "endColumn": 60,
+                        "endOffset": 5434
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 212,
+                    "startColumn": 4,
+                    "startOffset": 10453,
+                    "endColumn": 63,
+                    "endOffset": 10512
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 119,
+                        "startColumn": 1,
+                        "startOffset": 5496,
+                        "endColumn": 60,
+                        "endOffset": 5555
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 213,
+                    "startColumn": 4,
+                    "startOffset": 10517,
+                    "endColumn": 51,
+                    "endOffset": 10564
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 50,
+                        "startColumn": 4,
+                        "startOffset": 2140,
+                        "endColumn": 51,
+                        "endOffset": 2187
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 214,
+                    "startColumn": 4,
+                    "startOffset": 10569,
+                    "endColumn": 55,
+                    "endOffset": 10620
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 52,
+                        "startColumn": 4,
+                        "startOffset": 2237,
+                        "endColumn": 56,
+                        "endOffset": 2289
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 215,
+                    "startColumn": 4,
+                    "startOffset": 10625,
+                    "endColumn": 50,
+                    "endOffset": 10671
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 225,
+                        "startColumn": 1,
+                        "startOffset": 11659,
+                        "endColumn": 47,
+                        "endOffset": 11705
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 216,
+                    "startColumn": 4,
+                    "startOffset": 10676,
+                    "endColumn": 48,
+                    "endOffset": 10720
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 209,
+                        "startColumn": 1,
+                        "startOffset": 10748,
+                        "endColumn": 45,
+                        "endOffset": 10792
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 217,
+                    "startColumn": 4,
+                    "startOffset": 10725,
+                    "endColumn": 46,
+                    "endOffset": 10767
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 63,
+                        "startColumn": 4,
+                        "startOffset": 2739,
+                        "endColumn": 46,
+                        "endOffset": 2781
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 218,
+                    "startColumn": 4,
+                    "startOffset": 10772,
+                    "endColumn": 37,
+                    "endOffset": 10805
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 91,
+                        "startColumn": 1,
+                        "startOffset": 3781,
+                        "endColumn": 34,
+                        "endOffset": 3814
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 219,
+                    "startColumn": 4,
+                    "startOffset": 10810,
+                    "endColumn": 45,
+                    "endOffset": 10851
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 44,
+                        "startColumn": 4,
+                        "startOffset": 1876,
+                        "endColumn": 45,
+                        "endOffset": 1917
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 220,
+                    "startColumn": 4,
+                    "startOffset": 10856,
+                    "endColumn": 78,
+                    "endOffset": 10930
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 106,
+                        "startColumn": 1,
+                        "startOffset": 4701,
+                        "endColumn": 75,
+                        "endOffset": 4775
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 221,
+                    "startColumn": 4,
+                    "startOffset": 10935,
+                    "endColumn": 76,
+                    "endOffset": 11007
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 108,
+                        "startColumn": 1,
+                        "startOffset": 4843,
+                        "endColumn": 73,
+                        "endOffset": 4915
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 222,
+                    "startColumn": 4,
+                    "startOffset": 11012,
+                    "endColumn": 66,
+                    "endOffset": 11074
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 107,
+                        "startColumn": 1,
+                        "startOffset": 4778,
+                        "endColumn": 63,
+                        "endOffset": 4840
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 223,
+                    "startColumn": 4,
+                    "startOffset": 11079,
+                    "endColumn": 76,
+                    "endOffset": 11151
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 112,
+                        "startColumn": 1,
+                        "startOffset": 5135,
+                        "endColumn": 73,
+                        "endOffset": 5207
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 224,
+                    "startColumn": 4,
+                    "startOffset": 11156,
+                    "endColumn": 73,
+                    "endOffset": 11225
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 114,
+                        "startColumn": 1,
+                        "startOffset": 5272,
+                        "endColumn": 70,
+                        "endOffset": 5341
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 225,
+                    "startColumn": 4,
+                    "startOffset": 11230,
+                    "endColumn": 63,
+                    "endOffset": 11289
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 113,
+                        "startColumn": 1,
+                        "startOffset": 5210,
+                        "endColumn": 60,
+                        "endOffset": 5269
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 226,
+                    "startColumn": 4,
+                    "startOffset": 11294,
+                    "endColumn": 67,
+                    "endOffset": 11357
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 94,
+                        "startColumn": 1,
+                        "startOffset": 3888,
+                        "endColumn": 64,
+                        "endOffset": 3951
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 227,
+                    "startColumn": 4,
+                    "startOffset": 11362,
+                    "endColumn": 76,
+                    "endOffset": 11434
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 100,
+                        "startColumn": 1,
+                        "startOffset": 4281,
+                        "endColumn": 73,
+                        "endOffset": 4353
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 228,
+                    "startColumn": 4,
+                    "startOffset": 11439,
+                    "endColumn": 74,
+                    "endOffset": 11509
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 102,
+                        "startColumn": 1,
+                        "startOffset": 4419,
+                        "endColumn": 71,
+                        "endOffset": 4489
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 229,
+                    "startColumn": 4,
+                    "startOffset": 11514,
+                    "endColumn": 64,
+                    "endOffset": 11574
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 101,
+                        "startColumn": 1,
+                        "startOffset": 4356,
+                        "endColumn": 61,
+                        "endOffset": 4416
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 230,
+                    "startColumn": 4,
+                    "startOffset": 11579,
+                    "endColumn": 74,
+                    "endOffset": 11649
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 97,
+                        "startColumn": 1,
+                        "startOffset": 4076,
+                        "endColumn": 71,
+                        "endOffset": 4146
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 231,
+                    "startColumn": 4,
+                    "startOffset": 11654,
+                    "endColumn": 72,
+                    "endOffset": 11722
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 99,
+                        "startColumn": 1,
+                        "startOffset": 4210,
+                        "endColumn": 69,
+                        "endOffset": 4278
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 232,
+                    "startColumn": 4,
+                    "startOffset": 11727,
+                    "endColumn": 62,
+                    "endOffset": 11785
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 98,
+                        "startColumn": 1,
+                        "startOffset": 4149,
+                        "endColumn": 59,
+                        "endOffset": 4207
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 233,
+                    "startColumn": 4,
+                    "startOffset": 11790,
+                    "endColumn": 76,
+                    "endOffset": 11862
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 103,
+                        "startColumn": 1,
+                        "startOffset": 4492,
+                        "endColumn": 73,
+                        "endOffset": 4564
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 234,
+                    "startColumn": 4,
+                    "startOffset": 11867,
+                    "endColumn": 73,
+                    "endOffset": 11936
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 105,
+                        "startColumn": 1,
+                        "startOffset": 4629,
+                        "endColumn": 70,
+                        "endOffset": 4698
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 235,
+                    "startColumn": 4,
+                    "startOffset": 11941,
+                    "endColumn": 63,
+                    "endOffset": 12000
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 104,
+                        "startColumn": 1,
+                        "startOffset": 4567,
+                        "endColumn": 60,
+                        "endOffset": 4626
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 236,
+                    "startColumn": 4,
+                    "startOffset": 12005,
+                    "endColumn": 80,
+                    "endOffset": 12081
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 109,
+                        "startColumn": 1,
+                        "startOffset": 4918,
+                        "endColumn": 77,
+                        "endOffset": 4994
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 237,
+                    "startColumn": 4,
+                    "startOffset": 12086,
+                    "endColumn": 75,
+                    "endOffset": 12157
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 111,
+                        "startColumn": 1,
+                        "startOffset": 5061,
+                        "endColumn": 72,
+                        "endOffset": 5132
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 238,
+                    "startColumn": 4,
+                    "startOffset": 12162,
+                    "endColumn": 65,
+                    "endOffset": 12223
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 110,
+                        "startColumn": 1,
+                        "startOffset": 4997,
+                        "endColumn": 62,
+                        "endOffset": 5058
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 239,
+                    "startColumn": 4,
+                    "startOffset": 12228,
+                    "endColumn": 67,
+                    "endOffset": 12291
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 96,
+                        "startColumn": 1,
+                        "startOffset": 4010,
+                        "endColumn": 64,
+                        "endOffset": 4073
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 240,
+                    "startColumn": 4,
+                    "startOffset": 12296,
+                    "endColumn": 57,
+                    "endOffset": 12349
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 95,
+                        "startColumn": 1,
+                        "startOffset": 3954,
+                        "endColumn": 54,
+                        "endOffset": 4007
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 241,
+                    "startColumn": 4,
+                    "startOffset": 12354,
+                    "endColumn": 45,
+                    "endOffset": 12395
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 79,
+                        "startColumn": 4,
+                        "startOffset": 3200,
+                        "endColumn": 45,
+                        "endOffset": 3241
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 242,
+                    "startColumn": 4,
+                    "startOffset": 12400,
+                    "endColumn": 34,
+                    "endOffset": 12430
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 74,
+                        "startColumn": 33,
+                        "startOffset": 3178,
+                        "endColumn": 63,
+                        "endOffset": 3208
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 243,
+                    "startColumn": 4,
+                    "startOffset": 12435,
+                    "endColumn": 55,
+                    "endOffset": 12486
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 54,
+                        "startColumn": 4,
+                        "startOffset": 2085,
+                        "endColumn": 55,
+                        "endOffset": 2136
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 244,
+                    "startColumn": 4,
+                    "startOffset": 12491,
+                    "endColumn": 35,
+                    "endOffset": 12522
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 75,
+                        "startColumn": 1,
+                        "startOffset": 3211,
+                        "endColumn": 32,
+                        "endOffset": 3242
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 245,
+                    "startColumn": 4,
+                    "startOffset": 12527,
+                    "endColumn": 43,
+                    "endOffset": 12566
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 81,
+                        "startColumn": 1,
+                        "startOffset": 3437,
+                        "endColumn": 40,
+                        "endOffset": 3476
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 246,
+                    "startColumn": 4,
+                    "startOffset": 12571,
+                    "endColumn": 42,
+                    "endOffset": 12609
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 51,
+                        "startColumn": 4,
+                        "startOffset": 2193,
+                        "endColumn": 42,
+                        "endOffset": 2231
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 247,
+                    "startColumn": 4,
+                    "startOffset": 12614,
+                    "endColumn": 37,
+                    "endOffset": 12647
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 77,
+                        "startColumn": 1,
+                        "startOffset": 3281,
+                        "endColumn": 34,
+                        "endOffset": 3314
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 248,
+                    "startColumn": 4,
+                    "startOffset": 12652,
+                    "endColumn": 49,
+                    "endOffset": 12697
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 40,
+                        "startColumn": 4,
+                        "startOffset": 1672,
+                        "endColumn": 49,
+                        "endOffset": 1717
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 249,
+                    "startColumn": 4,
+                    "startOffset": 12702,
+                    "endColumn": 49,
+                    "endOffset": 12747
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 45,
+                        "startColumn": 4,
+                        "startOffset": 1923,
+                        "endColumn": 49,
+                        "endOffset": 1968
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 250,
+                    "startColumn": 4,
+                    "startOffset": 12752,
+                    "endColumn": 49,
+                    "endOffset": 12797
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 55,
+                        "startColumn": 4,
+                        "startOffset": 2142,
+                        "endColumn": 49,
+                        "endOffset": 2187
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 251,
+                    "startColumn": 4,
+                    "startOffset": 12802,
+                    "endColumn": 39,
+                    "endOffset": 12837
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 82,
+                        "startColumn": 1,
+                        "startOffset": 3479,
+                        "endColumn": 36,
+                        "endOffset": 3514
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 252,
+                    "startColumn": 4,
+                    "startOffset": 12842,
+                    "endColumn": 51,
+                    "endOffset": 12889
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 39,
+                        "startColumn": 4,
+                        "startOffset": 1619,
+                        "endColumn": 51,
+                        "endOffset": 1666
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 253,
+                    "startColumn": 4,
+                    "startOffset": 12894,
+                    "endColumn": 45,
+                    "endOffset": 12935
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 83,
+                        "startColumn": 1,
+                        "startOffset": 3517,
+                        "endColumn": 42,
+                        "endOffset": 3558
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 254,
+                    "startColumn": 4,
+                    "startOffset": 12940,
+                    "endColumn": 37,
+                    "endOffset": 12973
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 89,
+                        "startColumn": 1,
+                        "startOffset": 3706,
+                        "endColumn": 34,
+                        "endOffset": 3739
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 255,
+                    "startColumn": 4,
+                    "startOffset": 12978,
+                    "endColumn": 56,
+                    "endOffset": 13030
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 70,
+                        "startColumn": 4,
+                        "startOffset": 3047,
+                        "endColumn": 66,
+                        "endOffset": 3109
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 256,
+                    "startColumn": 4,
+                    "startOffset": 13035,
+                    "endColumn": 56,
+                    "endOffset": 13087
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 56,
+                        "startColumn": 4,
+                        "startOffset": 2193,
+                        "endColumn": 56,
+                        "endOffset": 2245
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 257,
+                    "startColumn": 4,
+                    "startOffset": 13092,
+                    "endColumn": 56,
+                    "endOffset": 13144
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 47,
+                        "startColumn": 4,
+                        "startOffset": 2034,
+                        "endColumn": 56,
+                        "endOffset": 2086
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 258,
+                    "startColumn": 4,
+                    "startOffset": 13149,
+                    "endColumn": 58,
+                    "endOffset": 13203
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 46,
+                        "startColumn": 4,
+                        "startOffset": 1974,
+                        "endColumn": 58,
+                        "endOffset": 2028
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 259,
+                    "startColumn": 4,
+                    "startOffset": 13208,
+                    "endColumn": 53,
+                    "endOffset": 13257
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 186,
+                        "startColumn": 1,
+                        "startOffset": 9332,
+                        "endColumn": 50,
+                        "endOffset": 9381
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 260,
+                    "startColumn": 4,
+                    "startOffset": 13262,
+                    "endColumn": 41,
+                    "endOffset": 13299
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\setup.xml",
+                    "position": {
+                        "startLine": 29,
+                        "startColumn": 4,
+                        "startOffset": 1149,
+                        "endColumn": 41,
+                        "endOffset": 1186
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 261,
+                    "startColumn": 4,
+                    "startOffset": 13304,
+                    "endColumn": 48,
+                    "endOffset": 13348
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 53,
+                        "startColumn": 4,
+                        "startOffset": 2295,
+                        "endColumn": 49,
+                        "endOffset": 2340
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 262,
+                    "startColumn": 4,
+                    "startOffset": 13353,
+                    "endColumn": 47,
+                    "endOffset": 13396
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\strings.xml",
+                    "position": {
+                        "startLine": 64,
+                        "startColumn": 4,
+                        "startOffset": 2787,
+                        "endColumn": 47,
+                        "endOffset": 2830
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 263,
+                    "startColumn": 4,
+                    "startOffset": 13401,
+                    "endLine": 268,
+                    "endColumn": 9,
+                    "endOffset": 13579
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\styles.xml",
+                    "position": {
+                        "startLine": 41,
+                        "startColumn": 1,
+                        "startOffset": 1462,
+                        "endLine": 46,
+                        "endColumn": 9,
+                        "endOffset": 1645
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 269,
+                    "startColumn": 4,
+                    "startOffset": 13584,
+                    "endLine": 274,
+                    "endColumn": 9,
+                    "endOffset": 13817
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\styles.xml",
+                    "position": {
+                        "startLine": 60,
+                        "startColumn": 1,
+                        "startOffset": 1970,
+                        "endLine": 65,
+                        "endColumn": 9,
+                        "endOffset": 2209
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 275,
+                    "startColumn": 4,
+                    "startOffset": 13822,
+                    "endLine": 279,
+                    "endColumn": 9,
+                    "endOffset": 13997
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\styles.xml",
+                    "position": {
+                        "startLine": 30,
+                        "startColumn": 1,
+                        "startOffset": 1148,
+                        "endLine": 34,
+                        "endColumn": 9,
+                        "endOffset": 1327
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 280,
+                    "startColumn": 4,
+                    "startOffset": 14002,
+                    "endLine": 284,
+                    "endColumn": 9,
+                    "endOffset": 14179
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\styles.xml",
+                    "position": {
+                        "startLine": 49,
+                        "startColumn": 1,
+                        "startOffset": 1652,
+                        "endLine": 53,
+                        "endColumn": 9,
+                        "endOffset": 1833
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 285,
+                    "startColumn": 4,
+                    "startOffset": 14184,
+                    "endLine": 288,
+                    "endColumn": 9,
+                    "endOffset": 14306
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\styles.xml",
+                    "position": {
+                        "startLine": 36,
+                        "startColumn": 1,
+                        "startOffset": 1332,
+                        "endLine": 39,
+                        "endColumn": 9,
+                        "endOffset": 1457
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 289,
+                    "startColumn": 4,
+                    "startOffset": 14311,
+                    "endLine": 292,
+                    "endColumn": 9,
+                    "endOffset": 14435
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\styles.xml",
+                    "position": {
+                        "startLine": 55,
+                        "startColumn": 1,
+                        "startOffset": 1838,
+                        "endLine": 58,
+                        "endColumn": 9,
+                        "endOffset": 1965
+                    }
+                }
+            },
+            {
+                "to": {
+                    "startLine": 293,
+                    "startColumn": 4,
+                    "startOffset": 14440,
+                    "endLine": 295,
+                    "endColumn": 9,
+                    "endOffset": 14525
+                },
+                "from": {
+                    "file": "C:\\Users\\rxd06\\Documents\\Basic\\res\\values-ja\\styles.xml",
+                    "position": {
+                        "startLine": 69,
+                        "startColumn": 1,
+                        "startOffset": 2360,
+                        "endLine": 71,
+                        "endColumn": 9,
+                        "endOffset": 2447
+                    }
+                }
+            }
+        ]
+    }
+]
