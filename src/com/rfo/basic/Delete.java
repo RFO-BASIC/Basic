@@ -26,6 +26,8 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
+import static com.rfo.basic.Editor.*;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,21 +37,12 @@ import android.app.ListActivity;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.Log;
-
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ListView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ListView;
 import android.widget.Toast;
-
-import static com.rfo.basic.Editor.GO_UP;
-import static com.rfo.basic.Editor.addDirMark;
-import static com.rfo.basic.Editor.isMarkedDir;
-import static com.rfo.basic.Editor.stripDirMark;
-import static com.rfo.basic.Editor.getDisplayPath;
-import static com.rfo.basic.Editor.goUp;
-import static com.rfo.basic.Editor.quote;
 
 
 //Log.v(Delete.LOGTAG, "String Var Value = " + d);
@@ -150,7 +143,9 @@ public class Delete extends ListActivity {
 		if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
 
 		if (mToast != null) { mToast.cancel(); }
-		mToast = Basic.toaster(this, "Select file to Delete");	// tell the user what to do using Toast
+		mToast = Basic.toaster(this, getString(R.string.Select_file_to_Delete));	// Added to localize
+//		Remove to localize
+//		mToast = Basic.toaster(this, "Select file to Delete");	// tell the user what to do using Toast
 	}
 
 	@Override
@@ -183,11 +178,14 @@ public class Delete extends ListActivity {
 		AlertDialog.Builder alertBuild = new AlertDialog.Builder(this);
 
 		alertBuild
-			.setMessage("Delete " + fileName)					// give the user the selected file name
+			.setMessage(getString(R.string.delete) + " " + fileName)					// give the user the selected file name. Added to localize
+//			Removed to localize
+//			.setMessage("Delete " + fileName)					// give the user the selected file name
 			.setCancelable(false)								// do not allow user BACK key out of dialog
 
 // The click listeners ****************************
-		.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+			.setPositiveButton(getString(R.string.delete), new DialogInterface.OnClickListener() {  // Added ro localize
+//			.setPositiveButton("Delete", new DialogInterface.OnClickListener() {		// Removed to localize
 
 			public void onClick(DialogInterface dialog, int id) {			// Action for 'Yes' Button
 				dialog.cancel();
@@ -197,7 +195,8 @@ public class Delete extends ListActivity {
 			}
 		})
 
-		.setNegativeButton("No", new DialogInterface.OnClickListener() {
+		.setNegativeButton(getString(R.string.no_button_label), new DialogInterface.OnClickListener() {	// Added to localize
+//		.setNegativeButton("No", new DialogInterface.OnClickListener() {	Removed to localize
 			public void onClick(DialogInterface dialog, int id) {			// Action for 'NO' Button
 				dialog.cancel();											// Do not delete the file
 			}
@@ -205,7 +204,8 @@ public class Delete extends ListActivity {
 // End of Click Listeners ****************************************
 
 		AlertDialog alert = alertBuild.create();							// display the dialog
-		alert.setTitle("Confirm Delete");
+		alert.setTitle(getString(R.string.Confirm_Delete)); 				//Added to localize
+//		alert.setTitle("Confirm Delete");									//Removed to localize
 		alert.show();
 	}
 }

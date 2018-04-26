@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- *********************************************************************************
+
+BASIC! is an implementation of the Basic programming language for
+Android devices.
+
+Copyright (C) 2010 - 2017 Paul Laughton
+
+This file is part of BASIC! for Android
+
+	BASIC! is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	BASIC! is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+	You may contact the author or current maintainers at http://rfobasic.freeforums.org
+
+	**********************************************************************************
+-->
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent" >
+
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:gravity="center_horizontal"
+		android:orientation="vertical"
+		android:paddingTop="24dp"
+		android:paddingLeft="48dp"
+		android:paddingRight="48dp" >
+
+		<TextView
+			android:id="@+id/about_tv1"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:gravity="center_horizontal"
+			android:textColor="@android:color/white"
+			android:textSize="20sp"
+			android:typeface="serif" />
+
+		<TextView
+			android:id="@+id/about_tv2"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:paddingBottom="8dp"
+			android:gravity="center_horizontal"
+			android:textColor="@android:color/white"
+			android:textSize="12sp"
+			android:typeface="serif" />
+
+		<Button
+			android:id="@+id/about_btn_home"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/about_text_btn_home"
+			android:textAllCaps="false" />
+
+		<Button
+			android:id="@+id/about_btn_forum"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/about_text_btn_forum"
+			android:textAllCaps="false" />
+
+		<Button
+			android:id="@+id/about_btn_programs"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/about_text_btn_programs"
+			android:textAllCaps="false" />
+
+		<Button
+			android:id="@+id/about_btn_bintray"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/about_text_btn_bintray"
+			android:textAllCaps="false" />
+
+		<Button
+			android:id="@+id/about_btn_github"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/about_text_btn_github"
+			android:textAllCaps="false" />
+
+		<Button
+			android:id="@+id/about_btn_license"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/about_text_btn_license"
+			android:textAllCaps="false" />
+
+		<Button
+			android:id="@+id/about_btn_privpol"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/about_text_btn_privpol"
+			android:textAllCaps="false" />
+	</LinearLayout>
+
+</ScrollView>

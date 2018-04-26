@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        jar="C:\Users\rxd06\Documents\Basic\libs\commons-net-3.0.1.jar"
+        jumboMode="false"
+        revision="25.0.3"
+        sha1="643cc426b9f75aa111fac0fac0e52ff5d991a337">
+        <dex dex="C:\Users\rxd06\Documents\Basic\build\intermediates\pre-dexed\debug\commons-net-3.0.1_5a50586080121250e3fc49ca963c537a1161f3f1.jar" />
+    </item>
+
+</items>

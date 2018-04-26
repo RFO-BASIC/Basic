@@ -1,0 +1,78 @@
+<html>
+
+<head >
+
+  <meta http-equiv="content-type" content="text/html;charset=UTF-8"/>
+
+  <title >Demo # 2, Forms</title>
+
+</head>
+
+<!-- 
+This simple Javascript Function sends
+the string "data" to the the executing BASIC!
+program.
+
+The BASIC command, "html.getdatalink data$", is 
+used to read linked data. If data$ is empty ("") then
+not data has been sent.  The BASIC! programmer
+can loop on this value until a non-empty string is
+returned.
+
+This function is the heart the HTML/BASIC! interactive
+interface.
+-->
+
+<script type="text/javascript">
+    function doDataLink(data) {
+        Android.dataLink(data);
+    }
+</script>
+
+<body bgcolor="White">
+
+  <div align="center">
+  <!--
+Display an image located on the internet
+-->
+
+<img src="http://laughton.com/basic/logo.png">
+<p>
+
+    <h1><b>Fake Sign In</h1>
+
+    <form id='main' method='get' action='FORM'>
+
+      <p>Name: <input type='text' name='id'/></p>
+
+      <p>Email: <input type='text' name='password'/></p>
+
+      <p><input type='submit' name='submit' value='sign_in'/></p>
+
+    </form>
+
+<p>
+<!--
+Display a button labeled Exit Demo. Pressing this button
+send a dataLink message to BASIC!
+
+When the BASIC! program gets this message,
+it will close this HTML.
+-->
+
+	<input type="button" value="Exit Demo" onClick="doDataLink('Exit')" />
+
+      <p>
+	
+<!--
+Hitting the BACK key at this point will take you back to the privious
+entry in the history tree. In this case that is htmldemo1.html
+-->
+You can go back to Demo #1 by hitting the BACK key.
+
+
+  </div>
+
+</body>
+
+</html>

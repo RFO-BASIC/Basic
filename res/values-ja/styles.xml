@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+*********************************************************************************
+BASIC! is an implementation of the Basic programming language for
+Android devices.
+
+Copyright (C) 2010 - 2014 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+
+**********************************************************************************
+-->
+
+<resources>
+	<style name="intro_getline">
+		<item name="android:textSize">20sp</item>
+		<item name="android:textColor">#ee7620</item>
+		<item name="android:textStyle">bold</item>
+	</style>
+
+	<style name="label">
+		<item name="android:textSize">18sp</item>
+		<item name="android:textColor">#ffffff</item>
+	</style>
+
+	<style name="edit_text">
+		<item name="android:textSize">18sp</item>
+		<item name="android:textColor">#000000</item>
+		<item name="android:background">#ffffff</item>
+		
+	</style>
+
+
+	<style name="intro_getline_l">
+		<item name="android:textSize">12sp</item>
+		<item name="android:textColor">#ee7620</item>
+		<item name="android:textStyle">bold</item>
+	</style>
+
+	<style name="label_l">
+		<item name="android:textSize">15sp</item>
+		<item name="android:textColor">#ffffff</item>
+	</style>
+
+	<style name="edit_text_l">
+		<item name="android:textSize">15sp</item>
+		<item name="android:textColor">#000000</item>
+		<item name="android:background">#ffffff</item>
+		<item name= "android:textCursorDrawable">@null</item>	
+	</style>
+
+	<!--  this is the style for the container ListView, not the rows -->
+	<!--  the rows are defined in code, see ReviewAdapter.ReviewListView -->
+	<style name="review_list">
+		<item name="android:background">#000000</item>
+	</style>
+
+
+
+</resources>

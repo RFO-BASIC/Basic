@@ -42,7 +42,6 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -98,7 +97,9 @@ public class Editor extends Activity {
 
 	public static int selectionStart;
 	public static int selectionEnd;
-	public static final String Name = "BASIC! Program Editor - ";
+//  Removed to localize 
+//	public static final String Name = "BASIC! Program Editor - ";
+//
 	public static int InitialProgramSize;				// Used to determine if program has changed
 	public static boolean Saved = true;
 
@@ -465,13 +466,15 @@ public class Editor extends Activity {
 				SyntaxErrorDisplacement = -1;								// Reset the value
 			}
 		}
-
 	}
 
 	@Override
 	public void setTitle(CharSequence programName) {
-		CharSequence title = Name + (((programName != null) && !programName.equals("")) ? programName : "unnamed program");
-		super.setTitle(title);
+//  Added to localize
+	CharSequence title = getString(R.string.editor_name) + " - " + (((programName != null) && !programName.equals("")) ? programName : getString(R.string.unnamed_program));
+//  Removed to localize 
+//	CharSequence title = Name + (((programName != null) && !programName.equals("")) ? programName : "unnamed program");
+	super.setTitle(title);
 	}
 
 	@Override
@@ -649,16 +652,19 @@ public class Editor extends Activity {
 
 	private void doSaveDialog(final Action afterSave) {
 		AlertDialog.Builder alert = new AlertDialog.Builder(this);
-		alert.setMessage("Current Program Not Saved!")
+		alert.setMessage(getString(R.string.Current_Program_Not_Saved))		// Added to localize
+//		alert.setMessage("Current Program Not Saved!")		Removed to localize
 			.setCancelable(true)										// Allow user to BACK key out of the dialog
-
-			.setPositiveButton("Save", new DialogInterface.OnClickListener() {		// User says to save first
+			.setPositiveButton(getString(R.string.save), new DialogInterface.OnClickListener() {		// User says to save first. Added to localize
+//			Removed to localize
+//			.setPositiveButton("Save", new DialogInterface.OnClickListener() {		// User says to save first
 				public void onClick(DialogInterface dialog, int id) {
 					askNameSaveFile(afterSave);							// Tell the saver what to do after the save is done
 				}
 			})
-
-			.setNegativeButton("Continue", new DialogInterface.OnClickListener() {	// User says Do not save
+			.setNegativeButton(getString(R.string.Continue), new DialogInterface.OnClickListener() {	// User says Do not save.  Added to localize
+//			Removed to localize
+//			.setNegativeButton("Continue", new DialogInterface.OnClickListener() {	// User says Do not save
 				public void onClick(DialogInterface dialog, int id) {
 					doAfterSave(afterSave);								// Finish what the Save dialog interrupted
 				}
@@ -676,10 +682,12 @@ public class Editor extends Activity {
 
 	private void doFormatDialog() {
 		AlertDialog.Builder alert = new AlertDialog.Builder(this);
-		alert.setMessage("Format your program?")
+		alert.setMessage(getString(R.string.Format_your_program))  // Added to localize
+//		alert.setMessage("Format your program?")	//		Removed to localize
 			.setCancelable(true)
-
-			.setPositiveButton("Format", new DialogInterface.OnClickListener() {	// User says to do the format
+			.setPositiveButton(getString(R.string.format), new DialogInterface.OnClickListener() {	// User says to do the format
+//		Removed to localize
+//			.setPositiveButton("Format", new DialogInterface.OnClickListener() {	// User says to do the format
 				public void onClick(DialogInterface dialog, int id) {
 					DisplayText = mText.getText().toString();
 					startActivity(new Intent(Editor.this, Format.class));			// Start the format activity
@@ -687,7 +695,9 @@ public class Editor extends Activity {
 				}
 			})
 
-			.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {	// User says to cancel
+			.setNegativeButton(getString(R.string.cancel_button_label), new DialogInterface.OnClickListener() {	// User says to cancel
+//			Removed to localize
+//			.setNegativeButton( "Cancel" , new DialogInterface.OnClickListener() {	// User says to cancel				
 				public void onClick(DialogInterface dialog, int id) {
 					return;
 				}
@@ -754,7 +764,9 @@ public class Editor extends Activity {
 
 		String path = getDisplayPath(ProgramPath);							// get the save path to display in the dialog box
 		if (path.endsWith(Basic.SAMPLES_DIR)) { path = goUp(path); }		// don't offer to save in sample programs directory
-		alert.setTitle("Save to " + path);
+		alert.setTitle(path + " " + getString(R.string.Save_to)); //Added to localize
+//		Removed to localize
+//		alert.setTitle("Save to " + path);
 		alert.setOnCancelListener(new DialogInterface.OnCancelListener() {
 			public void onCancel(DialogInterface arg0) {					// user has canceled save
 				return;														// done
@@ -865,13 +877,16 @@ public class Editor extends Activity {
 			ProgramFileName = fileName;							// and file name
 
 			String display = getDisplayPath(file.getPath());
-			Basic.toaster(this, "Saved " + display);			// notify the user
-
+			Basic.toaster(this, display + getString(R.string.Saved));			// Added to localize
+//			Removed to localize
+//			Basic.toaster(this, "Saved " + display);			// notify the user
 			setTitle(ProgramFileName);
 			InitialProgramSize = mText.length();				// reset initial program size
 			Saved = true;										// indicate the program has been saved
 		} else {
-			String msg = "File not saved: " + ((ex == null) ? path : ex.getMessage());
+			String msg = getString(R.string.File_not_saved) + ((ex == null) ? path : ex.getMessage()); // Added to localize
+//			Removed to localize
+//			String msg = "File not saved: " + ((ex == null) ? path : ex.getMessage());
 			Basic.toaster(this, msg);
 		}
 	} // writeTheFile

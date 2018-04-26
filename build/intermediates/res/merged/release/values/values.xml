@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="base_drive_names">
+        <item>/mnt/sdcard</item>
+        <item>/mnt/sdcard</item>
+    </string-array>
+    <string-array name="base_drive_values">
+        <item>/mnt/sdcard</item>
+    </string-array>
+    <string-array name="csf_list_preference">
+        <item>Monospace</item>
+        <item>Sans Serif</item>
+        <item>Serif</item>
+    </string-array>
+    <string-array name="csfvalues_list_preference">
+        <item>MS</item>
+        <item>SS</item>
+        <item>S</item>
+    </string-array>
+    <string-array name="empty_console_list_preference">
+        <item>Use text background color</item>
+        <item>Use separator line color</item>
+    </string-array>
+    <string-array name="empty_console_values_list_preference">
+        <item>background</item>
+        <item>line</item>
+    </string-array>
+    <string-array name="es_list_preference">
+        <item>Black Text On White Screen</item>
+        <item>White Text on Black Screen</item>
+        <item>White Text on Blue Screen</item>
+    </string-array>
+    <string-array name="esvalues_list_preference">
+        <item>BW</item>
+        <item>WB</item>
+        <item>WBL</item>
+    </string-array>
+    <string-array name="font_list_preference">
+        <item>Small</item>
+        <item>Medium</item>
+        <item>Large</item>
+    </string-array>
+    <string-array name="fontvalues_list_preference">
+        <item>Small</item>
+        <item>Medium</item>
+        <item>Large</item>
+    </string-array>
+    <string-array name="load_file_names">
+    </string-array>
+    <string-array name="loading_msg">
+        <item>Standby for initial file loading.</item>
+    </string-array>
+    <string-array name="orientation_list_preference">
+        <item>Variable By Sensors</item>
+        <item>Fixed Landscape</item>
+        <item>Fixed Reverse Landscape</item>  
+        <item>Fixed Portrait</item>  
+        <item>Fixed Reverse Portrait</item>  
+    </string-array>
+    <string-array name="orientationvalues_list_preference">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+    </string-array>
+    <bool name="apk_create_data_dir">true</bool>
+    <bool name="apk_create_database_dir">true</bool>
+    <bool name="apk_programs_encrypted">false</bool>
+    <bool name="is_apk">false</bool>
+    <bool name="splash_display">true</bool>
+    <color name="splash_color">#FFFFFF</color>
+    <integer name="color1">0xff000000</integer>
+    <integer name="color2">0xffffffff</integer>
+    <integer name="color3">0xff006478</integer>
+    <integer name="color4">0xff00c000</integer>
+    <integer name="splash_time">1500</integer>
+    <string name="Background_Color">Background Color</string>
+    <string name="Base_Drive">Base Drive</string>
+    <string name="Bluetooth_not_connected">Bluetooth not connected</string>
+    <string name="Cannot_create_working_directory">Cannot create working directory</string>
+    <string name="Color_Scheme">Color Scheme</string>
+    <string name="Confirm">Confirm</string>
+    <string name="Confirm_Delete">Confirm Delete</string>
+    <string name="Console_Lines">Console Lines</string>
+    <string name="Console_Menu">Console Menu</string>
+    <string name="Console_Settings">Console Settings</string>
+    <string name="Continue">Continue</string>
+    <string name="Current_Program_Not_Saved">Current Program Not Saved!</string>
+    <string name="Custom_Colors">Custom Colors</string>
+    <string name="Define_Your_Own_Colors">Define Your Own Colors</string>
+    <string name="Display_Menu_in_Console_and_TGet">Display Menu in Console and TGet</string>
+    <string name="Done">Done</string>
+    <string name="Editor_AutoIndent">Editor AutoIndent</string>
+    <string name="Editor_Line_Wrap">Editor Line Wrap</string>
+    <string name="Editor_Lines">Editor Lines</string>
+    <string name="Editor_Settings">Editor Settings</string>
+    <string name="Empty_Console_Color">Empty Console Color</string>
+    <string name="Enable_Editor_AutoIndent">Enable Editor AutoIndent</string>
+    <string name="Enable_graphic_acceleration">Enable graphic acceleration</string>
+    <string name="Exception">Exception</string>
+    <string name="Execution_halted">Execution halted</string>
+    <string name="File_not_directory">File not directory</string>
+    <string name="File_not_saved">File not saved:</string>
+    <string name="Finished">Finished</string>
+    <string name="Font_Size">Font Size</string>
+    <string name="Font_file_not_found">Font file not found: </string>
+    <string name="Format_your_program">Format your program?</string>
+    <string name="Graphic_acceleration">Graphic acceleration</string>
+    <string name="Highlight_Color">Highlight Color</string>
+    <string name="Invalid_Font_Pointer">Invalid Font Pointer</string>
+    <string name="Line_Color">Line Color</string>
+    <string name="Next">Next</string>
+    <string name="No_Bluetooth_Read_Ready_Interrupt">No Bluetooth Read Ready Interrupt</string>
+    <string name="Not_a_number_Try_Again">Not a number. Try Again.</string>
+    <string name="Not_previously_connected">Not previously connected</string>
+    <string name="Nothing_found_to_replace">Nothing found to replace</string>
+    <string name="Nothing_to_execute">Nothing to execute.</string>
+    <string name="Program_ended_with_DO_without_UNTIL">Program endedb with DO without UNTIL</string>
+    <string name="Program_ended_with_FOR_without_NEXT">Program ended with FOR without NEXT</string>
+    <string name="Program_ended_with_WHILE_without_REPEAT">Program ended with WHILE without REPEAT</string>
+    <string name="Replace">Replace</string>
+    <string name="Replace_All">Replace All</string>
+    <string name="Replace_With">Replace With:</string>
+    <string name="Save_to">Save to </string>
+    <string name="Saved">Saved</string>
+    <string name="Screen_Colors">Screen Colors</string>
+    <string name="Screen_Orientation">Screen Orientation</string>
+    <string name="Search_For">Search For:</string>
+    <string name="Select_Color_Scheme">Select Color Scheme</string>
+    <string name="Select_Color_of_Unwritten_Console_Lines">Select Color of Unwritten Console Lines</string>
+    <string name="Select_File_To_Load">Select File To Load</string>
+    <string name="Select_Font_Size_for_Console">Select Font Size for Console, etc.</string>
+    <string name="Select_New_Base_Drive">Select New Base Drive</string>
+    <string name="Select_Orientation">Select Orientation</string>
+    <string name="Select_Typeface_for_Consol">Select Typeface for Console, etc.</string>
+    <string name="Select_View">Select View:</string>
+    <string name="Select_a_color_scheme_or_custom_colors">Select a color scheme or custom colors</string>
+    <string name="Select_file_to_Delete">Select file to Delete</string>
+    <string name="Set_Background_Color">Set Background Color</string>
+    <string name="Set_Highlight_Color">Set Highlight Color</string>
+    <string name="Set_Line_Color">Set Line Color</string>
+    <string name="Set_Text_Color">Set Text Color</string>
+    <string name="Setting_for_Console_and_Other_Text_Screens">Settings for Console and Other Text Screens</string>
+    <string name="Settings_for_Program_Editor">Settings for Program Editor</string>
+    <string name="SoundPool_not_opened">SoundPool not opened</string>
+    <string name="Source_directory_does_not_exist">Source directory does not exist</string>
+    <string name="Stopped_by_user">Stopped by user.</string>
+    <string name="Stream_count_must_be_0">Stream count must be > 0</string>
+    <string name="Superuser">Superuser</string>
+    <string name="Syntax_Error">Syntax Error</string>
+    <string name="System">System</string>
+    <string name="System_Error">System Error: </string>
+    <string name="System_shell">System shell</string>
+    <string name="Text_Color">Text Color</string>
+    <string name="Type_face">Typeface</string>
+    <string name="Use_Lined_Console">Use Lined Console</string>
+    <string name="Use_Lined_Editor">Use Lined Editor</string>
+    <string name="Warning_Low_Memory">Warning: Low Memory</string>
+    <string name="Wrap_Long_Editor_Lines">Wrap Long Editor Lines</string>
+    <string name="about">About</string>
+    <string name="about_name">About BASIC!</string>
+    <string name="about_text1">You are using version %s of BASIC!</string>
+    <string name="about_text2">\nThe Richard Feynman Observatory\nBASIC!
+								for Android\ncreated by Paul Laughton.\n\nTo
+								learn more about BASIC!,\nselect one of the following:</string>
+    <string name="about_text_btn_bintray">BASIC! on Bintray\nManual, apk, and release notes</string>
+    <string name="about_text_btn_forum">BASIC! User Forum</string>
+    <string name="about_text_btn_github">BASIC! on GitHub\nSource and bug reports</string>
+    <string name="about_text_btn_home">BASIC! Home Page</string>
+    <string name="about_text_btn_license">BASIC! Open-Source License\nThe GNU General Public License, version 3</string>
+    <string name="about_text_btn_privpol">BASIC! Privacy Policy</string>
+    <string name="about_text_btn_programs">BASIC! Users\' Programs\nWritten by members of the user forum</string>
+    <string name="already_exists">already exists</string>
+    <string name="app_name">BASIC!</string>
+    <string name="app_path">rfo-basic</string>
+    <string name="button_scan">Scan</string>
+    <string name="cancel_button_label">Cancel</string>
+    <string name="choose_one">Choose one</string>
+    <string name="clear">Clear</string>
+    <string name="color_chars">0123456789abcdefxABCDEFX#</string>
+    <string name="debug_name">BASIC! Debugger</string>
+    <string name="delete">Delete</string>
+    <string name="delete_button_label">Delete</string>
+    <string name="delete_name">BASIC! Delete File</string>
+    <string name="edit_button_label">Edit</string>
+    <string name="editor">Editor</string>
+    <string name="editor_name">BASIC! Program Editor</string>
+    <string name="enter_text2_label">Icon File Name</string>
+    <string name="enter_text3_label">Shortcut Name</string>
+    <string name="enter_text_label">Program File Name</string>
+    <string name="exit">Exit</string>
+    <string name="format">Format</string>
+    <string name="format_name">BASIC! Format</string>
+    <string name="gr_name">Graphics</string>
+    <string name="hello">Hello World, BASIC!</string>
+    <string name="help">Commands</string>
+    <string name="help_name">BASIC! Commands</string>
+    <string name="hex_color">Enter a hex color value</string>
+    <string name="instr_1">Select Cancel to go back to setup</string>
+    <string name="instr_2">or OK to try to create the shortcut anyway.</string>
+    <string name="intro_getline">BASIC! Shortcut Builder</string>
+    <string name="load">Load</string>
+    <string name="load_name">BASIC! Load File</string>
+    <string name="load_run">Load and Run</string>
+    <string name="my_program">my_program.bas</string>
+    <string name="no_button_label">No</string>
+    <string name="no_icon">Could not create icon from icon file.</string>
+    <string name="no_icon_file">The icon file does not exist.</string>
+    <string name="no_icon_name">You have not entered an icon file name.</string>
+    <string name="no_prog_file">The BASIC! program file does not exist (you can create it later).</string>
+    <string name="no_prog_name">You have not entered a BASIC! program name.</string>
+    <string name="no_shortcut_name">You have not entered a name for the shortcut.</string>
+    <string name="none_found">None Found</string>
+    <string name="none_paired">No Paired Devices</string>
+    <string name="not_found"> not found.</string>
+    <string name="not_opened">not opened</string>
+    <string name="ok_button_label">OK</string>
+    <string name="pause">Pause</string>
+    <string name="play_sound_name"> </string>
+    <string name="pref_MAB_clear_key">editor_menu_clear_on_action_bar</string>
+    <string name="pref_MAB_clear_summary">Show CLEAR on action bar if it fits</string>
+    <string name="pref_MAB_clear_title">CLEAR on action bar</string>
+    <string name="pref_MAB_exit_key">editor_menu_exit_on_action_bar</string>
+    <string name="pref_MAB_exit_summary">Show EXIT on action bar if it fits</string>
+    <string name="pref_MAB_exit_title">EXIT on action bar</string>
+    <string name="pref_MAB_key">editor_items_on_action_bar</string>
+    <string name="pref_MAB_load_key">editor_menu_load_on_action_bar</string>
+    <string name="pref_MAB_load_summary">Show LOAD on action bar if it fits</string>
+    <string name="pref_MAB_load_title">LOAD on action bar</string>
+    <string name="pref_MAB_run_key">editor_menu_run_on_action_bar</string>
+    <string name="pref_MAB_run_summary">Show RUN on action bar if it fits</string>
+    <string name="pref_MAB_run_title">RUN on action bar</string>
+    <string name="pref_MAB_save_key">editor_menu_save_on_action_bar</string>
+    <string name="pref_MAB_save_summary">Show SAVE on action bar if it fits</string>
+    <string name="pref_MAB_save_title">SAVE on action bar</string>
+    <string name="pref_MAB_search_key">editor_menu_search_on_action_bar</string>
+    <string name="pref_MAB_search_summary">Show SEARCH on action bar if it fits</string>
+    <string name="pref_MAB_search_title">SEARCH on action bar</string>
+    <string name="pref_MAB_summary">Editor menu items to show on action bar</string>
+    <string name="pref_MAB_title">Menu Items on Action Bar</string>
+    <string name="progress_marker">.</string>
+    <string name="run">Run</string>
+    <string name="run_name">BASIC! Program Output</string>
+    <string name="save">Save</string>
+    <string name="save_run">Save and Run</string>
+    <string name="scanning">Scanning</string>
+    <string name="search">Search</string>
+    <string name="search_name">BASIC! Search</string>
+    <string name="select_device"> Select Device</string>
+    <string name="select_name">BASIC! Select</string>
+    <string name="settings">Preferences</string>
+    <string name="settings_name">BASIC! Preferences</string>
+    <string name="spawn">Create Application</string>
+    <string name="stop">Stop</string>
+    <string name="stt_prompt">"BASIC! Speech To Text"</string>
+    <string name="textinput_name">BASIC! Text Input</string>
+    <string name="title_other_devices">Other Devices</string>
+    <string name="title_paired_devices">Paired Devices</string>
+    <string name="unnamed_program"> unnamed program</string>
+    <string name="version">01.91</string>
+    <string name="web_view_name">Web View</string>
+    <string name="yes_button_label">Yes</string>
+    <style name="edit_text">
+		<item name="android:textSize">18sp</item>
+		<item name="android:textColor">#000000</item>
+		<item name="android:background">#ffffff</item>
+		
+	</style>
+    <style name="edit_text_l">
+		<item name="android:textSize">15sp</item>
+		<item name="android:textColor">#000000</item>
+		<item name="android:background">#ffffff</item>
+		<item name="android:textCursorDrawable">@null</item>	
+	</style>
+    <style name="intro_getline">
+		<item name="android:textSize">20sp</item>
+		<item name="android:textColor">#ee7620</item>
+		<item name="android:textStyle">bold</item>
+	</style>
+    <style name="intro_getline_l">
+		<item name="android:textSize">12sp</item>
+		<item name="android:textColor">#ee7620</item>
+		<item name="android:textStyle">bold</item>
+	</style>
+    <style name="label">
+		<item name="android:textSize">18sp</item>
+		<item name="android:textColor">#ffffff</item>
+	</style>
+    <style name="label_l">
+		<item name="android:textSize">15sp</item>
+		<item name="android:textColor">#ffffff</item>
+	</style>
+    <style name="review_list">
+		<item name="android:background">#000000</item>
+	</style>
+</resources>

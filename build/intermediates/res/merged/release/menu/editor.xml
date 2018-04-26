@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--  *********************************************************************************
+BASIC! is an implementation of the Basic programming language for
+Android devices.
+
+Copyright (C) 2010 - 2015 Paul Laughton
+
+This file is part of BASIC! for Android
+
+    BASIC! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BASIC! is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with BASIC!.  If not, see <http://www.gnu.org/licenses/>.
+
+    You may contact the author or current maintainers at http://rfobasic.freeforums.org
+	
+	**********************************************************************************
+	-->
+	
+
+<!-- This is the layout for devices with the original "5 + More" menu style -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:id="@+id/run"
+    android:title="@string/run"/>
+
+    <item android:id="@+id/load"
+    android:title="@string/load"/>
+
+    <item android:id="@+id/save"
+    android:title="@string/save"/>
+
+    <item android:id="@+id/clear"
+    android:title="@string/clear"/>
+
+    <item android:id="@+id/search"
+    android:title="@string/search"/>
+
+    <item android:id="@+id/load_run"
+    android:title="@string/load_run"/>
+
+    <item android:id="@+id/save_run"
+    android:title="@string/save_run"/>
+
+    <item android:id="@+id/format"
+    android:title="@string/format"/>
+
+    <item android:id="@+id/delete"
+    android:title="@string/delete"/>
+ 
+    <item android:id="@+id/settings"
+    android:title="@string/settings"/>
+
+    <item android:id="@+id/help"
+    android:title="@string/help"/>
+
+    <item android:id="@+id/about"
+    android:title="@string/about"/>
+
+    <item android:id="@+id/exit"
+    android:title="@string/exit"/>
+
+</menu>

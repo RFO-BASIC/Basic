@@ -1,0 +1,112 @@
+<html><body>
+
+<!-- 
+
+htmldemo1.html
+
+This simple Javascript function "doDataLink(data)" sends
+the string "data" to the the executing BASIC!
+program.
+
+The BASIC command, "html.getdatalink data$", is 
+used to read linked data. If data$ is empty ("") then
+no data has been sent.  The BASIC! programmer
+can loop on this value until a non-empty string is
+returned.
+
+This function is the heart the HTML/BASIC! interactive
+interface.
+-->
+
+<script type="text/javascript">
+
+    function doDataLink(data) {
+        Android.dataLink(data);
+    }
+    
+    function text(theText) {
+       var txt = document.createTextNode(theText);
+       document.getElementById('txt').appendChild(txt);
+    }
+
+</script>
+
+<!-- 
+Show some marked up text
+-->
+
+<b>HTML Demo #1</b>
+<p>
+
+<!--
+Display an image located in:
+/sdcard/rfo-basic/data/
+-->
+<img src="fly.gif">
+<p>
+
+<!--
+Display a hyperlink to the next Demo.
+The link file is located in
+/sdcard/rfo-basic/data/
+-->
+
+<a href="htmldemo2.html">Go to Demo #2 </a>
+
+<p>
+Download the BASIC! Manual.
+<p>
+<a href="http://dl.bintray.com/rfo-basic/android/v01.78/De_Re_BASIC%21.pdf">De Re BASIC!</a>
+
+<p>
+
+<!--
+Display a button labeled "Speech to text". 
+Pressing this button
+sends a dataLink message, "STT", to BASIC!
+
+When the BASIC! program gets this message,
+it will start the voice recognition process.
+
+The BASIC! program will then insert the
+recognized text via the function
+text() above.
+
+-->
+
+	<input type="button" value="Speech To Text" onClick="doDataLink('STT')" />
+	<br>
+	
+	<!--
+	The Speech To Text results will be
+	inserted here
+	-->
+	
+    <p id="txt" </p>
+	
+  
+<P>
+
+<!--
+Display a button labeled Exit Demo. Pressing this button
+send a dataLink message to BASIC!
+
+When the BASIC! program gets this message,
+it will close  HTML .
+-->
+
+	<input type="button" value="Exit Demo" onClick="doDataLink('Exit')" />
+	<br>
+
+  
+<P>
+
+<!--
+Hitting the BACK key at this point  will exit html because
+this is start of the history chain
+-->
+
+You can also exit the Demo by hitting the BACK key
+
+
+</body></html>

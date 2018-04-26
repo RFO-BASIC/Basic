@@ -29,7 +29,6 @@ package com.rfo.basic;
 import android.app.Activity;
 import android.os.Bundle;
 import android.text.InputFilter;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -130,7 +129,7 @@ public class Search extends Activity {
 																		// from the start
 				if (doNext()) return;									// If this next found something, return
 				nextIndex = -1;											// Else indicate not found and (Index also -1 now)
-				Basic.toaster(Search.this, searchText + " not found." );// tell the user not found
+				Basic.toaster(Search.this, searchText + " " + getString(R.string.not_found) );// tell the user not found.  Updated to localize
 				return;
 			}
 		});
@@ -139,7 +138,7 @@ public class Search extends Activity {
 
 			public void onClick(View v) {
 				if (Index <0){											// If nothing has been found....
-					Basic.toaster(Search.this, "Nothing found to replace");
+					Basic.toaster(Search.this, getString(R.string.Nothing_found_to_replace));		//Update to localize
 					return;
 				}
 				doReplace();											// else replace what was found
