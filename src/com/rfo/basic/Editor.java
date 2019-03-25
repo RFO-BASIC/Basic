@@ -4,7 +4,7 @@
  Android devices.
 
 
- Copyright (C) 2010 - 2017 Paul Laughton
+ Copyright (C) 2010 - 2019 Paul Laughton
 
  This file is part of BASIC! for Android
 

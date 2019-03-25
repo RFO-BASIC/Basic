@@ -3,7 +3,7 @@
 BASIC! is an implementation of the Basic programming language for
 Android devices.
 
-Copyright (C) 2010 - 2017 Paul Laughton
+Copyright (C) 2010 - 2019 Paul Laughton
 
 This file is part of BASIC! for Android
 
@@ -6655,7 +6655,7 @@ public class Run extends Activity {
 		long value = args[0];
 		long bits = args[1];
 
-		EvalNumericExpressionIntValue = (bits < 0) ? (value << -bits) : (value >> bits);;
+		EvalNumericExpressionIntValue = (bits < 0) ? (value << -bits) : (value >> bits);
 		EvalNumericExpressionValue = EvalNumericExpressionIntValue.doubleValue();
 		VarIsInt = true;
 		return true;
