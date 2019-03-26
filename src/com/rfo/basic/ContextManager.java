@@ -5,7 +5,7 @@ Android devices.
 
 This file is part of BASIC! for Android
 
-Copyright (C) 2015 Paul Laughton
+Copyright (C) 2015 - 2019 Paul Laughton
 
     BASIC! is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

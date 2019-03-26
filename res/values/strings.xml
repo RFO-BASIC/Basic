@@ -228,6 +228,7 @@ This file is part of BASIC! for Android
 	<string name="Nothing_found_to_replace">Nothing found to replace</string>
 	<string name="WHATARG_not_found">%1$s not found.</string>
 	<!-- End of localization strings by puziro, 2018 -->
+	<string name="error_permission_denied">Permission denied by user! Quitting…</string>
 	<string name="display_text_default_first_line">REM Start of BASIC! Program\n</string>
 	<string name="display_text_initial_info">
 		Welcome to BASIC!\n\n

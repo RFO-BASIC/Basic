@@ -49,10 +49,11 @@ This file is part of BASIC! for Android
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    <uses-permission android:name="android.permission.READ_SMS" />
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+
+    <!--uses-permission android:name="android.permission.SEND_SMS" /-->
+    <!--uses-permission android:name="android.permission.READ_SMS" /-->
+    <!--uses-permission android:name="android.permission.RECEIVE_SMS" /-->
 
     <!-- <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED">android:required="false" /> -->
 
@@ -70,7 +71,7 @@ This file is part of BASIC! for Android
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <uses-sdk android:minSdkVersion="7" android:targetSdkVersion="18" />
+    <uses-sdk android:minSdkVersion="7" android:targetSdkVersion="28" />
 
     <supports-screens android:xlargeScreens="true" />
 

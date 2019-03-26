@@ -2777,7 +2777,6 @@ public class Run extends Activity {
 //		return index;
 	}
 
-
 	// ***************** Dialogs *****************
 
 	// Superset of fields needed by all Dialogs.
@@ -17919,15 +17918,26 @@ public class Run extends Activity {
 
 		Notified = false;
 
-		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		Notification notification = new Notification(R.drawable.icon, msg, System.currentTimeMillis());
+		NotificationManager manager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
 
 		// The PendingIntent will launch activity if the user selects this notification
 		PendingIntent contentIntent = PendingIntent.getActivity(Run.this, REQUEST_CODE,
 													new Intent(Run.this, HandleNotify.class), 0);
 
-		notification.setLatestEventInfo(Run.this, title, subtitle, contentIntent);
-		notification.flags = Notification.FLAG_AUTO_CANCEL;
+//		Notification notification = new Notification(R.drawable.icon, msg, System.currentTimeMillis());
+//		notification.setLatestEventInfo(Run.this, title, subtitle, contentIntent);
+//		notification.flags = Notification.FLAG_AUTO_CANCEL;
+
+		Notification.Builder builder = new Notification.Builder(Run.this)
+			.setSmallIcon(R.drawable.icon)
+			.setContentText(msg)
+			.setWhen(System.currentTimeMillis())
+			.setContentTitle(title)
+			.setSubText(subtitle)
+			.setContentIntent(contentIntent)
+			.setOnlyAlertOnce(true);
+
+		Notification notification = builder.build();
 
 		manager.notify(NOTIFICATION_ID, notification);
 
@@ -18135,7 +18145,7 @@ public class Run extends Activity {
 		Intent intent = buildIntentForAPP();
 		if (intent != null) {
 			try { Run.this.sendBroadcast(intent); }
-			catch (ActivityNotFoundException e) { writeErrorMsg(e.toString()); }
+			catch (Exception e) { writeErrorMsg(e.toString()); }
 			return true;
 		}
 		return false;

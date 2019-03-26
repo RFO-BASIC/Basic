@@ -54,6 +54,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -79,6 +80,10 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.PBEParameterSpec;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.KeySpec;
+
+//new permission system
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 
 
 public class Basic extends Activity {
@@ -120,6 +125,43 @@ public class Basic extends Activity {
 		if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state) && (mount == 'r')) { return true; }
 		return false;
 	}
+
+	// ********************* New permissions system *********************
+	// Added March, 2019, by Nicolas Mougin. Permissions management required for Android 6+.
+	// Check of permissions and request/callback through onRequestPermissionsResult() is
+	// done at the end of the onCreate() method, and conditions creating the activity
+
+	public static final int MANIFEST_PERMISSION_REQUEST = 0;
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+		switch (requestCode) {
+			case MANIFEST_PERMISSION_REQUEST:
+				if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					// Log.v(LOGTAG, "Permissions granted by user: create activity");
+					if (isAPK) { createForAPK(); } else { createForSB(); }
+				} else {
+					// Log.v(LOGTAG, "Permissions denied by user: quitting");
+					Toast.makeText(getApplicationContext(),
+							getString(R.string.error_permission_denied),
+							Toast.LENGTH_SHORT).show();
+					finish();
+				}
+				break;
+			default:
+				super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		}
+	}
+
+	public static String[] getPermissionsFromManifest(Context context) {
+		try {
+			return context.getPackageManager().getPackageInfo(context.getPackageName(),
+					PackageManager.GET_PERMISSIONS).requestedPermissions;
+		} catch (PackageManager.NameNotFoundException e) {
+			throw new RuntimeException("This should have never happened.", e);
+		}
+	}
+	// ******************************************************************
 
 	public static void setFilePaths(String basePath) {		// set both basePath and filePath
 															// public so LauncherShortcuts can use it
@@ -221,11 +263,28 @@ public class Basic extends Activity {
 		String base = Settings.getBaseDrive(this);
 		setFilePaths(base);
 
-		if (isAPK) {
-			createForAPK();
-		} else {
-			createForSB();
+		// Request permissions at RunTime on API >= 23
+		if ((Build.VERSION.SDK_INT < Build.VERSION_CODES.M) || permissionsGranted()) {
+			// Older than API 23 or permissions already granted. Start Activity.
+			if (isAPK) { createForAPK(); } else { createForSB(); }
+		} // else waiting for user response to permission request.
+	}
+
+	// Added March, 2019, by Nicolas Mougin. Permissions management required for Android 6+.
+	private boolean permissionsGranted() {
+		String[] manifestPermissions = getPermissionsFromManifest(getApplicationContext());
+		// Log.v(LOGTAG, "Need permissions: " + Arrays.toString(manifestPermissions));
+		for (String perm: manifestPermissions) {
+			if (perm.equals("android.permission.ACCESS_MOCK_LOCATION")) { continue; } // don't request this permission (crash)
+			if ( PackageManager.PERMISSION_GRANTED != ContextCompat.checkSelfPermission(this, perm) ) {
+				// At least 1 permission from manifest was not granted by user.
+				// Log.v(LOGTAG, perm + " not previously granted.");
+				ActivityCompat.requestPermissions(this, manifestPermissions, MANIFEST_PERMISSION_REQUEST);
+				return false;
+			}
 		}
+		// Log.v(LOGTAG, "All permissions already granted. Start Activity...");
+		return true;
 	}
 
 	private void createForSB() {							// Create code for Standard Basic
