@@ -31,14 +31,14 @@ This file is part of BASIC! for Android
 
     <PreferenceScreen
         android:key="colors_pref"
-        android:title="Screen Colors"
-        android:summary="Select a color scheme or custom colors"
+        android:title="@string/Screen_Colors"
+        android:summary="@string/Select_a_color_scheme_or_custom_colors"
         android:persistent="false">
 
         <ListPreference
             android:key="es_pref"
-            android:title="Color Scheme"
-            android:summary="Select Color Scheme"
+            android:title="@string/Color_Scheme"
+            android:summary="@string/Select_Color_Scheme"
             android:entries="@array/es_list_preference"
             android:entryValues="@array/esvalues_list_preference"
             android:defaultValue="BW"
@@ -46,15 +46,15 @@ This file is part of BASIC! for Android
 
         <CheckBoxPreference
             android:key="custom_colors_pref"
-            android:title="Custom Colors"
-            android:summary="Define Your Own Colors"
+            android:title="@string/Custom_Colors"
+            android:summary="@string/Define_Your_Own_Colors"
             android:defaultValue="false" />
 
         <EditTextPreference
             android:key="tc_pref"
             android:dependency="custom_colors_pref"
-            android:title="Text Color"
-            android:summary="Set Text Color"
+            android:title="@string/Text_Color"
+            android:summary="@string/Set_Text_Color"
             android:digits="@string/color_chars"
             android:defaultValue="@integer/color2"
             android:dialogTitle="@string/hex_color" />
@@ -62,8 +62,8 @@ This file is part of BASIC! for Android
         <EditTextPreference
             android:key="bc_pref"
             android:dependency="custom_colors_pref"
-            android:title="Background Color"
-            android:summary="Set Background Color"
+            android:title="@string/Background_Color"
+            android:summary="@string/Set_Background_Color"
             android:digits="@string/color_chars"
             android:defaultValue="@integer/color3"
             android:dialogTitle="@string/hex_color" />
@@ -71,8 +71,8 @@ This file is part of BASIC! for Android
         <EditTextPreference
             android:key="lc_pref"
             android:dependency="custom_colors_pref"
-            android:title="Line Color"
-            android:summary="Set Line Color"
+            android:title="@string/Line_Color"
+            android:summary="@string/Set_Line_Color"
             android:digits="@string/color_chars"
             android:defaultValue="@integer/color1"
             android:dialogTitle="@string/hex_color" />
@@ -80,8 +80,8 @@ This file is part of BASIC! for Android
         <EditTextPreference
             android:key="hc_pref"
             android:dependency="custom_colors_pref"
-            android:title="Highlight Color"
-            android:summary="Set Highlight Color"
+            android:title="@string/Highlight_Color"
+            android:summary="@string/Set_Highlight_Color"
             android:digits="@string/color_chars"
             android:defaultValue="@integer/color4"
             android:dialogTitle="@string/hex_color" />
@@ -90,14 +90,14 @@ This file is part of BASIC! for Android
 
     <PreferenceScreen
         android:key="console_pref"
-        android:title="Console Settings"
-        android:summary="Settings for Console and Other Text Screens"
+        android:title="@string/Console_Settings"
+        android:summary="@string/Setting_for_Console_and_Other_Text_Screens"
         android:persistent="false">
 
         <ListPreference
             android:key="font_pref"
-            android:title="Font Size"
-            android:summary="Select Font Size for Console, etc."
+            android:title="@string/Font_Size"
+            android:summary="@string/Select_Font_Size_for_Console"
             android:entries="@array/font_list_preference"
             android:entryValues="@array/fontvalues_list_preference"
             android:defaultValue="Medium"
@@ -105,8 +105,8 @@ This file is part of BASIC! for Android
 
         <ListPreference
             android:key="csf_pref"
-            android:title="Typeface"
-            android:summary="Select Typeface for Console, etc."
+            android:title="@string/Type_face"
+            android:summary="@string/Select_Typeface_for_Consol"
             android:entries="@array/csf_list_preference"
             android:entryValues="@array/csfvalues_list_preference"
             android:defaultValue="MS"
@@ -114,20 +114,20 @@ This file is part of BASIC! for Android
 
         <CheckBoxPreference
             android:key="console_menu"
-            android:title="Console Menu"
-            android:summary="Display Menu in Console and TGet"
+            android:title="@string/Console_Menu"
+            android:summary="@string/Display_Menu_in_Console_and_TGet"
             android:defaultValue="true" />
 
         <CheckBoxPreference
             android:key="lined_console"
-            android:title="Console Lines"
-            android:summary="Use Lined Console"
+            android:title="@string/Console_Lines"
+            android:summary="@string/Use_Lined_Console"
             android:defaultValue="true" />
 
         <ListPreference
             android:key="empty_color_pref"
-            android:title="Empty Console Color"
-            android:summary="Select Color of Unwritten Console Lines"
+            android:title="@string/Empty_Console_Color"
+            android:summary="@string/Select_Color_of_Unwritten_Console_Lines"
             android:entries="@array/empty_console_list_preference"
             android:entryValues="@array/empty_console_values_list_preference"
             android:defaultValue="background"
@@ -137,26 +137,26 @@ This file is part of BASIC! for Android
 
     <PreferenceScreen
         android:key="editor_pref"
-        android:title="Editor Settings"
-        android:summary="Settings for Program Editor"
+        android:title="@string/Editor_Settings"
+        android:summary="@string/Settings_for_Program_Editor"
         android:persistent="false">
 
         <CheckBoxPreference
             android:key="lined_editor"
-            android:title="Editor Lines"
-            android:summary="Use Lined Editor"
+            android:title="@string/Editor_Lines"
+            android:summary="@string/Use_Lined_Editor"
             android:defaultValue="true" />
 
         <CheckBoxPreference
             android:key="wrap_editor"
-            android:title="Editor Line Wrap"
-            android:summary="Wrap Long Editor Lines"
+            android:title="@string/Editor_Line_Wrap"
+            android:summary="@string/Wrap_Long_Editor_Lines"
             android:defaultValue="false" />
 
         <CheckBoxPreference
             android:key="autoindent"
-            android:title="Editor AutoIndent"
-            android:summary="Enable Editor AutoIndent"
+            android:title="@string/Editor_AutoIndent"
+            android:summary="@string/Enable_Editor_AutoIndent"
             android:defaultValue="false" />
 
     </PreferenceScreen>
@@ -207,8 +207,8 @@ This file is part of BASIC! for Android
 
     <ListPreference
         android:key="so_pref"
-        android:title="Screen Orientation"
-        android:summary="Select Orientation"
+        android:title="@string/Screen_Orientation"
+        android:summary="@string/Select_Orientation"
         android:entries="@array/orientation_list_preference"
         android:entryValues="@array/orientationvalues_list_preference"
         android:defaultValue="0"
@@ -216,14 +216,14 @@ This file is part of BASIC! for Android
 
     <CheckBoxPreference
         android:key="gr_accel"
-        android:title="Graphic acceleration"
-        android:summary="Enable graphic acceleration"
+        android:title="@string/Graphic_acceleration"
+        android:summary="@string/Enable_graphic_acceleration"
         android:defaultValue="false" />
 
     <ListPreference
         android:key="base_drive_pref"
-        android:title="Base Drive"
-        android:summary="Select New Base Drive"
+        android:title="@string/Base_Drive"
+        android:summary="@string/Select_New_Base_Drive"
         android:entries="@array/base_drive_names"
         android:entryValues="@array/base_drive_values"
         android:defaultValue="none"

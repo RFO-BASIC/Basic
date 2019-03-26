@@ -33,14 +33,15 @@ This file is part of BASIC! for Android
 	android:gravity="center_horizontal" android:padding="10px"
 	>
 		
-	<Button android:id="@+id/finished_button"  
-        android:layout_width="wrap_content" 
-        android:layout_height="40dip"
-        android:textSize="12dip"
-        android:layout_marginBottom="8dip"
-        android:layout_centerHorizontal = "true"
-        android:layout_alignParentBottom ="true"
-        android:text="Finished" />
+	<Button
+	    android:id="@+id/finished_button"
+	    android:layout_width="wrap_content"
+	    android:layout_height="40dip"
+	    android:layout_alignParentBottom="true"
+	    android:layout_centerHorizontal="true"
+	    android:layout_marginBottom="8dip"
+	    android:text="@string/Finished"
+	    android:textSize="12dip" />
         
         <EditText android:id="@+id/the_text"
         android:gravity="top"

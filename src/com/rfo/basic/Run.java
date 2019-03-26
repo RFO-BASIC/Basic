@@ -28,14 +28,15 @@ This file is part of BASIC! for Android
     This product includes software developed by
     The Apache Software Foundation (http://www.apache.org/).
 
+    Localization added 2018 by Hirokazu Yamazaki (puziro)
+
 *************************************************************************************************/
 
 package com.rfo.basic;
 
-import android.util.Log;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,22 +45,32 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.Flushable;
-import java.io.InputStream;
 import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.Flushable;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.io.BufferedReader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
+import java.nio.channels.FileChannel;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,22 +93,13 @@ import java.util.regex.PatternSyntaxException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.ShortBuffer;
-import java.nio.channels.FileChannel;
 
 import javax.crypto.Cipher;
 
-import org.apache.commons.net.ftp.*;
+import org.apache.commons.net.ftp.FTP;
+import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
+import org.apache.commons.net.ftp.FTPReply;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
@@ -120,7 +122,6 @@ import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.ActivityNotFoundException;
@@ -140,7 +141,6 @@ import android.content.res.Resources.NotFoundException;
 //import android.content.ClipboardManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
@@ -151,7 +151,6 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
-
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.SensorManager;
@@ -169,8 +168,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
-import android.os.Vibrator;
 import android.os.SystemClock;
+import android.os.Vibrator;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.telephony.CellLocation;
@@ -181,19 +180,19 @@ import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
-import android.text.format.Time;
 import android.text.ClipboardManager;
-
+import android.text.format.Time;
 import android.util.AttributeSet;
 import android.util.Base64;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Display;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
@@ -2569,7 +2568,7 @@ public class Run extends Activity {
 		switch (item.getItemId()) {
 
 		case R.id.stop:										// User wants to stop execution
-			updateConsole("Stopped by user.");				// tell user
+			updateConsole(getString(R.string.Stopped_by_user));	// tell user
 			Stop = true;									// signal main loop to stop
 			disableInterrupt(Interrupt.BACK_KEY_BIT);		// menu-selected stop is not trappable
 			return true;
@@ -2689,7 +2688,7 @@ public class Run extends Activity {
 		// If interpreter is running and OnLowMemory: label exists, set the Low Mem interrupt
 		// otherwise notify the user via the Console.
 		boolean trapped = triggerInterrupt(Interrupt.LOW_MEM_BIT);
-		if (!trapped) { updateConsole("Warning: Low Memory"); }
+		if (!trapped) { updateConsole(getString(R.string.Warning_Low_Memory)); }
 	}
 
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -2778,6 +2777,7 @@ public class Run extends Activity {
 //		return index;
 	}
 
+
 	// ***************** Dialogs *****************
 
 	// Superset of fields needed by all Dialogs.
@@ -2804,7 +2804,7 @@ public class Run extends Activity {
 			text.setInputType(0x00003002);					// Limits keys to signed decimal numbers
 		}
 		String btnLabel = args.mButton1;
-		if (btnLabel == null) { btnLabel = "Ok"; }
+		if (btnLabel == null) { btnLabel = getString(R.string.ok_button_label); }
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(context);
 		builder
@@ -2857,7 +2857,7 @@ public class Run extends Activity {
 					mmVal.val(d);
 				} catch (Exception e) {
 					Log.d(LOGTAG, "Input Dialog bad input");
-					Toaster("Not a number. Try Again.").show();
+					Toaster(getString(R.string.Not_a_number_Try_Again)).show();
 					return;
 				}
 			} else {										// String Input Handling
@@ -3179,7 +3179,7 @@ public class Run extends Activity {
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(Run.this)
 			.setCancelable(true)
-			.setTitle("Select View:")
+			.setTitle(getString(R.string.Select_View))
 			.setView(dialogLayout);
 
 		builder.setOnCancelListener(
@@ -3189,7 +3189,7 @@ public class Run extends Activity {
 				}
 			});
 
-		builder.setPositiveButton("Confirm",
+		builder.setPositiveButton(getString(R.string.Confirm),
 			new DialogInterface.OnClickListener() {
 				public void onClick(DialogInterface dialog,int which) {
 					WaitForSwap = false;
@@ -3551,7 +3551,7 @@ public class Run extends Activity {
 
 		private UncaughtExceptionHandler mUncaughtExceptionHandler =
 			new UncaughtExceptionHandler() {
-				private static final String INTERNAL_ERROR = "Internal error! Please notify developer.";
+			private static final String INTERNAL_ERROR = "Internal error! Please notify developer.";
 
 				public void uncaughtException(Thread thread, Throwable ex) {
 					if (ex instanceof OutOfMemoryError) {
@@ -3622,9 +3622,9 @@ public class Run extends Activity {
 			// For debugging loop errors: if debug is on and errors are not trapped
 			// and there is no other error and no immediate exit, then check the loop stacks.
 			if (Debug && (mOnErrorInt == null) && !SyntaxError && !Exit) {
-				if (!ForNextStack.empty())	{ PrintShow("Program ended with FOR without NEXT"); }
-				if (!WhileStack.empty())	{ PrintShow("Program ended with WHILE without REPEAT"); }
-				if (!DoStack.empty())		{ PrintShow("Program ended with DO without UNTIL"); }
+				if (!ForNextStack.empty())	{ PrintShow(getString(R.string.Program_ended_with_FOR_without_NEXT)); }
+				if (!WhileStack.empty())	{ PrintShow(getString(R.string.Program_ended_with_WHILE_without_REPEAT)); }
+				if (!DoStack.empty())		{ PrintShow(getString(R.string.Program_ended_with_DO_without_UNTIL)); }
 			}
 			if (mConsoleBuffer.size() != 0) {								// somebody changed the console
 				sendMessage(MESSAGE_UPDATE_CONSOLE);
@@ -3735,7 +3735,7 @@ public class Run extends Activity {
 					waitForDebugLOCK();								// wait for user's selection
 
 					if (DebuggerHalt) {
-						PrintShow("Execution halted");
+						PrintShow(getString(R.string.Execution_halted));
 						Stop = true;
 						break;
 					}
@@ -5137,7 +5137,7 @@ public class Run extends Activity {
 
 	private void SyntaxError() {						// Called to output Syntax Error Message
 		if (!SyntaxError) {								// If a previous syntax error message has
-			RunTimeError("Syntax Error");				// not been displayed then display one now
+			RunTimeError(getString(R.string.Syntax_Error));	// not been displayed then display one now
 			SyntaxError = true;							// and set the flag so we don't do it again.
 		}
 
@@ -8123,7 +8123,7 @@ public class Run extends Activity {
 					mErrorMsg = err;
 					ExecutingLineIndex = mOnErrorInt.line();
 				} else {									// tell user we are stopping
-					PrintShow(err, "Execution halted");
+					PrintShow(err, getString(R.string.Execution_halted));
 					Stop = true;							// and stop executing
 				}
 			}
@@ -8903,7 +8903,7 @@ public class Run extends Activity {
 
 		if (TGet.mMenuStop) {							// user selected Stop from TGet menu
 														// code copied from onOptionsItemSelected
-			PrintShow("Stopped by user.");				// tell user
+			PrintShow(getString(R.string.Stopped_by_user));	// tell user
 			Stop = true;								// signal main loop to stop
 			disableInterrupt(Interrupt.BACK_KEY_BIT);	// menu-selected stop is not trappable
 		} else {
@@ -16526,7 +16526,7 @@ public class Run extends Activity {
 	private boolean execute_BT_reconnect() {
 		if (!checkEOL())				return false;
 		if (btConnectDevice == null) {
-			return RunTimeError("Not previously connected");
+			return RunTimeError(getString(R.string.Not_previously_connected));
 		}
 		mChatService.connect(btConnectDevice, bt_Secure);
 		return true;
@@ -16540,7 +16540,7 @@ public class Run extends Activity {
 
 	private boolean execute_BT_device_name() {
 		if (bt_state != STATE_CONNECTED) {
-			return RunTimeError("Bluetooth not connected");
+			return RunTimeError(getString(R.string.Bluetooth_not_connected));
 		}
 
 		if (!getSVar() || !checkEOL())	return false;
@@ -16550,7 +16550,7 @@ public class Run extends Activity {
 
 	private boolean execute_BT_write() {
 		if (bt_state != STATE_CONNECTED) {
-			RunTimeError("Bluetooth not connected");
+			RunTimeError(getString(R.string.Bluetooth_not_connected));
 			return true;								// Deliberately not making error fatal
 		}
 
@@ -16582,13 +16582,13 @@ public class Run extends Activity {
 	}
 
 	private boolean execute_BT_readReady_Resume() {
-		return doResume("No Bluetooth Read Ready Interrupt");
+		return doResume(getString(R.string.No_Bluetooth_Read_Ready_Interrupt));
 	}
 
 	private boolean execute_BT_read_bytes() {
 
 		if (bt_state != STATE_CONNECTED) {
-			return RunTimeError("Bluetooth not connected");
+			return RunTimeError(getString(R.string.Bluetooth_not_connected));
 		}
 
 		String msg = "";
@@ -16622,7 +16622,10 @@ public class Run extends Activity {
 
 		if (SUprocess == null) {
 			if (c.id == CID_OPEN) { mIsSU = isSU; }
-			else return RunTimeError((isSU ? "Superuser" : "System shell") + " not opened");
+			else {
+				String which = getString(isSU ? R.string.Superuser : R.string.System_shell);
+				return RunTimeError(getString(R.string.WHICHARG_not_opened, which));
+			}
 		}
 		return c.run();									// run the function and report back
 	}
@@ -16636,7 +16639,7 @@ public class Run extends Activity {
 		if (!mIsSU) {											// System.open: make sure AppPath exists
 			dir = new File(Basic.getFilePath());
 			if (!dir.exists() && !dir.mkdirs()) {
-				return RunTimeError("Cannot create working directory " + dir);
+				return RunTimeError(getString(R.string.wd_create_error_DIRARG, dir));
 			}
 		}
 		try {
@@ -16646,7 +16649,10 @@ public class Run extends Activity {
 			SUinputStream = new BufferedReader(									// Open the input stream
 								new InputStreamReader(SUprocess.getInputStream()));
 		} catch (Exception e) {
-			return RunTimeError((mIsSU ? "SU" : "System") + " Exception: " + e);
+			String which = getString(mIsSU ? R.string.SU_command : R.string.System);
+			String error = getString(R.string.WHICHARG_Exception_EXARG,
+									 which, e.getLocalizedMessage());
+			return RunTimeError(error);
 		}
 		theSUReader = new SUReader(SUinputStream, SU_ReadBuffer);
 		theSUReader.start();
@@ -16664,7 +16670,10 @@ public class Run extends Activity {
 			SUoutputStream.flush();
 		}
 		catch (Exception e) {
-			return RunTimeError((mIsSU ? "SU" : "System") + " Exception:", e);
+			String which = getString(mIsSU ? R.string.SU_command : R.string.System);
+			String error = getString(R.string.WHICHARG_Exception_EXARG,
+									 which, e.getLocalizedMessage());
+			return RunTimeError(error);
 		}
 		return true;
 	}
@@ -16737,7 +16746,7 @@ public class Run extends Activity {
 		int fontIdx;
 		Typeface aFont = getTypeface(fileName);
 		if (aFont == null) {
-			writeErrorMsg("Font file not found: " + fileName);
+			writeErrorMsg(getString(R.string.Font_not_found_FILEARG, fileName));
 			fontIdx = -1;
 		} else {
 			fontIdx = FontList.size();
@@ -16748,7 +16757,7 @@ public class Run extends Activity {
 	}
 
 	private int getFontArg() {										// get the font number
-		return getFontArg("Invalid Font Pointer");					// with the default error message
+		return getFontArg(getString(R.string.Invalid_Font_Pointer));// with the default error message
 	}
 
 	private int getFontArg(String errMsg) {							// get and validate the font number
@@ -16997,7 +17006,7 @@ public class Run extends Activity {
 		if (c == null) return false;
 
 		if ((theSoundPool == null) && (c.id != CID_OPEN)) {
-			return RunTimeError("SoundPool not opened");
+			return RunTimeError(getString(R.string.SoundPool_not_opened));
 		}
 		return c.run();
 	}
@@ -17008,10 +17017,10 @@ public class Run extends Activity {
 		if (!checkEOL())				return false;
 		int SP_max = EvalNumericExpressionValue.intValue();
 		if (SP_max <= 0) {
-			return RunTimeError("Stream count must be > 0");
+			return RunTimeError(getString(R.string.Stream_count_must_be_0));
 		}
 //		this.setVolumeControlStream(AudioManager.STREAM_MUSIC);
-		theSoundPool = new SoundPool(SP_max,  AudioManager.STREAM_MUSIC, 0);
+		theSoundPool = new SoundPool(SP_max, AudioManager.STREAM_MUSIC, 0);
 
 		return true;
 	}
@@ -17880,7 +17889,7 @@ public class Run extends Activity {
 	// ********************************** Empty Program Command ***********************************
 
 	private boolean executeEMPTY_PROGRAM() {
-		PrintShow("Nothing to execute.");
+		PrintShow(getString(R.string.Nothing_to_execute));
 		Stop = true;
 		return true;
 	}

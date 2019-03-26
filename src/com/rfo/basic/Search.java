@@ -107,7 +107,7 @@ public class Search extends Activity {
 		// If there is a block of text selected in the Editor then make that
 		// block of text the search for text
 
-		if (Editor.selectionStart != Editor.selectionEnd){
+		if (Editor.selectionStart != Editor.selectionEnd) {
 			int s = Editor.selectionStart;
 			int e = Editor.selectionEnd;
 			if (e < s) {
@@ -128,9 +128,11 @@ public class Search extends Activity {
 				if (nextIndex < 0) nextIndex = 0;						// If nextIndex <0 then a previous search
 																		// search has finished. Start next search
 																		// from the start
-				if (doNext()) return;									// If this next found something, return
-				nextIndex = -1;											// Else indicate not found and (Index also -1 now)
-				Basic.toaster(Search.this, searchText + " not found." );// tell the user not found
+				if (!doNext()) {										// If this next found something, return
+					nextIndex = -1;										// else indicate not found (Index also -1 now)
+					String toast = getString(R.string.WHATARG_not_found, searchText);
+					Basic.toaster(Search.this, toast);					// and tell the user
+				}
 				return;
 			}
 		});
@@ -138,11 +140,12 @@ public class Search extends Activity {
 		replaceButton.setOnClickListener(new OnClickListener() {		// ***** Replace Button ****
 
 			public void onClick(View v) {
-				if (Index <0){											// If nothing has been found....
-					Basic.toaster(Search.this, "Nothing found to replace");
-					return;
+				if (Index < 0) {										// If nothing has been found
+					String toast = getString(R.string.Nothing_found_to_replace);
+					Basic.toaster(Search.this, toast);					// tell the user
+				} else {
+					doReplace();										// else replace what was found
 				}
-				doReplace();											// else replace what was found
 				return;
 			}
 		});
@@ -181,7 +184,7 @@ public class Search extends Activity {
 			}
 		});
 
-	}
+	} // onCreate
 
 	@Override
 	protected void onResume() {

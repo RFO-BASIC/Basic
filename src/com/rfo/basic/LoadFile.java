@@ -26,24 +26,6 @@ This file is part of BASIC! for Android
 
 package com.rfo.basic;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Locale;
-
-import com.rfo.basic.Basic.ColoredTextAdapter;
-
-import android.app.ListActivity;
-import android.os.Bundle;
-import android.util.Log;
-
-import android.view.KeyEvent;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.Toast;
-import android.widget.AdapterView.OnItemClickListener;
-import android.widget.ListView;
-
 import static com.rfo.basic.Editor.GO_UP;
 import static com.rfo.basic.Editor.addDirMark;
 import static com.rfo.basic.Editor.isMarkedDir;
@@ -51,6 +33,23 @@ import static com.rfo.basic.Editor.stripDirMark;
 import static com.rfo.basic.Editor.getDisplayPath;
 import static com.rfo.basic.Editor.goUp;
 import static com.rfo.basic.Editor.quote;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Locale;
+
+import android.app.ListActivity;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.KeyEvent;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import com.rfo.basic.Basic.ColoredTextAdapter;
 
 
 // Loads a file. Called from the Editor when user selects Menu->Load
@@ -116,9 +115,11 @@ public class LoadFile extends ListActivity {
 
 		String[] fileList = dir.list();							// Get the list of files in this dir
 		if (fileList == null) {
-			String msg = dir.exists() ? "File not directory" : "Source directory does not exist";
+			String msg = dir.exists() ? getString(R.string.File_not_directory)
+									  : getString(R.string.Source_directory_does_not_exist);
+			msg = getString(R.string.System_Error_MSGARG, msg);
 			if (mToast != null) { mToast.cancel(); }
-			mToast = Basic.toaster(this, "System Error: " + msg);
+			mToast = Basic.toaster(this, msg);
 			return;
 		}
 
@@ -148,8 +149,8 @@ public class LoadFile extends ListActivity {
 
 		if (mAdapter != null) { mAdapter.notifyDataSetChanged(); }
 
-		if (mToast != null) { mToast.cancel(); }
-		mToast = Basic.toaster(this, "Select File To Load");	// tell the user what to do using Toast
+		if (mToast != null) { mToast.cancel(); }				// tell the user what to do using Toast
+		mToast = Basic.toaster(this, getString(R.string.Select_File_To_Load));
 	}
 
 	@Override

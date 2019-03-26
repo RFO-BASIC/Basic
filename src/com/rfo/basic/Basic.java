@@ -22,6 +22,8 @@ Copyright (C) 2010 - 2019 Paul Laughton
 
     You may contact the author or current maintainers at http://rfobasic.freeforums.org
 
+	Localization added 2018 by Hirokazu Yamazaki (puziro).
+
 *************************************************************************************************/
 
 package com.rfo.basic;
@@ -108,6 +110,8 @@ public class Basic extends Activity {
 	private ImageView mSplash;								// ImageView for splash screen
 
 	public static TextStyle defaultTextStyle;
+
+	public static String mDefaultFirstLine;					// Default first line for clearProgram()
 
 	public static boolean checkSDCARD(char mount) {			// mount is 'w' for writable,
 															// 'r' for either readable or writable
@@ -199,6 +203,8 @@ public class Basic extends Activity {
 		apkCreateDataBaseDir = res.getBoolean(R.bool.apk_create_database_dir);
 
 		DoAutoRun = false;
+
+		mDefaultFirstLine = getString(R.string.display_text_default_first_line);
 	}
 
 	/** Called when the activity is first created. */
@@ -338,7 +344,7 @@ public class Basic extends Activity {
 		Run.running_bas = "";
 		lines = new ArrayList<Run.ProgramLine>();			// The lines array list is the program
 		lines.add(new Run.ProgramLine(""));					// add an empty string to lines
-		Editor.DisplayText="REM Start of BASIC! Program\n";	// Display text is the editors program storage for display
+		Editor.DisplayText = mDefaultFirstLine;				// Display text is the editors program storage for display
 	}
 
 	private static boolean AreSamplesLoaded() {		// Sample program files have not been loaded
@@ -875,45 +881,25 @@ public class Basic extends Activity {
 			// The first load is a short program of comments that will be displayed
 			// by the Editor
 
-			Editor.DisplayText = "!!\n\n" +			// Initialize the Display Program Lines
-					"Welcome to BASIC!\n\n" +
-					"Press Menu->More->About\n" +
-					"to get more information\n" +
-					"about this release, and\n" +
-					"to see the User's Manual,\n" +
-					"De Re BASIC!\n\n" +
-					"Press Menu->Clear to clear\n" +
-					"this message and start\n" +
-					"writing your own BASIC!\n" +
-					"program.\n\n";
+			String initialInfoText = getString(R.string.display_text_initial_info);
+			String initialInfoAddendum = getString(R.string.display_text_addendum_dont_keep);
+			String openComment = getString(R.string.display_text_open_comment);
+			String closeComment = getString(R.string.display_text_close_comment);
+
 			int level = Build.VERSION.SDK_INT;
-			if (level >= 11) {
-				Editor.DisplayText +=
-					"Note: if you can't load a\n" +
-					"program, check your settings.\n" +
-					"\"Developer Options ->\n" +
-					"Don't keep activities\"\n" +
-					"must NOT be checked.\n\n";
-			}
-			Editor.DisplayText += 
-					"!!";
+			Editor.DisplayText = openComment +				// Initialize the Display Program Lines
+								 initialInfoText +
+								 ((level >= 11) ? initialInfoAddendum : "") +
+								 closeComment;
 		}
 
 		public void doCantLoad() {
 			// A short program of comments that will be displayed
 			// by the Editor to indicate the Base Drive is not writable
 
-			Editor.DisplayText="!!\n\n" +
-					"BASIC! is unable to write\n" +
-					"its sample programs.\n" +
-					"You can write and run\n" +
-					"programs, but you cannot\n" +
-					"save them. You can press\n" +
-					"Menu->More->Preferences\n" +
-					"and select \"Base Drive\"\n" +
-					"to change the setting\n" +
-					"to writable storage.\n\n" +
-					"!!";
+			Editor.DisplayText = getString(R.string.display_text_open_comment) +
+								 getString(R.string.display_text_cant_load) +
+								 getString(R.string.display_text_close_comment);
 		}
 
 		private void LoadTheProgram() {
