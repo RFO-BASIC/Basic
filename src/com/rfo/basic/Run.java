@@ -113,6 +113,7 @@ import org.apache.http.util.ByteArrayBuffer;
 
 import com.rfo.basic.Basic.TextStyle;
 import com.rfo.basic.GPS.GpsData;
+import com.rfo.basic.notify.NotifyClassic;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -120,6 +121,7 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
@@ -172,6 +174,7 @@ import android.os.SystemClock;
 import android.os.Vibrator;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
+import android.support.v4.app.NotificationCompat;
 import android.telephony.CellLocation;
 import android.telephony.PhoneStateListener;
 import android.telephony.SignalStrength;
@@ -17916,33 +17919,56 @@ public class Run extends Activity {
 		boolean wait = (EvalNumericExpressionValue != 0);
 		if (!checkEOL()) { return false; }
 
+		Context context = getApplicationContext();
 		Notified = false;
 
 		NotificationManager manager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		Notification notification;
+		String notificationChannelID = "BASIC! Notifications";
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			NotificationChannel channel = new NotificationChannel(notificationChannelID, notificationChannelID,
+											NotificationManager.IMPORTANCE_DEFAULT);
+			notificationChannelID = channel.getId();
+			if (manager != null) { manager.createNotificationChannel(channel); }
+		}
 
 		// The PendingIntent will launch activity if the user selects this notification
 		PendingIntent contentIntent = PendingIntent.getActivity(Run.this, REQUEST_CODE,
 													new Intent(Run.this, HandleNotify.class), 0);
 
-//		Notification notification = new Notification(R.drawable.icon, msg, System.currentTimeMillis());
-//		notification.setLatestEventInfo(Run.this, title, subtitle, contentIntent);
-//		notification.flags = Notification.FLAG_AUTO_CANCEL;
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+			// Before SDK 11 there is no Notification.Builder, required by NotificationCompat.Builder.
+			// Before Builder, setLatestEventInfo() configured Notifications, but that vanished in SDK 23.
+			// Therefore, the following code has been moved to NotifyClassic and compiled as a separate library.
+			//
+			//    Notification notification = new Notification(R.drawable.icon, msg, System.currentTimeMillis());
+			//    notification.setLatestEventInfo(Run.this, title, subtitle, contentIntent);
+			//    notification.flags = Notification.FLAG_AUTO_CANCEL;
+			//
+			NotifyClassic oldNotify = new NotifyClassic();
+			notification = oldNotify.getNotification(context, R.drawable.classic_notify_icon, contentIntent,
+													 title, subtitle, msg);
+		} else {
+			NotificationCompat.Builder builder = new NotificationCompat.Builder(context, notificationChannelID)
+				.setSmallIcon(R.drawable.notify_icon)
+				.setWhen(System.currentTimeMillis())
+				.setContentTitle(title)
+				.setContentText(subtitle)
+				.setSubText(msg)
+				.setPriority(NotificationCompat.PRIORITY_DEFAULT)
+				.setContentIntent(contentIntent)
+				.setOnlyAlertOnce(true)
+				.setAutoCancel(true);
 
-		Notification.Builder builder = new Notification.Builder(Run.this)
-			.setSmallIcon(R.drawable.icon)
-			.setContentText(msg)
-			.setWhen(System.currentTimeMillis())
-			.setContentTitle(title)
-			.setSubText(subtitle)
-			.setContentIntent(contentIntent)
-			.setOnlyAlertOnce(true);
-
-		Notification notification = builder.build();
-
+			notification = builder.build();
+		}
 		manager.notify(NOTIFICATION_ID, notification);
 
 		if (wait) {
-			while (!Notified) Thread.yield();
+			while (!Notified) {
+				if (Stop) { break; }		// kluge, else Stop never seen. TODO: general solution?
+				Thread.yield();
+			}
 		}
 		return true;
 	}

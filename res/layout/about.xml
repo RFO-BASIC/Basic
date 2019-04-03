@@ -35,6 +35,7 @@ This file is part of BASIC! for Android
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:gravity="center_horizontal"
+		android:background="@android:color/black"
 		android:orientation="vertical"
 		android:paddingTop="24dp"
 		android:paddingLeft="48dp"
