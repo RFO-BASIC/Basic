@@ -133,7 +133,7 @@ This file is part of BASIC! for Android
 	<string name="about_text_btn_home">BASIC! Home Page</string>
 	<string name="about_text_btn_forum">BASIC! User Forum</string>
 	<string name="about_text_btn_programs">BASIC! Users\' Programs\nWritten by members of the user forum</string>
-	<string name="about_text_btn_bintray">BASIC! on Bintray\nManual, apk, and release notes</string>
+	<string name="about_text_btn_bintray">BASIC! Full Edition on Bintray\nManual, apk, and release notes</string>
 	<string name="about_text_btn_github">BASIC! on GitHub\nSource and bug reports</string>
 	<string name="about_text_btn_license">BASIC! Open-Source License\nThe GNU General Public License, version 3</string>
 	<string name="about_text_btn_privpol">BASIC! Privacy Policy</string>
@@ -231,10 +231,12 @@ This file is part of BASIC! for Android
 	<string name="error_permission_denied">Permission denied by user! Quitting…</string>
 	<string name="display_text_default_first_line">REM Start of BASIC! Program\n</string>
 	<string name="display_text_initial_info">
-		Welcome to BASIC!\n\n
-		Press Menu->More->About\n
+		Welcome to BASIC!\n
+		Google Play Edition\n\n
+		Press Menu->About\n
 		to get more information\n
-		about this release, and\n
+		about this release, to\n
+		get the full edition, or\n
 		to see the User\'s Manual,\n
 		De Re BASIC!\n\n
 		Press Menu->Clear to clear\n
@@ -244,6 +246,8 @@ This file is part of BASIC! for Android
 	<string name="display_text_addendum_dont_keep">
 		Note: if you can\'t load a\n
 		program, check your settings.\n
+		\"Permissions->Storage\"\n
+		must be enabled, and\n
 		\"Developer Options ->\n
 		\u0020Don\'t keep activities\"\n
 		must NOT be checked.\n\n</string>
