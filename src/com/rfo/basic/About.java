@@ -62,7 +62,7 @@ public class About extends Activity {
 			"https://bintray.com/rfo-basic/android/RFO-BASIC/"+ version + "/view/read";
 		setupButton(R.id.about_btn_bintray,  url);
 		setupButton(R.id.about_btn_github,   "https://github.com/RFO-BASIC");
-		setupButton(R.id.about_btn_license,  "http://laughton.com/basic/license.html");
+		setupButton(R.id.about_btn_license,  "https://www.gnu.org/licenses/gpl-3.0-standalone.html");
 		setupButton(R.id.about_btn_privpol,  "http://rfo-basic.com/PrivacyPolicy.html");
 	}
 
