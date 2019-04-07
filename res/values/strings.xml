@@ -232,7 +232,7 @@ This file is part of BASIC! for Android
 	<string name="display_text_default_first_line">REM Start of BASIC! Program\n</string>
 	<string name="display_text_initial_info">
 		Welcome to BASIC!\n\n
-		Press Menu->More->About\n
+		Press Menu->About\n
 		to get more information\n
 		about this release, and\n
 		to see the User\'s Manual,\n
@@ -244,6 +244,8 @@ This file is part of BASIC! for Android
 	<string name="display_text_addendum_dont_keep">
 		Note: if you can\'t load a\n
 		program, check your settings.\n
+		\"Permissions->Storage\"\n
+		must be enabled, and\n
 		\"Developer Options ->\n
 		\u0020Don\'t keep activities\"\n
 		must NOT be checked.\n\n</string>
