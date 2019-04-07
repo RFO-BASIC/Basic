@@ -210,6 +210,7 @@ This file is part of BASIC! for Android
 	<string name="Superuser">スーパーユーザー</string>
 	<string name="System_shell">システムシェル</string>
 	<string name="WHICHARG_not_opened">%1$sは開きませんでした</string>
+	<string name="SU_command">SU</string>
 	<string name="System">システム</string>
 	<string name="WHICHARG_Exception_EXARG">%1$s例外：%2$s</string>
 	<string name="Font_not_found_FILEARG">フォントファイルが見つかりません %1$s</string>
@@ -226,5 +227,37 @@ This file is part of BASIC! for Android
 	<string name="System_Error_MSGARG">システムエラー： %1$s</string>
 	<string name="Nothing_found_to_replace">置き換える文字列がありません</string>
 	<string name="WHATARG_not_found">%1$s は、見つかりませんでした</string>
-
+	<string name="error_permission_denied">Permission denied by user! Quitting…</string>
+	<string name="display_text_default_first_line">REM Start of BASIC! Program\n</string>
+	<string name="display_text_initial_info">
+		Welcome to BASIC!\n\n
+		Press Menu->About\n
+		to get more information\n
+		about this release, and\n
+		to see the User\'s Manual,\n
+		De Re BASIC!\n\n
+		Press Menu->Clear to clear\n
+		this message and start\n
+		writing your own BASIC!\n
+		program.\n\n</string>
+	<string name="display_text_addendum_dont_keep">
+		Note: if you can\'t load a\n
+		program, check your settings.\n
+		\"Permissions->Storage\"\n
+		must be enabled, and\n
+		\"Developer Options ->\n
+		\u0020Don\'t keep activities\"\n
+		must NOT be checked.\n\n</string>
+	<string name="display_text_cant_load">
+		BASIC! is unable to write\n
+		its sample programs.\n
+		You can write and run\n
+		programs, but you cannot\n
+		save them. You can press\n
+		Menu->More->Preferences\n
+		and select \"Base Drive\"\n
+		to change the setting\n
+		to writable storage.\n\n</string>
+	<string name="display_text_open_comment">!!\n\n</string>
+	<string name="display_text_close_comment">!!</string>
 </resources>
