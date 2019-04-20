@@ -56,11 +56,10 @@ public class About extends Activity {
 		tv2.setText(getString(R.string.about_text2));
 
 		setupButton(R.id.about_btn_home,     "http://rfo-basic.com");
-		setupButton(R.id.about_btn_forum,    "http://rfobasic.freeforums.org/index.php?mobile=mobile");
+		setupButton(R.id.about_btn_forum,    "https://www.tapatalk.com/groups/rfobasic/");
 		setupButton(R.id.about_btn_programs, "http://laughton.com/basic/programs");
-		String url =			// add version to the URL
-			"https://bintray.com/rfo-basic/android/RFO-BASIC/"+ version + "/view/read";
-		setupButton(R.id.about_btn_bintray,  url);
+		setupButton(R.id.about_btn_wiki,     "https://rfobasic.miraheze.org/wiki/Main_Page");
+		setupButton(R.id.about_btn_bintray,  "https://bintray.com/rfo-basic/android/RFO-BASIC");
 		setupButton(R.id.about_btn_github,   "https://github.com/RFO-BASIC");
 		setupButton(R.id.about_btn_license,  "https://www.gnu.org/licenses/gpl-3.0-standalone.html");
 		setupButton(R.id.about_btn_privpol,  "http://rfo-basic.com/PrivacyPolicy.html");

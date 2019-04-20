@@ -133,7 +133,8 @@ This file is part of BASIC! for Android
 	<string name="about_text_btn_home">BASIC! Home Page</string>
 	<string name="about_text_btn_forum">BASIC! User Forum</string>
 	<string name="about_text_btn_programs">BASIC! Users\' Programs\nWritten by members of the user forum</string>
-	<string name="about_text_btn_bintray">BASIC! Full Edition on Bintray\nManual, apk, and release notes</string>
+	<string name="about_text_btn_wiki">BASIC! Wiki\nOnline docs with links to many resources</string>
+	<string name="about_text_btn_bintray">BASIC! Full Edition on Bintray\nManual, apks, and release notes</string>
 	<string name="about_text_btn_github">BASIC! on GitHub\nSource and bug reports</string>
 	<string name="about_text_btn_license">BASIC! Open-Source License\nThe GNU General Public License, version 3</string>
 	<string name="about_text_btn_privpol">BASIC! Privacy Policy</string>
