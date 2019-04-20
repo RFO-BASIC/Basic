@@ -82,6 +82,13 @@ This file is part of BASIC! for Android
 			android:textAllCaps="false" />
 
 		<Button
+			android:id="@+id/about_btn_wiki"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/about_text_btn_wiki"
+			android:textAllCaps="false" />
+
+		<Button
 			android:id="@+id/about_btn_bintray"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"

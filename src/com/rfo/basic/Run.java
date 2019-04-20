@@ -17898,6 +17898,7 @@ public class Run extends Activity {
 
 	// ************************************** Notify Command **************************************
 
+	@TargetApi(Build.VERSION_CODES.O)
 	private boolean executeNOTIFY() {
 
 		int NOTIFICATION_ID = 1;	// These two constants are without meaning in this application
